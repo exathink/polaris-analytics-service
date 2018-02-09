@@ -1,0 +1,43 @@
+version: '3.1'
+
+services:
+  package-base:
+    image: ${PACKAGE_BASE_IMAGE}
+    build:
+      dockerfile: polaris-build/docker/polaris-python-package-base/Dockerfile
+      context: .
+      args:
+        BUILDER_IMAGE: ${BUILDER_IMAGE}
+        RELEASE_IMAGE: ${RELEASE_IMAGE}
+
+    entrypoint:
+      - py.test
+
+    volumes:
+      - .:/project
+    working_dir: /project
+    environment:
+      PYTHONPATH: ${PYTHONPATH}
+      PYTHONDONTWRITEBYTECODE: 1
+
+  package:
+    image: ${PACKAGE_IMAGE}
+    build:
+      dockerfile: polaris-build/docker/polaris-python-package/Dockerfile
+      args:
+        PACKAGE_BASE_IMAGE: ${PACKAGE_BASE_IMAGE}
+      context: .
+    command: py.test
+    working_dir: /project
+
+
+  uwsgi-service:
+    image: ${PACKAGE_UWSGI_IMAGE}
+    build:
+      dockerfile: polaris-build/docker/polaris-uwsgi-service/Dockerfile
+      args:
+          PACKAGE_IMAGE: ${PACKAGE_IMAGE}
+      context: .
+
+
+

@@ -1,0 +1,17 @@
+alembic==0.8.10
+argh==0.26.2
+Mako==1.0.7
+MarkupSafe==1.0
+marshmallow==2.13.6
+marshmallow-sqlalchemy==0.13.1
+polaris-common-db==0.0.1
+polaris-repos-db==0.0.1
+polaris-utils==0.0.1
+polaris.analytics.db==0.0.1
+polaris.analytics.service==0.0.1
+psycopg2==2.6.1
+py==1.5.2
+pytest==2.9.2
+python-editor==1.0.3
+requests==2.10.0
+SQLAlchemy==1.1.11

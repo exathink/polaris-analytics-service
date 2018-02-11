@@ -5,3 +5,7 @@ export RELEASE_IMAGE=${REGISTRY_POLARIS_BUILD_PATH}polaris-python-release-db:lat
 export POLARIS_DB_IMAGE=${REGISTRY_POLARIS_BUILD_PATH}polaris-postgres:latest
 
 POLARIS_DB_URL=postgres://polaris:polaris@polaris-db:5432
+
+# Deployment settings
+export PACKAGE_DEPLOYABLE_BUILD_TARGETS="uwsgi-service polaris-analytics-service"
+export PACKAGE_DEPLOYABLE_IMAGE=polaris-analytics-service-deploy

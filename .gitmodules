@@ -4,3 +4,6 @@
 [submodule "polaris-analytics-db"]
 	path = polaris-analytics-db
 	url = ../../polaris-dbapi/polaris-analytics-db
+[submodule "polaris-flask"]
+	path = polaris-flask
+	url = ../../polaris-common/polaris-flask

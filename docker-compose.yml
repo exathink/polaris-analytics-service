@@ -44,6 +44,28 @@ services:
       PYTHONDONTWRITEBYTECODE: 1
 
 
+
+  polaris-analytics-service-dev:
+    image: ${PACKAGE_BASE_IMAGE}
+    command:
+      - flask
+      - run
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8200"
+    ports:
+      - "8200:8200"
+    volumes:
+      - .:/project
+    environment:
+      ENVIRONMENT: development
+      FLASK_APP: polaris.analytics.service.endpoint:app
+      FLASK_DEBUG: 1
+      POLARIS_DB_URL: postgres://polaris:polaris@polaris-db
+      AUTH_SERVICE_URL: http://polaris-services.exathink.localdev:8000
+      PYTHONPATH: ${PYTHONPATH}
+
   polaris-db:
     image: ${POLARIS_DB_IMAGE}
     environment:

@@ -1,2 +1,5 @@
 argh
 pytest
+uwsgi
+flask-restful
+marshmallow

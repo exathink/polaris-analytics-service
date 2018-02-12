@@ -14,14 +14,13 @@ from polaris.flask.common import PolarisSecuredService
 
 from polaris.analytics.service.chart_api import chart_api
 
-from polaris.repos.db import model
 
 class PolarisAnalyticsService(PolarisSecuredService):
     def __init__(self, import_name, db_url, authentication_service_url, db_connect_timeout=30, models=None,
                  public_paths=None, **kwargs):
         super(PolarisAnalyticsService, self).__init__(
             import_name, db_url, authentication_service_url, db_connect_timeout,
-            models=models + [model] if models else [model],
+            models=models,
             public_paths=public_paths,
             **kwargs
         )

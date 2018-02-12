@@ -4,6 +4,7 @@ export BUILDER_IMAGE=${REGISTRY_POLARIS_BUILD_PATH}polaris-python-builder:latest
 export RELEASE_IMAGE=${REGISTRY_POLARIS_BUILD_PATH}polaris-python-release-db:latest
 export POLARIS_DB_IMAGE=${REGISTRY_POLARIS_BUILD_PATH}polaris-postgres:latest
 
+
 POLARIS_DB_URL=postgres://polaris:polaris@polaris-db
 
 # Deployment settings

@@ -13,6 +13,27 @@ services:
     depends_on:
       - polaris-db
 
+  polaris-analytics-service:
+    image: ${PACKAGE_DEPLOYABLE_IMAGE}
+    build:
+      dockerfile: docker/polaris-analytics-service-deploy/Dockerfile
+      context: .
+      args:
+        PACKAGE_UWSGI_IMAGE: ${PACKAGE_UWSGI_IMAGE}
+    ports:
+      - "8200:8200"
+      - "9193:9193"
+    environment:
+      ENVIRONMENT: development
+      PROCESSES: 1
+      AUTH_SERVICE_URL: http://polaris-services.exathink.localdev:8000
+      POLARIS_DB_URL: postgres://polaris:polaris@polaris-db/polaris
+    depends_on:
+      - polaris-db
+
+
+
+
   loader:
       image: ${PACKAGE_BASE_IMAGE}
       volumes:
@@ -65,22 +86,7 @@ services:
       AUTH_SERVICE_URL: http://polaris-services.exathink.localdev:8000
       PYTHONPATH: ${PYTHONPATH}
 
-  polaris-analytics-service:
-    image: ${PACKAGE_IMAGE}
-    ports:
-      - "8200:8200"
-      - "9193:9193"
-    environment:
-      ENVIRONMENT: development
-      # In dev mode, the app runs schema initialization when it starts
-      # however, this will cause conflicts if uwsgi spawns multiple
-      # processes, so processes must be set to 1 when the mode is development.
-      PROCESSES: 1
-      POLARIS_DB_URL: postgres://polaris:polaris@polaris-db/polaris
-      AUTH_SERVICE_URL: http://polaris-services.exathink.localdev:8000
 
-    depends_on:
-      - polaris-db
 
 
   polaris-db:

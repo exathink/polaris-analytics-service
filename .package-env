@@ -8,6 +8,6 @@ POLARIS_DB_URL=postgres://polaris:polaris@polaris-db
 
 # Deployment settings
 export PACKAGE_DEPLOYABLE_BUILD_TARGETS="uwsgi-service polaris-analytics-service"
-export PACKAGE_DEPLOYABLE_IMAGE=polaris-analytics-service-aws-deploy
+export PACKAGE_DEPLOYABLE_IMAGE=polaris-analytics-service-deploy
 
 

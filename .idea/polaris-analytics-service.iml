@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="PYTHON_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/polaris-analytics-db" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/polaris-flask" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/polaris-analytics-db/polaris-utils" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/polaris-analytics-db/polaris-repos-db" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/polaris-flask/polaris-auth-db" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/polaris-analytics-db/polaris-repos-db/polaris-common-db" isTestSource="false" />
+    </content>
+    <orderEntry type="jdk" jdkName="Remote Python 3.5.3 Docker (polaris-analytics-service-aws-base:latest)" jdkType="Python SDK" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

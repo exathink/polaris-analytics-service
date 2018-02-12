@@ -12,9 +12,19 @@
 from flask import Blueprint
 from flask_cors import cross_origin
 
+from polaris.analytics.db import charts
+
+
 chart_api = Blueprint('chart_api', __name__)
 
 @chart_api.route('/')
 def index():
     return 'ping'
+
+
+@chart_api.route('/project-summary/<organization_name>/')
+def project_summary(organization_name):
+    model = charts.ProjectLandscapeChartModel(many=True)
+    return model.dumps(model.get(organization_name))
+
 

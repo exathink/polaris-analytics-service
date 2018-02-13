@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="dataSourceStorageLocal">
+    <data-source name="polaris-analytics-service-db" uuid="1e397c07-76d3-468f-a2a7-ea408a46002e">
+      <database-info product="PostgreSQL" version="9.5.10" jdbc-version="4.2" driver-name="PostgreSQL JDBC Driver" driver-version="42.2.1">
+        <identifier-quote-string>&quot;</identifier-quote-string>
+      </database-info>
+      <case-sensitivity plain-identifiers="lower" quoted-identifiers="exact" />
+      <secret-storage>master_key</secret-storage>
+      <user-name>polaris</user-name>
+      <introspection-schemas>polaris:analytics,auth,polaris,repos</introspection-schemas>
+    </data-source>
+  </component>
+</project>

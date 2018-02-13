@@ -29,6 +29,7 @@ services:
       AUTH_SERVICE_URL: http://polaris-services.exathink.localdev:8000
       POLARIS_DB_URL: postgres://polaris:polaris@polaris-db/polaris
     depends_on:
+      - auth-service
       - polaris-db
 
 
@@ -87,15 +88,9 @@ services:
       PYTHONPATH: ${PYTHONPATH}
 
 
-
-
   polaris-db:
-    image: ${POLARIS_DB_IMAGE}
-    environment:
-      POSTGRES_USER: polaris
-      POSTGRES_PASSWORD: polaris
-      POSTGRES_DB: polaris
     ports:
-      - "5432"
+      - 5500:5432
+
 
 

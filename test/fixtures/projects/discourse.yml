@@ -1,0 +1,17 @@
+organization_name: Discourse
+projects:
+- name: Discourse
+  properties:
+    created: ''
+    description: 'A platform for community discussion. Free, open, simple. http://www.discourse.org'
+    programming_languages:
+    - Ruby
+    - Javascript
+    tags:
+    - Rails
+    - Ember
+    - Discussions
+    website: https://github.com/krishnaku/ec2x
+  repositories:
+    - discourse-chat-integration
+    - discourse-api-docs

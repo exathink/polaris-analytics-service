@@ -1,0 +1,33 @@
+organization_name: Exathink
+projects:
+- name: ec2x
+  properties:
+    created: ''
+    description: 'EC2x: Work with EC2 Instances by Name'
+    maintainers:
+    - email: kkumar@exathink.com
+    - name: Krishna Kumar
+    programming_languages:
+    - Python
+    tags:
+    - devops
+    website: https://github.com/krishnaku/ec2x
+  repositories:
+    - ec2x
+    - polaris-private-repo-test
+
+- name: demochat
+  properties:
+    created: ''
+    description: 'Forked from the superfresh/demochat project'
+    maintainers:
+    - email: kkumar@exathink.com
+    - name: Krishna Kumar
+    programming_languages:
+    - Javascript
+    tags:
+    - devops
+    website: https://github.com/krishnaku/demochat
+  repositories:
+    - demochat
+

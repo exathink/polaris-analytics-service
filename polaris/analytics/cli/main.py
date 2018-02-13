@@ -32,12 +32,13 @@ def load_project_file(project_file, project_name=None):
         project = find(document['projects'], lambda proj: proj['name'] == project_name)
         if project:
             logger.info(project)
+            api.load_project(organization_name, project)
         else:
             logger.error("Project {} was not found".format(project))
 
     else:
         for project in document['projects']:
-            api.load_project(dict_merge(dict(organization_name=organization_name), project))
+            api.load_project(organization_name, project)
 
 
 if __name__ == '__main__':

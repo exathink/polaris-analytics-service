@@ -29,6 +29,7 @@ pytest-cov==2.5.1
 python-dateutil==2.6.1
 python-editor==1.0.3
 pytz==2018.3
+PyYAML==3.11
 requests==2.10.0
 six==1.10.0
 SQLAlchemy==1.1.11

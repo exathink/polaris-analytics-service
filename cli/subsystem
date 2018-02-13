@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+#!/usr/bin/env bash
+
+function up {
+    package up polaris-db
+    sleep 5
+    echo "Initializing db data.."
+    package run pg_restore -f /project/polaris-install/data/polaris-db.sql
+    echo "Starting services.."
+    package up polaris-analytics-service
+    echo "Services ready..."
+}
+
+
+function down {
+    echo "Stopping services.."
+    package down
+    echo "Services stopped."
+}
+
+
+if [[ $# -ge 1 ]]
+then
+    ACTION=$1
+    case ${ACTION} in
+        up)
+            up
+            ;;
+        down)
+            down
+            ;;
+        *)
+            echo "Invalid action, must be 'up' or 'down'"
+    esac
+else
+    echo "Usage: subsystem <up | down>"
+fi

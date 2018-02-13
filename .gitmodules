@@ -8,3 +8,6 @@
 	path = polaris-flask
 	url = ../../polaris-common/polaris-flask
 
+[submodule "polaris-install"]
+	path = polaris-install
+	url = ../../polaris-common/polaris-install

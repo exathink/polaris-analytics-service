@@ -46,7 +46,7 @@ services:
         - polaris.analytics.cli.main
 
       environment:
-        POLARIS_DB_URL: ${POLARIS_DEV_DB_URL}
+        POLARIS_DB_URL: postgres://polaris:polaris@polaris-db
         PYTHONPATH: ${PYTHONPATH}
         PYTHONDONTWRITEBYTECODE: 1
 
@@ -61,7 +61,7 @@ services:
       - polaris.analytics.cli.charts
 
     environment:
-      POLARIS_DB_URL: ${POLARIS_DEV_DB_URL}
+      POLARIS_DB_URL: postgres://polaris:polaris@polaris-db
       PYTHONPATH: ${PYTHONPATH}
       PYTHONDONTWRITEBYTECODE: 1
 
@@ -81,11 +81,15 @@ services:
     volumes:
       - .:/project
     environment:
+      ENVIRONMENT: development
       FLASK_APP: polaris.analytics.service.endpoint:app
       FLASK_DEBUG: 1
       POLARIS_DB_URL: postgres://polaris:polaris@polaris-db
       AUTH_SERVICE_URL: http://polaris-services.exathink.localdev:8000
       PYTHONPATH: ${PYTHONPATH}
+    depends_on:
+      - auth-service
+      - polaris-db
 
 
   polaris-db:

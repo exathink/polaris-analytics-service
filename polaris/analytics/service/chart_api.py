@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 
-from flask import Blueprint
+from flask import Blueprint, make_response
 from flask_cors import cross_origin
 
 from polaris.analytics.db import charts
@@ -25,6 +25,8 @@ def index():
 @chart_api.route('/project-summary/<organization_name>/')
 def project_summary(organization_name):
     model = charts.ProjectLandscapeChartModel(many=True)
-    return model.dumps(model.get(organization_name))
+
+    return make_response(model.dumps(model.get(organization_name))),  \
+        {'Content-Type': 'application/json'}
 
 

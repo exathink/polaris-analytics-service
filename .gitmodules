@@ -1,6 +1,10 @@
+[submodule "polaris-build"]
+	path = polaris-build
+	url = git@gitlab.com:polaris-common/polaris-build
 [submodule "polaris-analytics-db"]
 	path = polaris-analytics-db
 	url = ../../polaris-dbapi/polaris-analytics-db
 [submodule "polaris-flask"]
 	path = polaris-flask
 	url = ../../polaris-common/polaris-flask
+

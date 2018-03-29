@@ -12,7 +12,8 @@
 from flask import Blueprint, make_response
 from flask_cors import cross_origin
 
-from polaris.analytics.db import charts
+from polaris.analytics.datasources.organizations import ProjectActivitySummary
+
 
 
 chart_api = Blueprint('chart_api', __name__)
@@ -26,9 +27,9 @@ def index():
 @chart_api.route('/project-summary/<organization_name>/')
 @cross_origin(supports_credentials=True)
 def project_summary(organization_name):
-    model = charts.ProjectLandscapeChartModel(many=True)
+    activity_summary = ProjectActivitySummary()
 
-    return make_response(model.dumps(model.get(organization_name))),  \
+    return make_response(activity_summary.for_organization(organization_name)),  \
         {'Content-Type': 'application/json'}
 
 

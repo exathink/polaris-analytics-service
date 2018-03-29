@@ -39,7 +39,14 @@ setup(
     # UNCOMMENT THE 'packages' line and define the Python 3 namespace packages for this package.
     # This should specify a package for each prefix of your package name.
 
-    packages=['polaris', 'polaris.analytics', 'polaris.analytics.cli', 'polaris.analytics.service'],
+    packages=[
+        'polaris',
+        'polaris.analytics',
+        'polaris.analytics.cli',
+        'polaris.analytics.service',
+        'polaris.analytics.datasources',
+        'polaris.analytics.datasources.organizations'
+    ],
 
     url='',
     license = 'Commercial',

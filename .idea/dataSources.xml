@@ -7,5 +7,11 @@
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
       <jdbc-url>jdbc:postgresql://localhost:5500/polaris</jdbc-url>
     </data-source>
+    <data-source source="LOCAL" name="polaris-install-db" uuid="a1a237cf-19b4-49f4-ba71-937dca59ded2">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://localhost:54321/polaris</jdbc-url>
+    </data-source>
   </component>
 </project>

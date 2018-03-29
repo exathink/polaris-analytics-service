@@ -24,7 +24,7 @@ def index():
 
 
 @chart_api.route('/project-summary/<organization_name>/')
-@cross_origin()
+@cross_origin(supports_credentials=True)
 def project_summary(organization_name):
     model = charts.ProjectLandscapeChartModel(many=True)
 

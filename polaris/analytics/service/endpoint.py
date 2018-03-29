@@ -13,7 +13,7 @@ from polaris.utils.config import get_config_provider
 from polaris.flask.common import PolarisSecuredService
 
 from polaris.analytics.db import model as analytics_model
-from polaris.analytics.service.chart_api import chart_api
+from polaris.analytics.service.viz_api import viz_api
 
 
 class PolarisAnalyticsService(PolarisSecuredService):
@@ -39,7 +39,7 @@ app = PolarisAnalyticsService(
 
 
 
-app.register_blueprint(chart_api, url_prefix='/charts')
+app.register_blueprint(viz_api, url_prefix='/charts')
 
 # for dev mode use only.
 if __name__ == "__main__":

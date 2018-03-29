@@ -16,15 +16,15 @@ from polaris.analytics.datasources.organizations import ProjectActivitySummary
 
 
 
-chart_api = Blueprint('chart_api', __name__)
+viz_api = Blueprint('chart_api', __name__)
 
-@chart_api.route('/')
+@viz_api.route('/')
 @cross_origin()
 def index():
     return 'ping'
 
 
-@chart_api.route('/project-summary/<organization_name>/')
+@viz_api.route('/project-summary/<organization_name>/')
 @cross_origin(supports_credentials=True)
 def project_summary(organization_name):
     activity_summary = ProjectActivitySummary()

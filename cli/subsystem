@@ -8,6 +8,7 @@ function up {
     echo "Initializing db data.."
     package run pg_restore -f /project/polaris-install/data/polaris-db.sql &>/dev/null
     echo "Starting services.."
+    package up admin-service
     package up polaris-analytics-service-dev
     echo "Services ready..."
 }

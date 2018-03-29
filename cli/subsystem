@@ -4,9 +4,9 @@
 
 function up {
     package up polaris-db
-    sleep 5
+    sleep 15
     echo "Initializing db data.."
-    package run pg_restore -f /project/polaris-install/data/polaris-db.sql  &>/dev/null
+    package run pg_restore -f /project/polaris-install/data/polaris-db.sql &>/dev/null
     echo "Starting services.."
     package up polaris-analytics-service-dev
     echo "Services ready..."

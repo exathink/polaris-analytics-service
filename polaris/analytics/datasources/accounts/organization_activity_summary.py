@@ -32,13 +32,9 @@ class OrganizationActivitySummary(Schema):
         query = text(
             self.all_orgs_summary() +
             """
-                WHERE organizations.organization_key 
-                IN (
-                  SELECT organization_key from
-                  auth.accounts
-                  INNER JOIN auth.accounts_organizations on accounts.id = accounts_organizations.account_id
-                  WHERE accounts.account_key = :account_key
-                )
+                INNER JOIN repos.accounts_organizations on accounts_organizations.organization_id = organizations.id
+                INNER JOIN repos.accounts on accounts_organizations.account_id = accounts.id
+                WHERE accounts.account_key = :account_key
             """
         )
         with db.create_session() as session:
@@ -50,7 +46,7 @@ class OrganizationActivitySummary(Schema):
         return """
               SELECT
                 organizations.organization_key,
-                organizations.name,
+                organizations.name as organization,
                 earliest_commit,
                 latest_commit,
                 commit_count,
@@ -60,23 +56,23 @@ class OrganizationActivitySummary(Schema):
               INNER JOIN
               (
                   SELECT
-                    organization_key,
+                    organization_id,
                     min(repositories.earliest_commit) AS earliest_commit,
                     max(repositories.latest_commit)   AS latest_commit,
                     sum(repositories.commit_count)    AS commit_count
                   FROM repos.repositories
-                  GROUP BY organization_key
+                  GROUP BY organization_id
             ) AS org_repo_summary
-                ON organizations.organization_key = org_repo_summary.organization_key
+                ON organizations.id = org_repo_summary.organization_id
             LEFT OUTER JOIN (
                 SELECT
-                  organization_key,
+                  organization_id,
                   count(DISTINCT contributor_alias_id) AS contributor_count
                 FROM
                   repos.repositories
                   INNER JOIN repos.repositories_contributor_aliases
                   ON repositories.id = repositories_contributor_aliases.repository_id
-                GROUP BY repositories.organization_key
+                GROUP BY repositories.organization_id
             ) org_contributor_summary
-            ON org_repo_summary.organization_key = org_contributor_summary.organization_key
+            ON org_repo_summary.organization_id = org_contributor_summary.organization_id
           """

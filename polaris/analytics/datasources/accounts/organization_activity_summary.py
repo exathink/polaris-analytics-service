@@ -23,27 +23,8 @@ class OrganizationActivitySummary(Schema):
     contributor_count = fields.Integer(required=True)
 
     def for_all_orgs(self):
-        query = text(self.all_orgs_summary())
-        with db.create_session() as session:
-            results = session.connection.execute(query).fetchall()
-            return self.dumps(results, many=True)
-
-    def for_account(self, account_key):
         query = text(
-            self.all_orgs_summary() +
             """
-                INNER JOIN repos.accounts_organizations on accounts_organizations.organization_id = organizations.id
-                INNER JOIN repos.accounts on accounts_organizations.account_id = accounts.id
-                WHERE accounts.account_key = :account_key
-            """
-        )
-        with db.create_session() as session:
-            results = session.connection.execute(query, dict(account_key=account_key)).fetchall()
-            return self.dumps(results, many=True)
-
-
-    def all_orgs_summary(self):
-        return """
               SELECT
                 organizations.organization_key,
                 organizations.name as organization,
@@ -76,3 +57,56 @@ class OrganizationActivitySummary(Schema):
             ) org_contributor_summary
             ON org_repo_summary.organization_id = org_contributor_summary.organization_id
           """
+        )
+        with db.create_session() as session:
+            results = session.connection.execute(query).fetchall()
+            return self.dumps(results, many=True)
+
+    def for_account(self, account_key):
+        query = text(
+            """
+                SELECT
+                  org_repo_summary.organization_key as organization_key,
+                  org_repo_summary.organization as organization,
+                  earliest_commit,
+                  latest_commit,
+                  commit_count,
+                  contributor_count
+                FROM (
+                  SELECT
+                    organizations.id as organization_id,
+                    min(organizations.organization_key :: TEXT) AS organization_key,
+                    min(organizations.name)                     AS organization,
+                    min(earliest_commit)                        AS earliest_commit,
+                    max(latest_commit)                          AS latest_commit,
+                    sum(commit_count)                           AS commit_count
+                  FROM repos.repositories
+                    INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
+                    INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
+                    INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
+                  WHERE account_key = :account_key
+                  GROUP BY organizations.id
+                ) as org_repo_summary
+                INNER JOIN (
+                  SELECT
+                    organizations.id as organization_id,
+                    count(distinct contributor_alias_id) as contributor_count
+                  FROM
+                    repos.repositories_contributor_aliases
+                    INNER JOIN repos.repositories on repositories_contributor_aliases.repository_id = repositories.id
+                    INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
+                    INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
+                    INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
+                  WHERE account_key = :account_key
+                  GROUP BY organizations.id
+                ) as org_contributor_summary
+                on org_repo_summary.organization_id = org_contributor_summary.organization_id
+            """
+        )
+        with db.create_session() as session:
+            results = session.connection.execute(query, dict(account_key=account_key)).fetchall()
+            return self.dumps(results, many=True)
+
+
+    def all_orgs_summary(self):
+        return

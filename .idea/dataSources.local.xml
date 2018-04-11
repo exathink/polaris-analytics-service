@@ -19,5 +19,14 @@
       <user-name>polaris</user-name>
       <introspection-schemas>polaris:analytics,auth,polaris,repos</introspection-schemas>
     </data-source>
+    <data-source name="polaris-staging" uuid="fc3e473a-0dad-4a2a-9f85-0495e37be6c5">
+      <database-info product="PostgreSQL" version="9.5.10" jdbc-version="4.2" driver-name="PostgreSQL JDBC Driver" driver-version="42.2.1">
+        <identifier-quote-string>&quot;</identifier-quote-string>
+      </database-info>
+      <case-sensitivity plain-identifiers="lower" quoted-identifiers="exact" />
+      <secret-storage>master_key</secret-storage>
+      <user-name>polaris</user-name>
+      <introspection-schemas>polaris:analytics,auth,polaris,repos</introspection-schemas>
+    </data-source>
   </component>
 </project>

@@ -13,5 +13,11 @@
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
       <jdbc-url>jdbc:postgresql://localhost:54321/polaris</jdbc-url>
     </data-source>
+    <data-source source="LOCAL" name="polaris-staging" uuid="fc3e473a-0dad-4a2a-9f85-0495e37be6c5">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://exathink-dev-polaris-1.culkjj0btnpi.us-east-1.rds.amazonaws.com:5432/polaris</jdbc-url>
+    </data-source>
   </component>
 </project>

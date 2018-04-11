@@ -33,8 +33,7 @@ app = PolarisAnalyticsService(
     __name__,
     authentication_service_url=config_provider.get('AUTH_SERVICE_URL'),
     db_url=config_provider.get('POLARIS_DB_URL'),
-    models=[analytics_model],
-    public_paths=['/charts']
+    models=[analytics_model]
 )
 
 

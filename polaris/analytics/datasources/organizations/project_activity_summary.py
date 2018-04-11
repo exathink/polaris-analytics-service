@@ -22,7 +22,6 @@ class ProjectActivitySummary(Schema):
     description = fields.String(required=False)
     website = fields.String(required=False)
     issues_url = fields.String(required=False)
-    repository = fields.String(required=True)
     earliest_commit = fields.DateTime(required=True, format=datetime_utils.DATETIME_NO_TZ)
     latest_commit = fields.DateTime(required=True, format=datetime_utils.DATETIME_NO_TZ)
     commit_count = fields.Integer(required=True)
@@ -40,7 +39,6 @@ class ProjectActivitySummary(Schema):
                 projects.properties->>'description'   AS description,
                 projects.properties->>'website'       AS website,
                 projects.properties->>'issues_url'    AS issues_url,
-                op_summary.repository :: TEXT         AS repository,
                 op_summary.earliest_commit            AS earliest_commit,
                 op_summary.latest_commit              AS latest_commit,
                 op_summary.commit_count::BIGINT       AS commit_count,

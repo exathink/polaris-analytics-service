@@ -31,7 +31,7 @@ def account_activity_summary():
     user_info = current_user.user_config
     if user_info:
         activity_summary = OrganizationActivitySummary()
-        if 'admin' not in current_user.roles:
+        if 'admin' in current_user.roles:
             response = activity_summary.for_all_orgs()
         else:
             response = activity_summary.for_account(user_info['account']['account_key'])

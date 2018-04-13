@@ -38,7 +38,7 @@ app = PolarisAnalyticsService(
 
 
 
-app.register_blueprint(viz_api, url_prefix='/charts')
+app.register_blueprint(viz_api, url_prefix='/data')
 
 # for dev mode use only.
 if __name__ == "__main__":

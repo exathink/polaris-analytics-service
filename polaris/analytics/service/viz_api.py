@@ -25,9 +25,9 @@ def index():
     return 'ping'
 
 
-@viz_api.route('/account-activity-summary/')
+@viz_api.route('/account-organizations-activity-summary/')
 @cross_origin(supports_credentials=True)
-def account_activity_summary():
+def account_organizations_activity_summary():
     user_info = current_user.user_config
     if user_info:
         activity_summary = OrganizationActivitySummary()
@@ -39,9 +39,9 @@ def account_activity_summary():
                {'Content-Type': 'application/json'}
 
 
-@viz_api.route('/project-summary/<organization_name>/')
+@viz_api.route('/organization-projects-activity-summary/<organization_name>/')
 @cross_origin(supports_credentials=True)
-def project_summary(organization_name):
+def organization_projects_activity_summary(organization_name):
     activity_summary = ProjectActivitySummary()
 
     return make_response(activity_summary.for_organization(organization_name)), \

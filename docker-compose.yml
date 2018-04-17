@@ -32,6 +32,25 @@ services:
       - auth-service
       - polaris-db
 
+  polaris-analytics-service-staging:
+    image: ${PACKAGE_DEPLOYABLE_IMAGE}
+    build:
+      dockerfile: docker/polaris-analytics-service-deploy/Dockerfile
+      context: .
+      args:
+        PACKAGE_UWSGI_IMAGE: ${PACKAGE_UWSGI_IMAGE}
+    ports:
+      - "8200:8200"
+      - "9193:9193"
+    environment:
+      ENVIRONMENT: development
+      PROCESSES: 1
+      AUTH_SERVICE_URL: http://polaris-services.exathink.localdev:8000
+      POLARIS_DB_URL: postgres://polaris:polaris@${POLARIS_DEV_DB}/polaris
+    depends_on:
+      - auth-service
+      - polaris-db
+
 
 
 

@@ -15,6 +15,7 @@ from polaris.repos.db.model import organizations
 
 
 class OrganizationActivitySummary(Schema):
+    organization_id = fields.Integer(required=True)
     organization_key = fields.String(required=True)
     organization = fields.String(required=True)
     earliest_commit = fields.DateTime(required=True, format=datetime_utils.DATETIME_NO_TZ)
@@ -26,6 +27,7 @@ class OrganizationActivitySummary(Schema):
         query = text(
             """
               SELECT
+                organizations.id as organization_id,
                 organizations.organization_key,
                 organizations.name as organization,
                 earliest_commit,
@@ -66,6 +68,7 @@ class OrganizationActivitySummary(Schema):
         query = text(
             """
                 SELECT
+                  org_repo_summary.organization_id as organization_id,
                   org_repo_summary.organization_key as organization_key,
                   org_repo_summary.organization as organization,
                   earliest_commit,

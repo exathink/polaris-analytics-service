@@ -15,7 +15,7 @@ from polaris.utils import datetime_utils
 
 class ProjectActivitySummary(Schema):
     organization = fields.String(required=True)
-    id = fields.Integer(required=True)
+    project_id = fields.Integer(required=True)
     project = fields.String(required=True)
     project_group = fields.String(required=False)
     tags = fields.List(fields.String())

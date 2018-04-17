@@ -13,6 +13,13 @@ function up {
     echo "Services ready..."
 }
 
+function staging-debug {
+    package up auth-service-staging-debug
+    package up admin-service-staging-debug
+    package up analytics-service-staging-debug
+}
+
+
 
 function down {
     echo "Stopping services.."
@@ -30,6 +37,9 @@ then
             ;;
         down)
             down
+            ;;
+        staging-debug)
+            staging-debug
             ;;
         *)
             echo "Invalid action, must be 'up' or 'down'"

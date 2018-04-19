@@ -25,7 +25,7 @@ organizations_api = Blueprint('organizations_api', __name__)
 @organizations_api.route('/activity-summary/<organization_name>/')
 @cross_origin(supports_credentials=True)
 def activity_summary(organization_name):
-    return has_org_access(current_user.user_config, organization_name) and \
+    return has_org_access(current_user, organization_name) and \
            make_response(ActivitySummary().for_organization(organization_name)), \
            {'Content-Type': 'application/json'}
 
@@ -34,7 +34,7 @@ def activity_summary(organization_name):
 @organizations_api.route('/activity-summary-by-project/<organization_name>/')
 @cross_origin(supports_credentials=True)
 def activity_summary_by_project(organization_name):
-    return has_org_access(current_user.user_config, organization_name) and \
+    return has_org_access(current_user, organization_name) and \
            make_response(ActivitySummaryByProject().for_organization(organization_name)), \
            {'Content-Type': 'application/json'}
 

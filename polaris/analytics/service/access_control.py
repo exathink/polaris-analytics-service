@@ -11,7 +11,10 @@ from flask import abort
 from sqlalchemy import text
 from polaris.common import db
 
-def has_org_access(user_config, organization_name):
+def has_org_access(current_user, organization_name):
+    if 'admin' in current_user.roles:
+        return True
+
     query = text(
         """
         SELECT EXISTS(
@@ -29,7 +32,7 @@ def has_org_access(user_config, organization_name):
         return session.connection.execute(
             query,
             dict(
-                account_key=user_config['account']['account_key'],
+                account_key=current_user.user_config['account']['account_key'],
                 organization_name=organization_name
             )
         ).scalar() or abort(403)

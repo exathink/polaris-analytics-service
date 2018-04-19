@@ -9,40 +9,34 @@
 # Author: Krishna Kumar
 
 
-from flask import Blueprint, make_response
+from flask import Blueprint, make_response, abort
 from flask_cors import cross_origin
 from flask_login import current_user
 
-from polaris.analytics.datasources.organizations import OrganizationActivitySummaryByProject
-from polaris.analytics.datasources.accounts import AccountActivitySummary
+from .access_control import has_org_access
 
-viz_api = Blueprint('viz_api', __name__)
-
-
-@viz_api.route('/')
-@cross_origin()
-def index():
-    return 'ping'
+from polaris.analytics.datasources.organizations import \
+    ActivitySummary, \
+    ActivitySummaryByProject
 
 
-@viz_api.route('/account-organizations-activity-summary/')
+organizations_api = Blueprint('organizations_api', __name__)
+
+@organizations_api.route('/activity-summary/<organization_name>/')
 @cross_origin(supports_credentials=True)
-def account_organizations_activity_summary():
-    user_info = current_user.user_config
-    if user_info:
-        activity_summary = AccountActivitySummary()
-        if 'admin' in current_user.roles:
-            response = activity_summary.for_all_orgs()
-        else:
-            response = activity_summary.for_account(user_info['account']['account_key'])
-        return make_response(response), \
-               {'Content-Type': 'application/json'}
-
-
-@viz_api.route('/organization-projects-activity-summary/<organization_name>/')
-@cross_origin(supports_credentials=True)
-def organization_projects_activity_summary(organization_name):
-    activity_summary = OrganizationActivitySummaryByProject()
-
-    return make_response(activity_summary.for_organization(organization_name)), \
+def activity_summary(organization_name):
+    return has_org_access(current_user.user_config, organization_name) and \
+           make_response(ActivitySummary().for_organization(organization_name)), \
            {'Content-Type': 'application/json'}
+
+
+
+@organizations_api.route('/activity-summary-by-project/<organization_name>/')
+@cross_origin(supports_credentials=True)
+def activity_summary_by_project(organization_name):
+    return has_org_access(current_user.user_config, organization_name) and \
+           make_response(ActivitySummaryByProject().for_organization(organization_name)), \
+           {'Content-Type': 'application/json'}
+
+
+

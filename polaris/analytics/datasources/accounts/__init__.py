@@ -9,4 +9,4 @@
 # Author: Krishna Kumar
 
 
-from .organization_activity_summary import OrganizationActivitySummary
+from .activity_summary import *

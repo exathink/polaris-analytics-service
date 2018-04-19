@@ -14,7 +14,7 @@ from polaris.utils import datetime_utils
 from polaris.repos.db.model import organizations
 
 
-class OrganizationActivitySummary(Schema):
+class ActivitySummaryByOrganization(Schema):
     organization_id = fields.Integer(required=True)
     organization_key = fields.String(required=True)
     organization = fields.String(required=True)
@@ -111,5 +111,4 @@ class OrganizationActivitySummary(Schema):
             return self.dumps(results, many=True)
 
 
-    def all_orgs_summary(self):
-        return
+

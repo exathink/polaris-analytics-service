@@ -7,6 +7,30 @@
 # confidential.
 
 # Author: Krishna Kumar
+from flask import abort
+from sqlalchemy import text
+from polaris.common import db
 
-
+def has_org_access(user_config, organization_name):
+    query = text(
+        """
+        SELECT EXISTS(
+            SELECT 
+              1  
+            FROM 
+              repos.accounts
+              INNER JOIN repos.accounts_organizations ON accounts.id = accounts_organizations.account_id
+              INNER JOIN repos.organizations ON accounts_organizations.organization_id = organizations.id
+              WHERE accounts.account_key = :account_key AND organizations.name = :organization_name 
+        )
+        """
+    )
+    with db.create_session() as session:
+        return session.connection.execute(
+            query,
+            dict(
+                account_key=user_config['account']['account_key'],
+                organization_name=organization_name
+            )
+        ).scalar() or abort(403)
 

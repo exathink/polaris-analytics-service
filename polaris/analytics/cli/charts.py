@@ -11,7 +11,7 @@ import argh
 import logging
 import os
 
-import polaris.analytics.datasources.organizations.project_activity_summary
+import polaris.analytics.datasources.organizations.activity_summary
 from polaris.common import db
 from polaris.analytics.db import charts
 from polaris.utils.logging import config_logging
@@ -23,7 +23,7 @@ from polaris.utils.timer import Timer
 def project_landscape(organization_name, outfile=None):
     with Timer('Operation', loglevel=logging.INFO):
         org_name = ' '.join(organization_name)
-        model = polaris.analytics.datasources.organizations.project_activity_summary.ProjectLandscapeChartModel(many=True)
+        model = polaris.analytics.datasources.organizations.activity_summary.ProjectLandscapeChartModel(many=True)
         with open(outfile, mode='w') as file:
             file.write(model.dumps(model.get(org_name)).data)
 

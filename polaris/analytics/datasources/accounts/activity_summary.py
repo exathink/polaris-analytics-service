@@ -8,7 +8,7 @@
 
 # Author: Krishna Kumar
 from marshmallow import Schema, fields
-from sqlalchemy import text, select
+from sqlalchemy import text
 from polaris.common import db
 from polaris.utils import datetime_utils
 from polaris.repos.db.model import organizations

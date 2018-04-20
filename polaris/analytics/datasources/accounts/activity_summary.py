@@ -179,7 +179,7 @@ class ActivitySummary(Schema):
                     SELECT
                       count(DISTINCT organization_id) AS organizations,
                       min(earliest_commit)            AS earliest_commit,
-                      min(latest_commit)              AS latest_commit,
+                      max(latest_commit)              AS latest_commit,
                       sum(commit_count)               AS commit_count
                     FROM
                       repos.repositories

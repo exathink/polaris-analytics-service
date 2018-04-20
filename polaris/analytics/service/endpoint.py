@@ -16,7 +16,7 @@ from polaris.analytics.db import model as analytics_model
 from polaris.analytics.service.viz_api import viz_api
 from polaris.analytics.service.accounts_api import accounts_api
 from polaris.analytics.service.organizations_api import organizations_api
-
+from polaris.analytics.service.projects_api import projects_api
 
 class PolarisAnalyticsService(PolarisSecuredService):
     def __init__(self, import_name, db_url, authentication_service_url, db_connect_timeout=30, models=None,
@@ -43,6 +43,7 @@ app = PolarisAnalyticsService(
 app.register_blueprint(viz_api, url_prefix='/data')
 app.register_blueprint(accounts_api, url_prefix='/data/accounts')
 app.register_blueprint(organizations_api, url_prefix='/data/organizations')
+app.register_blueprint(projects_api, url_prefix='/data/projects')
 
 
 # for dev mode use only.

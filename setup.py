@@ -46,7 +46,8 @@ setup(
         'polaris.analytics.service',
         'polaris.analytics.datasources',
         'polaris.analytics.datasources.organizations',
-        'polaris.analytics.datasources.accounts'
+        'polaris.analytics.datasources.accounts',
+        'polaris.analytics.datasources.projects'
     ],
 
     url='',

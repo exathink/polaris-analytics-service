@@ -22,7 +22,7 @@ from polaris.analytics.datasources.projects import \
 
 projects_api = Blueprint('projects_api', __name__)
 
-@projects_api.route('/activity-summary/<organization_name>/<project_name>')
+@projects_api.route('/activity-summary/<organization_name>/<project_name>/')
 @cross_origin(supports_credentials=True)
 def activity_summary(organization_name, project_name):
     return has_org_access(current_user, organization_name) and \
@@ -31,7 +31,7 @@ def activity_summary(organization_name, project_name):
 
 
 
-@projects_api.route('/activity-summary-by-repository/<organization_name>/<project_name>')
+@projects_api.route('/activity-summary-by-repository/<organization_name>/<project_name>/')
 @cross_origin(supports_credentials=True)
 def activity_summary_by_project(organization_name, project_name):
     return has_org_access(current_user, organization_name) and \

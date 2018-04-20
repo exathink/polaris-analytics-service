@@ -160,3 +160,103 @@ class ActivitySummaryByOrganization(Schema):
         with db.create_session() as session:
             results = session.connection.execute(query, dict(account_key=account_key)).fetchall()
             return self.dumps(results, many=True)
+
+
+class ActivitySummary(Schema):
+    earliest_commit = fields.DateTime(required=True, format=datetime_utils.DATETIME_NO_TZ)
+    latest_commit = fields.DateTime(required=True, format=datetime_utils.DATETIME_NO_TZ)
+    commit_count = fields.Integer(required=True)
+    contributor_count = fields.Integer(required=True)
+
+    def for_all_orgs(self):
+        query = text(
+            """
+                SELECT
+                  repo_summary.*,
+                  contributor_aliases + contributor_keys AS contributor_count
+                FROM
+                  (
+                    SELECT
+                      count(DISTINCT organization_id) AS organizations,
+                      min(earliest_commit)            AS earliest_commit,
+                      min(latest_commit)              AS latest_commit,
+                      sum(commit_count)               AS commit_count
+                    FROM
+                      repos.repositories
+                  )
+                    AS repo_summary
+                  CROSS JOIN
+                  (
+                    SELECT count(id) AS contributor_aliases
+                    FROM
+                      repos.contributor_aliases
+                    WHERE contributor_key IS NULL
+                  )
+                    AS contributors_aliases
+                  CROSS JOIN
+                  (
+                    SELECT count(DISTINCT contributor_key) AS contributor_keys
+                    FROM
+                      repos.contributor_aliases
+                    WHERE contributor_key IS NOT NULL
+                  ) AS contributor_keys
+            """
+        )
+        with db.create_session() as session:
+            results = session.connection.execute(query).fetchall()
+            return self.dumps(results, many=True)
+
+    def for_account(self, account_key):
+        query = text (
+            """
+                SELECT
+                  repo_summary.*,
+                  contributor_aliases + contributor_keys AS contributor_count
+                FROM
+                  (
+                    SELECT
+                      count(DISTINCT organizations.id) AS organizations,
+                      min(earliest_commit)             AS earliest_commit,
+                      min(latest_commit)               AS latest_commit,
+                      sum(commit_count)                AS commit_count
+                    FROM
+                      repos.repositories
+                      INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
+                      INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
+                      INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
+                    WHERE account_key = :account_key
+                  )
+                    AS repo_summary
+                  CROSS JOIN
+                  (
+                    SELECT count(DISTINCT contributor_aliases.id) AS contributor_aliases
+                    FROM
+                      repos.contributor_aliases
+                      INNER JOIN repos.repositories_contributor_aliases
+                        ON contributor_aliases.id = repositories_contributor_aliases.contributor_alias_id
+                      INNER JOIN repos.repositories ON repositories_contributor_aliases.repository_id = repositories.id
+                      INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
+                      INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
+                      INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
+                    WHERE account_key = :account_key AND contributor_key IS NULL
+                
+                  )
+                    AS contributors_aliases
+                  CROSS JOIN
+                  (
+                    SELECT count(DISTINCT contributor_key) AS contributor_keys
+                    FROM
+                      repos.contributor_aliases
+                      INNER JOIN repos.repositories_contributor_aliases
+                        ON contributor_aliases.id = repositories_contributor_aliases.contributor_alias_id
+                      INNER JOIN repos.repositories ON repositories_contributor_aliases.repository_id = repositories.id
+                      INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
+                      INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
+                      INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
+                    WHERE account_key = :account_key AND contributor_key IS NOT NULL
+                  ) AS contributor_keys
+            """
+        )
+        with db.create_session() as session:
+            results = session.connection.execute(query, dict(account_key=account_key)).fetchall()
+            return self.dumps(results, many=True)

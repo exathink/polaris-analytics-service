@@ -62,7 +62,7 @@ class ActivitySummaryByOrganization(Schema):
                         ON repositories.id = repositories_contributor_aliases.repository_id
                       INNER JOIN repos.contributor_aliases
                         ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                    WHERE contributor_aliases.contributor_key IS NULL
+                    WHERE contributor_aliases.contributor_key IS NULL AND not robot
                     GROUP BY repositories.organization_id
                     UNION
                     SELECT
@@ -74,7 +74,7 @@ class ActivitySummaryByOrganization(Schema):
                         ON repositories.id = repositories_contributor_aliases.repository_id
                       INNER JOIN repos.contributor_aliases
                         ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                    WHERE contributor_aliases.contributor_key IS NOT NULL
+                    WHERE contributor_aliases.contributor_key IS NOT NULL AND not robot
                     GROUP BY repositories.organization_id
                   ) _
                 GROUP BY organization_id
@@ -133,7 +133,7 @@ class ActivitySummaryByOrganization(Schema):
                          INNER JOIN repos.accounts_organizations
                            ON accounts_organizations.organization_id = organizations.id
                          INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
-                       WHERE account_key = :account_key AND contributor_aliases.contributor_key IS NULL
+                       WHERE account_key = :account_key AND contributor_aliases.contributor_key IS NULL AND not robot
                        GROUP BY repositories.organization_id
                        UNION
                        SELECT
@@ -149,7 +149,7 @@ class ActivitySummaryByOrganization(Schema):
                          INNER JOIN repos.accounts_organizations
                            ON accounts_organizations.organization_id = organizations.id
                          INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
-                       WHERE account_key = :account_key AND contributor_aliases.contributor_key IS NOT NULL
+                       WHERE account_key = :account_key AND contributor_aliases.contributor_key IS NOT NULL AND not robot
                        GROUP BY repositories.organization_id
                      ) _
                    GROUP BY organization_id
@@ -190,7 +190,7 @@ class ActivitySummary(Schema):
                     SELECT count(id) AS contributor_aliases
                     FROM
                       repos.contributor_aliases
-                    WHERE contributor_key IS NULL
+                    WHERE contributor_key IS NULL AND not robot
                   )
                     AS contributors_aliases
                   CROSS JOIN
@@ -198,7 +198,7 @@ class ActivitySummary(Schema):
                     SELECT count(DISTINCT contributor_key) AS contributor_keys
                     FROM
                       repos.contributor_aliases
-                    WHERE contributor_key IS NOT NULL
+                    WHERE contributor_key IS NOT NULL AND not robot
                   ) AS contributor_keys
             """
         )
@@ -238,7 +238,7 @@ class ActivitySummary(Schema):
                       INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
                       INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
                       INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
-                    WHERE account_key = :account_key AND contributor_key IS NULL
+                    WHERE account_key = :account_key AND contributor_key IS NULL AND not robot
                 
                   )
                     AS contributors_aliases
@@ -253,7 +253,7 @@ class ActivitySummary(Schema):
                       INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
                       INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
                       INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
-                    WHERE account_key = :account_key AND contributor_key IS NOT NULL
+                    WHERE account_key = :account_key AND contributor_key IS NOT NULL AND not robot
                   ) AS contributor_keys
             """
         )

@@ -86,7 +86,7 @@ class ActivitySummaryByProject(Schema):
                             ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
                           LEFT OUTER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
                           LEFT OUTER JOIN repos.projects ON projects_repositories.project_id = projects.id
-                        WHERE organizations.name = :organization_name AND contributor_aliases.contributor_key IS NULL
+                        WHERE organizations.name = :organization_name AND contributor_aliases.contributor_key IS NULL AND not robot
                         GROUP BY project_id
                         UNION
                         SELECT
@@ -101,7 +101,7 @@ class ActivitySummaryByProject(Schema):
                             ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
                           LEFT OUTER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
                           LEFT OUTER JOIN repos.projects ON projects_repositories.project_id = projects.id
-                        WHERE organizations.name = :organization_name AND contributor_aliases.contributor_key IS NOT NULL
+                        WHERE organizations.name = :organization_name AND contributor_aliases.contributor_key IS NOT NULL AND not robot
                         GROUP BY project_id
                       ) AS _
                     GROUP BY project_id
@@ -186,7 +186,7 @@ class ActivitySummary(Schema):
                         ON repositories.id = repositories_contributor_aliases.repository_id
                       INNER JOIN repos.contributor_aliases
                         ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                    WHERE organizations.name = :organization_name AND contributor_key IS NULL
+                    WHERE organizations.name = :organization_name AND contributor_key IS NULL AND not robot
                     GROUP BY organizations.id
 
                     UNION
@@ -201,7 +201,7 @@ class ActivitySummary(Schema):
                         ON repositories.id = repositories_contributor_aliases.repository_id
                       INNER JOIN repos.contributor_aliases
                         ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                    WHERE organizations.name = :organization_name AND contributor_key IS NOT NULL
+                    WHERE organizations.name = :organization_name AND contributor_key IS NOT NULL AND not robot
                     GROUP BY organizations.id
                   ) 
                   AS _

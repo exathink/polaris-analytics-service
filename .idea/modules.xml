@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/polaris-analytics-service.iml" filepath="$PROJECT_DIR$/.idea/polaris-analytics-service.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../polaris-analytics-web/.idea/polaris-analytics-web.iml" filepath="$PROJECT_DIR$/../polaris-analytics-web/.idea/polaris-analytics-web.iml" />
     </modules>
   </component>
 </project>

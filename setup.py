@@ -45,9 +45,8 @@ setup(
         'polaris.analytics.cli',
         'polaris.analytics.service',
         'polaris.analytics.datasources',
-        'polaris.analytics.datasources.organizations',
-        'polaris.analytics.datasources.accounts',
-        'polaris.analytics.datasources.projects'
+        'polaris.analytics.datasources.activities'
+
     ],
 
     url='',

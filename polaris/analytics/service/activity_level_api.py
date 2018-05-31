@@ -30,6 +30,18 @@ def activity_level_for_account_by_organization():
         return make_response(response), \
                {'Content-Type': 'application/json'}
 
+@activity_level_api.route('/account/project/')
+@cross_origin(supports_credentials=True)
+def activity_level_for_account_by_project():
+    user_info = current_user.user_config
+    if user_info:
+        if 'admin' in current_user.roles:
+            response = ActivityLevel().for_all_projects()
+        else:
+            response = ActivityLevel().for_account_by_project(user_info['account']['account_key'])
+        return make_response(response), \
+               {'Content-Type': 'application/json'}
+
 
 @activity_level_api.route('/organization/project/<organization_name>/')
 @cross_origin(supports_credentials=True)

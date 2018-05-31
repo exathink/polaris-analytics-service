@@ -97,7 +97,6 @@ class ActivityLevel(Schema):
                 (
                    SELECT
                      organizations.id                            AS organization_id,
-                     min(organizations.organization_key :: TEXT) AS organization_key,
                      min(organizations.name)                     AS organization,
                      min(earliest_commit)                        AS earliest_commit,
                      max(latest_commit)                          AS latest_commit,
@@ -156,6 +155,156 @@ class ActivityLevel(Schema):
         with db.create_session() as session:
             results = session.connection.execute(query, dict(account_key=account_key)).fetchall()
             return self.dumps(results, many=True)
+
+    def for_all_projects(self):
+        query = text(
+            """
+            SELECT
+                prj_repo_summary.project_id AS detail_instance_id,
+                coalesce(prj_repo_summary.project, 'Default') AS detail_instance_name,
+                earliest_commit,
+                latest_commit,
+                commit_count,
+                contributor_count
+              FROM
+              (
+                  SELECT
+                    projects.id as project_id,
+                    projects.name as project,
+                    min(repositories.earliest_commit) AS earliest_commit,
+                    max(repositories.latest_commit)   AS latest_commit,
+                    sum(repositories.commit_count)    AS commit_count
+                  FROM repos.repositories
+                  LEFT OUTER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
+                  LEFT OUTER JOIN repos.projects ON projects_repositories.project_id = projects.id
+                  GROUP BY projects.id
+              ) AS prj_repo_summary
+            INNER JOIN (
+                SELECT
+                 project_id,
+                 sum(contributor_count) AS contributor_count
+                FROM
+                  (
+                    SELECT
+                      projects.id as project_id,
+                      count(DISTINCT contributor_alias_id) AS contributor_count
+                    FROM
+                      repos.repositories
+                      INNER JOIN repos.repositories_contributor_aliases
+                        ON repositories.id = repositories_contributor_aliases.repository_id
+                      INNER JOIN repos.contributor_aliases
+                        ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
+                      LEFT OUTER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
+                      LEFT OUTER JOIN repos.projects ON projects_repositories.project_id = projects.id
+                    WHERE contributor_aliases.contributor_key IS NULL AND not robot
+                    GROUP BY projects.id
+                    UNION
+                    SELECT
+                      projects.id as project_id,
+                      count(DISTINCT contributor_alias_id) AS contributor_count
+                    FROM
+                      repos.repositories
+                      INNER JOIN repos.repositories_contributor_aliases
+                        ON repositories.id = repositories_contributor_aliases.repository_id
+                      INNER JOIN repos.contributor_aliases
+                        ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
+                      LEFT OUTER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
+                      LEFT OUTER JOIN repos.projects ON projects_repositories.project_id = projects.id
+                    WHERE contributor_aliases.contributor_key IS NOT NULL AND not robot
+                    GROUP BY projects.id
+                  ) _
+                GROUP BY project_id
+            ) prj_contributor_summary
+            ON prj_repo_summary.project_id = prj_contributor_summary.project_id
+            """
+        )
+        with db.create_session() as session:
+            results = session.connection.execute(query).fetchall()
+            return self.dumps(results, many=True)
+
+    def for_account_by_project(self, account_key):
+        query = text(
+            """
+            SELECT
+                      prj_repo_summary.project_id  AS detail_instance_id,
+                      coalesce(prj_repo_summary.project, 'Default')     AS detail_instance_name,
+                      earliest_commit,
+                      latest_commit,
+                      commit_count,
+                      contributor_count
+                FROM
+                (
+                   SELECT
+                     projects.id                                 AS project_id,
+                     min(projects.name)                     AS project,
+                     min(earliest_commit)                        AS earliest_commit,
+                     max(latest_commit)                          AS latest_commit,
+                     sum(commit_count)                           AS commit_count
+                   FROM repos.repositories
+                     INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
+                     INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
+                     INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
+                     LEFT OUTER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
+                     LEFT OUTER JOIN repos.projects ON projects_repositories.project_id = projects.id
+                   WHERE account_key = :account_key
+                   GROUP BY projects.id
+                ) AS prj_repo_summary
+                INNER JOIN
+                (
+                   SELECT
+                     project_id,
+                     sum(contributor_count) AS contributor_count
+                   FROM
+                     (
+                       SELECT
+                         projects.id as project_id,
+                         count(DISTINCT contributor_alias_id) AS contributor_count
+                       FROM
+                         repos.repositories
+                         INNER JOIN repos.repositories_contributor_aliases
+                           ON repositories.id = repositories_contributor_aliases.repository_id
+                         INNER JOIN repos.contributor_aliases
+                           ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
+                         LEFT OUTER JOIN repos.projects_repositories
+                           ON repositories.id = projects_repositories.repository_id
+                         LEFT OUTER JOIN repos.projects 
+                           ON projects_repositories.project_id = projects.id
+                         INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
+                         INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
+                         INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
+                        
+                       WHERE account_key = :account_key AND contributor_aliases.contributor_key IS NULL AND not robot
+                       GROUP BY projects.id
+                       UNION
+                       SELECT
+                         projects.id as project_id,
+                         count(DISTINCT contributor_alias_id) AS contributor_count
+                       FROM
+                         repos.repositories
+                         INNER JOIN repos.repositories_contributor_aliases
+                           ON repositories.id = repositories_contributor_aliases.repository_id
+                         INNER JOIN repos.contributor_aliases
+                           ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
+                         LEFT OUTER JOIN repos.projects_repositories
+                           ON repositories.id = projects_repositories.repository_id
+                         LEFT OUTER JOIN repos.projects 
+                           ON projects_repositories.project_id = projects.id
+                         INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
+                         INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
+                         INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
+                        
+                       WHERE account_key = :account_key AND contributor_aliases.contributor_key IS NOT NULL AND not robot
+                       GROUP BY projects.id
+                     ) _
+                   GROUP BY project_id
+                ) AS prj_contributor_summary
+                ON prj_repo_summary.project_id = prj_contributor_summary.project_id
+            """
+        )
+        with db.create_session() as session:
+            results = session.connection.execute(query, dict(account_key=account_key)).fetchall()
+            return self.dumps(results, many=True)
+
 
     def for_organization_by_project(self, organization_name):
         query = text(
@@ -319,7 +468,8 @@ class ActivityLevel(Schema):
                 """
             )
             with db.create_session() as session:
-                results = session.connection.execute(query, dict(organization_name=organization_name, project_name=project_name)).fetchall()
+                results = session.connection.execute(query, dict(organization_name=organization_name,
+                                                                 project_name=project_name)).fetchall()
                 return self.dumps(results, many=True)
 
     def for_default_project_by_repository(self, organization_name):

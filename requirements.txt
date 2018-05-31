@@ -4,3 +4,4 @@ PyYaml
 uwsgi
 flask-restful
 marshmallow
+Flask==1.0.2

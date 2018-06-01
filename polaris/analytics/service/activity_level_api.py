@@ -13,7 +13,7 @@ from flask import Blueprint, make_response
 from flask_cors import cross_origin
 from flask_login import current_user
 from polaris.analytics.datasources.activities import ActivityLevel
-from .access_control import has_org_access
+from .access_control import has_org_access, has_project_access
 
 activity_level_api = Blueprint('activity_level_api', __name__)
 
@@ -43,17 +43,17 @@ def activity_level_for_account_by_project():
                {'Content-Type': 'application/json'}
 
 
-@activity_level_api.route('/organization/project/<organization_name>/')
+@activity_level_api.route('/organization/project/<organization_key>/')
 @cross_origin(supports_credentials=True)
-def activity_level_for_organization_by_project(organization_name):
-    return has_org_access(current_user, organization_name) and \
-           make_response(ActivityLevel().for_organization_by_project(organization_name)), \
+def activity_level_for_organization_by_project(organization_key):
+    return has_org_access(current_user, organization_key) and \
+           make_response(ActivityLevel().for_organization_by_project(organization_key)), \
            {'Content-Type': 'application/json'}
 
 
-@activity_level_api.route('/project/repository/<organization_name>/<project_name>/')
+@activity_level_api.route('/project/repository/<project_key>/')
 @cross_origin(supports_credentials=True)
-def activity_level_for_project_by_repository(organization_name, project_name):
-    return has_org_access(current_user, organization_name) and \
-           make_response(ActivityLevel().for_project_by_repository(organization_name, project_name)), \
+def activity_level_for_project_by_repository(project_key):
+    return has_project_access(current_user, project_key) and \
+           make_response(ActivityLevel().for_project_by_repository(project_key)), \
            {'Content-Type': 'application/json'}

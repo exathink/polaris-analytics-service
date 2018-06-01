@@ -14,7 +14,7 @@ from polaris.utils import datetime_utils
 
 
 class ActivityLevel(Schema):
-    detail_instance_id = fields.Integer(required=True)
+    detail_instance_id = fields.String(required=True)
     detail_instance_name = fields.String(required=True)
     earliest_commit = fields.DateTime(required=True, format=datetime_utils.DATETIME_NO_TZ)
     latest_commit = fields.DateTime(required=True, format=datetime_utils.DATETIME_NO_TZ)
@@ -25,7 +25,7 @@ class ActivityLevel(Schema):
         query = text(
             """
               SELECT
-                organizations.id AS detail_instance_id,
+                organizations.organization_key AS detail_instance_id,
                 organizations.name AS detail_instance_name,
                 earliest_commit,
                 latest_commit,
@@ -87,7 +87,7 @@ class ActivityLevel(Schema):
         query = text(
             """
                 SELECT
-                      org_repo_summary.organization_id  AS detail_instance_id,
+                      org_repo_summary.organization_key  AS detail_instance_id,
                       org_repo_summary.organization     AS detail_instance_name,
                       earliest_commit,
                       latest_commit,
@@ -97,6 +97,7 @@ class ActivityLevel(Schema):
                 (
                    SELECT
                      organizations.id                            AS organization_id,
+                     min(organizations.organization_key::text)   AS organization_key,
                      min(organizations.name)                     AS organization,
                      min(earliest_commit)                        AS earliest_commit,
                      max(latest_commit)                          AS latest_commit,
@@ -226,8 +227,8 @@ class ActivityLevel(Schema):
         query = text(
             """
             SELECT
-                      prj_repo_summary.project_id  AS detail_instance_id,
-                      coalesce(prj_repo_summary.project, 'Default')     AS detail_instance_name,
+                      prj_repo_summary.project_key                      AS detail_instance_id,
+                      prj_repo_summary.project                          AS detail_instance_name,
                       earliest_commit,
                       latest_commit,
                       commit_count,
@@ -236,7 +237,8 @@ class ActivityLevel(Schema):
                 (
                    SELECT
                      projects.id                                 AS project_id,
-                     min(projects.name)                     AS project,
+                     min(projects.project_key::text)             AS project_key,
+                     min(projects.name)                          AS project,
                      min(earliest_commit)                        AS earliest_commit,
                      max(latest_commit)                          AS latest_commit,
                      sum(commit_count)                           AS commit_count
@@ -244,8 +246,8 @@ class ActivityLevel(Schema):
                      INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
                      INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
                      INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
-                     LEFT OUTER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
-                     LEFT OUTER JOIN repos.projects ON projects_repositories.project_id = projects.id
+                     INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
+                     INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
                    WHERE account_key = :account_key
                    GROUP BY projects.id
                 ) AS prj_repo_summary
@@ -265,9 +267,9 @@ class ActivityLevel(Schema):
                            ON repositories.id = repositories_contributor_aliases.repository_id
                          INNER JOIN repos.contributor_aliases
                            ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                         LEFT OUTER JOIN repos.projects_repositories
+                         INNER JOIN repos.projects_repositories
                            ON repositories.id = projects_repositories.repository_id
-                         LEFT OUTER JOIN repos.projects 
+                         INNER JOIN repos.projects 
                            ON projects_repositories.project_id = projects.id
                          INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
                          INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
@@ -285,9 +287,9 @@ class ActivityLevel(Schema):
                            ON repositories.id = repositories_contributor_aliases.repository_id
                          INNER JOIN repos.contributor_aliases
                            ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                         LEFT OUTER JOIN repos.projects_repositories
+                         INNER JOIN repos.projects_repositories
                            ON repositories.id = projects_repositories.repository_id
-                         LEFT OUTER JOIN repos.projects 
+                         INNER JOIN repos.projects 
                            ON projects_repositories.project_id = projects.id
                          INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
                          INNER JOIN repos.accounts_organizations ON organizations.id = accounts_organizations.organization_id
@@ -306,25 +308,21 @@ class ActivityLevel(Schema):
             return self.dumps(results, many=True)
 
 
-    def for_organization_by_project(self, organization_name):
+    def for_organization_by_project(self, organization_key):
         query = text(
             """
-              SELECT
-                  coalesce(projects.id, -1) as detail_instance_id, 
-                  coalesce(projects.name, 'Default') AS detail_instance_name,
-                  project_summaries.earliest_commit     AS earliest_commit,
-                  project_summaries.latest_commit       AS latest_commit,
-                  project_summaries.commit_count        AS commit_count, 
-                  project_summaries.contributor_count   AS contributor_count
-            FROM
-              (
                 SELECT
-                  prs.*, 
+                  prs.project_key as detail_instance_id, 
+                  prs.project_name as detail_instance_name, 
+                  prs.commit_count,
+                  prs.earliest_commit, 
+                  prs.latest_commit,
                   pcs.contributor_count
                 FROM
                   (
                     SELECT
-                      coalesce(project_id, -1) AS project_id,
+                      project_id,
+                      min(projects.project_key::text) as project_key,
                       min(projects.name)       AS project_name,
                       sum(commit_count)        AS commit_count,
                       min(earliest_commit)     AS earliest_commit,
@@ -332,15 +330,15 @@ class ActivityLevel(Schema):
                     FROM
                       repos.organizations
                       INNER JOIN repos.repositories ON organizations.id = repositories.organization_id
-                      LEFT OUTER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
-                      LEFT OUTER JOIN repos.projects ON projects_repositories.project_id = projects.id
-                    WHERE organizations.name = :organization_name
+                      INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
+                      INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
+                    WHERE organizations.organization_key = :organization_key
                     GROUP BY project_id
                   ) AS prs
                   INNER JOIN
                   (
                     SELECT
-                      coalesce(project_id, -1) AS project_id,
+                      project_id,
                       sum(contributor_count)   AS contributor_count
                     FROM
                       (
@@ -354,9 +352,9 @@ class ActivityLevel(Schema):
                             ON repositories.id = repositories_contributor_aliases.repository_id
                           INNER JOIN repos.contributor_aliases
                             ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                          LEFT OUTER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
-                          LEFT OUTER JOIN repos.projects ON projects_repositories.project_id = projects.id
-                        WHERE organizations.name = :organization_name AND contributor_aliases.contributor_key IS NULL AND not robot
+                          INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
+                          INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
+                        WHERE organizations.organization_key = :organization_key AND contributor_aliases.contributor_key IS NULL AND not robot
                         GROUP BY project_id
                         UNION
                         SELECT
@@ -369,108 +367,90 @@ class ActivityLevel(Schema):
                             ON repositories.id = repositories_contributor_aliases.repository_id
                           INNER JOIN repos.contributor_aliases
                             ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                          LEFT OUTER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
-                          LEFT OUTER JOIN repos.projects ON projects_repositories.project_id = projects.id
-                        WHERE organizations.name = :organization_name AND contributor_aliases.contributor_key IS NOT NULL AND not robot
+                          INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
+                          INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
+                        WHERE organizations.organization_key = :organization_key AND contributor_aliases.contributor_key IS NOT NULL AND not robot
                         GROUP BY project_id
                       ) AS _
                     GROUP BY project_id
                   ) AS pcs ON prs.project_id = pcs.project_id
-              ) AS project_summaries
-            LEFT OUTER JOIN (
-              SELECT 
-                organizations.name as organization, 
-                projects.*
-              FROM 
-                repos.projects
-                INNER JOIN repos.organizations ON projects.organization_id = organizations.id
-              WHERE organizations.name=:organization_name
-            ) AS projects
-            ON project_summaries.project_id=projects.id
             """
         )
         with db.create_session() as session:
-            results = session.connection.execute(query, dict(organization_name=organization_name)).fetchall()
+            results = session.connection.execute(query, dict(organization_key=organization_key)).fetchall()
             return self.dumps(results, many=True)
 
-    def for_project_by_repository(self, organization_name, project_name):
-        if project_name == 'Default':
-            return self.for_default_project_by_repository(organization_name)
-        else:
-            query = text(
-                """
+    def for_project_by_repository(self, project_key):
+        query = text(
+            """
+                SELECT
+                  repo_stats.repository_id as detail_instance_id,
+                  repository as detail_instance_name,
+                  earliest_commit,
+                  latest_commit,
+                  commit_count,
+                  contributor_count
+                FROM
+                  (
                     SELECT
-                      repo_stats.repository_id as detail_instance_id,
-                      repository as detail_instance_name,
+                      repositories.id    AS repository_id,
+                      repositories.name  AS repository,
                       earliest_commit,
                       latest_commit,
-                      commit_count,
-                      contributor_count
+                      commit_count
+                    FROM
+                      repos.repositories
+                      INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
+                      INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
+                    WHERE projects.project_key = :project_key
+                  )
+                    AS repo_stats
+                  INNER JOIN
+                  (
+                    SELECT
+                      repository_id,
+                      sum(contributor_count) AS contributor_count
                     FROM
                       (
                         SELECT
-                          repositories.id    AS repository_id,
-                          repositories.name  AS repository,
-                          earliest_commit,
-                          latest_commit,
-                          commit_count
+                          repositories.id                      AS repository_id,
+                          count(DISTINCT contributor_alias_id) AS contributor_count
                         FROM
                           repos.repositories
+                          INNER JOIN repos.repositories_contributor_aliases
+                            ON repositories.id = repositories_contributor_aliases.repository_id
+                          INNER JOIN repos.contributor_aliases
+                            ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
                           INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
                           INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
-                          INNER JOIN repos.organizations ON projects.organization_id = organizations.id
-                        WHERE organizations.name = :organization_name AND projects.name = :project_name
-                      )
-                        AS repo_stats
-                      INNER JOIN
-                      (
-                        SELECT
-                          repository_id,
-                          sum(contributor_count) AS contributor_count
-                        FROM
-                          (
-                            SELECT
-                              repositories.id                      AS repository_id,
-                              count(DISTINCT contributor_alias_id) AS contributor_count
-                            FROM
-                              repos.repositories
-                              INNER JOIN repos.repositories_contributor_aliases
-                                ON repositories.id = repositories_contributor_aliases.repository_id
-                              INNER JOIN repos.contributor_aliases
-                                ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                              INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
-                              INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
-                              INNER JOIN repos.organizations ON projects.organization_id = organizations.id
-                            WHERE organizations.name = :organization_name AND projects.name = :project_name AND contributor_key IS NULL AND
-                                  NOT robot
-                            GROUP BY repositories.id
-                            UNION
-                            SELECT
-                              repositories.id                 AS repository_id,
-                              count(DISTINCT contributor_key) AS contributor_count
-                            FROM
-                              repos.repositories
-                              INNER JOIN repos.repositories_contributor_aliases
-                                ON repositories.id = repositories_contributor_aliases.repository_id
-                              INNER JOIN repos.contributor_aliases
-                                ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                              INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
-                              INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
-                              INNER JOIN repos.organizations ON projects.organization_id = organizations.id
-                            WHERE
-                              organizations.name = :organization_name AND projects.name = :project_name AND contributor_key IS NOT NULL AND
+                        WHERE  projects.project_key = :project_key AND contributor_key IS NULL AND
                               NOT robot
-                            GROUP BY repositories.id
-                          ) AS _
-                        GROUP BY repository_id
-                      ) AS repo_contributor_stats
-                        ON repo_stats.repository_id = repo_contributor_stats.repository_id
-                """
-            )
-            with db.create_session() as session:
-                results = session.connection.execute(query, dict(organization_name=organization_name,
-                                                                 project_name=project_name)).fetchall()
-                return self.dumps(results, many=True)
+                        GROUP BY repositories.id
+                        UNION
+                        SELECT
+                          repositories.id                 AS repository_id,
+                          count(DISTINCT contributor_key) AS contributor_count
+                        FROM
+                          repos.repositories
+                          INNER JOIN repos.repositories_contributor_aliases
+                            ON repositories.id = repositories_contributor_aliases.repository_id
+                          INNER JOIN repos.contributor_aliases
+                            ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
+                          INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
+                          INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
+                        WHERE
+                          projects.project_key = :project_key AND contributor_key IS NOT NULL AND
+                          NOT robot
+                        GROUP BY repositories.id
+                      ) AS _
+                    GROUP BY repository_id
+                  ) AS repo_contributor_stats
+                    ON repo_stats.repository_id = repo_contributor_stats.repository_id
+            """
+        )
+        with db.create_session() as session:
+            results = session.connection.execute(query, dict(project_key=project_key)).fetchall()
+            return self.dumps(results, many=True)
 
     def for_default_project_by_repository(self, organization_name):
         query = text(

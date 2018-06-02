@@ -62,6 +62,13 @@ def activity_level_for_organization_by_project(organization_key):
            make_response(ActivityLevel().for_organization_by_project(organization_key)), \
            {'Content-Type': 'application/json'}
 
+@activity_level_api.route('/organization/repository/<organization_key>/')
+@cross_origin(supports_credentials=True)
+def activity_level_for_organization_by_repository(organization_key):
+    return has_org_access(current_user, organization_key) and \
+           make_response(ActivityLevel().for_organization_by_repository(organization_key)), \
+           {'Content-Type': 'application/json'}
+
 
 @activity_level_api.route('/project/repository/<project_key>/')
 @cross_origin(supports_credentials=True)

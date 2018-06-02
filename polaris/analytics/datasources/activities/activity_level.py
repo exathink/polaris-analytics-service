@@ -494,6 +494,73 @@ class ActivityLevel(Schema):
             results = session.connection.execute(query, dict(organization_key=organization_key)).fetchall()
             return self.dumps(results, many=True)
 
+
+    def for_organization_by_repository(self, organization_key):
+        query = text(
+            """
+                SELECT
+                  prs.repository_key AS detail_instance_id, 
+                  prs.repository     AS detail_instance_name, 
+                  prs.commit_count,
+                  prs.earliest_commit, 
+                  prs.latest_commit,
+                  pcs.contributor_count
+                FROM
+                  (
+                    SELECT
+                      repositories.id as repository_id,
+                      key::text as repository_key,
+                      repositories.name       AS repository,
+                      commit_count        AS commit_count,
+                      earliest_commit     AS earliest_commit,
+                      latest_commit       AS latest_commit
+                    FROM
+                      repos.organizations
+                      INNER JOIN repos.repositories ON organizations.id = repositories.organization_id
+                    WHERE organizations.organization_key = :organization_key
+                  ) AS prs
+                  INNER JOIN
+                  (
+                    SELECT
+                      repository_id,
+                      sum(contributor_count)   AS contributor_count
+                    FROM
+                      (
+                        SELECT
+                          repositories.id as repository_id,
+                          COUNT(DISTINCT contributor_alias_id) AS contributor_count
+                        FROM
+                          repos.organizations
+                          INNER JOIN repos.repositories ON organizations.id = repositories.organization_id
+                          INNER JOIN repos.repositories_contributor_aliases
+                            ON repositories.id = repositories_contributor_aliases.repository_id
+                          INNER JOIN repos.contributor_aliases
+                            ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
+                        WHERE organizations.organization_key = :organization_key AND contributor_aliases.contributor_key IS NULL AND not robot
+                        GROUP BY repositories.id
+                        UNION
+                        SELECT
+                          repositories.id as repository_id,
+                          COUNT(DISTINCT contributor_key) AS contributor_count
+                        FROM
+                          repos.organizations
+                          INNER JOIN repos.repositories ON organizations.id = repositories.organization_id
+                          INNER JOIN repos.repositories_contributor_aliases
+                            ON repositories.id = repositories_contributor_aliases.repository_id
+                          INNER JOIN repos.contributor_aliases
+                            ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
+  
+                        WHERE organizations.organization_key = :organization_key AND contributor_aliases.contributor_key IS NOT NULL AND not robot
+                        GROUP BY repositories.id
+                      ) AS _
+                    GROUP BY repository_id
+                  ) AS pcs ON prs.repository_id = pcs.repository_id
+            """
+        )
+        with db.create_session() as session:
+            results = session.connection.execute(query, dict(organization_key=organization_key)).fetchall()
+            return self.dumps(results, many=True)
+
     def for_project_by_repository(self, project_key):
         query = text(
             """

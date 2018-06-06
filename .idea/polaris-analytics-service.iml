@@ -12,5 +12,6 @@
     <orderEntry type="jdk" jdkName="Remote Python 3.5.3 Docker (polaris-analytics-service-base:latest)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="polaris-analytics-web" />
+    <orderEntry type="module" module-name="polaris-analytics-service-aws" />
   </component>
 </module>

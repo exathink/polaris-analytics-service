@@ -2,6 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../aws/polaris-analytics-service-aws" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../polaris-analytics-web" vcs="Git" />
   </component>
 </project>

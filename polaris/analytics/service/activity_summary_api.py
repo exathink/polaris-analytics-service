@@ -14,7 +14,7 @@ from flask_cors import cross_origin
 from flask_login import current_user
 from polaris.analytics.datasources.activities.activity_summary import ActivitySummary
 
-from .access_control import has_org_access, has_project_access
+from polaris.repos.db.access_control import has_org_access, has_project_access
 
 activity_summary_api = Blueprint('activity_summary_api', __name__)
 

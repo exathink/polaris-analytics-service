@@ -9,7 +9,7 @@
       <sourceFolder url="file://$MODULE_DIR$/polaris-flask/polaris-auth-db" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/polaris-analytics-db/polaris-repos-db/polaris-common-db" isTestSource="false" />
     </content>
-    <orderEntry type="jdk" jdkName="Remote Python 3.5.3 Docker (polaris-analytics-service-base:latest)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Remote Python 3.6.5 Docker (polaris-analytics-service-base:latest)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="polaris-analytics-web" />
     <orderEntry type="module" module-name="polaris-analytics-service-aws" />

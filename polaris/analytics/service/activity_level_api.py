@@ -13,7 +13,7 @@ from flask import Blueprint, make_response
 from flask_cors import cross_origin
 from flask_login import current_user
 from polaris.analytics.datasources.activities import ActivityLevel
-from .access_control import has_org_access, has_project_access
+from polaris.repos.db.access_control import has_org_access, has_project_access
 
 activity_level_api = Blueprint('activity_level_api', __name__)
 

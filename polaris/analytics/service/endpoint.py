@@ -19,10 +19,10 @@ from polaris.analytics.service.activity_level_api import activity_level_api
 
 
 class PolarisAnalyticsService(PolarisSecuredService):
-    def __init__(self, import_name, db_url, authentication_service_url, db_connect_timeout=30, models=None,
+    def __init__(self, import_name, db_url, db_connect_timeout=30, models=None,
                  public_paths=None, **kwargs):
         super(PolarisAnalyticsService, self).__init__(
-            import_name, db_url, authentication_service_url, db_connect_timeout,
+            import_name, db_url, db_connect_timeout,
             models=models,
             public_paths=public_paths,
             **kwargs
@@ -33,7 +33,6 @@ class PolarisAnalyticsService(PolarisSecuredService):
 config_provider = get_config_provider()
 app = PolarisAnalyticsService(
     __name__,
-    authentication_service_url=config_provider.get('AUTH_SERVICE_URL'),
     db_url=config_provider.get('POLARIS_DB_URL'),
     models=[analytics_model]
 )

@@ -11,7 +11,7 @@
 
 from flask import Blueprint, make_response
 from flask_cors import cross_origin
-from flask_login import current_user
+from flask_login import current_user, login_required
 from polaris.analytics.datasources.activities.activity_summary import ActivitySummary
 
 from polaris.repos.db.access_control import has_org_access, has_project_access
@@ -21,20 +21,21 @@ activity_summary_api = Blueprint('activity_summary_api', __name__)
 
 @activity_summary_api.route('/account/')
 @cross_origin(supports_credentials=True)
+@login_required
 def activity_summary_for_account():
-    user_info = current_user.user_config
-    if user_info:
+    if current_user:
 
-        if 'admin' in current_user.roles:
+        if 'admin' in current_user.role_names:
             response = ActivitySummary().for_all_orgs()
         else:
-            response = ActivitySummary().for_account(user_info['account']['account_key'])
+            response = ActivitySummary().for_account(current_user.account_key)
         return make_response(response), \
                {'Content-Type': 'application/json'}
 
 
 @activity_summary_api.route('/organization/<organization_key>/')
 @cross_origin(supports_credentials=True)
+@login_required
 def activity_summary_for_organization(organization_key):
     return has_org_access(current_user, organization_key) and \
            make_response(ActivitySummary().for_organization(organization_key)), \
@@ -43,6 +44,7 @@ def activity_summary_for_organization(organization_key):
 
 @activity_summary_api.route('/project/<project_key>/')
 @cross_origin(supports_credentials=True)
+@login_required
 def activity_summary(project_key):
     return has_project_access(current_user, project_key) and \
            make_response(ActivitySummary().for_project(project_key)), \

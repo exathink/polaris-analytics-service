@@ -11,7 +11,7 @@
 
 from flask import Blueprint, make_response
 from flask_cors import cross_origin
-from flask_login import current_user
+from flask_login import current_user, login_required
 from polaris.analytics.datasources.activities import ActivityLevel
 from polaris.repos.db.access_control import has_org_access, has_project_access
 
@@ -20,43 +20,44 @@ activity_level_api = Blueprint('activity_level_api', __name__)
 
 @activity_level_api.route('/account/organization/')
 @cross_origin(supports_credentials=True)
+@login_required
 def activity_level_for_account_by_organization():
-    user_info = current_user.user_config
-    if user_info:
-        if 'admin' in current_user.roles:
+    if current_user:
+        if 'admin' in current_user.role_names:
             response = ActivityLevel().for_all_orgs()
         else:
-            response = ActivityLevel().for_account_by_organization(user_info['account']['account_key'])
+            response = ActivityLevel().for_account_by_organization(current_user.account_key)
         return make_response(response), \
                {'Content-Type': 'application/json'}
 
 @activity_level_api.route('/account/project/')
 @cross_origin(supports_credentials=True)
+@login_required
 def activity_level_for_account_by_project():
-    user_info = current_user.user_config
-    if user_info:
-        if 'admin' in current_user.roles:
+    if current_user:
+        if 'admin' in current_user.role_names:
             response = ActivityLevel().for_all_projects()
         else:
-            response = ActivityLevel().for_account_by_project(user_info['account']['account_key'])
+            response = ActivityLevel().for_account_by_project(current_user.account_key)
         return make_response(response), \
                {'Content-Type': 'application/json'}
 
 @activity_level_api.route('/account/repository/')
 @cross_origin(supports_credentials=True)
+@login_required
 def activity_level_for_account_by_repository():
-    user_info = current_user.user_config
-    if user_info:
-        if 'admin' in current_user.roles:
+    if current_user:
+        if 'admin' in current_user.role_names:
             response = ActivityLevel().for_all_repositories()
         else:
-            response = ActivityLevel().for_account_by_repository(user_info['account']['account_key'])
+            response = ActivityLevel().for_account_by_repository(current_user.account_key)
         return make_response(response), \
                {'Content-Type': 'application/json'}
 
 
 @activity_level_api.route('/organization/project/<organization_key>/')
 @cross_origin(supports_credentials=True)
+@login_required
 def activity_level_for_organization_by_project(organization_key):
     return has_org_access(current_user, organization_key) and \
            make_response(ActivityLevel().for_organization_by_project(organization_key)), \
@@ -64,6 +65,7 @@ def activity_level_for_organization_by_project(organization_key):
 
 @activity_level_api.route('/organization/repository/<organization_key>/')
 @cross_origin(supports_credentials=True)
+@login_required
 def activity_level_for_organization_by_repository(organization_key):
     return has_org_access(current_user, organization_key) and \
            make_response(ActivityLevel().for_organization_by_repository(organization_key)), \
@@ -72,6 +74,7 @@ def activity_level_for_organization_by_repository(organization_key):
 
 @activity_level_api.route('/project/repository/<project_key>/')
 @cross_origin(supports_credentials=True)
+@login_required
 def activity_level_for_project_by_repository(project_key):
     return has_project_access(current_user, project_key) and \
            make_response(ActivityLevel().for_project_by_repository(project_key)), \

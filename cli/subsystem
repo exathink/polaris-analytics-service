@@ -8,7 +8,7 @@ function up {
     echo "Initializing db data.."
     package run pg_restore -f /project/polaris-install/polaris/data/polaris-db.sql &>/dev/null
     echo "Starting services.."
-    package up admin-service
+    package polaris-admin-service compose up -d  --no-deps polaris-admin-service-dev
     package up polaris-analytics-service-dev
     echo "Services ready..."
 }
@@ -19,10 +19,19 @@ function staging-debug {
     package up analytics-service-staging-debug
 }
 
+function deps {
+    package up polaris-db
+    sleep 15
+    echo "Initializing db data.."
+    package run pg_restore -f /project/polaris-install/polaris/data/polaris-db.sql &>/dev/null
+    package compose up --no-deps -d auth-service
+}
+
 
 
 function down {
     echo "Stopping services.."
+    package polaris-admin-service compose rm -s -f polaris-admin-service-dev
     package down
     echo "Services stopped."
 }
@@ -40,6 +49,9 @@ then
             ;;
         staging-debug)
             staging-debug
+            ;;
+        deps)
+            deps
             ;;
         *)
             echo "Invalid action, must be 'up' or 'down'"

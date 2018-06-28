@@ -13,5 +13,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="polaris-analytics-web" />
     <orderEntry type="module" module-name="polaris-analytics-service-aws" />
+    <orderEntry type="module" module-name="polaris-admin-service" />
   </component>
 </module>

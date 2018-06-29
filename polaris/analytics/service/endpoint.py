@@ -12,7 +12,6 @@ import sys
 from polaris.utils.config import get_config_provider
 from polaris.flask.common import PolarisSecuredService
 
-from polaris.analytics.db import model as analytics_model
 from polaris.analytics.service.viz_api import viz_api
 from polaris.analytics.service.activity_summary_api import activity_summary_api
 from polaris.analytics.service.activity_level_api import activity_level_api
@@ -33,8 +32,7 @@ class PolarisAnalyticsService(PolarisSecuredService):
 config_provider = get_config_provider()
 app = PolarisAnalyticsService(
     __name__,
-    db_url=config_provider.get('POLARIS_DB_URL'),
-    models=[analytics_model]
+    db_url=config_provider.get('POLARIS_DB_URL')
 )
 
 

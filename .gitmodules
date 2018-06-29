@@ -1,10 +1,15 @@
 [submodule "polaris-build"]
 	path = polaris-build
 	url = ../../polaris-common/polaris-build
-[submodule "polaris-flask"]
-	path = polaris-flask
-	url = ../../polaris-common/polaris-flask
+
 
 [submodule "polaris-install"]
 	path = polaris-install
 	url = ../../polaris-common/polaris-install
+[submodule "polaris-repos-db"]
+	path = polaris-repos-db
+	url = ../../polaris-dbapi/polaris-repos-db.git
+
+[submodule "polaris-flask"]
+	path = polaris-flask
+	url = ../../polaris-common/polaris-flask

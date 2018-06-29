@@ -111,6 +111,20 @@ services:
       - polaris-db
 
 
+  repos-db-migrator:
+    image: polaris-repos-db-migrator:latest
+    environment:
+      POLARIS_DB_URL: postgres://polaris:polaris@polaris-db/polaris
+    depends_on:
+      - polaris-db
+
+  auth-db-migrator:
+    image: polaris-auth-db-migrator:latest
+    environment:
+      POLARIS_DB_URL: postgres://polaris:polaris@polaris-db/polaris
+    depends_on:
+      - polaris-db
+
   polaris-db:
     ports:
       - 5500:5432

@@ -275,7 +275,7 @@ class ActivityLevel(Schema):
         query = text(
             """
             SELECT
-                prj_repo_summary.project_id AS detail_instance_id,
+                prj_repo_summary.project_key AS detail_instance_id,
                 coalesce(prj_repo_summary.project, 'Default') AS detail_instance_name,
                 earliest_commit,
                 latest_commit,
@@ -285,6 +285,7 @@ class ActivityLevel(Schema):
               (
                   SELECT
                     projects.id as project_id,
+                    projects.project_key as project_key,
                     projects.name as project,
                     min(repositories.earliest_commit) AS earliest_commit,
                     max(repositories.latest_commit)   AS latest_commit,

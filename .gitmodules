@@ -10,3 +10,6 @@
 [submodule "polaris-flask"]
 	path = polaris-flask
 	url = ../../polaris-common/polaris-flask
+[submodule "polaris-graphql"]
+	path = polaris-graphql
+	url = ../../polaris-common/polaris-graphql

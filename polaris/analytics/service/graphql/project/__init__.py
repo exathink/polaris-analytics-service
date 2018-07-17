@@ -9,23 +9,24 @@
 # Author: Krishna Kumar
 
 import graphene
+
 from graphene import relay
 
-from .commit_summary import OrganizationCommitSummary
-from .enums import OrganizationPartitions
+from .commit_summary import ProjectCommitSummary
+from .enums import ProjectPartitions
 
-class Organization(graphene.ObjectType):
+class Project(graphene.ObjectType):
     class Meta:
         interfaces = (relay.Node, )
 
-    commit_summary = OrganizationCommitSummary.Field()
+    commit_summary = ProjectCommitSummary.Field()
 
     @classmethod
-    def resolve_field(cls, parent, info, organization_key, **kwargs):
-        return Organization(id=organization_key)
+    def resolve_field(cls, parent, info, project_key, **kwargs):
+        return Project(id=project_key)
 
 
 
     def resolve_commit_summary(self, info, **kwargs):
-            return OrganizationCommitSummary.resolve(self, info, **kwargs)
+            return ProjectCommitSummary.resolve(self, info, **kwargs)
 

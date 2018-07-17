@@ -13,14 +13,20 @@ import graphene
 from graphene import relay
 
 from .account import Account
+from .organization import Organization
 
 class Query(graphene.ObjectType):
     node = relay.Node.Field()
     account = graphene.Field(Account)
+    organization = graphene.Field(
+        Organization,
+        organization_key = graphene.Argument(type=graphene.String, required=True)
+    )
 
     def resolve_account(self, info, **kwargs):
         return Account.resolve_field(self, info, **kwargs)
 
-
+    def resolve_organization(self, info, organization_key, **kwargs):
+        return Organization.resolve_field(self, info, organization_key,  **kwargs)
 
 schema = graphene.Schema(query=Query)

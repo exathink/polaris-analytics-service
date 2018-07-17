@@ -32,7 +32,7 @@ class AccountCommitSummary(graphene.Union):
     def Field(cls):
         return graphene.Field(
         graphene.List(AccountCommitSummary),
-        group_by=graphene.Argument(type=AccountPartitions, required=False, default_value=AccountPartitions.account)
+        group_by=graphene.Argument(type=AccountPartitions, required=False, default_value=AccountPartitions.account.value)
     )
 
     @classmethod

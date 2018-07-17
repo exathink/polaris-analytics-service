@@ -73,7 +73,7 @@ class CommitSummaryForAccount(graphene.ObjectType, KeyIdResolverMixin):
             """
         with db.create_session() as session:
             return session.connection.execute(text(query), dict(account_key=account.id,
-                                                                type=kwargs.get('group_by').value)).fetchall()
+                                                                type=kwargs.get('group_by'))).fetchall()
 
 
 

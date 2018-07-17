@@ -16,6 +16,7 @@ from polaris.analytics.service.viz_api import viz_api
 from polaris.analytics.service.activity_summary_api import activity_summary_api
 from polaris.analytics.service.activity_level_api import activity_level_api
 
+from polaris.analytics.service.gql import graphql
 
 class PolarisAnalyticsService(PolarisSecuredService):
     def __init__(self, import_name, db_url, db_connect_timeout=30, models=None,
@@ -37,6 +38,8 @@ app = PolarisAnalyticsService(
 
 
 # Register endpoints
+app.register_blueprint(graphql, url_prefix='/graphql')
+
 app.register_blueprint(viz_api, url_prefix='/data')
 app.register_blueprint(activity_summary_api, url_prefix='/data/activity-summary')
 app.register_blueprint(activity_level_api, url_prefix='/data/activity-level')

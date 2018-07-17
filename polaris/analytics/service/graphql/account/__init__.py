@@ -23,14 +23,12 @@ class Account(graphene.ObjectType):
     class Meta:
         interfaces = (relay.Node, )
 
-    commit_summary = graphene.Field(
-        graphene.List(AccountCommitSummary),
-        group_by=graphene.Argument(type=AccountPartitions, required=False, default_value=AccountPartitions.account)
-    )
+    commit_summary = AccountCommitSummary.Field()
 
     @classmethod
     def resolve_field(cls, parent, info, **kwargs):
         return Account(id=current_user.account_key)
+
 
 
     def resolve_commit_summary(self, info, **kwargs):

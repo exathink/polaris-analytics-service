@@ -11,7 +11,6 @@
 import graphene
 
 class NamedNode(graphene.relay.Node):
-    atype = graphene.String(required=True)
     key = graphene.String(required=True)
     name = graphene.String(required=True)
 
@@ -19,7 +18,7 @@ class NamedNode(graphene.relay.Node):
 
 class KeyIdResolverMixin:
     def resolve_id(self, info, **kwargs):
-        return f"{self.atype}:{self.key}"
+        return self.key
 
 class CommitSummary(graphene.Interface):
 

@@ -12,7 +12,7 @@ import graphene
 from graphene import relay
 
 from .commit_summary import OrganizationCommitSummary
-from .enums import OrganizationPartitions
+
 
 class Organization(graphene.ObjectType):
     class Meta:

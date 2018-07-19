@@ -20,10 +20,9 @@ class OrganizationCommitSummaryByProject(graphene.ObjectType, KeyIdResolverMixin
         interfaces = (NamedNode, CommitSummary)
 
     @classmethod
-    def resolve(cls, organization, info, **kwargs):
+    def resolve(cls, organization_key, info, **kwargs):
         query = """
                 SELECT
-                  :type           as type,
                   prs.project_key as key, 
                   prs.project_name as name, 
                   prs.commit_count,
@@ -88,8 +87,7 @@ class OrganizationCommitSummaryByProject(graphene.ObjectType, KeyIdResolverMixin
                   ) AS pcs ON prs.project_id = pcs.project_id
             """
         with db.create_session() as session:
-            return session.connection.execute(text(query), dict(organization_key=organization.id,
-                                                                type=kwargs.get('group_by'))).fetchall()
+            return session.connection.execute(text(query), dict(organization_key=organization_key)).fetchall()
 
 
 

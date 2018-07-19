@@ -14,38 +14,29 @@ import graphene
 
 from .commit_summary_for_project import CommitSummaryForProject
 from .commit_summary_by_repository import ProjectCommitSummaryByRepository
-from .enums import ProjectPartitions
 
-class ProjectCommitSummary(graphene.Union):
 
-    class Meta:
-        types = (
-            CommitSummaryForProject,
-            ProjectCommitSummaryByRepository
-        )
+class ProjectCommitSummary(graphene.ObjectType):
+
+    project_key = graphene.Field(graphene.UUID)
+    for_project = graphene.Field(CommitSummaryForProject)
+    by_repository = graphene.Field(graphene.List(ProjectCommitSummaryByRepository))
+
+
     @classmethod
     def Field(cls):
-        return graphene.Field(
-        graphene.List(ProjectCommitSummary),
-        group_by=graphene.Argument(type=ProjectPartitions, required=False, default_value=ProjectPartitions.project.value)
-    )
-
-    @classmethod
-    def resolve_type(cls, instance, info):
-        if instance.type == ProjectPartitions.project.value:
-            return CommitSummaryForProject
-        elif instance.type == ProjectPartitions.repository.value:
-            return ProjectCommitSummaryByRepository
-
+        return graphene.Field(ProjectCommitSummary)
 
     @classmethod
     def resolve(cls, project, info, **kwargs):
-        if kwargs.get('group_by') == ProjectPartitions.project:
-            return CommitSummaryForProject.resolve(project, info, **kwargs)
-        elif kwargs.get('group_by') == ProjectPartitions.repository:
-            return ProjectCommitSummaryByRepository.resolve(project, info, **kwargs)
+        return ProjectCommitSummary(project_key=project.id)
 
 
+    def resolve_for_project(self, info, **kwargs):
+        return CommitSummaryForProject.resolve(self.project_key, info, **kwargs)
+
+    def resolve_by_repository(self, info, **kwargs):
+        return ProjectCommitSummaryByRepository.resolve(self.project_key, info, **kwargs)
 
 
 

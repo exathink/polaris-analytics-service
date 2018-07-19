@@ -20,10 +20,9 @@ class CommitSummaryForProject(graphene.ObjectType, KeyIdResolverMixin):
         interfaces = (NamedNode, CommitSummary)
 
     @classmethod
-    def resolve(cls, project, info, **kwargs):
+    def resolve(cls, project_key, info, **kwargs):
         query = """
                 SELECT
-                  :type                      AS type,
                   project_key                AS key, 
                   project_name               AS name, 
                   earliest_commit,
@@ -90,8 +89,7 @@ class CommitSummaryForProject(graphene.ObjectType, KeyIdResolverMixin):
                     ON repo_stats.project_id = repo_contributor_stats.project_id
             """
         with db.create_session() as session:
-            return session.connection.execute(text(query), dict(project_key=project.id,
-                                                                type=kwargs.get('group_by'))).fetchall()
+            return session.connection.execute(text(query), dict(project_key=project_key)).fetchone()
 
 
 

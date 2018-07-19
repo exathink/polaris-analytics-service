@@ -13,7 +13,7 @@ import graphene
 from graphene import relay
 
 from .commit_summary import ProjectCommitSummary
-from .enums import ProjectPartitions
+
 
 class Project(graphene.ObjectType):
     class Meta:

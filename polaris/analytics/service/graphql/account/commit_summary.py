@@ -9,62 +9,36 @@
 # Author: Krishna Kumar
 
 import graphene
-import datetime
-from sqlalchemy import text
-from polaris.common import db
 
-from .commit_summary_for_account import CommitSummaryForAccount
 from .commit_summary_by_organization import AccountCommitSummaryByOrganization
 from .commit_summary_by_project import AccountCommitSummaryByProject
 from .commit_summary_by_repository import AccountCommitSummaryByRepository
-from .enums import AccountPartitions
+from .commit_summary_for_account import CommitSummaryForAccount
 
-class AccountCommitSummary(graphene.Union):
 
-    class Meta:
-        types = (
-            CommitSummaryForAccount,
-            AccountCommitSummaryByOrganization,
-            AccountCommitSummaryByProject,
-            AccountCommitSummaryByRepository
-        )
+class AccountCommitSummary(graphene.ObjectType):
+    account_key = graphene.Field(graphene.UUID)
+    for_account = graphene.Field(CommitSummaryForAccount)
+    by_organization = graphene.Field(graphene.List(AccountCommitSummaryByOrganization))
+    by_project = graphene.Field(graphene.List(AccountCommitSummaryByProject))
+    by_repository = graphene.Field(graphene.List(AccountCommitSummaryByRepository))
+
     @classmethod
     def Field(cls):
-        return graphene.Field(
-        graphene.List(AccountCommitSummary),
-        group_by=graphene.Argument(type=AccountPartitions, required=False, default_value=AccountPartitions.account.value)
-    )
-
-    @classmethod
-    def resolve_type(cls, instance, info):
-        if instance.type == AccountPartitions.account.value:
-            return CommitSummaryForAccount
-        elif instance.type == AccountPartitions.organization.value:
-            return AccountCommitSummaryByOrganization
-        elif instance.type == AccountPartitions.project.value:
-            return AccountCommitSummaryByProject
-        elif instance.type == AccountPartitions.repository.value:
-            return AccountCommitSummaryByRepository
-
+        return graphene.Field(AccountCommitSummary)
 
     @classmethod
     def resolve(cls, account, info, **kwargs):
-        query = None
-        if kwargs.get('group_by') == AccountPartitions.account:
-            return CommitSummaryForAccount.resolve(account, info, **kwargs)
-        elif kwargs.get('group_by') == AccountPartitions.organization:
-            return AccountCommitSummaryByOrganization.resolve(account, info, **kwargs)
-        elif kwargs.get('group_by') == AccountPartitions.project:
-            return AccountCommitSummaryByProject.resolve(account, info, **kwargs)
-        elif kwargs.get('group_by') == AccountPartitions.repository:
-            return AccountCommitSummaryByRepository.resolve(account, info, **kwargs)
+        return AccountCommitSummary(account_key=account.id)
 
+    def resolve_for_account(self, info, **kwargs):
+        return CommitSummaryForAccount.resolve(self.account_key, info, **kwargs)
 
+    def resolve_by_organization(self, info, **kwargs):
+        return AccountCommitSummaryByOrganization.resolve(self.account_key, info, **kwargs)
 
+    def resolve_by_project(self, info, **kwargs):
+        return AccountCommitSummaryByProject.resolve(self.account_key, info, **kwargs)
 
-
-
-
-
-
-
+    def resolve_by_repository(self, info, **kwargs):
+        return AccountCommitSummaryByRepository.resolve(self.account_key, info, **kwargs)

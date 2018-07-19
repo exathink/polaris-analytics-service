@@ -15,48 +15,36 @@ import graphene
 from .commit_summary_for_organization import CommitSummaryForOrganization
 from .commit_summary_by_project import OrganizationCommitSummaryByProject
 from .commit_summary_by_repository import OrganizationCommitSummaryByRepository
-from .enums import OrganizationPartitions
 
-class OrganizationCommitSummary(graphene.Union):
 
-    class Meta:
-        types = (
-            CommitSummaryForOrganization,
-            OrganizationCommitSummaryByProject,
-            OrganizationCommitSummaryByRepository
-        )
+class OrganizationCommitSummary(graphene.ObjectType):
+
+    organization_key = graphene.Field(graphene.UUID)
+    for_organization = graphene.Field(CommitSummaryForOrganization)
+    by_project = graphene.Field(graphene.List(OrganizationCommitSummaryByProject))
+    by_repository = graphene.Field(graphene.List(OrganizationCommitSummaryByRepository))
+
+
     @classmethod
     def Field(cls):
-        return graphene.Field(
-        graphene.List(OrganizationCommitSummary),
-        group_by=graphene.Argument(type=OrganizationPartitions, required=False, default_value=OrganizationPartitions.organization.value)
-    )
-
-    @classmethod
-    def resolve_type(cls, instance, info):
-        if instance.type == OrganizationPartitions.organization.value:
-            return CommitSummaryForOrganization
-        elif instance.type == OrganizationPartitions.project.value:
-            return OrganizationCommitSummaryByProject
-        elif instance.type == OrganizationPartitions.repository.value:
-            return OrganizationCommitSummaryByRepository
-
+        return graphene.Field(OrganizationCommitSummary)
 
     @classmethod
     def resolve(cls, organization, info, **kwargs):
-        if kwargs.get('group_by') == OrganizationPartitions.organization:
-            return CommitSummaryForOrganization.resolve(organization, info, **kwargs)
-        elif kwargs.get('group_by') == OrganizationPartitions.project:
-            return OrganizationCommitSummaryByProject.resolve(organization, info, **kwargs)
-        elif kwargs.get('group_by') == OrganizationPartitions.repository:
-            return OrganizationCommitSummaryByRepository.resolve(organization, info, **kwargs)
+        return OrganizationCommitSummary(organization_key=organization.id)
+
+
+    def resolve_for_organization(self, info, **kwargs):
+        return CommitSummaryForOrganization.resolve(self.organization_key, info, **kwargs)
+
+
+    def resolve_by_project(self, info, **kwargs):
+        return OrganizationCommitSummaryByProject.resolve(self.organization_key, info, **kwargs)
 
 
 
-
-
-
-
+    def resolve_by_repository(self, info, **kwargs):
+        return OrganizationCommitSummaryByRepository.resolve(self.organization_key, info, **kwargs)
 
 
 

@@ -16,7 +16,7 @@ from ..interfaces import CommitSummary
 
 from .commit_summary import AccountCommitSummary
 
-from .enums import AccountPartitions
+
 
 
 class Account(graphene.ObjectType):

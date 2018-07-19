@@ -20,7 +20,7 @@ class CommitSummaryForAccount(graphene.ObjectType, KeyIdResolverMixin):
         interfaces = (NamedNode, CommitSummary)
 
     @classmethod
-    def resolve(cls, account, info, **kwargs):
+    def resolve(cls, account_key, info, **kwargs):
         query = """
                 SELECT
                   repo_summary.*,
@@ -28,7 +28,6 @@ class CommitSummaryForAccount(graphene.ObjectType, KeyIdResolverMixin):
                 FROM
                   (
                     SELECT
-                      :type                                       AS type,
                       min(account_key::text)                      AS key,
                       min(accounts.name)                          AS name, 
                       min(earliest_commit)             AS earliest_commit,
@@ -72,8 +71,8 @@ class CommitSummaryForAccount(graphene.ObjectType, KeyIdResolverMixin):
                   ) AS contributor_keys
             """
         with db.create_session() as session:
-            return session.connection.execute(text(query), dict(account_key=account.id,
-                                                                type=kwargs.get('group_by'))).fetchall()
+            return session.connection.execute(text(query), dict(account_key=account_key)).fetchone()
+
 
 
 

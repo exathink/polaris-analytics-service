@@ -17,7 +17,11 @@ from .commit_summary_for_account import CommitSummaryForAccount
 
 
 class AccountCommitSummary(graphene.ObjectType):
-    account_key = graphene.Field(graphene.UUID)
+
+    def __init__(self, account, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.account = account
+
     for_account = graphene.Field(CommitSummaryForAccount)
     by_organization = graphene.Field(graphene.List(AccountCommitSummaryByOrganization))
     by_project = graphene.Field(graphene.List(AccountCommitSummaryByProject))
@@ -29,16 +33,17 @@ class AccountCommitSummary(graphene.ObjectType):
 
     @classmethod
     def resolve(cls, account, info, **kwargs):
-        return AccountCommitSummary(account_key=account.id)
+        return AccountCommitSummary(account)
 
     def resolve_for_account(self, info, **kwargs):
-        return CommitSummaryForAccount.resolve(self.account_key, info, **kwargs)
+        return CommitSummaryForAccount.resolve(self.account.id, info, **kwargs)
+
 
     def resolve_by_organization(self, info, **kwargs):
-        return AccountCommitSummaryByOrganization.resolve(self.account_key, info, **kwargs)
+        return AccountCommitSummaryByOrganization.resolve(self.account.id, info, **kwargs)
 
     def resolve_by_project(self, info, **kwargs):
-        return AccountCommitSummaryByProject.resolve(self.account_key, info, **kwargs)
+        return AccountCommitSummaryByProject.resolve(self.account.id, info, **kwargs)
 
     def resolve_by_repository(self, info, **kwargs):
-        return AccountCommitSummaryByRepository.resolve(self.account_key, info, **kwargs)
+        return AccountCommitSummaryByRepository.resolve(self.account.id, info, **kwargs)

@@ -18,7 +18,10 @@ from .commit_summary_by_repository import ProjectCommitSummaryByRepository
 
 class ProjectCommitSummary(graphene.ObjectType):
 
-    project_key = graphene.Field(graphene.UUID)
+    def __init__(self, project, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.project = project
+
     for_project = graphene.Field(CommitSummaryForProject)
     by_repository = graphene.Field(graphene.List(ProjectCommitSummaryByRepository))
 
@@ -29,14 +32,14 @@ class ProjectCommitSummary(graphene.ObjectType):
 
     @classmethod
     def resolve(cls, project, info, **kwargs):
-        return ProjectCommitSummary(project_key=project.id)
+        return ProjectCommitSummary(project)
 
 
     def resolve_for_project(self, info, **kwargs):
-        return CommitSummaryForProject.resolve(self.project_key, info, **kwargs)
+        return CommitSummaryForProject.resolve(self.project.id, info, **kwargs)
 
     def resolve_by_repository(self, info, **kwargs):
-        return ProjectCommitSummaryByRepository.resolve(self.project_key, info, **kwargs)
+        return ProjectCommitSummaryByRepository.resolve(self.project.id, info, **kwargs)
 
 
 

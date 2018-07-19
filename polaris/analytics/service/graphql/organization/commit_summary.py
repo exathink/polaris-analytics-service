@@ -19,7 +19,10 @@ from .commit_summary_by_repository import OrganizationCommitSummaryByRepository
 
 class OrganizationCommitSummary(graphene.ObjectType):
 
-    organization_key = graphene.Field(graphene.UUID)
+    def __init__(self, organization, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.organization = organization
+
     for_organization = graphene.Field(CommitSummaryForOrganization)
     by_project = graphene.Field(graphene.List(OrganizationCommitSummaryByProject))
     by_repository = graphene.Field(graphene.List(OrganizationCommitSummaryByRepository))
@@ -31,15 +34,15 @@ class OrganizationCommitSummary(graphene.ObjectType):
 
     @classmethod
     def resolve(cls, organization, info, **kwargs):
-        return OrganizationCommitSummary(organization_key=organization.id)
+        return OrganizationCommitSummary(organization)
 
 
     def resolve_for_organization(self, info, **kwargs):
-        return CommitSummaryForOrganization.resolve(self.organization_key, info, **kwargs)
+        return CommitSummaryForOrganization.resolve(self.organization.id, info, **kwargs)
 
 
     def resolve_by_project(self, info, **kwargs):
-        return OrganizationCommitSummaryByProject.resolve(self.organization_key, info, **kwargs)
+        return OrganizationCommitSummaryByProject.resolve(self.organization.id, info, **kwargs)
 
 
 

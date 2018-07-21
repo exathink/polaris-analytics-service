@@ -9,24 +9,39 @@
 # Author: Krishna Kumar
 
 import graphene
+from .commit_summary_for_project import CommitSummaryForProject
 
-from graphene import relay
+from ..interfaces import CommitSummary, NamedNode
+from polaris.analytics.service.graphql.mixins import \
+    KeyIdResolverMixin, \
+    NamedNodeResolverMixin, \
+    CommitSummaryResolverMixin
 
-from .commit_summary import ProjectCommitSummary
+from polaris.common import db
+from polaris.repos.db.model import Project as ProjectModel
 
 
-class Project(graphene.ObjectType):
+class Project(
+    KeyIdResolverMixin,
+    NamedNodeResolverMixin,
+    CommitSummaryResolverMixin,
+    graphene.ObjectType
+):
     class Meta:
-        interfaces = (relay.Node, )
+        interfaces = (NamedNode, CommitSummary )
 
-    commit_summary = ProjectCommitSummary.Field()
+
 
     @classmethod
     def resolve_field(cls, parent, info, project_key, **kwargs):
-        return Project(id=project_key)
+        return Project(key=project_key)
 
+    @staticmethod
+    def load_instance(key, info, **kwargs):
+        with db.orm_session() as session:
+            return ProjectModel.find_by_project_key(session, key)
 
 
     def resolve_commit_summary(self, info, **kwargs):
-            return ProjectCommitSummary.resolve(self, info, **kwargs)
+            return CommitSummaryForProject.resolve(self.key, info, **kwargs)
 

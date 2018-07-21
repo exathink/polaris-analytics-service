@@ -9,21 +9,22 @@
 # Author: Krishna Kumar
 
 import graphene
+from graphene.relay import Node
+from collections import namedtuple
 
-class NamedNode(graphene.relay.Node):
+class NamedNode(Node):
     key = graphene.String(required=True)
     name = graphene.String(required=True)
 
 
-
-class KeyIdResolverMixin:
-    def resolve_id(self, info, **kwargs):
-        return self.key
-
-class CommitSummary(graphene.Interface):
-
+class CommitSummary(Node):
+    Impl = namedtuple('CommitSummary', 'earliest_commit latest_commit commit_count contributor_count')
 
     earliest_commit = graphene.DateTime(required=True)
     latest_commit = graphene.DateTime(required=True)
     commit_count = graphene.Int(default_value=0)
     contributor_count = graphene.Int()
+
+    @classmethod
+    def UnResolved(cls):
+        return cls.Impl(None, None, None, None)

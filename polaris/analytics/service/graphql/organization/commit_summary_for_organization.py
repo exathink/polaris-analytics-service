@@ -12,7 +12,8 @@ import graphene
 from sqlalchemy import text
 from polaris.common import db
 
-from ..interfaces import NamedNode, KeyIdResolverMixin, CommitSummary
+from ..interfaces import NamedNode, CommitSummary
+from polaris.analytics.service.graphql.mixins import KeyIdResolverMixin
 
 
 class CommitSummaryForOrganization(graphene.ObjectType, KeyIdResolverMixin):

@@ -9,28 +9,53 @@
 # Author: Krishna Kumar
 
 import graphene
+
+
 from flask_security import current_user
 
-from graphene import relay
-from ..interfaces import CommitSummary
+from ..interfaces import CommitSummary, NamedNode
+from polaris.analytics.service.graphql.mixins import \
+    NamedNodeResolverMixin, \
+    KeyIdResolverMixin, \
+    CommitSummaryResolverMixin
 
 from .commit_summary import AccountCommitSummary
+from .account_organizations import AccountOrganizations
+from .commit_summary_for_account import CommitSummaryForAccount
+
+from polaris.common import db
+
+from polaris.repos.db.model import Account as AccountModel
 
 
-
-
-class Account(graphene.ObjectType):
+class Account(
+    KeyIdResolverMixin,
+    NamedNodeResolverMixin,
+    CommitSummaryResolverMixin,
+    graphene.ObjectType
+):
     class Meta:
-        interfaces = (relay.Node, )
+        interfaces = (NamedNode, CommitSummary)
 
-    commit_summary = AccountCommitSummary.Field()
+
+    organizations = graphene.Field(AccountOrganizations)
 
     @classmethod
-    def resolve_field(cls, parent, info, **kwargs):
-        return Account(id=current_user.account_key)
+    def resolve_field(cls, info, **kwargs):
+        return Account(key=current_user.account_key)
 
+    @staticmethod
+    def load_instance(key, info, **kwargs):
+        with db.orm_session() as session:
+            return AccountModel.find_by_account_key(session, key)
+
+
+    def resolve_organizations(self, info, **kwargs):
+        return AccountOrganizations.resolve(self, info, **kwargs)
 
 
     def resolve_commit_summary(self, info, **kwargs):
-            return AccountCommitSummary.resolve(self, info, **kwargs)
+            return CommitSummaryForAccount.resolve(self.key, info, **kwargs)
+
+
 

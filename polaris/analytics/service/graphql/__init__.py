@@ -29,12 +29,12 @@ class Query(graphene.ObjectType):
     )
 
     def resolve_account(self, info, **kwargs):
-        return Account.resolve_field(self, info, **kwargs)
+        return Account.resolve_field(info, **kwargs)
 
     def resolve_organization(self, info, organization_key, **kwargs):
         return Organization.resolve_field(self, info, organization_key,  **kwargs)
 
     def resolve_project(self, info, project_key, **kwargs):
-        return Organization.resolve_field(self, info, project_key,  **kwargs)
+        return Project.resolve_field(self, info, project_key,  **kwargs)
 
 schema = graphene.Schema(query=Query)

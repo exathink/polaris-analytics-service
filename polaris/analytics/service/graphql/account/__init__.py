@@ -19,9 +19,10 @@ from polaris.analytics.service.graphql.mixins import \
     KeyIdResolverMixin, \
     CommitSummaryResolverMixin
 
-from .commit_summary import AccountCommitSummary
+from .account_commit_summary import AccountCommitSummary
 from .account_organizations import AccountOrganizations
-from .commit_summary_for_account import CommitSummaryForAccount
+from .account_repositories import AccountRepositories
+from .account_projects import AccountProjects
 
 from polaris.common import db
 
@@ -39,6 +40,9 @@ class Account(
 
 
     organizations = graphene.Field(AccountOrganizations)
+    projects = graphene.Field(AccountProjects)
+    repositories = graphene.Field(AccountRepositories)
+
 
     @classmethod
     def resolve_field(cls, info, **kwargs):
@@ -53,9 +57,15 @@ class Account(
     def resolve_organizations(self, info, **kwargs):
         return AccountOrganizations.resolve(self, info, **kwargs)
 
+    def resolve_projects(self, info, **kwargs):
+        return AccountProjects.resolve(self, info, **kwargs)
+
+    def resolve_repositories(self, info, **kwargs):
+        return AccountRepositories.resolve(self, info, **kwargs)
+
 
     def resolve_commit_summary(self, info, **kwargs):
-            return CommitSummaryForAccount.resolve(self.key, info, **kwargs)
+            return AccountCommitSummary.resolve(self.key, info, **kwargs)
 
 
 

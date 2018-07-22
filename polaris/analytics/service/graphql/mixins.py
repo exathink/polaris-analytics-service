@@ -56,13 +56,13 @@ class CommitSummaryResolverMixin:
         return self.commit_summary
 
     def resolve_earliest_commit(self, info, **kwargs):
-        return self.get_commit_summary(info,**kwargs).earliest_commit
+        return getattr(self, 'earliest_commit', None) or self.get_commit_summary(info,**kwargs).earliest_commit
 
     def resolve_latest_commit(self, info, **kwargs):
-        return self.get_commit_summary(info, **kwargs).latest_commit
+        return getattr(self, 'latest_commit', None) or self.get_commit_summary(info, **kwargs).latest_commit
 
     def resolve_contributor_count(self, info, **kwargs):
-        return self.get_commit_summary(info, **kwargs).contributor_count
+        return getattr(self, 'contributor_count', None) or self.get_commit_summary(info, **kwargs).contributor_count
 
     def resolve_commit_count(self, info, **kwargs):
-        return self.get_commit_summary(info, **kwargs).commit_count
+        return getattr(self, 'commit_count', None) or self.get_commit_summary(info, **kwargs).commit_count

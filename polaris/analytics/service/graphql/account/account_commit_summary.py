@@ -8,17 +8,10 @@
 
 # Author: Krishna Kumar
 
-import graphene
 from sqlalchemy import text
 from polaris.common import db
 
-from ..interfaces import NamedNode, CommitSummary
-from polaris.analytics.service.graphql.mixins import KeyIdResolverMixin
-
-
-class CommitSummaryForAccount(graphene.ObjectType, KeyIdResolverMixin):
-    class Meta:
-        interfaces = (NamedNode, CommitSummary)
+class AccountCommitSummary:
 
     @classmethod
     def resolve(cls, account_key, info, **kwargs):
@@ -73,8 +66,3 @@ class CommitSummaryForAccount(graphene.ObjectType, KeyIdResolverMixin):
             """
         with db.create_session() as session:
             return session.connection.execute(text(query), dict(account_key=account_key)).fetchone()
-
-
-
-
-

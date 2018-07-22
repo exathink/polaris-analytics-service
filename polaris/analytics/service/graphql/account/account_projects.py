@@ -8,11 +8,11 @@
 
 # Author: Krishna Kumar
 import graphene
-from ..organization import Organization
-from .account_organizations_commit_summaries import AccountOrganizationsCommitSummaries
+from ..project import Project
+from .account_projects_commit_summaries import AccountProjectsCommitSummaries
 from ..mixins import KeyIdResolverMixin
 
-class AccountOrganizations(
+class AccountProjects(
     KeyIdResolverMixin,
     graphene.ObjectType
 ):
@@ -24,17 +24,17 @@ class AccountOrganizations(
         super().__init__(*args, **kwargs)
         self.key = key
 
-    commit_summaries = graphene.Field(graphene.List(Organization))
+    commit_summaries = graphene.Field(graphene.List(Project))
 
 
 
     @classmethod
     def Field(cls):
-        return graphene.Field(AccountOrganizations)
+        return graphene.Field(AccountProjects)
 
     @classmethod
     def resolve(cls, account, info, **kwargs):
-        return AccountOrganizations(key=account.key)
+        return AccountProjects(key=account.key)
 
     def resolve_commit_summaries(self, info, **kwargs):
-        return AccountOrganizationsCommitSummaries.resolve(self.key, info, **kwargs)
+        return AccountProjectsCommitSummaries.resolve(self.key, info, **kwargs)

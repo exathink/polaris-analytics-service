@@ -8,18 +8,11 @@
 
 # Author: Krishna Kumar
 
-import graphene
 from sqlalchemy import text
 from polaris.common import db
 
-from ..interfaces import NamedNode, CommitSummary
-from polaris.analytics.service.graphql.mixins import KeyIdResolverMixin
 
-
-class AccountCommitSummaryByProject(graphene.ObjectType, KeyIdResolverMixin):
-    class Meta:
-        interfaces = (NamedNode, CommitSummary)
-
+class AccountProjectsCommitSummaries:
     @classmethod
     def resolve(cls, account_key, info, **kwargs):
         query = """

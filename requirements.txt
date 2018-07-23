@@ -4,4 +4,4 @@ PyYaml
 uwsgi
 flask-restful
 marshmallow
-
+Flask-GraphQL==1.4.1

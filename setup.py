@@ -37,7 +37,8 @@ setup(
 	'polaris.analytics.service.graphql',
 	'polaris.analytics.service.graphql.account', 
 	'polaris.analytics.service.graphql.organization', 
-	'polaris.analytics.service.graphql.project'
+	'polaris.analytics.service.graphql.project',
+    'polaris.analytics.service.graphql.repository'
     ],
 
     url='',

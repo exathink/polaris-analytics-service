@@ -10,8 +10,11 @@
 
 import graphene
 
-from .commit_summary_for_organization import CommitSummaryForOrganization
+from .organization_commit_summary import OrganizationCommitSummary
 from ..interfaces import CommitSummary, NamedNode
+from .organization_projects import OrganizationProjects
+from .organization_repositories import OrganizationRepositories
+
 from polaris.analytics.service.graphql.mixins import \
     KeyIdResolverMixin, \
     NamedNodeResolverMixin, \
@@ -29,6 +32,8 @@ class Organization(
     class Meta:
         interfaces = (NamedNode, CommitSummary)
 
+    projects = graphene.Field(OrganizationProjects)
+    repositories = graphene.Field(OrganizationRepositories)
 
     @classmethod
     def resolve_field(cls, parent, info, organization_key, **kwargs):
@@ -39,7 +44,12 @@ class Organization(
         with db.orm_session() as session:
             return OrganizationModel.find_by_organization_key(session, key)
 
+    def resolve_projects(self, info, **kwargs):
+        return OrganizationProjects.resolve(self, info, **kwargs)
+
+    def resolve_repositories(self, info, **kwargs):
+        return OrganizationRepositories.resolve(self, info, **kwargs)
 
     def resolve_commit_summary(self, info, **kwargs):
-            return CommitSummaryForOrganization.resolve(self.key, info, **kwargs)
+            return OrganizationCommitSummary.resolve(self.key, info, **kwargs)
 

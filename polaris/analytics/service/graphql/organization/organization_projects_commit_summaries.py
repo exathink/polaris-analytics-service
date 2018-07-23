@@ -16,7 +16,7 @@ from ..interfaces import NamedNode, CommitSummary
 from polaris.analytics.service.graphql.mixins import KeyIdResolverMixin
 
 
-class OrganizationCommitSummaryByProject(graphene.ObjectType, KeyIdResolverMixin):
+class OrganizationProjectsCommitSummaries(graphene.ObjectType, KeyIdResolverMixin):
     class Meta:
         interfaces = (NamedNode, CommitSummary)
 

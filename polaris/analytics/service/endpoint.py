@@ -47,6 +47,8 @@ app.register_blueprint(activity_summary_api, url_prefix='/data/activity-summary'
 app.register_blueprint(activity_level_api, url_prefix='/data/activity-level')
 
 if app.env == 'production':
+    app.config['COMPRESS_MIMETYPES'] = ['application/json', 'application/javascript']
+
     compress = Compress()
     compress.init_app(app)
 

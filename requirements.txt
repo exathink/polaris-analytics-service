@@ -5,3 +5,4 @@ uwsgi
 flask-restful
 marshmallow
 Flask-GraphQL==1.4.1
+flask-compress

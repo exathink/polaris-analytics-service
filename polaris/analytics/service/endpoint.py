@@ -8,6 +8,8 @@
 
 # Author: Krishna Kumar
 import sys
+from flask_compress import Compress
+
 
 from polaris.utils.config import get_config_provider
 from polaris.flask.common import PolarisSecuredService
@@ -43,6 +45,10 @@ app.register_blueprint(graphql, url_prefix='/graphql')
 app.register_blueprint(viz_api, url_prefix='/data')
 app.register_blueprint(activity_summary_api, url_prefix='/data/activity-summary')
 app.register_blueprint(activity_level_api, url_prefix='/data/activity-level')
+
+if app.env == 'production':
+    compress = Compress()
+    compress.init_app(app)
 
 
 # for dev mode use only.

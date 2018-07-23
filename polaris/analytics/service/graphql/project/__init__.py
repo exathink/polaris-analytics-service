@@ -9,7 +9,8 @@
 # Author: Krishna Kumar
 
 import graphene
-from .commit_summary_for_project import CommitSummaryForProject
+from .project_repositories import ProjectRepositories
+from .project_commit_summary import ProjectCommitSummary
 
 from ..interfaces import CommitSummary, NamedNode
 from polaris.analytics.service.graphql.mixins import \
@@ -30,7 +31,7 @@ class Project(
     class Meta:
         interfaces = (NamedNode, CommitSummary )
 
-
+    repositories = graphene.Field(ProjectRepositories)
 
     @classmethod
     def resolve_field(cls, parent, info, project_key, **kwargs):
@@ -41,7 +42,9 @@ class Project(
         with db.orm_session() as session:
             return ProjectModel.find_by_project_key(session, key)
 
+    def resolve_repositories(self, info, **kwargs):
+        return ProjectRepositories.resolve(self, info, **kwargs)
 
     def resolve_commit_summary(self, info, **kwargs):
-            return CommitSummaryForProject.resolve(self.key, info, **kwargs)
+            return ProjectCommitSummary.resolve(self.key, info, **kwargs)
 

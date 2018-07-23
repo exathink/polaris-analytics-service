@@ -16,7 +16,7 @@ from ..interfaces import NamedNode, CommitSummary
 from polaris.analytics.service.graphql.mixins import KeyIdResolverMixin
 
 
-class ProjectCommitSummaryByRepository(graphene.ObjectType, KeyIdResolverMixin):
+class ProjectCommitSummary(graphene.ObjectType, KeyIdResolverMixin):
     class Meta:
         interfaces = (NamedNode, CommitSummary)
 
@@ -24,8 +24,8 @@ class ProjectCommitSummaryByRepository(graphene.ObjectType, KeyIdResolverMixin):
     def resolve(cls, project_key, info, **kwargs):
         query = """
                 SELECT
-                  repo_stats.repository_key as key,
-                  repository_name          as name,
+                  project_key                AS key, 
+                  project_name               AS name, 
                   earliest_commit,
                   latest_commit,
                   commit_count,
@@ -33,28 +33,29 @@ class ProjectCommitSummaryByRepository(graphene.ObjectType, KeyIdResolverMixin):
                 FROM
                   (
                     SELECT
-                      repositories.id    AS repository_id,
-                      repositories.key   AS repository_key, 
-                      repositories.name  AS repository_name,
-                      earliest_commit,
-                      latest_commit,
-                      commit_count
+                      projects.id             AS project_id,
+                      min(projects.name)      AS project_name,
+                      min(projects.project_key::text) as project_key, 
+                      min(earliest_commit)    AS earliest_commit,
+                      max(latest_commit)      AS latest_commit,
+                      sum(commit_count)       AS commit_count
                     FROM
                       repos.repositories
                       INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
                       INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
                     WHERE projects.project_key = :project_key
+                    GROUP BY projects.id
                   )
                     AS repo_stats
                   INNER JOIN
                   (
                     SELECT
-                      repository_id,
+                      project_id,
                       sum(contributor_count) AS contributor_count
                     FROM
                       (
                         SELECT
-                          repositories.id                      AS repository_id,
+                          projects.id                          AS project_id,
                           count(DISTINCT contributor_alias_id) AS contributor_count
                         FROM
                           repos.repositories
@@ -64,12 +65,12 @@ class ProjectCommitSummaryByRepository(graphene.ObjectType, KeyIdResolverMixin):
                             ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
                           INNER JOIN repos.projects_repositories ON repositories.id = projects_repositories.repository_id
                           INNER JOIN repos.projects ON projects_repositories.project_id = projects.id
-                        WHERE  projects.project_key = :project_key AND contributor_key IS NULL AND
+                        WHERE projects.project_key = :project_key AND contributor_key IS NULL AND
                               NOT robot
-                        GROUP BY repositories.id
+                        GROUP BY projects.id
                         UNION
                         SELECT
-                          repositories.id                 AS repository_id,
+                          projects.id                     AS project_id,
                           count(DISTINCT contributor_key) AS contributor_count
                         FROM
                           repos.repositories
@@ -82,22 +83,14 @@ class ProjectCommitSummaryByRepository(graphene.ObjectType, KeyIdResolverMixin):
                         WHERE
                           projects.project_key = :project_key AND contributor_key IS NOT NULL AND
                           NOT robot
-                        GROUP BY repositories.id
+                        GROUP BY projects.id
                       ) AS _
-                    GROUP BY repository_id
+                    GROUP BY project_id
                   ) AS repo_contributor_stats
-                    ON repo_stats.repository_id = repo_contributor_stats.repository_id
+                    ON repo_stats.project_id = repo_contributor_stats.project_id
             """
         with db.create_session() as session:
-            return session.connection.execute(text(query), dict(project_key=project_key)).fetchall()
-
-
-
-
-
-
-
-
+            return session.connection.execute(text(query), dict(project_key=project_key)).fetchone()
 
 
 

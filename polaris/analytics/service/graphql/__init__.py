@@ -18,23 +18,26 @@ from .project import Project
 
 class Query(graphene.ObjectType):
     node = relay.Node.Field()
-    account = graphene.Field(Account)
+    account = graphene.Field(
+        Account,
+        key = graphene.Argument(type=graphene.String, required=False)
+    )
     organization = graphene.Field(
         Organization,
-        organization_key = graphene.Argument(type=graphene.String, required=True)
+        key = graphene.Argument(type=graphene.String, required=True)
     )
     project = graphene.Field(
         Project,
-        project_key = graphene.Argument(type=graphene.String, required=True)
+        key = graphene.Argument(type=graphene.String, required=True)
     )
 
     def resolve_account(self, info, **kwargs):
         return Account.resolve_field(info, **kwargs)
 
-    def resolve_organization(self, info, organization_key, **kwargs):
-        return Organization.resolve_field(self, info, organization_key,  **kwargs)
+    def resolve_organization(self, info, key, **kwargs):
+        return Organization.resolve_field(self, info, key,  **kwargs)
 
-    def resolve_project(self, info, project_key, **kwargs):
-        return Project.resolve_field(self, info, project_key,  **kwargs)
+    def resolve_project(self, info, key, **kwargs):
+        return Project.resolve_field(self, info, key,  **kwargs)
 
 schema = graphene.Schema(query=Query)

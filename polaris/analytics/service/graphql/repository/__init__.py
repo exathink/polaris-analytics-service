@@ -10,6 +10,7 @@
 
 import graphene
 
+from .repository_commit_summary import RepositoryCommitSummary
 
 from ..interfaces import CommitSummary, NamedNode
 from polaris.analytics.service.graphql.mixins import \
@@ -43,5 +44,5 @@ class Repository(
 
 
     def resolve_commit_summary(self, info, **kwargs):
-            return None
+            return RepositoryCommitSummary.resolve(self.key, info, **kwargs)
 

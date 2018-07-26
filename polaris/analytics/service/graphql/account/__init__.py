@@ -13,7 +13,7 @@ import graphene
 
 from flask_security import current_user
 
-from ..interfaces import CommitSummary, NamedNode
+from ..interfaces import CommitSummary, NamedNode, AccessDeniedException
 from polaris.analytics.service.graphql.mixins import \
     NamedNodeResolverMixin, \
     KeyIdResolverMixin, \
@@ -43,9 +43,12 @@ class Account(
     repositories = graphene.Field(AccountRepositories)
 
     @classmethod
-    def resolve_field(cls, key, info, **kwargs):
+    def resolve_field(cls, info, key, **kwargs):
         if key == str(current_user.account_key):
             return Account(key=current_user.account_key)
+        else:
+            raise AccessDeniedException('Access denied for specified account')
+
 
     @staticmethod
     def load_instance(key, info, **kwargs):

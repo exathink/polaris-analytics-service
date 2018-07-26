@@ -12,6 +12,12 @@ import graphene
 from graphene.relay import Node
 from collections import namedtuple
 
+class GQLException(Exception):
+    pass
+
+class AccessDeniedException(GQLException):
+    pass
+
 class NamedNode(Node):
     key = graphene.String(required=True)
     name = graphene.String(required=True)

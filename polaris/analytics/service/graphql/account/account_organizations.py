@@ -10,6 +10,8 @@
 import graphene
 from ..organization import Organization
 from .account_organizations_commit_summaries import AccountOrganizationsCommitSummaries
+from .account_organizations_count import AccountOrganizationsCount
+
 from ..mixins import KeyIdResolverMixin
 
 class AccountOrganizations(
@@ -24,6 +26,7 @@ class AccountOrganizations(
         super().__init__(*args, **kwargs)
         self.key = key
 
+    count = graphene.Field(graphene.Int)
     commit_summaries = graphene.Field(graphene.List(Organization))
 
 
@@ -38,3 +41,6 @@ class AccountOrganizations(
 
     def resolve_commit_summaries(self, info, **kwargs):
         return AccountOrganizationsCommitSummaries.resolve(self.key, info, **kwargs)
+
+    def resolve_count(self, info, **kwargs):
+        return AccountOrganizationsCount.resolve(self.key, info, **kwargs)

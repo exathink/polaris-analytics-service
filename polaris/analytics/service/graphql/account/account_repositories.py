@@ -11,6 +11,8 @@ import graphene
 from ..repository import Repository
 from .account_repositories_commit_summaries import AccountRepositoriesCommitSummaries
 from ..mixins import KeyIdResolverMixin
+from .account_repositories_count import AccountRepositoriesCount
+
 
 class AccountRepositories(
     KeyIdResolverMixin,
@@ -24,6 +26,7 @@ class AccountRepositories(
         super().__init__(*args, **kwargs)
         self.key = key
 
+    count = graphene.Field(graphene.Int)
     commit_summaries = graphene.Field(graphene.List(Repository))
 
 
@@ -35,6 +38,9 @@ class AccountRepositories(
     @classmethod
     def resolve(cls, account, info, **kwargs):
         return AccountRepositories(key=account.key)
+
+    def resolve_count(self, info, **kwargs):
+        return AccountRepositoriesCount.resolve(self.key, info, **kwargs)
 
     def resolve_commit_summaries(self, info, **kwargs):
         return AccountRepositoriesCommitSummaries.resolve(self.key, info, **kwargs)

@@ -38,15 +38,14 @@ class Account(
     class Meta:
         interfaces = (NamedNode, CommitSummary)
 
-
     organizations = graphene.Field(AccountOrganizations)
     projects = graphene.Field(AccountProjects)
     repositories = graphene.Field(AccountRepositories)
 
-
     @classmethod
-    def resolve_field(cls, info, **kwargs):
-        return Account(key=current_user.account_key)
+    def resolve_field(cls, key, info, **kwargs):
+        if key == str(current_user.account_key):
+            return Account(key=current_user.account_key)
 
     @staticmethod
     def load_instance(key, info, **kwargs):

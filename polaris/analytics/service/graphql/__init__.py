@@ -21,7 +21,7 @@ class Query(graphene.ObjectType):
     node = relay.Node.Field()
     account = graphene.Field(
         Account,
-        key = graphene.Argument(type=graphene.String, required=False)
+        key = graphene.Argument(type=graphene.String, required=True)
     )
     organization = graphene.Field(
         Organization,
@@ -37,8 +37,8 @@ class Query(graphene.ObjectType):
         key = graphene.Argument(type=graphene.String, required=True)
     )
 
-    def resolve_account(self, info, **kwargs):
-        return Account.resolve_field(info, **kwargs)
+    def resolve_account(self, info, key,  **kwargs):
+        return Account.resolve_field(info, key, **kwargs)
 
     def resolve_organization(self, info, key, **kwargs):
         return Organization.resolve_field(self, info, key,  **kwargs)

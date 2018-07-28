@@ -17,7 +17,7 @@ from ..interfaces import *
 from ..mixins import KeyIdResolverMixin
 from .account_organizations_contributor_summaries import AccountOrganizationsContributorSummaries
 
-from ..utils import hash_join
+from ..utils import resolve_local_join, resolve_remote_join
 
 class AccountOrganizations(
     KeyIdResolverMixin,
@@ -47,18 +47,20 @@ class AccountOrganizations(
 
     @classmethod
     def resolve_orgs(cls, account, info, measures,  **kwargs):
-        result_rows = []
+        query_meta = []
         for measure in measures:
             if measure == 'CommitSummary':
-                result_rows.append(
-                    AccountOrganizationsCommitSummaries.resolve(account.key, info, **kwargs)
+                query_meta.append(
+                    AccountOrganizationsCommitSummaries.metadata()
                 )
             elif measure == 'ContributorSummary':
-                result_rows.append(
-                    AccountOrganizationsContributorSummaries.resolve(account.key, info, **kwargs)
+                query_meta.append(
+                    AccountOrganizationsContributorSummaries.metadata()
                 )
 
-        return hash_join(result_rows, join_field='key', output_type=Organization)
+        return resolve_remote_join(query_meta, output_type=Organization, params=dict(account_key=account.key))
+
+
 
     def resolve_count(self, info, **kwargs):
         return AccountOrganizationsCount.resolve(self.key, info, **kwargs)

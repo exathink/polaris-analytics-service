@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 import sys
 from flask_compress import Compress
-
+import logging
 
 from polaris.utils.config import get_config_provider
 from polaris.flask.common import PolarisSecuredService
@@ -19,6 +19,10 @@ from polaris.analytics.service.activity_summary_api import activity_summary_api
 from polaris.analytics.service.activity_level_api import activity_level_api
 
 from polaris.analytics.service.gql import graphql
+
+from polaris.utils.logging import config_logging
+
+config_logging()
 
 class PolarisAnalyticsService(PolarisSecuredService):
     def __init__(self, import_name, db_url, db_connect_timeout=30, models=None,
@@ -38,6 +42,8 @@ app = PolarisAnalyticsService(
     db_url=config_provider.get('POLARIS_DB_URL')
 )
 
+if config_provider.get('DEBUG_SQL') == 'true':
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 # Register endpoints
 app.register_blueprint(graphql, url_prefix='/graphql')

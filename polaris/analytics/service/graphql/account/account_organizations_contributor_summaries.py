@@ -10,10 +10,15 @@
 
 from sqlalchemy import text
 from polaris.common import db
+from ..interfaces import ContributorSummary
+from ..utils import SQlQueryMeasureResolver
 
-class AccountOrganizationsContributorSummaries:
+class AccountOrganizationsContributorSummaries(SQlQueryMeasureResolver):
+    measure_type = ContributorSummary.Impl
+
     query = """
                     SELECT
+                        repositories.organization_id                           as id,
                         min(organizations.organization_key::text) as key, 
                         count(DISTINCT contributor_aliases.id) AS contributor_count
                    FROM
@@ -33,7 +38,3 @@ class AccountOrganizationsContributorSummaries:
     def resolve(cls, account_key, info, **kwargs):
         with db.create_session() as session:
             return session.connection.execute(text(cls.query), dict(account_key=account_key)).fetchall()
-
-
-
-

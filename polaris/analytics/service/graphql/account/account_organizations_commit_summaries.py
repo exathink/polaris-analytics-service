@@ -11,9 +11,15 @@
 from sqlalchemy import text
 from polaris.common import db
 
-class AccountOrganizationsCommitSummaries:
+from ..interfaces import CommitSummary
+from ..utils import SQlQueryMeasureResolver
+
+
+class AccountOrganizationsCommitSummaries(SQlQueryMeasureResolver):
+    measure_type = CommitSummary.Impl
     query = """
                     SELECT
+                          org_repo_summary.organization_id as id, 
                           org_repo_summary.organization_key::text  AS key,
                           org_repo_summary.organization     AS name,
                           earliest_commit,

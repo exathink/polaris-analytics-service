@@ -24,7 +24,7 @@ class NamedNode(Node):
 
 
 class CommitSummary(Node):
-    Impl = namedtuple('CommitSummary', 'key earliest_commit latest_commit commit_count contributor_count')
+    Impl = namedtuple('CommitSummary', 'key earliest_commit latest_commit commit_count')
 
     earliest_commit = graphene.DateTime(required=True)
     latest_commit = graphene.DateTime(required=True)

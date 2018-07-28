@@ -12,28 +12,27 @@ from sqlalchemy import text
 from polaris.common import db
 
 class AccountOrganizationsContributorSummaries:
-
+    query = """
+                    SELECT
+                        min(organizations.organization_key::text) as key, 
+                        count(DISTINCT contributor_aliases.id) AS contributor_count
+                   FROM
+                     repos.repositories
+                     INNER JOIN repos.repositories_contributor_aliases
+                       ON repositories.id = repositories_contributor_aliases.repository_id
+                     INNER JOIN repos.contributor_aliases
+                       ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
+                     INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
+                     INNER JOIN repos.accounts_organizations
+                       ON accounts_organizations.organization_id = organizations.id
+                     INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
+                   WHERE account_key = :account_key AND not robot
+                   GROUP BY repositories.organization_id
+                """
     @classmethod
     def resolve(cls, account_key, info, **kwargs):
-        query = """
-                SELECT
-                    min(organizations.organization_key::text) as key, 
-                    count(DISTINCT contributor_aliases.id) AS contributor_count
-               FROM
-                 repos.repositories
-                 INNER JOIN repos.repositories_contributor_aliases
-                   ON repositories.id = repositories_contributor_aliases.repository_id
-                 INNER JOIN repos.contributor_aliases
-                   ON repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                 INNER JOIN repos.organizations ON repositories.organization_id = organizations.id
-                 INNER JOIN repos.accounts_organizations
-                   ON accounts_organizations.organization_id = organizations.id
-                 INNER JOIN repos.accounts ON accounts_organizations.account_id = accounts.id
-               WHERE account_key = :account_key AND not robot
-               GROUP BY repositories.organization_id
-            """
         with db.create_session() as session:
-            return session.connection.execute(text(query), dict(account_key=account_key)).fetchall()
+            return session.connection.execute(text(cls.query), dict(account_key=account_key)).fetchall()
 
 
 

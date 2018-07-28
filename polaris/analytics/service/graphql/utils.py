@@ -8,6 +8,7 @@
 
 # Author: Krishna Kumar
 
+from sqlalchemy import text, select
 
 def hash_join(result_rows, join_field, output_type):
     if len(result_rows) == 1:
@@ -26,3 +27,5 @@ def hash_join(result_rows, join_field, output_type):
         instances = instance_hash.values()
 
     return [output_type(**instance) for instance in instances]
+
+

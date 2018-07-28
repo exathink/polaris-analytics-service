@@ -24,13 +24,23 @@ class NamedNode(Node):
 
 
 class CommitSummary(Node):
-    Impl = namedtuple('CommitSummary', 'earliest_commit latest_commit commit_count contributor_count')
+    Impl = namedtuple('CommitSummary', 'key earliest_commit latest_commit commit_count contributor_count')
 
     earliest_commit = graphene.DateTime(required=True)
     latest_commit = graphene.DateTime(required=True)
     commit_count = graphene.Int(default_value=0)
-    contributor_count = graphene.Int()
+    contributor_count = graphene.Int(default_value=0)
 
     @classmethod
     def UnResolved(cls):
-        return cls.Impl(None, None, None, None)
+        return cls.Impl(None, None, None, None, None)
+
+
+class ContributorSummary(Node):
+    Impl = namedtuple('ContributorSummary', 'key contributor_count')
+
+    contributor_count = graphene.Int(default_value=0)
+
+    @classmethod
+    def UnResolved(cls):
+        return cls.Impl(None, None)

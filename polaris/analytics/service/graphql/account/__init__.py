@@ -28,6 +28,7 @@ from polaris.common import db
 
 from polaris.repos.db.model import Account as AccountModel
 
+from ..organization import Organization
 
 class Account(
     KeyIdResolverMixin,
@@ -37,6 +38,11 @@ class Account(
 ):
     class Meta:
         interfaces = (NamedNode, CommitSummary)
+
+    orgs = graphene.Field(
+        graphene.List(Organization),
+        measures=graphene.Argument(graphene.List(graphene.String), required=True)
+    )
 
     organizations = graphene.Field(AccountOrganizations)
     projects = graphene.Field(AccountProjects)
@@ -55,6 +61,8 @@ class Account(
         with db.orm_session() as session:
             return AccountModel.find_by_account_key(session, key)
 
+    def resolve_orgs(self, info, measures, **kwargs):
+        return AccountOrganizations.resolve_orgs(self, info, measures, **kwargs)
 
     def resolve_organizations(self, info, **kwargs):
         return AccountOrganizations.resolve(self, info, **kwargs)
@@ -64,7 +72,6 @@ class Account(
 
     def resolve_repositories(self, info, **kwargs):
         return AccountRepositories.resolve(self, info, **kwargs)
-
 
     def resolve_commit_summary(self, info, **kwargs):
             return AccountCommitSummary.resolve(self.key, info, **kwargs)

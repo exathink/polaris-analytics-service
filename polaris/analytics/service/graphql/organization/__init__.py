@@ -11,14 +11,15 @@
 import graphene
 
 from .organization_commit_summary import OrganizationCommitSummary
-from ..interfaces import CommitSummary, NamedNode
+from ..interfaces import CommitSummary, ContributorSummary, NamedNode
 from .organization_projects import OrganizationProjects
 from .organization_repositories import OrganizationRepositories
 
 from polaris.analytics.service.graphql.mixins import \
     KeyIdResolverMixin, \
     NamedNodeResolverMixin, \
-    CommitSummaryResolverMixin
+    CommitSummaryResolverMixin, \
+    ContributorSummaryResolverMixin
 
 from polaris.common import db
 from polaris.repos.db.model import Organization as OrganizationModel
@@ -27,13 +28,17 @@ class Organization(
     KeyIdResolverMixin,
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
+    ContributorSummaryResolverMixin,
     graphene.ObjectType
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary)
+        interfaces = (NamedNode, CommitSummary, ContributorSummary)
 
     projects = graphene.Field(OrganizationProjects)
     repositories = graphene.Field(OrganizationRepositories)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     @classmethod
     def resolve_field(cls, parent, info, organization_key, **kwargs):

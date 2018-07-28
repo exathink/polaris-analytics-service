@@ -12,7 +12,12 @@ from ..organization import Organization
 from .account_organizations_commit_summaries import AccountOrganizationsCommitSummaries
 from .account_organizations_count import AccountOrganizationsCount
 
+from ..interfaces import *
+
 from ..mixins import KeyIdResolverMixin
+from .account_organizations_contributor_summaries import AccountOrganizationsContributorSummaries
+
+from ..utils import hash_join
 
 class AccountOrganizations(
     KeyIdResolverMixin,
@@ -28,6 +33,7 @@ class AccountOrganizations(
 
     count = graphene.Field(graphene.Int)
     commit_summaries = graphene.Field(graphene.List(Organization))
+    contributor_summaries = graphene.Field(graphene.List(Organization))
 
 
 
@@ -39,8 +45,27 @@ class AccountOrganizations(
     def resolve(cls, account, info, **kwargs):
         return AccountOrganizations(key=account.key)
 
-    def resolve_commit_summaries(self, info, **kwargs):
-        return AccountOrganizationsCommitSummaries.resolve(self.key, info, **kwargs)
+    @classmethod
+    def resolve_orgs(cls, account, info, measures,  **kwargs):
+        result_rows = []
+        for measure in measures:
+            if measure == 'CommitSummary':
+                result_rows.append(
+                    AccountOrganizationsCommitSummaries.resolve(account.key, info, **kwargs)
+                )
+            elif measure == 'ContributorSummary':
+                result_rows.append(
+                    AccountOrganizationsContributorSummaries.resolve(account.key, info, **kwargs)
+                )
+
+        return hash_join(result_rows, join_field='key', output_type=Organization)
 
     def resolve_count(self, info, **kwargs):
         return AccountOrganizationsCount.resolve(self.key, info, **kwargs)
+
+    def resolve_commit_summaries(self, info, **kwargs):
+        return AccountOrganizationsCommitSummaries.resolve(self.key, info, **kwargs)
+
+    def resolve_contributor_summaries(self, info, **kwargs):
+        return AccountOrganizationsContributorSummaries.resolve(self.key, info, **kwargs)
+

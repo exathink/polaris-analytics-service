@@ -17,24 +17,25 @@ from .organization import Organization
 from .project import Project
 from .repository import Repository
 
+
 class Query(graphene.ObjectType):
     node = relay.Node.Field()
     account = graphene.Field(
         Account,
-        key = graphene.Argument(type=graphene.String, required=True)
+        key=graphene.Argument(type=graphene.String, required=True)
     )
     organization = graphene.Field(
         Organization,
-        key = graphene.Argument(type=graphene.String, required=True)
+        key=graphene.Argument(type=graphene.String, required=True)
     )
     project = graphene.Field(
         Project,
-        key = graphene.Argument(type=graphene.String, required=True)
+        key=graphene.Argument(type=graphene.String, required=True)
     )
 
     repository = graphene.Field(
         Repository,
-        key = graphene.Argument(type=graphene.String, required=True)
+        key=graphene.Argument(type=graphene.String, required=True)
     )
 
     def resolve_account(self, info, key,  **kwargs):

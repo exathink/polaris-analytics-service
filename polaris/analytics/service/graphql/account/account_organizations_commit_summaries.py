@@ -21,8 +21,7 @@ class AccountOrganizationsCommitSummaries:
                       org_repo_summary.organization     AS name,
                       earliest_commit,
                       latest_commit,
-                      commit_count,
-                      contributor_count
+                      commit_count
                 FROM
                 (
                    SELECT

@@ -9,8 +9,15 @@
 # Author: Krishna Kumar
 
 from sqlalchemy import text, select, join
-
+import inspect
 from polaris.common import db
+
+def properties(clazz):
+    return [
+        attr[0] for attr in inspect.getmembers(clazz, lambda a: not(inspect.isroutine(a)))
+             if not attr[0].startswith('_') and not attr[0].endswith('_')
+    ]
+
 
 def resolve_local_join(result_rows, join_field, output_type):
     if len(result_rows) == 1:
@@ -43,17 +50,17 @@ def join_queries(queries, join_field):
         # set of attributes to pass on to the constructor of output_type.
         seen_columns = set()
         output_columns = []
-        for measure_type, _ in queries:
-            for field in measure_type._fields:
+        for interface, _ in queries:
+            for field in properties(interface):
                 if field not in seen_columns:
                    seen_columns.add(field)
-                   output_columns.append(text(f'{alias(measure_type)}.{field}'))
+                   output_columns.append(text(f'{alias(interface)}.{field}'))
 
-        # Convert input pairs (measure_type, raw-sql) into pairs (table_alias, text(raw-sql) tuples
+        # Convert input pairs (interface, raw-sql) into pairs (table_alias, text(raw-sql) tuples
         # these will be user to construct the final join statement
         subqueries = [
-            (alias(measure_type), text(f"({query}) AS {alias(measure_type)}"))
-            for measure_type, query in queries
+            (alias(interface), text(f"({query}) AS {alias(interface)}"))
+            for interface, query in queries
         ]
 
         # Create the join statement:
@@ -74,9 +81,17 @@ def resolve_remote_join(queries, output_type, join_field='id', params=None):
         return [output_type(**{key:value for key, value in row.items()}) for row in result]
 
 class SQlQueryMeasureResolver:
-    measure_type = None
+    interface = None
     query = None
 
     @classmethod
     def metadata(cls):
-        return cls.measure_type, cls.query
+        return cls.interface, cls.query
+
+
+class GQLException(Exception):
+    pass
+
+
+class AccessDeniedException(GQLException):
+    pass

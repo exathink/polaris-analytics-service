@@ -9,33 +9,47 @@
 # Author: Krishna Kumar
 import graphene
 from ..organization import Organization
+from .account_organizations_nodes import AccountOrganizationsNodes
 from .account_organizations_commit_summaries import AccountOrganizationsCommitSummaries
 from .account_organizations_count import AccountOrganizationsCount
 
 from ..interfaces import *
 
-from ..mixins import KeyIdResolverMixin
+from ..mixins import RemoteJoinResolverMixin
 from .account_organizations_contributor_summaries import AccountOrganizationsContributorSummaries
 
 from ..utils import resolve_local_join, resolve_remote_join
 
+
 class AccountOrganizations(
-    KeyIdResolverMixin,
+    RemoteJoinResolverMixin,
     graphene.ObjectType
 ):
 
-    class Meta:
-        interfaces = (graphene.relay.Node, )
-
-    def __init__(self, key, *args, **kwargs):
+    def __init__(self, account, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.key = key
+        self.account = account
 
     count = graphene.Field(graphene.Int)
-    commit_summaries = graphene.Field(graphene.List(Organization))
-    contributor_summaries = graphene.Field(graphene.List(Organization))
+    nodes = graphene.Field(
+        graphene.List(Organization),
+        interfaces=graphene.Argument(
+            graphene.List(graphene.Enum(
+                'AccountOrganizationsInterfaces', [
+                    ('CommitSummary', 'CommitSummary'),
+                    ('ContributorSummary', 'ContributorSummary')
+                ]
+            )),
+            required=False,
 
+        )
+    )
 
+    NodeInterfaceResolvers = {
+        'NamedNode': AccountOrganizationsNodes,
+        'CommitSummary': AccountOrganizationsCommitSummaries,
+        'ContributorSummary': AccountOrganizationsContributorSummaries
+    }
 
     @classmethod
     def Field(cls):
@@ -43,31 +57,11 @@ class AccountOrganizations(
 
     @classmethod
     def resolve(cls, account, info, **kwargs):
-        return AccountOrganizations(key=account.key)
+        return AccountOrganizations(account=account)
 
-    @classmethod
-    def resolve_orgs(cls, account, info, measures,  **kwargs):
-        query_meta = []
-        for measure in measures:
-            if measure == 'CommitSummary':
-                query_meta.append(
-                    AccountOrganizationsCommitSummaries.metadata()
-                )
-            elif measure == 'ContributorSummary':
-                query_meta.append(
-                    AccountOrganizationsContributorSummaries.metadata()
-                )
-
-        return resolve_remote_join(query_meta, output_type=Organization, params=dict(account_key=account.key))
-
-
+    def resolve_nodes(self, info, **kwargs):
+        queries = self.collect_remote_resolve_queries(info, **kwargs)
+        return resolve_remote_join(queries, output_type=Organization, params=dict(account_key=self.account.key))
 
     def resolve_count(self, info, **kwargs):
-        return AccountOrganizationsCount.resolve(self.key, info, **kwargs)
-
-    def resolve_commit_summaries(self, info, **kwargs):
-        return AccountOrganizationsCommitSummaries.resolve(self.key, info, **kwargs)
-
-    def resolve_contributor_summaries(self, info, **kwargs):
-        return AccountOrganizationsContributorSummaries.resolve(self.key, info, **kwargs)
-
+        return AccountOrganizationsCount.resolve(self.account.key, info, **kwargs)

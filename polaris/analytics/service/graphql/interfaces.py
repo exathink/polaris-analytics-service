@@ -10,13 +10,7 @@
 
 import graphene
 from graphene.relay import Node
-from collections import namedtuple
 
-class GQLException(Exception):
-    pass
-
-class AccessDeniedException(GQLException):
-    pass
 
 class NamedNode(Node):
     key = graphene.String(required=True)
@@ -24,23 +18,13 @@ class NamedNode(Node):
 
 
 class CommitSummary(Node):
-    Impl = namedtuple('CommitSummary', 'key earliest_commit latest_commit commit_count')
-
     earliest_commit = graphene.DateTime(required=True)
     latest_commit = graphene.DateTime(required=True)
-    commit_count = graphene.Int(default_value=0)
-    contributor_count = graphene.Int(default_value=0)
-
-    @classmethod
-    def UnResolved(cls):
-        return cls.Impl(None, None, None, None, None)
-
+    commit_count = graphene.Int(required=True)
 
 class ContributorSummary(Node):
-    Impl = namedtuple('ContributorSummary', 'key contributor_count')
+    unassigned_alias_count = graphene.Int(required=True)
+    unique_contributor_count = graphene.Int(required=True)
+    contributor_count = graphene.Int(required=True)
 
-    contributor_count = graphene.Int(default_value=0)
 
-    @classmethod
-    def UnResolved(cls):
-        return cls.Impl(None, None)

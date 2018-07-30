@@ -13,7 +13,8 @@ import graphene
 
 from flask_security import current_user
 
-from ..interfaces import CommitSummary, NamedNode, AccessDeniedException
+from ..interfaces import CommitSummary, NamedNode
+from polaris.analytics.service.graphql.utils import AccessDeniedException
 from polaris.analytics.service.graphql.mixins import \
     NamedNodeResolverMixin, \
     KeyIdResolverMixin, \
@@ -39,12 +40,8 @@ class Account(
     class Meta:
         interfaces = (NamedNode, CommitSummary)
 
-    orgs = graphene.Field(
-        graphene.List(Organization),
-        measures=graphene.Argument(graphene.List(graphene.String), required=True)
-    )
+    organizations = AccountOrganizations.Field()
 
-    organizations = graphene.Field(AccountOrganizations)
     projects = graphene.Field(AccountProjects)
     repositories = graphene.Field(AccountRepositories)
 
@@ -61,8 +58,7 @@ class Account(
         with db.orm_session() as session:
             return AccountModel.find_by_account_key(session, key)
 
-    def resolve_orgs(self, info, measures, **kwargs):
-        return AccountOrganizations.resolve_orgs(self, info, measures, **kwargs)
+
 
     def resolve_organizations(self, info, **kwargs):
         return AccountOrganizations.resolve(self, info, **kwargs)

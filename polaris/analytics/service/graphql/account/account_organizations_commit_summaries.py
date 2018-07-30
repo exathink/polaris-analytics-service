@@ -16,7 +16,7 @@ from ..utils import SQlQueryMeasureResolver
 
 
 class AccountOrganizationsCommitSummaries(SQlQueryMeasureResolver):
-    measure_type = CommitSummary.Impl
+    interface = CommitSummary
     query = """
                     SELECT
                           org_repo_summary.organization_id as id, 

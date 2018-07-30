@@ -18,7 +18,7 @@ class NamedNodeResolverMixin:
 
     @staticmethod
     def load_instance(key, info, **kwargs):
-        return NotImplemented()
+        raise NotImplemented()
 
     def get_instance(self, info, **kwargs):
         if self.instance is None:
@@ -51,11 +51,11 @@ class CommitSummaryResolverMixin:
         self.commit_summary = None
 
     def resolve_commit_summary(self, info, **kwargs):
-        return CommitSummary.UnResolved()
+        raise NotImplemented()
 
     def get_commit_summary(self, info, **kwargs):
         if self.commit_summary is None:
-            self.commit_summary = self.resolve_commit_summary(info, **kwargs) or CommitSummary.UnResolved()
+            self.commit_summary = self.resolve_commit_summary(info, **kwargs)
         return self.commit_summary
 
     def resolve_earliest_commit(self, info, **kwargs):
@@ -76,15 +76,27 @@ class ContributorSummaryResolverMixin:
         self.contributor_summary = None
 
     def resolve_contributor_summary(self, info, **kwargs):
-        return ContributorSummary.UnResolved()
+        raise NotImplemented()
 
     def get_contributor_summary(self, info, **kwargs):
         if self.contributor_summary is None:
-            self.contributor_summary = self.resolve_contributor_summary(info, **kwargs) or \
-                                       ContributorSummary.UnResolved()
+            self.contributor_summary = self.resolve_contributor_summary(info, **kwargs)
+
         return self.contributor_summary
 
 
     def resolve_contributor_count(self, info, **kwargs):
         return self.contributor_count or \
                self.get_contributor_summary(info, **kwargs).contributor_count
+
+
+class RemoteJoinResolverMixin:
+
+    NodeInterfaceResolvers = None
+
+    def collect_remote_resolve_queries(self, info, **kwargs):
+        query_meta = [self.NodeInterfaceResolvers.get('NamedNode').metadata()]
+        for interface in kwargs.get('interfaces'):
+            query_meta.append(self.NodeInterfaceResolvers.get(interface).metadata())
+
+        return query_meta

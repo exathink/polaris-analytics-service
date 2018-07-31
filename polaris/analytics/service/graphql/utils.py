@@ -113,7 +113,7 @@ def join_queries_with_cte(resolvers, join_field='id'):
         for alias, subquery in subqueries[1:]:
             subselect = subquery(named_nodes)
             alias = subselect.alias(alias)
-            selectable = selectable.outerjoin(alias, alias.c.id == named_nodes.c.id)
+            selectable = selectable.outerjoin(alias, alias.c[join_field] == named_nodes.c[join_field])
 
         query = select(output_columns).select_from(selectable)
         print(str(query))

@@ -96,7 +96,14 @@ class RemoteJoinResolverMixin:
 
     def collect_remote_resolve_queries(self, info, **kwargs):
         query_meta = [self.NodeInterfaceResolvers.get('NamedNode').metadata()]
-        for interface in kwargs.get('interfaces'):
+        for interface in kwargs.get('interfaces', []):
             query_meta.append(self.NodeInterfaceResolvers.get(interface).metadata())
+
+        return query_meta
+
+    def collect_cte_resolve_queries(self, info, **kwargs):
+        query_meta = [self.NodeInterfaceResolvers.get('NamedNode')]
+        for interface in kwargs.get('interfaces', []):
+            query_meta.append(self.NodeInterfaceResolvers.get(interface))
 
         return query_meta

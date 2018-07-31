@@ -40,7 +40,7 @@ def resolve_local_join(result_rows, join_field, output_type):
 
 
 def join_queries(queries, join_field):
-    alias = lambda namedtuple: namedtuple.__name__
+    alias = lambda interface: interface.__name__
 
     if len(queries) > 0:
         # build a list of output columns for the queries
@@ -79,6 +79,53 @@ def resolve_remote_join(queries, output_type, join_field='id', params=None):
     with db.create_session() as session:
         result  = session.execute(join_queries(queries, join_field), params).fetchall()
         return [output_type(**{key:value for key, value in row.items()}) for row in result]
+
+
+def join_queries_with_cte(resolvers, join_field='id'):
+    alias = lambda interface: interface.__name__
+
+    if len(resolvers) > 0:
+        # build a list of output columns for the queries
+        # list is built by unqualified names reading from left to right on the list of queries.
+        # if there are duplicate columns between queries the first one encountered is selected and rest are
+        # dropped from the output columns. The resulting set of columns must be a valid
+        # set of attributes to pass on to the constructor of output_type.
+        seen_columns = {'id', 'name', 'key'}
+        output_columns = [text('named_nodes.id'), text('named_nodes.name'), text('named_nodes.key')]
+        for resolver in resolvers[1:]:
+            for field in properties(resolver.interface):
+                if field not in seen_columns:
+                    seen_columns.add(field)
+                    output_columns.append(text(f'"{alias(resolver.interface)}".{field}'))
+
+        # Convert input pairs (interface, raw-sql) into pairs (table_alias, text(raw-sql) tuples
+        # these will be user to construct the final join statement
+        subqueries = [
+            (alias(resolver.interface), resolver.selectable)
+            for resolver in resolvers
+        ]
+
+
+        _, named_nodes_selectable = subqueries[0]
+        named_nodes = named_nodes_selectable().cte('named_nodes')
+
+        selectable = named_nodes
+        for alias, subquery in subqueries[1:]:
+            subselect = subquery(named_nodes)
+            alias = subselect.alias(alias)
+            selectable = selectable.outerjoin(alias, alias.c.id == named_nodes.c.id)
+
+        query = select(output_columns).select_from(selectable)
+        print(str(query))
+        # Select the output columns from the resulting join
+        return query
+
+
+def resolve_cte_join(queries, output_type, join_field='id', params=None):
+    with db.create_session() as session:
+        result  = session.execute(join_queries_with_cte(queries, join_field), params).fetchall()
+        return [output_type(**{key:value for key, value in row.items()}) for row in result]
+
 
 class SQlQueryMeasureResolver:
     interface = None

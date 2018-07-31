@@ -18,7 +18,7 @@ from ..interfaces import *
 from ..mixins import RemoteJoinResolverMixin
 from .account_organizations_contributor_summaries import AccountOrganizationsContributorSummaries
 
-from ..utils import resolve_local_join, resolve_remote_join
+from ..utils import resolve_local_join, resolve_remote_join, resolve_cte_join
 
 
 class AccountOrganizations(
@@ -60,8 +60,8 @@ class AccountOrganizations(
         return AccountOrganizations(account=account)
 
     def resolve_nodes(self, info, **kwargs):
-        queries = self.collect_remote_resolve_queries(info, **kwargs)
-        return resolve_remote_join(queries, output_type=Organization, params=dict(account_key=self.account.key))
+        queries = self.collect_cte_resolve_queries(info, **kwargs)
+        return resolve_cte_join(queries, output_type=Organization, params=dict(account_key=self.account.key))
 
     def resolve_count(self, info, **kwargs):
         return AccountOrganizationsCount.resolve(self.account.key, info, **kwargs)

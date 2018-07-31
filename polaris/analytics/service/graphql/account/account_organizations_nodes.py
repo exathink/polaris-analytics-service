@@ -8,8 +8,10 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import text
+from sqlalchemy import text, select, bindparam
 from polaris.common import db
+
+from polaris.repos.db.model import accounts, accounts_organizations, organizations
 
 from ..interfaces import NamedNode
 from ..utils import SQlQueryMeasureResolver
@@ -29,6 +31,17 @@ class AccountOrganizationsNodes(SQlQueryMeasureResolver):
                 WHERE accounts.account_key = :account_key      
             
             """
+
+    @classmethod
+    def selectable(cls):
+        return  select([
+            organizations.c.id,
+            organizations.c.organization_key.label('key'),
+            organizations.c.name
+        ]).select_from(
+            organizations.join(accounts_organizations).join(accounts)
+        ).where(accounts.c.account_key == bindparam('account_key'))
+
 
     @classmethod
     def resolve(cls, account_key, info, **kwargs):

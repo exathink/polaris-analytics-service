@@ -12,7 +12,7 @@ import graphene
 from .project_repositories import ProjectRepositories
 from .project_commit_summary import ProjectCommitSummary
 
-from ..interfaces import CommitSummary, NamedNode
+from ..interfaces import NamedNode, CommitSummary, ContributorSummary
 from polaris.analytics.service.graphql.mixins import \
     KeyIdResolverMixin, \
     NamedNodeResolverMixin, \
@@ -29,7 +29,7 @@ class Project(
     graphene.ObjectType
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary )
+        interfaces = (NamedNode, CommitSummary, ContributorSummary)
 
     repositories = graphene.Field(ProjectRepositories)
 

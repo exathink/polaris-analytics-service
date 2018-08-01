@@ -9,27 +9,41 @@
 # Author: Krishna Kumar
 import graphene
 from ..repository import Repository
-from .account_repositories_commit_summaries import AccountRepositoriesCommitSummaries
-from ..mixins import KeyIdResolverMixin
-from .account_repositories_count import AccountRepositoriesCount
+from .account_repositories_resolvers import AccountRepositoriesCommitSummaries
+from ..mixins import NamedNodeCountResolverMixin, JoinResolverMixin
+from ..utils import resolve_join
+from .account_repositories_resolvers import *
 
 
 class AccountRepositories(
-    KeyIdResolverMixin,
+    NamedNodeCountResolverMixin,
+    JoinResolverMixin,
     graphene.ObjectType
 ):
 
-    class Meta:
-        interfaces = (graphene.relay.Node, )
-
-    def __init__(self, key, *args, **kwargs):
+    def __init__(self, account, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.key = key
+        self.account = account
 
     count = graphene.Field(graphene.Int)
-    commit_summaries = graphene.Field(graphene.List(Repository))
+    nodes = graphene.Field(
+        graphene.List(Repository),
+        interfaces=graphene.Argument(
+            graphene.List(graphene.Enum(
+                'AccountRepositoriesInterfaces', [
+                    ('CommitSummary', 'CommitSummary'),
+                    ('ContributorSummary', 'ContributorSummary')
+                ]
+            )),
+            required=False,
+        )
+    )
 
-
+    InterfaceResolvers = {
+        'NamedNode': AccountRepositoriesNodes,
+        'CommitSummary': AccountRepositoriesCommitSummaries,
+        'ContributorSummary': AccountRepositoriesContributorSummaries
+    }
 
     @classmethod
     def Field(cls):
@@ -37,10 +51,12 @@ class AccountRepositories(
 
     @classmethod
     def resolve(cls, account, info, **kwargs):
-        return AccountRepositories(key=account.key)
+        return AccountRepositories(account=account)
 
-    def resolve_count(self, info, **kwargs):
-        return AccountRepositoriesCount.resolve(self.key, info, **kwargs)
+    def get_nodes_query_params(self):
+        return dict(account_key=self.account.key)
 
-    def resolve_commit_summaries(self, info, **kwargs):
-        return AccountRepositoriesCommitSummaries.resolve(self.key, info, **kwargs)
+    def resolve_nodes(self, info, **kwargs):
+        resolvers = self.collect_join_resolvers(info, **kwargs)
+        return resolve_join(resolvers, resolver_context='account_repositories', output_type=Repository,
+                            params=self.get_nodes_query_params(), **kwargs)

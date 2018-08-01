@@ -8,47 +8,47 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import text, select, func, distinct,case
+from sqlalchemy import select, func, distinct, case, bindparam
+
+from polaris.analytics.service.graphql.interfaces import NamedNode
+from polaris.repos.db.model import organizations, accounts_organizations, accounts
+
+from polaris.repos.db.schema import repositories, contributor_aliases, repositories_contributor_aliases
+
+from ..interfaces import CommitSummary, ContributorSummary
 
 
-from polaris.repos.db.schema import repositories, repositories_contributor_aliases, contributor_aliases
+class AccountOrganizationsNodes:
+    interface = NamedNode
 
-from polaris.common import db
-from ..interfaces import ContributorSummary
-from ..utils import SQlQueryMeasureResolver
+    @classmethod
+    def selectable(cls):
+        return select([
+            organizations.c.id,
+            organizations.c.organization_key.label('key'),
+            organizations.c.name
+        ]).select_from(
+            organizations.join(accounts_organizations).join(accounts)
+        ).where(accounts.c.account_key == bindparam('account_key'))
+
+class AccountOrganizationsCommitSummaries:
+    interface = CommitSummary
+
+    @staticmethod
+    def selectable(account_organizations_nodes):
+        return select([
+            account_organizations_nodes.c.id,
+            func.sum(repositories.c.commit_count).label('commit_count'),
+            func.min(repositories.c.earliest_commit).label('earliest_commit'),
+            func.max(repositories.c.latest_commit).label('latest_commit')
+
+        ]).select_from(
+            account_organizations_nodes.outerjoin(repositories, account_organizations_nodes.c.id == repositories.c.organization_id)
+        ).group_by(account_organizations_nodes.c.id)
 
 
-class AccountOrganizationsContributorSummaries(SQlQueryMeasureResolver):
+class AccountOrganizationsContributorSummaries:
     interface = ContributorSummary
-
-    query = """
-        WITH contributor_summary AS (
-          SELECT named_nodes.id, contributor_aliases.id as ca_id, contributor_aliases.contributor_key
-          FROM
-               named_nodes
-                 LEFT JOIN repos.repositories on named_nodes.id = repositories.organization_id
-                 LEFT JOIN repos.repositories_contributor_aliases on repositories.id = repositories_contributor_aliases.repository_id
-                 LEFT JOIN repos.contributor_aliases on repositories_contributor_aliases.contributor_alias_id = contributor_aliases.id
-                 WHERE NOT contributor_aliases.robot
-        
-        ), unique_contributors AS (
-            SELECT id, count(distinct contributor_key) as unique_contributor_count
-            FROM contributor_summary
-            GROUP BY id
-        ), unassigned_aliases AS (
-            SELECT id, count(distinct ca_id) AS unassigned_alias_count
-            FROM contributor_summary WHERE contributor_key IS NULL
-            GROUP BY id
-        ) 
-        SELECT 
-                 unique_contributors.id, 
-                 (CASE WHEN unassigned_alias_count IS NULL THEN 0 ELSE unassigned_alias_count END) AS unassigned_alias_count,
-                 unique_contributor_count,  
-                 (CASE WHEN unassigned_alias_count IS NULL THEN 0 ELSE unassigned_alias_count END) + unique_contributor_count AS contributor_count
-        FROM
-             unique_contributors 
-               LEFT JOIN unassigned_aliases ON unique_contributors.id=unassigned_aliases.id
-    """
 
     @staticmethod
     def selectable(account_organizations_nodes):
@@ -67,14 +67,14 @@ class AccountOrganizationsContributorSummaries(SQlQueryMeasureResolver):
             )
         ).where (
             contributor_aliases.c.robot == False
-        ).cte()
+        ).cte('contributor_summary')
 
         unique_contributors = select([
             contributor_summmary.c.id,
             func.count(distinct(contributor_summmary.c.contributor_key)).label('unique_contributor_count'),
         ]).select_from(
             contributor_summmary
-        ).group_by(contributor_summmary.c.id).cte()
+        ).group_by(contributor_summmary.c.id).cte('unique_contributors')
 
         unassigned_aliases = select([
             contributor_summmary.c.id,
@@ -82,7 +82,7 @@ class AccountOrganizationsContributorSummaries(SQlQueryMeasureResolver):
         ]).select_from(
             contributor_summmary
         ).where(contributor_summmary.c.contributor_key == None).\
-            group_by(contributor_summmary.c.id).cte()
+            group_by(contributor_summmary.c.id).cte('unassigned_aliases')
 
         return select([
             unique_contributors.c.id,
@@ -100,7 +100,4 @@ class AccountOrganizationsContributorSummaries(SQlQueryMeasureResolver):
             unique_contributors.outerjoin(unassigned_aliases, unique_contributors.c.id == unassigned_aliases.c.id)
         )
 
-    @classmethod
-    def resolve(cls, account_key, info, **kwargs):
-        with db.create_session() as session:
-            return session.connection.execute(text(cls.query), dict(account_key=account_key)).fetchall()
+

@@ -7,7 +7,9 @@
 # confidential.
 
 # Author: Krishna Kumar
-from polaris.analytics.service.graphql.interfaces import *
+
+from polaris.common import db
+from .utils import count
 
 
 class NamedNodeResolverMixin:
@@ -90,20 +92,25 @@ class ContributorSummaryResolverMixin:
                self.get_contributor_summary(info, **kwargs).contributor_count
 
 
-class RemoteJoinResolverMixin:
+class JoinResolverMixin:
+    InterfaceResolvers = None
 
-    NodeInterfaceResolvers = None
-
-    def collect_remote_resolve_queries(self, info, **kwargs):
-        query_meta = [self.NodeInterfaceResolvers.get('NamedNode').metadata()]
+    def collect_join_resolvers(self, info, **kwargs):
+        resolvers = [self.InterfaceResolvers.get('NamedNode')]
         for interface in kwargs.get('interfaces', []):
-            query_meta.append(self.NodeInterfaceResolvers.get(interface).metadata())
+            resolvers.append(self.InterfaceResolvers.get(interface))
 
-        return query_meta
+        return resolvers
 
-    def collect_cte_resolve_queries(self, info, **kwargs):
-        query_meta = [self.NodeInterfaceResolvers.get('NamedNode')]
-        for interface in kwargs.get('interfaces', []):
-            query_meta.append(self.NodeInterfaceResolvers.get(interface))
 
-        return query_meta
+
+class NamedNodeCountResolverMixin:
+    InterfaceResolvers = None
+
+    def get_nodes_query_params(self):
+        raise NotImplemented()
+
+    def resolve_count(self, info, **kwargs):
+        with db.create_session() as session:
+            query = count(self.InterfaceResolvers.get('NamedNode').selectable())
+            return session.execute(query, self.get_nodes_query_params()).scalar()

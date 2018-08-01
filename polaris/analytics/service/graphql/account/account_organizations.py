@@ -8,27 +8,23 @@
 
 # Author: Krishna Kumar
 import graphene
+
+from .account_organizations_resolvers import *
+from ..mixins import JoinResolverMixin, NamedNodeCountResolverMixin
 from ..organization import Organization
-from .account_organizations_nodes import AccountOrganizationsNodes
-from .account_organizations_commit_summaries import AccountOrganizationsCommitSummaries
-from .account_organizations_count import AccountOrganizationsCount
-
-from ..interfaces import *
-
-from ..mixins import RemoteJoinResolverMixin
-from .account_organizations_contributor_summaries import AccountOrganizationsContributorSummaries
-
-from ..utils import resolve_local_join, resolve_remote_join, resolve_cte_join
+from ..utils import resolve_join
 
 
 class AccountOrganizations(
-    RemoteJoinResolverMixin,
+    NamedNodeCountResolverMixin,
+    JoinResolverMixin,
     graphene.ObjectType
 ):
 
     def __init__(self, account, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.account = account
+
 
     count = graphene.Field(graphene.Int)
     nodes = graphene.Field(
@@ -45,7 +41,7 @@ class AccountOrganizations(
         )
     )
 
-    NodeInterfaceResolvers = {
+    InterfaceResolvers = {
         'NamedNode': AccountOrganizationsNodes,
         'CommitSummary': AccountOrganizationsCommitSummaries,
         'ContributorSummary': AccountOrganizationsContributorSummaries
@@ -59,9 +55,14 @@ class AccountOrganizations(
     def resolve(cls, account, info, **kwargs):
         return AccountOrganizations(account=account)
 
-    def resolve_nodes(self, info, **kwargs):
-        queries = self.collect_cte_resolve_queries(info, **kwargs)
-        return resolve_cte_join(queries, output_type=Organization, params=dict(account_key=self.account.key))
+    def get_nodes_query_params(self):
+        return dict(account_key=self.account.key)
 
-    def resolve_count(self, info, **kwargs):
-        return AccountOrganizationsCount.resolve(self.account.key, info, **kwargs)
+    def resolve_nodes(self, info, **kwargs):
+        resolvers = self.collect_join_resolvers(info, **kwargs)
+        return resolve_join(resolvers, resolver_context='account_organizations', output_type=Organization,  params=self.get_nodes_query_params())
+
+
+
+
+

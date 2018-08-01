@@ -8,7 +8,7 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import text, select, join
+from sqlalchemy import text, select, join, func
 import inspect
 from polaris.common import db
 
@@ -39,10 +39,10 @@ def resolve_local_join(result_rows, join_field, output_type):
 
 
 
-def join_queries(queries, join_field):
+def text_join(resolvers, resolver_context,  join_field='id'):
     alias = lambda interface: interface.__name__
 
-    if len(queries) > 0:
+    if len(resolvers) > 0:
         # build a list of output columns for the queries
         # list is built by unqualified names reading from left to right on the list of queries.
         # if there are duplicate columns between queries the first one encountered is selected and rest are
@@ -50,17 +50,17 @@ def join_queries(queries, join_field):
         # set of attributes to pass on to the constructor of output_type.
         seen_columns = set()
         output_columns = []
-        for interface, _ in queries:
-            for field in properties(interface):
+        for resolver in resolvers:
+            for field in properties(resolver.interface):
                 if field not in seen_columns:
                    seen_columns.add(field)
-                   output_columns.append(text(f'{alias(interface)}.{field}'))
+                   output_columns.append(text(f'{alias(resolver.interface)}.{field}'))
 
         # Convert input pairs (interface, raw-sql) into pairs (table_alias, text(raw-sql) tuples
         # these will be user to construct the final join statement
         subqueries = [
-            (alias(interface), text(f"({query}) AS {alias(interface)}"))
-            for interface, query in queries
+            (alias(resolver.interface), text(f"({resolver.query}) AS {alias(resolver.interface)}"))
+            for resolver in resolvers
         ]
 
         # Create the join statement:
@@ -77,63 +77,59 @@ def join_queries(queries, join_field):
 
 def resolve_remote_join(queries, output_type, join_field='id', params=None):
     with db.create_session() as session:
-        result  = session.execute(join_queries(queries, join_field), params).fetchall()
+        result  = session.execute(text_join(queries, join_field), params).fetchall()
         return [output_type(**{key:value for key, value in row.items()}) for row in result]
 
 
-def join_queries_with_cte(resolvers, join_field='id'):
-    alias = lambda interface: interface.__name__
-
+def cte_join(resolvers, resolver_context, join_field='id'):
     if len(resolvers) > 0:
-        # build a list of output columns for the queries
-        # list is built by unqualified names reading from left to right on the list of queries.
-        # if there are duplicate columns between queries the first one encountered is selected and rest are
-        # dropped from the output columns. The resulting set of columns must be a valid
-        # set of attributes to pass on to the constructor of output_type.
-        seen_columns = {'id', 'name', 'key'}
-        output_columns = [text('named_nodes.id'), text('named_nodes.name'), text('named_nodes.key')]
-        for resolver in resolvers[1:]:
-            for field in properties(resolver.interface):
-                if field not in seen_columns:
-                    seen_columns.add(field)
-                    output_columns.append(text(f'"{alias(resolver.interface)}".{field}'))
-
-        # Convert input pairs (interface, raw-sql) into pairs (table_alias, text(raw-sql) tuples
-        # these will be user to construct the final join statement
-        subqueries = [
-            (alias(resolver.interface), resolver.selectable)
-            for resolver in resolvers
+        named_nodes_resolver = resolvers[0]
+        named_nodes_interface, named_nodes_selectable = (named_nodes_resolver.interface, named_nodes_resolver.selectable)
+        named_nodes_cte =  named_nodes_selectable().cte(resolver_context)
+        subqueries = [(named_nodes_interface, named_nodes_cte.alias(named_nodes_interface.__name__))] + [
+            (resolver.interface, resolver.selectable(named_nodes_cte).alias(resolver.interface.__name__))
+            for resolver in resolvers[1:]
         ]
 
+        seen_columns = set()
+        output_columns = []
+        for interface, selectable in subqueries:
+            for field in properties(interface):
+                if field not in seen_columns:
+                    seen_columns.add(field)
+                    output_columns.append(selectable.c[field])
 
-        _, named_nodes_selectable = subqueries[0]
-        named_nodes = named_nodes_selectable().cte('named_nodes')
 
-        selectable = named_nodes
-        for alias, subquery in subqueries[1:]:
-            subselect = subquery(named_nodes)
-            alias = subselect.alias(alias)
-            selectable = selectable.outerjoin(alias, alias.c[join_field] == named_nodes.c[join_field])
+        _, named_node_alias = subqueries[0]
+        joined = named_node_alias
+        for _, selectable in subqueries[1:]:
+            joined = joined.outerjoin(selectable, named_node_alias.c[join_field] == selectable.c[join_field])
 
-        query = select(output_columns).select_from(selectable)
+        query = select(output_columns).select_from(joined)
+
         print(str(query))
         # Select the output columns from the resulting join
         return query
 
 
-def resolve_cte_join(queries, output_type, join_field='id', params=None):
+def resolve_join(resolvers, resolver_context, output_type, join_type='cte', join_field='id', params=None):
     with db.create_session() as session:
-        result  = session.execute(join_queries_with_cte(queries, join_field), params).fetchall()
+        if join_type == 'cte':
+            query = cte_join(resolvers, resolver_context, join_field)
+        elif join_type == 'text':
+            query = text_join(resolvers, resolver_context, join_field)
+        else:
+            raise NotImplemented(f'Unknown join_type: {join_type}')
+
+        result = session.execute(query, params).fetchall()
         return [output_type(**{key:value for key, value in row.items()}) for row in result]
 
 
-class SQlQueryMeasureResolver:
-    interface = None
-    query = None
 
-    @classmethod
-    def metadata(cls):
-        return cls.interface, cls.query
+def count(selectable):
+    alias = selectable.alias()
+    return select([func.count(alias.c.id)]).select_from(alias)
+
 
 
 class GQLException(Exception):

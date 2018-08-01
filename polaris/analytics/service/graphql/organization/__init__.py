@@ -25,7 +25,6 @@ from polaris.common import db
 from polaris.repos.db.model import Organization as OrganizationModel
 
 class Organization(
-    KeyIdResolverMixin,
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
@@ -37,8 +36,7 @@ class Organization(
     projects = graphene.Field(OrganizationProjects)
     repositories = graphene.Field(OrganizationRepositories)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+
 
     @classmethod
     def resolve_field(cls, parent, info, organization_key, **kwargs):

@@ -17,38 +17,65 @@ from ..interfaces import CommitSummary, NamedNode
 from polaris.analytics.service.graphql.utils import AccessDeniedException
 from polaris.analytics.service.graphql.mixins import \
     NamedNodeResolverMixin, \
-    KeyIdResolverMixin, \
-    CommitSummaryResolverMixin
+    CommitSummaryResolverMixin, \
+    ContributorSummaryResolverMixin
 
-from .account_commit_summary import AccountCommitSummary
+from .account_resolvers import *
+
 from .account_organizations import AccountOrganizations
 from .account_repositories import AccountRepositories
 from .account_projects import AccountProjects
+
+from ..utils import resolve_join, collect_join_resolvers
 
 from polaris.common import db
 
 from polaris.repos.db.model import Account as AccountModel
 
-from ..organization import Organization
+
 
 class Account(
-    KeyIdResolverMixin,
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
+    ContributorSummaryResolverMixin,
     graphene.ObjectType
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary)
+        interfaces = (NamedNode, CommitSummary, ContributorSummary)
 
     organizations = AccountOrganizations.Field()
-
     projects = graphene.Field(AccountProjects)
     repositories = graphene.Field(AccountRepositories)
 
     @classmethod
+    def Field(cls):
+        return graphene.Field(
+            Account,
+            key=graphene.Argument(type=graphene.String, required=True),
+            interfaces=graphene.Argument(
+                graphene.List(graphene.Enum(
+                    'AccountInterfaces', [
+                        ('CommitSummary', 'CommitSummary'),
+                        ('ContributorSummary', 'ContributorSummary')
+                    ]
+                )),
+                required=False,
+            )
+        )
+
+    InterfaceResolvers = {
+        'NamedNode': AccountNode,
+        'CommitSummary': AccountCommitSummary,
+        'ContributorSummary': AccountContributorSummary
+    }
+
+    @classmethod
     def resolve_field(cls, info, key, **kwargs):
         if key == str(current_user.account_key):
-            return Account(key=current_user.account_key)
+            resolvers = collect_join_resolvers(cls.InterfaceResolvers, **kwargs)
+            resolved = resolve_join(resolvers, resolver_context='account', output_type=Account,
+                                params=dict(account_key=key), **kwargs)
+            return resolved[0] if len(resolved) == 1 else None
         else:
             raise AccessDeniedException('Access denied for specified account')
 
@@ -58,7 +85,8 @@ class Account(
         with db.orm_session() as session:
             return AccountModel.find_by_account_key(session, key)
 
-
+    def get_node_query_params(self):
+        return dict(account_key=self.key)
 
     def resolve_organizations(self, info, **kwargs):
         return AccountOrganizations.resolve(self, info, **kwargs)
@@ -69,8 +97,7 @@ class Account(
     def resolve_repositories(self, info, **kwargs):
         return AccountRepositories.resolve(self, info, **kwargs)
 
-    def resolve_commit_summary(self, info, **kwargs):
-            return AccountCommitSummary.resolve(self.key, info, **kwargs)
+
 
 
 

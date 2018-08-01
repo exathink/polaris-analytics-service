@@ -106,13 +106,11 @@ def cte_join(resolvers, resolver_context, join_field='id', **kwargs):
             joined = joined.outerjoin(selectable, named_node_alias.c[join_field] == selectable.c[join_field])
 
         query = select(output_columns).select_from(joined)
-
-        print(str(query))
         # Select the output columns from the resulting join
         return query
 
 
-def resolve_join(resolvers, resolver_context, output_type, join_type='cte', join_field='id', params=None, **kwargs):
+def resolve_join(resolvers, resolver_context, params, output_type=None, join_type='cte', join_field='id',  **kwargs):
     with db.create_session() as session:
         if join_type == 'cte':
             query = cte_join(resolvers, resolver_context, join_field, **kwargs)
@@ -122,8 +120,28 @@ def resolve_join(resolvers, resolver_context, output_type, join_type='cte', join
             raise NotImplemented(f'Unknown join_type: {join_type}')
 
         result = session.execute(query, params).fetchall()
-        return [output_type(**{key:value for key, value in row.items()}) for row in result]
+        return [
+            output_type(**{key:value for key, value in row.items()})
+            for row in result
+        ] if output_type else result
 
+
+
+def collect_join_resolvers(interface_resolvers, **kwargs):
+
+    interfaces = ['NamedNode'] + [interface
+                                  for interface in set(kwargs.get('interfaces', [])) | set(kwargs.get('interface', []))]
+
+    return [interface_resolvers.get(interface) for interface in interfaces]
+
+
+def resolve_collection(interface_resolvers, resolver_context, params, **kwargs):
+    resolvers = collect_join_resolvers(interface_resolvers, **kwargs)
+    return resolve_join(resolvers, resolver_context, params, **kwargs)
+
+def resolve_instance(interface_resolvers, resolver_context, params, **kwargs):
+    resolved = resolve_collection(interface_resolvers, resolver_context, params, **kwargs)
+    return resolved[0] if len(resolved) == 1 else None
 
 
 def count(selectable):

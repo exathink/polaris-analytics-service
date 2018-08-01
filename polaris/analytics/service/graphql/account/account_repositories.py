@@ -8,16 +8,15 @@
 
 # Author: Krishna Kumar
 import graphene
-from ..repository import Repository
-from .account_repositories_resolvers import AccountRepositoriesCommitSummaries
-from ..mixins import NamedNodeCountResolverMixin, JoinResolverMixin
-from ..utils import resolve_join
+
 from .account_repositories_resolvers import *
+from ..mixins import NamedNodeCountResolverMixin
+from ..repository import Repository
+from ..utils import resolve_join, collect_join_resolvers
 
 
 class AccountRepositories(
     NamedNodeCountResolverMixin,
-    JoinResolverMixin,
     graphene.ObjectType
 ):
 
@@ -57,6 +56,6 @@ class AccountRepositories(
         return dict(account_key=self.account.key)
 
     def resolve_nodes(self, info, **kwargs):
-        resolvers = self.collect_join_resolvers(info, **kwargs)
+        resolvers = collect_join_resolvers(self.InterfaceResolvers, **kwargs)
         return resolve_join(resolvers, resolver_context='account_repositories', output_type=Repository,
                             params=self.get_nodes_query_params(), **kwargs)

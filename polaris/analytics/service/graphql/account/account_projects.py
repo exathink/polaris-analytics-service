@@ -9,13 +9,12 @@
 # Author: Krishna Kumar
 import graphene
 from ..project import Project
-from ..mixins import NamedNodeCountResolverMixin, JoinResolverMixin
-from ..utils import resolve_join
+from ..mixins import NamedNodeCountResolverMixin
+from ..utils import resolve_join, collect_join_resolvers
 from .account_projects_resolvers import *
 
 class AccountProjects(
     NamedNodeCountResolverMixin,
-    JoinResolverMixin,
     graphene.ObjectType
 ):
 
@@ -57,7 +56,7 @@ class AccountProjects(
         return dict(account_key=self.account.key)
 
     def resolve_nodes(self, info, **kwargs):
-        resolvers = self.collect_join_resolvers(info, **kwargs)
+        resolvers = collect_join_resolvers(self.InterfaceResolvers, **kwargs)
         return resolve_join(resolvers, resolver_context='account_projects', output_type=Project,
                             params=self.get_nodes_query_params(), **kwargs)
 

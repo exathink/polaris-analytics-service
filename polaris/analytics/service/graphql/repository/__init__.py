@@ -23,7 +23,6 @@ from polaris.repos.db.model import Repository as RepositoryModel
 
 
 class Repository(
-    KeyIdResolverMixin,
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     graphene.ObjectType

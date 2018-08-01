@@ -14,7 +14,6 @@ from .project_commit_summary import ProjectCommitSummary
 
 from ..interfaces import NamedNode, CommitSummary, ContributorSummary
 from polaris.analytics.service.graphql.mixins import \
-    KeyIdResolverMixin, \
     NamedNodeResolverMixin, \
     CommitSummaryResolverMixin
 
@@ -23,7 +22,6 @@ from polaris.repos.db.model import Project as ProjectModel
 
 
 class Project(
-    KeyIdResolverMixin,
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     graphene.ObjectType

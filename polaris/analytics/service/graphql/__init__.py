@@ -20,10 +20,8 @@ from .repository import Repository
 
 class Query(graphene.ObjectType):
     node = relay.Node.Field()
-    account = graphene.Field(
-        Account,
-        key=graphene.Argument(type=graphene.String, required=True)
-    )
+    account = Account.Field()
+
     organization = graphene.Field(
         Organization,
         key=graphene.Argument(type=graphene.String, required=True)

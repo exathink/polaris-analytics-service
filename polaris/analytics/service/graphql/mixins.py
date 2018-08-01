@@ -9,13 +9,20 @@
 # Author: Krishna Kumar
 
 from polaris.common import db
-from .utils import count
+from .utils import count, resolve_instance
+from collections import namedtuple
 
+class KeyIdResolverMixin:
+    def __init__(self, key, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.key = key
 
-class NamedNodeResolverMixin:
+    def resolve_id(self, info, **kwargs):
+        return self.key
+
+class InstanceResolverMixin(KeyIdResolverMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.name = kwargs.get('name', None)
         self.instance = None
 
     @staticmethod
@@ -27,24 +34,25 @@ class NamedNodeResolverMixin:
             self.instance = self.load_instance(self.key, info, **kwargs)
         return self.instance
 
+
+class NamedNodeResolverMixin(InstanceResolverMixin):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name = kwargs.get('name', None)
+
     def resolve_name(self, info, **kwargs):
         if self.name is None:
             self.name = self.get_instance(info, **kwargs).name
 
         return self.name
 
+class InterfaceResolverMixin:
+    InterfaceResolvers = None
 
-class KeyIdResolverMixin:
-    def __init__(self, key, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.key = key
+    def get_node_query_params(self):
+        raise NotImplemented()
 
-    def resolve_id(self, info, **kwargs):
-        return self.key
-
-
-class CommitSummaryResolverMixin:
-
+class CommitSummaryResolverMixin(InterfaceResolverMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.earliest_commit = kwargs.get('earliest_commit')
@@ -53,7 +61,16 @@ class CommitSummaryResolverMixin:
         self.commit_summary = None
 
     def resolve_commit_summary(self, info, **kwargs):
-        raise NotImplemented()
+        if self.InterfaceResolvers:
+            return resolve_instance(
+                self.InterfaceResolvers,
+                type(self).__name__,
+                params=self.get_node_query_params(),
+                interface=['CommitSummary'],
+                **kwargs
+            )
+        else:
+            raise NotImplemented()
 
     def get_commit_summary(self, info, **kwargs):
         if self.commit_summary is None:
@@ -70,15 +87,28 @@ class CommitSummaryResolverMixin:
         return self.commit_count or self.get_commit_summary(info, **kwargs).commit_count
 
 
-class ContributorSummaryResolverMixin:
+class ContributorSummaryResolverMixin(InterfaceResolverMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.contributor_count = kwargs.get('contributor_count')
+        self.unassigned_alias_count = kwargs.get('unassigned_alias_count')
+        self.unique_contributor_count = kwargs.get('unique_contributor_count')
+
         self.contributor_summary = None
 
     def resolve_contributor_summary(self, info, **kwargs):
-        raise NotImplemented()
+        if self.InterfaceResolvers:
+            return resolve_instance(
+                self.InterfaceResolvers,
+                type(self).__name__,
+                params=self.get_node_query_params(),
+                interface=['ContributorSummary'],
+                **kwargs
+            )
+        else:
+            raise NotImplemented()
+
 
     def get_contributor_summary(self, info, **kwargs):
         if self.contributor_summary is None:
@@ -91,16 +121,15 @@ class ContributorSummaryResolverMixin:
         return self.contributor_count or \
                self.get_contributor_summary(info, **kwargs).contributor_count
 
+    def resolve_unassigned_alias_count(self, info, **kwargs):
+        return self.unassigned_alias_count or \
+               self.get_contributor_summary(info, **kwargs).unassigned_alias_count
 
-class JoinResolverMixin:
-    InterfaceResolvers = None
+    def resolve_unique_contributor_count(self, info, **kwargs):
+        return self.unique_contributor_count or self.get_contributor_summary(info, **kwargs).unique_contributor_count
 
-    def collect_join_resolvers(self, info, **kwargs):
-        resolvers = [self.InterfaceResolvers.get('NamedNode')]
-        for interface in kwargs.get('interfaces', []):
-            resolvers.append(self.InterfaceResolvers.get(interface))
 
-        return resolvers
+
 
 
 

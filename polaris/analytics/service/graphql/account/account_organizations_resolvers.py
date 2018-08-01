@@ -21,8 +21,8 @@ from ..interfaces import CommitSummary, ContributorSummary
 class AccountOrganizationsNodes:
     interface = NamedNode
 
-    @classmethod
-    def selectable(cls):
+    @staticmethod
+    def selectable(**kwargs):
         return select([
             organizations.c.id,
             organizations.c.organization_key.label('key'),
@@ -35,7 +35,7 @@ class AccountOrganizationsCommitSummaries:
     interface = CommitSummary
 
     @staticmethod
-    def selectable(account_organizations_nodes):
+    def selectable(account_organizations_nodes, **kwargs):
         return select([
             account_organizations_nodes.c.id,
             func.sum(repositories.c.commit_count).label('commit_count'),
@@ -51,7 +51,7 @@ class AccountOrganizationsContributorSummaries:
     interface = ContributorSummary
 
     @staticmethod
-    def selectable(account_organizations_nodes):
+    def selectable(account_organizations_nodes, **kwargs):
 
         contributor_summmary = select([
             account_organizations_nodes.c.id,

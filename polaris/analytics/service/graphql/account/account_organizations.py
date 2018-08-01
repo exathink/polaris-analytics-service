@@ -60,7 +60,7 @@ class AccountOrganizations(
 
     def resolve_nodes(self, info, **kwargs):
         resolvers = self.collect_join_resolvers(info, **kwargs)
-        return resolve_join(resolvers, resolver_context='account_organizations', output_type=Organization,  params=self.get_nodes_query_params())
+        return resolve_join(resolvers, resolver_context='account_organizations', output_type=Organization,  params=self.get_nodes_query_params(), **kwargs)
 
 
 

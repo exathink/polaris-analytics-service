@@ -39,7 +39,7 @@ def resolve_local_join(result_rows, join_field, output_type):
 
 
 
-def text_join(resolvers, resolver_context,  join_field='id'):
+def text_join(resolvers, resolver_context,  join_field='id', **kwargs):
     alias = lambda interface: interface.__name__
 
     if len(resolvers) > 0:
@@ -81,13 +81,13 @@ def resolve_remote_join(queries, output_type, join_field='id', params=None):
         return [output_type(**{key:value for key, value in row.items()}) for row in result]
 
 
-def cte_join(resolvers, resolver_context, join_field='id'):
+def cte_join(resolvers, resolver_context, join_field='id', **kwargs):
     if len(resolvers) > 0:
         named_nodes_resolver = resolvers[0]
         named_nodes_interface, named_nodes_selectable = (named_nodes_resolver.interface, named_nodes_resolver.selectable)
-        named_nodes_cte =  named_nodes_selectable().cte(resolver_context)
+        named_nodes_cte =  named_nodes_selectable(**kwargs).cte(resolver_context)
         subqueries = [(named_nodes_interface, named_nodes_cte.alias(named_nodes_interface.__name__))] + [
-            (resolver.interface, resolver.selectable(named_nodes_cte).alias(resolver.interface.__name__))
+            (resolver.interface, resolver.selectable(named_nodes_cte, **kwargs).alias(resolver.interface.__name__))
             for resolver in resolvers[1:]
         ]
 
@@ -112,12 +112,12 @@ def cte_join(resolvers, resolver_context, join_field='id'):
         return query
 
 
-def resolve_join(resolvers, resolver_context, output_type, join_type='cte', join_field='id', params=None):
+def resolve_join(resolvers, resolver_context, output_type, join_type='cte', join_field='id', params=None, **kwargs):
     with db.create_session() as session:
         if join_type == 'cte':
-            query = cte_join(resolvers, resolver_context, join_field)
+            query = cte_join(resolvers, resolver_context, join_field, **kwargs)
         elif join_type == 'text':
-            query = text_join(resolvers, resolver_context, join_field)
+            query = text_join(resolvers, resolver_context, join_field, **kwargs)
         else:
             raise NotImplemented(f'Unknown join_type: {join_type}')
 

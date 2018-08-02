@@ -12,7 +12,7 @@ import graphene
 from .account_organizations_resolvers import *
 from ..mixins import NamedNodeCountResolverMixin
 from ..organization import Organization
-from ..utils import collect_join_resolvers, resolve_join
+from ..utils import collect_join_resolvers, resolve_join, resolve_collection
 
 
 class AccountOrganizations(
@@ -58,8 +58,13 @@ class AccountOrganizations(
         return dict(account_key=self.account.key)
 
     def resolve_nodes(self, info, **kwargs):
-        resolvers = collect_join_resolvers(self.InterfaceResolvers, **kwargs)
-        return resolve_join(resolvers, resolver_context='account_organizations', output_type=Organization,  params=self.get_nodes_query_params(), **kwargs)
+        return resolve_collection(
+            self.InterfaceResolvers,
+            resolver_context='account_organizations',
+            params=self.get_nodes_query_params(),
+            output_type=Organization,
+            **kwargs
+        )
 
 
 

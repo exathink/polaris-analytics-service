@@ -126,18 +126,16 @@ def resolve_join(resolvers, resolver_context, params, output_type=None, join_typ
         ] if output_type else result
 
 
-
 def collect_join_resolvers(interface_resolvers, **kwargs):
-
     interfaces = ['NamedNode'] + [interface
                                   for interface in set(kwargs.get('interfaces', [])) | set(kwargs.get('interface', []))]
-
     return [interface_resolvers.get(interface) for interface in interfaces]
 
 
 def resolve_collection(interface_resolvers, resolver_context, params, **kwargs):
     resolvers = collect_join_resolvers(interface_resolvers, **kwargs)
     return resolve_join(resolvers, resolver_context, params, **kwargs)
+
 
 def resolve_instance(interface_resolvers, resolver_context, params, **kwargs):
     resolved = resolve_collection(interface_resolvers, resolver_context, params, **kwargs)

@@ -12,7 +12,7 @@ import graphene
 from .account_repositories_resolvers import *
 from ..mixins import NamedNodeCountResolverMixin
 from ..repository import Repository
-from ..utils import resolve_join, collect_join_resolvers
+from ..utils import resolve_collection
 
 
 class AccountRepositories(
@@ -56,6 +56,10 @@ class AccountRepositories(
         return dict(account_key=self.account.key)
 
     def resolve_nodes(self, info, **kwargs):
-        resolvers = collect_join_resolvers(self.InterfaceResolvers, **kwargs)
-        return resolve_join(resolvers, resolver_context='account_repositories', output_type=Repository,
-                            params=self.get_nodes_query_params(), **kwargs)
+        return resolve_collection(
+            self.InterfaceResolvers,
+            resolver_context='account_repositories',
+            params=self.get_nodes_query_params(),
+            output_type=Repository,
+            **kwargs
+        )

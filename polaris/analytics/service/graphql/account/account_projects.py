@@ -10,15 +10,14 @@
 import graphene
 from ..project import Project
 from ..mixins import NamedNodeCountResolverMixin
-from ..utils import resolve_join, collect_join_resolvers
+from ..utils import resolve_collection
 from .account_projects_resolvers import *
+
 
 class AccountProjects(
     NamedNodeCountResolverMixin,
     graphene.ObjectType
 ):
-
-
 
     def __init__(self, account, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -56,8 +55,10 @@ class AccountProjects(
         return dict(account_key=self.account.key)
 
     def resolve_nodes(self, info, **kwargs):
-        resolvers = collect_join_resolvers(self.InterfaceResolvers, **kwargs)
-        return resolve_join(resolvers, resolver_context='account_projects', output_type=Project,
-                            params=self.get_nodes_query_params(), **kwargs)
-
-
+        return resolve_collection(
+            self.InterfaceResolvers,
+            resolver_context='accounts_projects',
+            params=self.get_nodes_query_params(),
+            output_type=Project,
+            **kwargs
+        )

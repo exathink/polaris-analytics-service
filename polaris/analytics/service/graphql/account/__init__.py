@@ -10,28 +10,27 @@
 
 import graphene
 
-
 from flask_security import current_user
 
-from ..interfaces import CommitSummary, NamedNode
+
 from polaris.analytics.service.graphql.utils import AccessDeniedException
 from polaris.analytics.service.graphql.mixins import \
     NamedNodeResolverMixin, \
     CommitSummaryResolverMixin, \
     ContributorSummaryResolverMixin
 
-from .account_resolvers import *
+from ..interfaces import CommitSummary, NamedNode, ContributorSummary
+from .account_resolvers import AccountNode, AccountCommitSummary, AccountContributorSummary
 
 from .account_organizations import AccountOrganizations
 from .account_repositories import AccountRepositories
 from .account_projects import AccountProjects
 
-from ..utils import resolve_join, collect_join_resolvers
+from ..utils import resolve_join, collect_join_resolvers, resolve_instance
 
 from polaris.common import db
 
 from polaris.repos.db.model import Account as AccountModel
-
 
 
 class Account(
@@ -72,13 +71,16 @@ class Account(
     @classmethod
     def resolve_field(cls, info, key, **kwargs):
         if key == str(current_user.account_key):
-            resolvers = collect_join_resolvers(cls.InterfaceResolvers, **kwargs)
-            resolved = resolve_join(resolvers, resolver_context='account', output_type=Account,
-                                params=dict(account_key=key), **kwargs)
-            return resolved[0] if len(resolved) == 1 else None
+            return resolve_instance(
+                cls.InterfaceResolvers,
+                resolver_context='account',
+                params=dict(account_key=key),
+                output_type=Account,
+                **kwargs
+            )
+
         else:
             raise AccessDeniedException('Access denied for specified account')
-
 
     @staticmethod
     def load_instance(key, info, **kwargs):
@@ -96,8 +98,3 @@ class Account(
 
     def resolve_repositories(self, info, **kwargs):
         return AccountRepositories.resolve(self, info, **kwargs)
-
-
-
-
-

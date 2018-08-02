@@ -9,27 +9,39 @@
 # Author: Krishna Kumar
 import graphene
 from ..project import Project
-from .organization_projects_commit_summaries import OrganizationProjectsCommitSummaries
-from ..mixins import KeyIdResolverMixin
-from .organization_projects_count import OrganizationProjectsCount
+from ..mixins import NamedNodeCountResolverMixin
+from ..utils import resolve_collection
+from .organization_projects_resolvers import *
 
 
 class OrganizationProjects(
-    KeyIdResolverMixin,
+    NamedNodeCountResolverMixin,
     graphene.ObjectType
 ):
 
-    class Meta:
-        interfaces = (graphene.relay.Node, )
-
-    def __init__(self, key, *args, **kwargs):
+    def __init__(self, organization, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.key = key
+        self.organization = organization
 
     count = graphene.Field(graphene.Int)
-    commit_summaries = graphene.Field(graphene.List(Project))
+    nodes = graphene.Field(
+        graphene.List(Project),
+        interfaces=graphene.Argument(
+            graphene.List(graphene.Enum(
+                'OrganizationProjectsInterfaces', [
+                    ('CommitSummary', 'CommitSummary'),
+                    ('ContributorSummary', 'ContributorSummary')
+                ]
+            )),
+            required=False,
+        )
+    )
 
-
+    InterfaceResolvers = {
+        'NamedNode': OrganizationProjectsNodes,
+        'CommitSummary': OrganizationProjectsCommitSummaries,
+        'ContributorSummary': OrganizationProjectsContributorSummaries
+    }
 
     @classmethod
     def Field(cls):
@@ -37,10 +49,16 @@ class OrganizationProjects(
 
     @classmethod
     def resolve(cls, organization, info, **kwargs):
-        return OrganizationProjects(key=organization.key)
+        return OrganizationProjects(organization=organization)
 
-    def resolve_count(self, info, **kwargs):
-        return OrganizationProjectsCount.resolve(self.key, info, **kwargs)
+    def get_nodes_query_params(self):
+        return dict(organization_key=self.organization.key)
 
-    def resolve_commit_summaries(self, info, **kwargs):
-        return OrganizationProjectsCommitSummaries.resolve(self.key, info, **kwargs)
+    def resolve_nodes(self, info, **kwargs):
+        return resolve_collection(
+            self.InterfaceResolvers,
+            resolver_context='organizations_projects',
+            params=self.get_nodes_query_params(),
+            output_type=Project,
+            **kwargs
+        )

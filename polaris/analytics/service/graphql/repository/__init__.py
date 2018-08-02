@@ -10,17 +10,13 @@
 
 import graphene
 
+from .selectables import RepositoryNode, RepositoriesCommitSummary, RepositoriesContributorSummary
 from ..interfaces import NamedNode, CommitSummary, ContributorSummary
+from ..mixins import CommitSummaryResolverMixin, ContributorSummaryResolverMixin
 from ..utils import resolve_instance
 
-from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
-
-from polaris.common import db
-from polaris.repos.db.model import Repository as RepositoryModel
-from .selectables import RepositoryNode, RepositoriesCommitSummary, RepositoriesContributorSummary
 
 class Repository(
-    NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
     graphene.ObjectType
@@ -60,11 +56,6 @@ class Repository(
             **kwargs
         )
     
-    
-    @staticmethod
-    def load_instance(key, info, **kwargs):
-        with db.orm_session() as session:
-            return RepositoryModel.find_by_repository_key(session, key)
 
     def get_node_query_params(self):
         return dict(repository_key=self.key)

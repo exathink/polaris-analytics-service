@@ -10,24 +10,17 @@
 
 import graphene
 
-from ..utils import resolve_instance
 from .organization_projects import OrganizationProjects
 from .organization_repositories import OrganizationRepositories
-
+from .selectables import OrganizationNode, OrganizationsCommitSummary, OrganizationsContributorSummary
+from ..interfaces import NamedNode, CommitSummary, ContributorSummary
 from ..mixins import \
-    NamedNodeResolverMixin, \
     CommitSummaryResolverMixin, \
     ContributorSummaryResolverMixin
-
-from polaris.common import db
-from polaris.repos.db.model import Organization as OrganizationModel
-
-from ..interfaces import NamedNode, CommitSummary, ContributorSummary
-from .selectables import OrganizationNode, OrganizationsCommitSummary, OrganizationsContributorSummary
+from ..utils import resolve_instance
 
 
 class Organization(
-    NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
     graphene.ObjectType
@@ -69,11 +62,6 @@ class Organization(
             output_type=cls,
             **kwargs
         )
-
-    @staticmethod
-    def load_instance(key, info, **kwargs):
-        with db.orm_session() as session:
-            return OrganizationModel.find_by_organization_key(session, key)
 
     def get_node_query_params(self):
         return dict(organization_key=self.key)

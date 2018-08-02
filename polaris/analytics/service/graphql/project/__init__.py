@@ -15,7 +15,6 @@ from ..utils import resolve_instance
 
 from ..interfaces import NamedNode, CommitSummary, ContributorSummary
 from polaris.analytics.service.graphql.mixins import \
-    NamedNodeResolverMixin, \
     CommitSummaryResolverMixin, \
     ContributorSummaryResolverMixin
 
@@ -25,7 +24,6 @@ from .selectables import ProjectNode, ProjectsContributorSummary, ProjectsCommit
 
 
 class Project(
-    NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
     graphene.ObjectType
@@ -66,11 +64,6 @@ class Project(
             output_type=cls,
             **kwargs
         )
-    
-    @staticmethod
-    def load_instance(key, info, **kwargs):
-        with db.orm_session() as session:
-            return ProjectModel.find_by_project_key(session, key)
 
     def get_node_query_params(self):
         return dict(project_key=self.key)

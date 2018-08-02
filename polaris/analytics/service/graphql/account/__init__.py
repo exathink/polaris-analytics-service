@@ -9,29 +9,21 @@
 # Author: Krishna Kumar
 
 import graphene
-
 from flask_security import current_user
 
-
-from ..utils import AccessDeniedException
+from .account_organizations import AccountOrganizations
+from .account_projects import AccountProjects
+from .account_repositories import AccountRepositories
+from .selectables import AccountNode, AccountCommitSummary, AccountContributorSummary
+from ..interfaces import CommitSummary, NamedNode, ContributorSummary
 from ..mixins import \
-    NamedNodeResolverMixin, \
     CommitSummaryResolverMixin, \
     ContributorSummaryResolverMixin
-
-from ..interfaces import CommitSummary, NamedNode, ContributorSummary
-from .selectables import AccountNode, AccountCommitSummary, AccountContributorSummary
-from .account_organizations import AccountOrganizations
-from .account_repositories import AccountRepositories
-from .account_projects import AccountProjects
+from ..utils import AccessDeniedException
 from ..utils import resolve_instance
-
-from polaris.common import db
-from polaris.repos.db.model import Account as AccountModel
 
 
 class Account(
-    NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
     graphene.ObjectType
@@ -79,10 +71,7 @@ class Account(
         else:
             raise AccessDeniedException('Access denied for specified account')
 
-    @staticmethod
-    def load_instance(key, info, **kwargs):
-        with db.orm_session() as session:
-            return AccountModel.find_by_account_key(session, key)
+
 
     def get_node_query_params(self):
         return dict(account_key=self.key)

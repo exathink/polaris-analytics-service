@@ -9,11 +9,11 @@
 # Author: Krishna Kumar
 import graphene
 
-from .account_repositories_resolvers import *
 from ..mixins import NamedNodeCountResolverMixin
 from ..repository import Repository
 from ..utils import resolve_collection
-
+from .selectables import AccountRepositoriesNodes
+from ..repository import RepositoriesCommitSummary, RepositoriesContributorSummary
 
 class AccountRepositories(
     NamedNodeCountResolverMixin,
@@ -40,8 +40,8 @@ class AccountRepositories(
 
     InterfaceResolvers = {
         'NamedNode': AccountRepositoriesNodes,
-        'CommitSummary': AccountRepositoriesCommitSummaries,
-        'ContributorSummary': AccountRepositoriesContributorSummaries
+        'CommitSummary': RepositoriesCommitSummary,
+        'ContributorSummary': RepositoriesContributorSummary
     }
 
     @classmethod
@@ -63,3 +63,5 @@ class AccountRepositories(
             output_type=Repository,
             **kwargs
         )
+
+

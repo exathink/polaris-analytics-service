@@ -10,10 +10,7 @@
 
 import graphene
 
-from .organization_resolvers import OrganizationNode, OrganizationCommitSummary, OrganizationContributorSummary
-from ..interfaces import CommitSummary, ContributorSummary, NamedNode
 from ..utils import resolve_instance
-
 from .organization_projects import OrganizationProjects
 from .organization_repositories import OrganizationRepositories
 
@@ -24,6 +21,9 @@ from ..mixins import \
 
 from polaris.common import db
 from polaris.repos.db.model import Organization as OrganizationModel
+
+from ..interfaces import NamedNode, CommitSummary, ContributorSummary
+from .selectables import OrganizationNode, OrganizationsCommitSummary, OrganizationsContributorSummary
 
 
 class Organization(
@@ -56,8 +56,8 @@ class Organization(
 
     InterfaceResolvers = {
         'NamedNode': OrganizationNode,
-        'CommitSummary': OrganizationCommitSummary,
-        'ContributorSummary': OrganizationContributorSummary
+        'CommitSummary': OrganizationsCommitSummary,
+        'ContributorSummary': OrganizationsContributorSummary
     }
 
     @classmethod

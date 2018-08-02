@@ -13,23 +13,20 @@ import graphene
 from flask_security import current_user
 
 
-from polaris.analytics.service.graphql.utils import AccessDeniedException
-from polaris.analytics.service.graphql.mixins import \
+from ..utils import AccessDeniedException
+from ..mixins import \
     NamedNodeResolverMixin, \
     CommitSummaryResolverMixin, \
     ContributorSummaryResolverMixin
 
 from ..interfaces import CommitSummary, NamedNode, ContributorSummary
-from .account_resolvers import AccountNode, AccountCommitSummary, AccountContributorSummary
-
+from .selectables import AccountNode, AccountCommitSummary, AccountContributorSummary
 from .account_organizations import AccountOrganizations
 from .account_repositories import AccountRepositories
 from .account_projects import AccountProjects
-
-from ..utils import resolve_join, collect_join_resolvers, resolve_instance
+from ..utils import resolve_instance
 
 from polaris.common import db
-
 from polaris.repos.db.model import Account as AccountModel
 
 

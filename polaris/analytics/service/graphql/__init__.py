@@ -20,19 +20,12 @@ from .repository import Repository
 
 class Query(graphene.ObjectType):
     node = relay.Node.Field()
+
     account = Account.Field()
-
     organization = Organization.Field()
+    project = Project.Field()
+    repository = Repository.Field()
 
-    project = graphene.Field(
-        Project,
-        key=graphene.Argument(type=graphene.String, required=True)
-    )
-
-    repository = graphene.Field(
-        Repository,
-        key=graphene.Argument(type=graphene.String, required=True)
-    )
 
     def resolve_account(self, info, key,  **kwargs):
         return Account.resolve_field(info, key, **kwargs)

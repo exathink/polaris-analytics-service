@@ -8,28 +8,41 @@
 
 # Author: Krishna Kumar
 import graphene
-from ..repository import Repository
-from .organization_repositories_commit_summaries import OrganizationRepositoriesCommitSummaries
-from ..mixins import KeyIdResolverMixin
-from .organization_repositories_count import OrganizationRepositoriesCount
 
+from ..mixins import NamedNodeCountResolverMixin
+from ..repository import Repository
+from ..utils import resolve_collection
+from .selectables import OrganizationRepositoriesNodes
+from ..repository import RepositoriesCommitSummary, RepositoriesContributorSummary
 
 class OrganizationRepositories(
-    KeyIdResolverMixin,
+    NamedNodeCountResolverMixin,
     graphene.ObjectType
 ):
 
-    class Meta:
-        interfaces = (graphene.relay.Node, )
-
-    def __init__(self, key, *args, **kwargs):
+    def __init__(self, organization, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.key = key
+        self.organization = organization
 
     count = graphene.Field(graphene.Int)
-    commit_summaries = graphene.Field(graphene.List(Repository))
+    nodes = graphene.Field(
+        graphene.List(Repository),
+        interfaces=graphene.Argument(
+            graphene.List(graphene.Enum(
+                'OrganizationRepositoriesInterfaces', [
+                    ('CommitSummary', 'CommitSummary'),
+                    ('ContributorSummary', 'ContributorSummary')
+                ]
+            )),
+            required=False,
+        )
+    )
 
-
+    InterfaceResolvers = {
+        'NamedNode': OrganizationRepositoriesNodes,
+        'CommitSummary': RepositoriesCommitSummary,
+        'ContributorSummary': RepositoriesContributorSummary
+    }
 
     @classmethod
     def Field(cls):
@@ -37,10 +50,18 @@ class OrganizationRepositories(
 
     @classmethod
     def resolve(cls, organization, info, **kwargs):
-        return OrganizationRepositories(key=organization.key)
+        return OrganizationRepositories(organization=organization)
 
-    def resolve_count(self, info, **kwargs):
-        return OrganizationRepositoriesCount.resolve(self.key, info, **kwargs)
+    def get_nodes_query_params(self):
+        return dict(organization_key=self.organization.key)
 
-    def resolve_commit_summaries(self, info, **kwargs):
-        return OrganizationRepositoriesCommitSummaries.resolve(self.key, info, **kwargs)
+    def resolve_nodes(self, info, **kwargs):
+        return resolve_collection(
+            self.InterfaceResolvers,
+            resolver_context='organization_repositories',
+            params=self.get_nodes_query_params(),
+            output_type=Repository,
+            **kwargs
+        )
+
+

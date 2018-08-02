@@ -8,27 +8,41 @@
 
 # Author: Krishna Kumar
 import graphene
+
+from ..mixins import NamedNodeCountResolverMixin
 from ..repository import Repository
-from .project_repositories_commit_summaries import ProjectRepositoriesCommitSummaries
-from ..mixins import KeyIdResolverMixin
-from .project_repositories_count import ProjectRepositoriesCount
+from ..utils import resolve_collection
+from .selectables import ProjectRepositoriesNodes
+from ..repository import RepositoriesCommitSummary, RepositoriesContributorSummary
 
 class ProjectRepositories(
-    KeyIdResolverMixin,
+    NamedNodeCountResolverMixin,
     graphene.ObjectType
 ):
 
-    class Meta:
-        interfaces = (graphene.relay.Node, )
-
-    def __init__(self, key, *args, **kwargs):
+    def __init__(self, project, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.key = key
+        self.project = project
 
     count = graphene.Field(graphene.Int)
-    commit_summaries = graphene.Field(graphene.List(Repository))
+    nodes = graphene.Field(
+        graphene.List(Repository),
+        interfaces=graphene.Argument(
+            graphene.List(graphene.Enum(
+                'ProjectRepositoriesInterfaces', [
+                    ('CommitSummary', 'CommitSummary'),
+                    ('ContributorSummary', 'ContributorSummary')
+                ]
+            )),
+            required=False,
+        )
+    )
 
-
+    InterfaceResolvers = {
+        'NamedNode': ProjectRepositoriesNodes,
+        'CommitSummary': RepositoriesCommitSummary,
+        'ContributorSummary': RepositoriesContributorSummary
+    }
 
     @classmethod
     def Field(cls):
@@ -36,10 +50,18 @@ class ProjectRepositories(
 
     @classmethod
     def resolve(cls, project, info, **kwargs):
-        return ProjectRepositories(key=project.key)
+        return ProjectRepositories(project=project)
 
-    def resolve_count(self, info, **kwargs):
-        return ProjectRepositoriesCount.resolve(self.key, info, **kwargs)
+    def get_nodes_query_params(self):
+        return dict(project_key=self.project.key)
 
-    def resolve_commit_summaries(self, info, **kwargs):
-        return ProjectRepositoriesCommitSummaries.resolve(self.key, info, **kwargs)
+    def resolve_nodes(self, info, **kwargs):
+        return resolve_collection(
+            self.InterfaceResolvers,
+            resolver_context='project_repositories',
+            params=self.get_nodes_query_params(),
+            output_type=Repository,
+            **kwargs
+        )
+
+

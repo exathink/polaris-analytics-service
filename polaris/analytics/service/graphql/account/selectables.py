@@ -21,12 +21,12 @@
 from sqlalchemy import select, func, bindparam
 
 from polaris.analytics.service.graphql.interfaces import NamedNode
-from polaris.repos.db.model import organizations, accounts_organizations, accounts
+from polaris.repos.db.model import organizations, accounts_organizations, accounts, projects, repositories
 
 from polaris.repos.db.schema import repositories, contributor_aliases, repositories_contributor_aliases
 
 from ..interfaces import CommitSummary, ContributorSummary
-from ..query_utils import select_contributor_summary
+from ..selectables import select_contributor_summary
 
 
 class AccountNode:
@@ -40,6 +40,64 @@ class AccountNode:
             accounts.c.name
         ]).select_from(
             accounts
+        ).where(accounts.c.account_key == bindparam('account_key'))
+
+
+class AccountOrganizationsNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            organizations.c.id,
+            organizations.c.organization_key.label('key'),
+            organizations.c.name
+        ]).select_from(
+            organizations.join(
+                accounts_organizations
+            ).join(
+                accounts
+            )
+        ).where(accounts.c.account_key == bindparam('account_key'))
+
+
+class AccountProjectsNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            projects.c.id,
+            projects.c.project_key.label('key'),
+            projects.c.name
+        ]).select_from(
+            projects.join(
+                organizations
+            ).join(
+                accounts_organizations
+            ).join(
+                accounts
+            )
+        ).where(accounts.c.account_key == bindparam('account_key'))
+
+
+class AccountRepositoriesNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            repositories.c.id,
+            repositories.c.key,
+            repositories.c.name
+        ]).select_from(
+            repositories.join(
+                organizations
+            ).join(
+                accounts_organizations
+            ).join(
+                accounts
+            )
         ).where(accounts.c.account_key == bindparam('account_key'))
 
 

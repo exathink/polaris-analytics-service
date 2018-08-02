@@ -7,59 +7,61 @@
 # confidential.
 
 # Author: Krishna Kumar
+from sqlalchemy import select, func, bindparam
 
-
-from sqlalchemy import text, select, bindparam, func
 from ..interfaces import NamedNode, CommitSummary, ContributorSummary
-from polaris.repos.db.model import organizations, repositories
-from ..query_utils import select_contributor_summary
-from polaris.repos.db.schema import repositories_contributor_aliases, contributor_aliases
+from ..selectables import select_contributor_summary
 
+from polaris.repos.db.model import repositories
+from polaris.repos.db.schema import contributor_aliases, repositories_contributor_aliases
 
-class OrganizationNode:
+class RepositoryNode:
     interface = NamedNode
 
     @staticmethod
     def selectable(**kwargs):
         return select([
-            organizations.c.id,
-            organizations.c.organization_key.label('key'),
-            organizations.c.name,
-
+            repositories.c.id,
+            repositories.c.key,
+            repositories.c.name
         ]).select_from(
-            organizations
-        ).where(organizations.c.organization_key == bindparam('organization_key'))
+            repositories
+        ).where(
+            repositories.c.key == bindparam('repository_key')
+        )
 
 
-class OrganizationCommitSummary:
+class RepositoriesCommitSummary:
     interface = CommitSummary
 
     @staticmethod
-    def selectable(organization_node, **kwargs):
+    def selectable(repositories_nodes, **kwargs):
         return select([
-            organization_node.c.id,
+            repositories_nodes.c.id,
             func.sum(repositories.c.commit_count).label('commit_count'),
             func.min(repositories.c.earliest_commit).label('earliest_commit'),
             func.max(repositories.c.latest_commit).label('latest_commit')
+
         ]).select_from(
-            organization_node.outerjoin(
-                repositories
+            repositories_nodes.outerjoin(
+                repositories,
+                repositories_nodes.c.id == repositories.c.id
             )
-        ).group_by(organization_node.c.id)
+        ).group_by(repositories_nodes.c.id)
 
 
-class OrganizationContributorSummary:
+class RepositoriesContributorSummary:
     interface = ContributorSummary
 
     @staticmethod
-    def selectable(organization_node, **kwargs):
+    def selectable(repositories_nodes, **kwargs):
         contributor_nodes = select([
-            organization_node.c.id,
+            repositories_nodes.c.id,
             contributor_aliases.c.id.label('ca_id'),
             contributor_aliases.c.contributor_key
         ]).select_from(
-            organization_node.outerjoin(
-                repositories
+            repositories_nodes.outerjoin(
+                repositories, repositories_nodes.c.id == repositories.c.id
             ).outerjoin(
                 repositories_contributor_aliases, repositories.c.id == repositories_contributor_aliases.c.repository_id
             ).outerjoin(

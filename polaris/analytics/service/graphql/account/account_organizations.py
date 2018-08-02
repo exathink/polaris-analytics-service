@@ -9,10 +9,13 @@
 # Author: Krishna Kumar
 import graphene
 
-from .account_organizations_resolvers import *
+
+from ..organization import OrganizationsCommitSummary, \
+    OrganizationsContributorSummary
 from ..mixins import NamedNodeCountResolverMixin
 from ..organization import Organization
-from ..utils import collect_join_resolvers, resolve_join, resolve_collection
+from ..utils import resolve_collection
+from .selectables import AccountOrganizationsNodes
 
 
 class AccountOrganizations(
@@ -42,8 +45,8 @@ class AccountOrganizations(
 
     InterfaceResolvers = {
         'NamedNode': AccountOrganizationsNodes,
-        'CommitSummary': AccountOrganizationsCommitSummaries,
-        'ContributorSummary': AccountOrganizationsContributorSummaries
+        'CommitSummary': OrganizationsCommitSummary,
+        'ContributorSummary': OrganizationsContributorSummary
     }
 
     @classmethod
@@ -65,8 +68,5 @@ class AccountOrganizations(
             output_type=Organization,
             **kwargs
         )
-
-
-
 
 

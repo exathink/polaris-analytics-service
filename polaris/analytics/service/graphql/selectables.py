@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 from sqlalchemy import *
-
+from .interfaces import CommitSummary
 
 def select_unique_contributors(contributor_nodes):
     return select([
@@ -50,3 +50,23 @@ def select_contributor_summary(contributor_nodes):
     ]).select_from(
         unique_contributors.outerjoin(unassigned_aliases, unique_contributors.c.id == unassigned_aliases.c.id)
     )
+
+
+class ProjectsCommitSummariesSelectable:
+    interface = CommitSummary
+
+    @staticmethod
+    def selectable(organization_projects_nodes, **kwargs):
+        return select([
+            organization_projects_nodes.c.id,
+            func.sum(repositories.c.commit_count).label('commit_count'),
+            func.min(repositories.c.earliest_commit).label('earliest_commit'),
+            func.max(repositories.c.latest_commit).label('latest_commit')
+
+        ]).select_from(
+            organization_projects_nodes.outerjoin(
+                projects_repositories, organization_projects_nodes.c.id == projects_repositories.c.project_id
+            ).outerjoin(
+                repositories, projects_repositories.c.repository_id == repositories.c.id
+            )
+        ).group_by(organization_projects_nodes.c.id)

@@ -7,19 +7,15 @@
 # confidential.
 
 # Author: Krishna Kumar
-
 from sqlalchemy import select, func, bindparam
 
+from ..interfaces import NamedNode, CommitSummary, ContributorSummary
+from ..selectables import select_contributor_summary
 
-from polaris.repos.db.model import organizations, accounts_organizations, accounts, projects, projects_repositories
-
+from polaris.repos.db.model import projects, projects_repositories
 from polaris.repos.db.schema import repositories, contributor_aliases, repositories_contributor_aliases
 
-from ..interfaces import NamedNode, CommitSummary, ContributorSummary
-from ..query_utils import select_contributor_summary
-
-
-class AccountProjectsNodes:
+class ProjectNode:
     interface = NamedNode
 
     @staticmethod
@@ -29,48 +25,58 @@ class AccountProjectsNodes:
             projects.c.project_key.label('key'),
             projects.c.name
         ]).select_from(
+            projects
+        ).where(projects.c.project_key == bindparam('project_key'))
+
+class ProjectRepositoriesNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            repositories.c.id,
+            repositories.c.key,
+            repositories.c.name
+        ]).select_from(
             projects.join(
-                organizations
+                projects_repositories
             ).join(
-                accounts_organizations
-            ).join(
-                accounts
+                repositories
             )
-        ).where(accounts.c.account_key == bindparam('account_key'))
+        ).where(projects.c.project_key == bindparam('project_key'))
 
-
-class AccountProjectsCommitSummaries:
+class ProjectsCommitSummary:
     interface = CommitSummary
 
     @staticmethod
-    def selectable(account_projects_nodes, **kwargs):
+    def selectable(project_nodes, **kwargs):
         return select([
-            account_projects_nodes.c.id,
+            project_nodes.c.id,
             func.sum(repositories.c.commit_count).label('commit_count'),
             func.min(repositories.c.earliest_commit).label('earliest_commit'),
             func.max(repositories.c.latest_commit).label('latest_commit')
 
         ]).select_from(
-            account_projects_nodes.outerjoin(
-                projects_repositories, account_projects_nodes.c.id == projects_repositories.c.project_id
+            project_nodes.outerjoin(
+                projects_repositories, project_nodes.c.id == projects_repositories.c.project_id
             ).outerjoin(
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             )
-        ).group_by(account_projects_nodes.c.id)
+        ).group_by(project_nodes.c.id)
 
 
-class AccountProjectsContributorSummaries:
+class ProjectsContributorSummary:
     interface = ContributorSummary
 
     @staticmethod
-    def selectable(account_projects_nodes, **kwargs):
+    def selectable(project_nodes, **kwargs):
         contributor_nodes = select([
-            account_projects_nodes.c.id,
+            project_nodes.c.id,
             contributor_aliases.c.id.label('ca_id'),
             contributor_aliases.c.contributor_key
         ]).select_from(
-            account_projects_nodes.outerjoin(
-                projects_repositories, projects_repositories.c.project_id == account_projects_nodes.c.id
+            project_nodes.outerjoin(
+                projects_repositories, projects_repositories.c.project_id == project_nodes.c.id
             ).outerjoin(
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             ).outerjoin(
@@ -83,4 +89,3 @@ class AccountProjectsContributorSummaries:
         ).cte('contributor_nodes')
 
         return select_contributor_summary(contributor_nodes)
-

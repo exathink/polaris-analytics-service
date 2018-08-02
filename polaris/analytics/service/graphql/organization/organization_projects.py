@@ -8,11 +8,12 @@
 
 # Author: Krishna Kumar
 import graphene
-from ..project import Project
+
+from .selectables import OrganizationProjectsNodes
+from ..project import Project, ProjectsCommitSummary, ProjectsContributorSummary
+
 from ..mixins import NamedNodeCountResolverMixin
 from ..utils import resolve_collection
-from .organization_projects_resolvers import *
-
 
 class OrganizationProjects(
     NamedNodeCountResolverMixin,
@@ -39,8 +40,8 @@ class OrganizationProjects(
 
     InterfaceResolvers = {
         'NamedNode': OrganizationProjectsNodes,
-        'CommitSummary': OrganizationProjectsCommitSummaries,
-        'ContributorSummary': OrganizationProjectsContributorSummaries
+        'CommitSummary': ProjectsCommitSummary,
+        'ContributorSummary': ProjectsContributorSummary
     }
 
     @classmethod
@@ -62,3 +63,5 @@ class OrganizationProjects(
             output_type=Project,
             **kwargs
         )
+
+

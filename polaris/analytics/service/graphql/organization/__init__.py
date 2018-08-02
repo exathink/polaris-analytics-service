@@ -10,19 +10,21 @@
 
 import graphene
 
-from .organization_commit_summary import OrganizationCommitSummary
+from .organization_resolvers import OrganizationNode, OrganizationCommitSummary, OrganizationContributorSummary
 from ..interfaces import CommitSummary, ContributorSummary, NamedNode
+from ..utils import resolve_instance
+
 from .organization_projects import OrganizationProjects
 from .organization_repositories import OrganizationRepositories
 
-from polaris.analytics.service.graphql.mixins import \
-    KeyIdResolverMixin, \
+from ..mixins import \
     NamedNodeResolverMixin, \
     CommitSummaryResolverMixin, \
     ContributorSummaryResolverMixin
 
 from polaris.common import db
 from polaris.repos.db.model import Organization as OrganizationModel
+
 
 class Organization(
     NamedNodeResolverMixin,
@@ -36,23 +38,49 @@ class Organization(
     projects = graphene.Field(OrganizationProjects)
     repositories = graphene.Field(OrganizationRepositories)
 
+    @classmethod
+    def Field(cls):
+        return graphene.Field(
+            cls,
+            key=graphene.Argument(type=graphene.String, required=True),
+            interfaces=graphene.Argument(
+                graphene.List(graphene.Enum(
+                    'OrganizationInterfaces', [
+                        ('CommitSummary', 'CommitSummary'),
+                        ('ContributorSummary', 'ContributorSummary')
+                    ]
+                )),
+                required=False,
+            )
+        )
 
+    InterfaceResolvers = {
+        'NamedNode': OrganizationNode,
+        'CommitSummary': OrganizationCommitSummary,
+        'ContributorSummary': OrganizationContributorSummary
+    }
 
     @classmethod
     def resolve_field(cls, parent, info, organization_key, **kwargs):
-        return Organization(key=organization_key)
+        return resolve_instance(
+            cls.InterfaceResolvers,
+            resolver_context='organization',
+            params=dict(organization_key=organization_key),
+            output_type=cls,
+            **kwargs
+        )
 
     @staticmethod
     def load_instance(key, info, **kwargs):
         with db.orm_session() as session:
             return OrganizationModel.find_by_organization_key(session, key)
 
+    def get_node_query_params(self):
+        return dict(organization_key=self.key)
+
     def resolve_projects(self, info, **kwargs):
         return OrganizationProjects.resolve(self, info, **kwargs)
 
     def resolve_repositories(self, info, **kwargs):
         return OrganizationRepositories.resolve(self, info, **kwargs)
-
-    def resolve_commit_summary(self, info, **kwargs):
-            return OrganizationCommitSummary.resolve(self.key, info, **kwargs)
 

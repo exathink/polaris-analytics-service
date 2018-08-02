@@ -49,7 +49,7 @@ class Account(
     @classmethod
     def Field(cls):
         return graphene.Field(
-            Account,
+            cls,
             key=graphene.Argument(type=graphene.String, required=True),
             interfaces=graphene.Argument(
                 graphene.List(graphene.Enum(

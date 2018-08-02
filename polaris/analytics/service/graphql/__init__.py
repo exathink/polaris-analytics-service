@@ -22,10 +22,8 @@ class Query(graphene.ObjectType):
     node = relay.Node.Field()
     account = Account.Field()
 
-    organization = graphene.Field(
-        Organization,
-        key=graphene.Argument(type=graphene.String, required=True)
-    )
+    organization = Organization.Field()
+
     project = graphene.Field(
         Project,
         key=graphene.Argument(type=graphene.String, required=True)

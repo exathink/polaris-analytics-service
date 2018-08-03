@@ -71,10 +71,7 @@ class Organization(
 
     @classmethod
     def resolve_field(cls, parent, info, organization_key, **kwargs):
-        return cls.resolve_instance(params=dict(organization_key=organization_key), **kwargs)
-
-    def get_node_query_params(self):
-        return dict(organization_key=self.key)
+        return cls.resolve_instance(key=organization_key, **kwargs)
 
     def resolve_projects(self, info, **kwargs):
         return Project.resolve_connection(

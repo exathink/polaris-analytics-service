@@ -40,7 +40,7 @@ class AccountNode:
             accounts.c.name
         ]).select_from(
             accounts
-        ).where(accounts.c.account_key == bindparam('account_key'))
+        ).where(accounts.c.account_key == bindparam('key'))
 
 
 class AccountOrganizationsNodes:
@@ -58,7 +58,7 @@ class AccountOrganizationsNodes:
             ).join(
                 accounts
             )
-        ).where(accounts.c.account_key == bindparam('account_key'))
+        ).where(accounts.c.account_key == bindparam('key'))
 
 
 class AccountProjectsNodes:
@@ -78,7 +78,7 @@ class AccountProjectsNodes:
             ).join(
                 accounts
             )
-        ).where(accounts.c.account_key == bindparam('account_key'))
+        ).where(accounts.c.account_key == bindparam('key'))
 
 
 class AccountRepositoriesNodes:
@@ -98,7 +98,7 @@ class AccountRepositoriesNodes:
             ).join(
                 accounts
             )
-        ).where(accounts.c.account_key == bindparam('account_key'))
+        ).where(accounts.c.account_key == bindparam('key'))
 
 
 class AccountCommitSummary:

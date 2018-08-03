@@ -68,10 +68,7 @@ class Project(
 
     @classmethod
     def resolve_field(cls, parent, info, project_key, **kwargs):
-        return cls.resolve_instance(params=dict(project_key=project_key), **kwargs)
-
-    def get_node_query_params(self):
-        return dict(project_key=self.key)
+        return cls.resolve_instance(key=project_key, **kwargs)
 
     def resolve_repositories(self, info, **kwargs):
         return Repository.resolve_connection(

@@ -10,7 +10,7 @@
 
 from polaris.common import db
 from .utils import count, resolve_instance, NodeResolverQuery
-from collections import namedtuple
+
 
 class KeyIdResolverMixin:
     def __init__(self, key, *args, **kwargs):
@@ -20,17 +20,23 @@ class KeyIdResolverMixin:
     def resolve_id(self, info, **kwargs):
         return self.key
 
+
+
 class InterfaceResolverMixin(KeyIdResolverMixin):
     NamedNodeResolver=None
     InterfaceResolvers = None
 
     @classmethod
-    def resolve_instance(cls, params, **kwargs):
+    def get_node(cls, info, id):
+        return cls.resolve_instance(id)
+
+    @classmethod
+    def resolve_instance(cls, key, **kwargs):
         return resolve_instance(
             cls.NamedNodeResolver,
             cls.InterfaceResolvers,
             resolver_context=cls.__name__,
-            params=params,
+            params=dict(key=key),
             output_type=cls,
             **kwargs
         )
@@ -46,12 +52,13 @@ class InterfaceResolverMixin(KeyIdResolverMixin):
         )
 
     def get_node_query_params(self, **kwargs):
-        raise NotImplemented()
+        return dict(key=self.key)
 
 class NamedNodeResolverMixin(InterfaceResolverMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = kwargs.get('name', None)
+
 
     def resolve_name(self, info, **kwargs):
         return self.name

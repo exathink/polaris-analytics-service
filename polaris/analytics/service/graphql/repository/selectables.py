@@ -27,7 +27,7 @@ class RepositoryNode:
         ]).select_from(
             repositories
         ).where(
-            repositories.c.key == bindparam('repository_key')
+            repositories.c.key == bindparam('key')
         )
 
 

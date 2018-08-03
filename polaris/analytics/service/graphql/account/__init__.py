@@ -65,12 +65,10 @@ class Account(
     @classmethod
     def resolve_field(cls, info, key, **kwargs):
         if key == str(current_user.account_key):
-            return cls.resolve_instance(params=dict(account_key=key), **kwargs)
+            return cls.resolve_instance(key, **kwargs)
         else:
             raise AccessDeniedException('Access denied for specified account')
 
-    def get_node_query_params(self):
-        return dict(account_key=self.key)
 
     def resolve_organizations(self, info, **kwargs):
         return Organization.resolve_connection(

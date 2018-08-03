@@ -12,6 +12,7 @@ __version__ = '0.0.1'
 import graphene
 from graphene import relay
 
+from .interfaces import NamedNode
 from .account import Account
 from .organization import Organization
 from .project import Project
@@ -19,7 +20,7 @@ from .repository import Repository
 
 
 class Query(graphene.ObjectType):
-    node = relay.Node.Field()
+    node = NamedNode.Field()
 
     account = Account.Field()
     organization = Organization.Field()

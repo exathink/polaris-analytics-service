@@ -27,7 +27,7 @@ class OrganizationNode:
 
         ]).select_from(
             organizations
-        ).where(organizations.c.organization_key == bindparam('organization_key'))
+        ).where(organizations.c.organization_key == bindparam('key'))
 
 class OrganizationProjectsNodes:
     interface = NamedNode
@@ -42,7 +42,7 @@ class OrganizationProjectsNodes:
             projects.join(
                 organizations
             )
-        ).where(organizations.c.organization_key == bindparam('organization_key'))
+        ).where(organizations.c.organization_key == bindparam('key'))
 
 class OrganizationRepositoriesNodes:
     interface = NamedNode
@@ -57,7 +57,7 @@ class OrganizationRepositoriesNodes:
             repositories.join(
                 organizations
             )
-        ).where(organizations.c.organization_key == bindparam('organization_key'))
+        ).where(organizations.c.organization_key == bindparam('key'))
 
 class OrganizationsCommitSummary:
     interface = CommitSummary

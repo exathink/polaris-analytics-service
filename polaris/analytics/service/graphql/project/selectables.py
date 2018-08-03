@@ -26,7 +26,7 @@ class ProjectNode:
             projects.c.name
         ]).select_from(
             projects
-        ).where(projects.c.project_key == bindparam('project_key'))
+        ).where(projects.c.project_key == bindparam('key'))
 
 class ProjectRepositoriesNodes:
     interface = NamedNode
@@ -43,7 +43,7 @@ class ProjectRepositoriesNodes:
             ).join(
                 repositories
             )
-        ).where(projects.c.project_key == bindparam('project_key'))
+        ).where(projects.c.project_key == bindparam('key'))
 
 class ProjectsCommitSummary:
     interface = CommitSummary

@@ -62,10 +62,8 @@ class Repository(
 
     @classmethod
     def resolve_field(cls, parent, info, repository_key, **kwargs):
-        return cls.resolve_instance(params=dict(repository_key=repository_key), **kwargs)
+        return cls.resolve_instance(repository_key, **kwargs)
 
-    def get_node_query_params(self):
-        return dict(repository_key=self.key)
 
 
 class Repositories(CountableConnection):

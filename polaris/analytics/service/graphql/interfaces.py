@@ -17,12 +17,12 @@ class NamedNode(Node):
     name = graphene.String(required=True)
 
 
-class CommitSummary(Node):
+class CommitSummary(graphene.Interface):
     earliest_commit = graphene.DateTime(required=True)
     latest_commit = graphene.DateTime(required=True)
     commit_count = graphene.Int(required=True)
 
-class ContributorSummary(Node):
+class ContributorSummary(graphene.Interface):
     unassigned_alias_count = graphene.Int(required=True)
     unique_contributor_count = graphene.Int(required=True)
     contributor_count = graphene.Int(required=True)

@@ -10,17 +10,20 @@
 
 import graphene
 
-from .organization_projects import OrganizationProjects
-from .organization_repositories import OrganizationRepositories
-from .selectables import OrganizationNode, OrganizationsCommitSummary, OrganizationsContributorSummary
 from ..interfaces import NamedNode, CommitSummary, ContributorSummary
-from ..mixins import \
-    CommitSummaryResolverMixin, \
-    ContributorSummaryResolverMixin
-from ..utils import resolve_instance
+from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
+
+from ..project import Project
+from ..repository import Repository
+
+from .selectables import OrganizationNode, OrganizationsCommitSummary, \
+    OrganizationsContributorSummary, OrganizationProjectsNodes, OrganizationRepositoriesNodes
+
+from polaris.graphql.connection_utils import QueryConnectionField
 
 
 class Organization(
+    NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
     graphene.ObjectType
@@ -28,8 +31,21 @@ class Organization(
     class Meta:
         interfaces = (NamedNode, CommitSummary, ContributorSummary)
 
-    projects = graphene.Field(OrganizationProjects)
-    repositories = graphene.Field(OrganizationRepositories)
+    NamedNodeResolver = OrganizationNode
+    InterfaceResolvers = {
+        'CommitSummary': OrganizationsCommitSummary,
+        'ContributorSummary': OrganizationsContributorSummary
+    }
+    InterfaceEnum = graphene.Enum(
+        'OrganizationInterfaces', [
+            ('CommitSummary', 'CommitSummary'),
+            ('ContributorSummary', 'ContributorSummary')
+        ]
+    )
+
+    # Child Fields
+    projects = Project.ConnectionField()
+    repositories = Repository.ConnectionField()
 
     @classmethod
     def Field(cls):
@@ -37,38 +53,46 @@ class Organization(
             cls,
             key=graphene.Argument(type=graphene.String, required=True),
             interfaces=graphene.Argument(
-                graphene.List(graphene.Enum(
-                    'OrganizationInterfaces', [
-                        ('CommitSummary', 'CommitSummary'),
-                        ('ContributorSummary', 'ContributorSummary')
-                    ]
-                )),
+                graphene.List(cls.InterfaceEnum),
                 required=False,
             )
         )
 
-    InterfaceResolvers = {
-        'NamedNode': OrganizationNode,
-        'CommitSummary': OrganizationsCommitSummary,
-        'ContributorSummary': OrganizationsContributorSummary
-    }
+    @classmethod
+    def ConnectionField(cls, **kwargs):
+        return QueryConnectionField(
+            Organizations,
+            interfaces=graphene.Argument(
+                graphene.List(cls.InterfaceEnum),
+                required=False,
+            ),
+            **kwargs
+        )
 
     @classmethod
     def resolve_field(cls, parent, info, organization_key, **kwargs):
-        return resolve_instance(
-            cls.InterfaceResolvers,
-            resolver_context='organization',
-            params=dict(organization_key=organization_key),
-            output_type=cls,
-            **kwargs
-        )
+        return cls.resolve_instance(params=dict(organization_key=organization_key), **kwargs)
 
     def get_node_query_params(self):
         return dict(organization_key=self.key)
 
     def resolve_projects(self, info, **kwargs):
-        return OrganizationProjects.resolve(self, info, **kwargs)
+        return Project.resolve_connection(
+            'organization_projects',
+            OrganizationProjectsNodes,
+            self.get_node_query_params(),
+            **kwargs
+        )
 
     def resolve_repositories(self, info, **kwargs):
-        return OrganizationRepositories.resolve(self, info, **kwargs)
+        return Repository.resolve_connection(
+            'organization_repositories',
+            OrganizationRepositoriesNodes,
+            self.get_node_query_params(),
+            **kwargs
+        )
 
+
+class Organizations(graphene.relay.Connection):
+    class Meta:
+        node = Organization

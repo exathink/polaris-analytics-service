@@ -11,6 +11,7 @@
 from sqlalchemy import text, select, join, func
 import inspect
 from polaris.common import db
+from polaris.graphql.connection_utils import ConnectionQuery
 
 def properties(clazz):
     return [
@@ -81,44 +82,38 @@ def resolve_remote_join(queries, output_type, join_field='id', params=None):
         return [output_type(**{key:value for key, value in row.items()}) for row in result]
 
 
-def cte_join(resolvers, resolver_context, join_field='id', **kwargs):
-    if len(resolvers) > 0:
-        named_nodes_resolver = resolvers[0]
-        named_nodes_interface, named_nodes_selectable = (named_nodes_resolver.interface, named_nodes_resolver.selectable)
-        named_nodes_cte =  named_nodes_selectable(**kwargs).cte(resolver_context)
-        subqueries = [(named_nodes_interface, named_nodes_cte.alias(named_nodes_interface.__name__))] + [
-            (resolver.interface, resolver.selectable(named_nodes_cte, **kwargs).alias(resolver.interface.__name__))
-            for resolver in resolvers[1:]
-        ]
+def cte_join(named_nodes_resolver, subquery_resolvers, resolver_context, join_field='id', **kwargs):
 
-        seen_columns = set()
-        output_columns = []
-        for interface, selectable in subqueries:
-            for field in properties(interface):
-                if field not in seen_columns:
-                    seen_columns.add(field)
-                    output_columns.append(selectable.c[field])
+    named_nodes_interface, named_nodes_selectable = (named_nodes_resolver.interface, named_nodes_resolver.selectable)
+    named_nodes_cte =  named_nodes_selectable(**kwargs).cte(resolver_context)
 
+    subqueries = [(named_nodes_interface, named_nodes_cte.alias(named_nodes_interface.__name__))] + [
+        (resolver.interface, resolver.selectable(named_nodes_cte, **kwargs).alias(resolver.interface.__name__))
+        for resolver in subquery_resolvers
+    ]
 
-        _, named_node_alias = subqueries[0]
-        joined = named_node_alias
-        for _, selectable in subqueries[1:]:
-            joined = joined.outerjoin(selectable, named_node_alias.c[join_field] == selectable.c[join_field])
-
-        query = select(output_columns).select_from(joined)
-        # Select the output columns from the resulting join
-        return query
+    seen_columns = set()
+    output_columns = []
+    for interface, selectable in subqueries:
+        for field in properties(interface):
+            if field not in seen_columns:
+                seen_columns.add(field)
+                output_columns.append(selectable.c[field])
 
 
-def resolve_join(resolvers, resolver_context, params, output_type=None, join_type='cte', join_field='id',  **kwargs):
+    _, named_node_alias = subqueries[0]
+    joined = named_node_alias
+    for _, selectable in subqueries[1:]:
+        joined = joined.outerjoin(selectable, named_node_alias.c[join_field] == selectable.c[join_field])
+
+    query = select(output_columns).select_from(joined)
+    # Select the output columns from the resulting join
+    return query
+
+
+def resolve_join(named_node_resolver, interface_resolvers, resolver_context, params, output_type=None, join_field='id',  **kwargs):
     with db.create_session() as session:
-        if join_type == 'cte':
-            query = cte_join(resolvers, resolver_context, join_field, **kwargs)
-        elif join_type == 'text':
-            query = text_join(resolvers, resolver_context, join_field, **kwargs)
-        else:
-            raise NotImplemented(f'Unknown join_type: {join_type}')
-
+        query = cte_join(named_node_resolver, interface_resolvers, resolver_context, join_field, **kwargs)
         result = session.execute(query, params).fetchall()
         return [
             output_type(**{key:value for key, value in row.items()})
@@ -127,24 +122,55 @@ def resolve_join(resolvers, resolver_context, params, output_type=None, join_typ
 
 
 def collect_join_resolvers(interface_resolvers, **kwargs):
-    interfaces = ['NamedNode'] + [interface
-                                  for interface in set(kwargs.get('interfaces', [])) | set(kwargs.get('interface', []))]
+    interfaces = [interface
+                   for interface in set(kwargs.get('interfaces', [])) | set(kwargs.get('interface', []))]
     return [interface_resolvers.get(interface) for interface in interfaces]
 
 
-def resolve_collection(interface_resolvers, resolver_context, params, **kwargs):
+def resolve_collection(named_node_resolver, interface_resolvers, resolver_context, params, **kwargs):
     resolvers = collect_join_resolvers(interface_resolvers, **kwargs)
-    return resolve_join(resolvers, resolver_context, params, **kwargs)
+    return resolve_join(named_node_resolver, resolvers, resolver_context, params, **kwargs)
 
 
-def resolve_instance(interface_resolvers, resolver_context, params, **kwargs):
-    resolved = resolve_collection(interface_resolvers, resolver_context, params, **kwargs)
+def resolve_instance(named_node_resolver, interface_resolvers, resolver_context, params, **kwargs):
+    resolved = resolve_collection(named_node_resolver, interface_resolvers, resolver_context, params, **kwargs)
     return resolved[0] if len(resolved) == 1 else None
 
 
 def count(selectable):
     alias = selectable.alias()
-    return select([func.count(alias.c.id)]).select_from(alias)
+    return select([func.count(alias.c.key)]).select_from(alias)
+
+
+
+
+class NodeResolverQuery(ConnectionQuery):
+
+    def __init__(self, named_node_resolver, interface_resolvers, resolver_context, params, output_type=None, **kwargs):
+        super().__init__(**kwargs)
+        self.query = cte_join(named_node_resolver, collect_join_resolvers(interface_resolvers,**kwargs), resolver_context, **kwargs)
+        self.output_type = output_type
+        self.params = params
+
+    def count(self):
+        with db.create_session() as session:
+            return session.execute(count(self.query), self.params).scalar()
+
+    def execute(self):
+        base_query = self.query
+        if self.limit:
+            base_query = base_query.limit(self.limit)
+
+        if self.offset:
+            base_query = base_query.offset(self.offset)
+
+
+        with db.create_session() as session:
+            result = session.execute(base_query, self.params).fetchall()
+            return [
+                self.output_type(**{key: value for key, value in row.items()})
+                for row in result
+            ] if self.output_type else result
 
 
 

@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 from polaris.common import db
-from .utils import count, resolve_instance
+from .utils import count, resolve_instance, NodeResolverQuery
 from collections import namedtuple
 
 class KeyIdResolverMixin:
@@ -20,37 +20,41 @@ class KeyIdResolverMixin:
     def resolve_id(self, info, **kwargs):
         return self.key
 
-class InstanceResolverMixin(KeyIdResolverMixin):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.instance = None
+class InterfaceResolverMixin(KeyIdResolverMixin):
+    NamedNodeResolver=None
+    InterfaceResolvers = None
 
-    @staticmethod
-    def load_instance(key, info, **kwargs):
+    @classmethod
+    def resolve_instance(cls, params, **kwargs):
+        return resolve_instance(
+            cls.NamedNodeResolver,
+            cls.InterfaceResolvers,
+            resolver_context=cls.__name__,
+            params=params,
+            output_type=cls,
+            **kwargs
+        )
+
+    @classmethod
+    def resolve_connection(cls, parent_relationship, named_node_resolver, params, **kwargs):
+        return NodeResolverQuery(
+            named_node_resolver=named_node_resolver,
+            interface_resolvers=cls.InterfaceResolvers,
+            resolver_context=parent_relationship,
+            params=params,
+            output_type=cls
+        )
+
+    def get_node_query_params(self, **kwargs):
         raise NotImplemented()
 
-    def get_instance(self, info, **kwargs):
-        if self.instance is None:
-            self.instance = self.load_instance(self.key, info, **kwargs)
-        return self.instance
-
-
-class NamedNodeResolverMixin(InstanceResolverMixin):
+class NamedNodeResolverMixin(InterfaceResolverMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = kwargs.get('name', None)
 
     def resolve_name(self, info, **kwargs):
-        if self.name is None:
-            self.name = self.get_instance(info, **kwargs).name
-
         return self.name
-
-class InterfaceResolverMixin:
-    InterfaceResolvers = None
-
-    def get_node_query_params(self):
-        raise NotImplemented()
 
 class CommitSummaryResolverMixin(InterfaceResolverMixin):
     def __init__(self, *args, **kwargs):
@@ -63,6 +67,7 @@ class CommitSummaryResolverMixin(InterfaceResolverMixin):
     def resolve_commit_summary(self, info, **kwargs):
         if self.InterfaceResolvers:
             return resolve_instance(
+                self.NamedNodeResolver,
                 self.InterfaceResolvers,
                 type(self).__name__,
                 params=self.get_node_query_params(),
@@ -100,6 +105,7 @@ class ContributorSummaryResolverMixin(InterfaceResolverMixin):
     def resolve_contributor_summary(self, info, **kwargs):
         if self.InterfaceResolvers:
             return resolve_instance(
+                self.NamedNodeResolver,
                 self.InterfaceResolvers,
                 type(self).__name__,
                 params=self.get_node_query_params(),

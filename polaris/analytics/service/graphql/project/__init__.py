@@ -9,21 +9,19 @@
 # Author: Krishna Kumar
 
 import graphene
-from .project_repositories import ProjectRepositories
-from .project_commit_summary import ProjectCommitSummary
-from ..utils import resolve_instance
 
 from ..interfaces import NamedNode, CommitSummary, ContributorSummary
-from polaris.analytics.service.graphql.mixins import \
-    CommitSummaryResolverMixin, \
-    ContributorSummaryResolverMixin
+from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
 
-from polaris.common import db
-from polaris.repos.db.model import Project as ProjectModel
-from .selectables import ProjectNode, ProjectsContributorSummary, ProjectsCommitSummary
+from ..repository import Repository
+from .selectables import ProjectNode, ProjectsContributorSummary, ProjectsCommitSummary, \
+    ProjectRepositoriesNodes
+
+from polaris.graphql.connection_utils import QueryConnectionField
 
 
 class Project(
+    NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
     graphene.ObjectType
@@ -31,7 +29,20 @@ class Project(
     class Meta:
         interfaces = (NamedNode, CommitSummary, ContributorSummary)
 
-    repositories = graphene.Field(ProjectRepositories)
+    NamedNodeResolver = ProjectNode
+    InterfaceResolvers = {
+        'CommitSummary': ProjectsCommitSummary,
+        'ContributorSummary': ProjectsContributorSummary
+    }
+    InterfaceEnum = graphene.Enum(
+        'ProjectInterfaces', [
+            ('CommitSummary', 'CommitSummary'),
+            ('ContributorSummary', 'ContributorSummary')
+        ]
+    )
+
+    # Child Fields
+    repositories = Repository.ConnectionField()
 
     @classmethod
     def Field(cls):
@@ -39,37 +50,38 @@ class Project(
             cls,
             key=graphene.Argument(type=graphene.String, required=True),
             interfaces=graphene.Argument(
-                graphene.List(graphene.Enum(
-                    'ProjectInterfaces', [
-                        ('CommitSummary', 'CommitSummary'),
-                        ('ContributorSummary', 'ContributorSummary')
-                    ]
-                )),
+                graphene.List(cls.InterfaceEnum),
                 required=False,
             )
         )
 
-    InterfaceResolvers = {
-        'NamedNode': ProjectNode,
-        'CommitSummary': ProjectsCommitSummary,
-        'ContributorSummary': ProjectsContributorSummary
-    }
+    @classmethod
+    def ConnectionField(cls, **kwargs):
+        return QueryConnectionField(
+            Projects,
+            interfaces=graphene.Argument(
+                graphene.List(cls.InterfaceEnum),
+                required=False,
+            ),
+            **kwargs
+        )
 
     @classmethod
     def resolve_field(cls, parent, info, project_key, **kwargs):
-        return resolve_instance(
-            cls.InterfaceResolvers,
-            resolver_context='project',
-            params=dict(project_key=project_key),
-            output_type=cls,
-            **kwargs
-        )
+        return cls.resolve_instance(params=dict(project_key=project_key), **kwargs)
 
     def get_node_query_params(self):
         return dict(project_key=self.key)
 
     def resolve_repositories(self, info, **kwargs):
-        return ProjectRepositories.resolve(self, info, **kwargs)
+        return Repository.resolve_connection(
+            'project_repositories',
+            ProjectRepositoriesNodes,
+            self.get_node_query_params(),
+            **kwargs
+        )
 
 
-
+class Projects(graphene.relay.Connection):
+    class Meta:
+        node = Project

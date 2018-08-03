@@ -11,19 +11,21 @@
 import graphene
 from flask_security import current_user
 
-from .account_organizations import AccountOrganizations
-from .account_projects import AccountProjects
-from .account_repositories import AccountRepositories
-from .selectables import AccountNode, AccountCommitSummary, AccountContributorSummary
 from ..interfaces import CommitSummary, NamedNode, ContributorSummary
-from ..mixins import \
-    CommitSummaryResolverMixin, \
-    ContributorSummaryResolverMixin
+from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
+
+from ..organization import Organization
+from ..project import Project
+from ..repository import Repository
+
+from .selectables import AccountNode, AccountCommitSummary, AccountContributorSummary, AccountOrganizationsNodes, \
+    AccountProjectsNodes, AccountRepositoriesNodes
+
 from ..utils import AccessDeniedException
-from ..utils import resolve_instance
 
 
 class Account(
+    NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
     graphene.ObjectType
@@ -31,9 +33,23 @@ class Account(
     class Meta:
         interfaces = (NamedNode, CommitSummary, ContributorSummary)
 
-    organizations = AccountOrganizations.Field()
-    projects = graphene.Field(AccountProjects)
-    repositories = graphene.Field(AccountRepositories)
+    NamedNodeResolver = AccountNode
+    InterfaceResolvers = {
+        'CommitSummary': AccountCommitSummary,
+        'ContributorSummary': AccountContributorSummary
+    }
+    InterfaceEnum = graphene.Enum(
+        'AccountInterfaces', [
+            ('CommitSummary', 'CommitSummary'),
+            ('ContributorSummary', 'ContributorSummary')
+        ]
+    )
+
+    # Child fields
+    organizations = Organization.ConnectionField()
+
+    projects = Project.ConnectionField()
+    repositories = Repository.ConnectionField()
 
     @classmethod
     def Field(cls):
@@ -41,46 +57,41 @@ class Account(
             cls,
             key=graphene.Argument(type=graphene.String, required=True),
             interfaces=graphene.Argument(
-                graphene.List(graphene.Enum(
-                    'AccountInterfaces', [
-                        ('CommitSummary', 'CommitSummary'),
-                        ('ContributorSummary', 'ContributorSummary')
-                    ]
-                )),
+                graphene.List(cls.InterfaceEnum),
                 required=False,
             )
         )
 
-    InterfaceResolvers = {
-        'NamedNode': AccountNode,
-        'CommitSummary': AccountCommitSummary,
-        'ContributorSummary': AccountContributorSummary
-    }
-
     @classmethod
     def resolve_field(cls, info, key, **kwargs):
         if key == str(current_user.account_key):
-            return resolve_instance(
-                cls.InterfaceResolvers,
-                resolver_context='account',
-                params=dict(account_key=key),
-                output_type=Account,
-                **kwargs
-            )
-
+            return cls.resolve_instance(params=dict(account_key=key), **kwargs)
         else:
             raise AccessDeniedException('Access denied for specified account')
-
-
 
     def get_node_query_params(self):
         return dict(account_key=self.key)
 
     def resolve_organizations(self, info, **kwargs):
-        return AccountOrganizations.resolve(self, info, **kwargs)
+        return Organization.resolve_connection(
+            'account_organizations',
+            AccountOrganizationsNodes,
+            self.get_node_query_params(),
+            **kwargs
+        )
 
     def resolve_projects(self, info, **kwargs):
-        return AccountProjects.resolve(self, info, **kwargs)
+        return Project.resolve_connection(
+            'account_projects',
+            AccountProjectsNodes,
+            self.get_node_query_params(),
+            **kwargs
+        )
 
     def resolve_repositories(self, info, **kwargs):
-        return AccountRepositories.resolve(self, info, **kwargs)
+        return Repository.resolve_connection(
+            'account_repositories',
+            AccountRepositoriesNodes,
+            self.get_node_query_params(),
+            **kwargs
+        )

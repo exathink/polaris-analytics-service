@@ -17,7 +17,7 @@ from ..repository import Repository
 from .selectables import ProjectNode, ProjectsContributorSummary, ProjectsCommitSummary, \
     ProjectRepositoriesNodes
 
-from polaris.graphql.connection_utils import QueryConnectionField
+from polaris.graphql.connection_utils import CountableConnection, QueryConnectionField
 
 
 class Project(
@@ -82,6 +82,6 @@ class Project(
         )
 
 
-class Projects(graphene.relay.Connection):
+class Projects(CountableConnection):
     class Meta:
         node = Project

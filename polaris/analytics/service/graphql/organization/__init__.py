@@ -19,7 +19,7 @@ from ..repository import Repository
 from .selectables import OrganizationNode, OrganizationsCommitSummary, \
     OrganizationsContributorSummary, OrganizationProjectsNodes, OrganizationRepositoriesNodes
 
-from polaris.graphql.connection_utils import QueryConnectionField
+from polaris.graphql.connection_utils import CountableConnection, QueryConnectionField
 
 
 class Organization(
@@ -93,6 +93,11 @@ class Organization(
         )
 
 
-class Organizations(graphene.relay.Connection):
+class Organizations(CountableConnection):
     class Meta:
         node = Organization
+
+
+
+
+

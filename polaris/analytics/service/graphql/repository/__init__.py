@@ -14,7 +14,7 @@ from ..interfaces import NamedNode, CommitSummary, ContributorSummary
 from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
 from .selectables import RepositoryNode, RepositoriesCommitSummary, RepositoriesContributorSummary
 
-from polaris.graphql.connection_utils import QueryConnectionField
+from polaris.graphql.connection_utils import CountableConnection, QueryConnectionField
 
 
 class Repository(
@@ -68,6 +68,6 @@ class Repository(
         return dict(repository_key=self.key)
 
 
-class Repositories(graphene.relay.Connection):
+class Repositories(CountableConnection):
     class Meta:
         node = Repository

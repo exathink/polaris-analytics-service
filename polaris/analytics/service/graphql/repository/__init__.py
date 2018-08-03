@@ -10,7 +10,8 @@
 
 import graphene
 
-from ..interfaces import NamedNode, CommitSummary, ContributorSummary
+from polaris.graphql.interfaces import NamedNode
+from ..interfaces import CommitSummary, ContributorSummary
 from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
 from .selectables import RepositoryNode, RepositoriesCommitSummary, RepositoriesContributorSummary
 

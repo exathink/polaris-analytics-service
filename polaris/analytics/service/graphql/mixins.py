@@ -8,60 +8,7 @@
 
 # Author: Krishna Kumar
 
-from polaris.common import db
-from .utils import count, resolve_instance, NodeResolverQuery
-
-
-class KeyIdResolverMixin:
-    def __init__(self, key, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.key = key
-
-    def resolve_id(self, info, **kwargs):
-        return self.key
-
-
-
-class InterfaceResolverMixin(KeyIdResolverMixin):
-    NamedNodeResolver=None
-    InterfaceResolvers = None
-
-    @classmethod
-    def get_node(cls, info, id):
-        return cls.resolve_instance(id)
-
-    @classmethod
-    def resolve_instance(cls, key, **kwargs):
-        return resolve_instance(
-            cls.NamedNodeResolver,
-            cls.InterfaceResolvers,
-            resolver_context=cls.__name__,
-            params=dict(key=key),
-            output_type=cls,
-            **kwargs
-        )
-
-    @classmethod
-    def resolve_connection(cls, parent_relationship, named_node_resolver, params, **kwargs):
-        return NodeResolverQuery(
-            named_node_resolver=named_node_resolver,
-            interface_resolvers=cls.InterfaceResolvers,
-            resolver_context=parent_relationship,
-            params=params,
-            output_type=cls
-        )
-
-    def get_node_query_params(self, **kwargs):
-        return dict(key=self.key)
-
-class NamedNodeResolverMixin(InterfaceResolverMixin):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.name = kwargs.get('name', None)
-
-
-    def resolve_name(self, info, **kwargs):
-        return self.name
+from polaris.graphql.mixins import *
 
 class CommitSummaryResolverMixin(InterfaceResolverMixin):
     def __init__(self, *args, **kwargs):
@@ -141,18 +88,3 @@ class ContributorSummaryResolverMixin(InterfaceResolverMixin):
     def resolve_unique_contributor_count(self, info, **kwargs):
         return self.unique_contributor_count or self.get_contributor_summary(info, **kwargs).unique_contributor_count
 
-
-
-
-
-
-class NamedNodeCountResolverMixin:
-    InterfaceResolvers = None
-
-    def get_nodes_query_params(self):
-        raise NotImplemented()
-
-    def resolve_count(self, info, **kwargs):
-        with db.create_session() as session:
-            query = count(self.InterfaceResolvers.get('NamedNode').selectable())
-            return session.execute(query, self.get_nodes_query_params()).scalar()

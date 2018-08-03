@@ -11,7 +11,8 @@
 import graphene
 from flask_security import current_user
 
-from ..interfaces import CommitSummary, NamedNode, ContributorSummary
+from polaris.graphql.interfaces import NamedNode
+from ..interfaces import CommitSummary, ContributorSummary
 from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
 
 from ..organization import Organization
@@ -21,7 +22,7 @@ from ..repository import Repository
 from .selectables import AccountNode, AccountCommitSummary, AccountContributorSummary, AccountOrganizationsNodes, \
     AccountProjectsNodes, AccountRepositoriesNodes
 
-from ..utils import AccessDeniedException
+from polaris.graphql.exceptions import AccessDeniedException
 
 
 class Account(

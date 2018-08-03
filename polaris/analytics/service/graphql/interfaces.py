@@ -9,12 +9,7 @@
 # Author: Krishna Kumar
 
 import graphene
-from graphene.relay import Node
 
-
-class NamedNode(Node):
-    key = graphene.String(required=True)
-    name = graphene.String(required=True)
 
 
 class CommitSummary(graphene.Interface):

@@ -9,7 +9,8 @@
 # Author: Krishna Kumar
 from sqlalchemy import select, func, bindparam
 
-from ..interfaces import NamedNode, CommitSummary, ContributorSummary
+from polaris.graphql.interfaces import NamedNode
+from ..interfaces import CommitSummary, ContributorSummary
 from ..selectables import select_contributor_summary
 
 from polaris.repos.db.model import projects, projects_repositories

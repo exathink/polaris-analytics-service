@@ -10,9 +10,8 @@
 __version__ = '0.0.1'
 
 import graphene
-from graphene import relay
 
-from .interfaces import NamedNode
+from polaris.graphql.interfaces import NamedNode
 from .account import Account
 from .organization import Organization
 from .project import Project

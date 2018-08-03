@@ -20,11 +20,10 @@
 
 from sqlalchemy import select, func, bindparam
 
-from polaris.analytics.service.graphql.interfaces import NamedNode
 from polaris.repos.db.model import organizations, accounts_organizations, accounts, projects, repositories
-
 from polaris.repos.db.schema import repositories, contributor_aliases, repositories_contributor_aliases
 
+from polaris.graphql.interfaces import NamedNode
 from ..interfaces import CommitSummary, ContributorSummary
 from ..selectables import select_contributor_summary
 

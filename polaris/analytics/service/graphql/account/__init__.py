@@ -41,6 +41,7 @@ class Account(
     }
     InterfaceEnum = graphene.Enum(
         'AccountInterfaces', [
+            ('NamedNode', 'NamedNode'),
             ('CommitSummary', 'CommitSummary'),
             ('ContributorSummary', 'ContributorSummary')
         ]

@@ -37,6 +37,7 @@ class Project(
     }
     InterfaceEnum = graphene.Enum(
         'ProjectInterfaces', [
+            ('NamedNode', 'NamedNode'),
             ('CommitSummary', 'CommitSummary'),
             ('ContributorSummary', 'ContributorSummary')
         ]
@@ -62,7 +63,7 @@ class Project(
             Projects,
             interfaces=graphene.Argument(
                 graphene.List(cls.InterfaceEnum),
-                required=False,
+                required=True,
             ),
             **kwargs
         )

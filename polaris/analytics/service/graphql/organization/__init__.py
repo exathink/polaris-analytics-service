@@ -39,6 +39,7 @@ class Organization(
     }
     InterfaceEnum = graphene.Enum(
         'OrganizationInterfaces', [
+            ('NamedNode', 'NamedNode'),
             ('CommitSummary', 'CommitSummary'),
             ('ContributorSummary', 'ContributorSummary')
         ]
@@ -65,7 +66,7 @@ class Organization(
             Organizations,
             interfaces=graphene.Argument(
                 graphene.List(cls.InterfaceEnum),
-                required=False,
+                required=True,
             ),
             **kwargs
         )

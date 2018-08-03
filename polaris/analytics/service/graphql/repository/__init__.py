@@ -34,6 +34,7 @@ class Repository(
     }
     InterfaceEnum = graphene.Enum(
         'RepositoryInterfaces', [
+            ('NamedNode', 'NamedNode'),
             ('CommitSummary', 'CommitSummary'),
             ('ContributorSummary', 'ContributorSummary')
         ]
@@ -56,7 +57,7 @@ class Repository(
             Repositories,
             interfaces=graphene.Argument(
                 graphene.List(cls.InterfaceEnum),
-                required=False,
+                required=True,
             ),
             **kwargs
         )

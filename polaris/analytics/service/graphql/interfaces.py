@@ -11,15 +11,15 @@
 import graphene
 
 
-
 class CommitSummary(graphene.Interface):
-    earliest_commit = graphene.DateTime(required=True)
-    latest_commit = graphene.DateTime(required=True)
-    commit_count = graphene.Int(required=True)
+    earliest_commit = graphene.DateTime(required=False)
+    latest_commit = graphene.DateTime(required=False)
+    commit_count = graphene.Int(required=False, default_value=0)
+
 
 class ContributorSummary(graphene.Interface):
-    unassigned_alias_count = graphene.Int(required=True)
-    unique_contributor_count = graphene.Int(required=True)
-    contributor_count = graphene.Int(required=True)
+    unassigned_alias_count = graphene.Int(required=False)
+    unique_contributor_count = graphene.Int(required=False)
+    contributor_count = graphene.Int(required=False, default_value=0)
 
 

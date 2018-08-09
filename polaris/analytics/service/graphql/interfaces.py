@@ -23,3 +23,13 @@ class ContributorSummary(graphene.Interface):
     contributor_count = graphene.Int(required=False, default_value=0)
 
 
+class ProjectCount(graphene.Interface):
+    project_count = graphene.Int(required=False, default_value=0)
+
+class RepositoryCount(graphene.Interface):
+    repository_count = graphene.Int(required=False, default_value=0)
+
+class OrganizationRef(graphene.Interface):
+    organization_name = graphene.String(required=True)
+    organization_key = graphene.String(required=True)
+

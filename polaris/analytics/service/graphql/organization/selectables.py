@@ -10,11 +10,13 @@
 from sqlalchemy import select, func, bindparam
 
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorSummary
+from ..interfaces import CommitSummary, ContributorSummary, ProjectCount, RepositoryCount
+
 from ..selectables import select_contributor_summary
 
 from polaris.repos.db.model import organizations, projects, repositories
 from polaris.repos.db.schema import repositories, contributor_aliases, repositories_contributor_aliases
+
 
 class OrganizationNode:
     interface = NamedNode
@@ -29,6 +31,7 @@ class OrganizationNode:
         ]).select_from(
             organizations
         ).where(organizations.c.organization_key == bindparam('key'))
+
 
 class OrganizationProjectsNodes:
     interface = NamedNode
@@ -45,6 +48,7 @@ class OrganizationProjectsNodes:
             )
         ).where(organizations.c.organization_key == bindparam('key'))
 
+
 class OrganizationRepositoriesNodes:
     interface = NamedNode
 
@@ -59,6 +63,7 @@ class OrganizationRepositoriesNodes:
                 organizations
             )
         ).where(organizations.c.organization_key == bindparam('key'))
+
 
 class OrganizationsCommitSummary:
     interface = CommitSummary
@@ -75,12 +80,12 @@ class OrganizationsCommitSummary:
             organization_nodes.outerjoin(repositories, organization_nodes.c.id == repositories.c.organization_id)
         ).group_by(organization_nodes.c.id)
 
+
 class OrganizationsContributorSummary:
     interface = ContributorSummary
 
     @staticmethod
     def selectable(organization_nodes, **kwargs):
-
         contributor_nodes = select([
             organization_nodes.c.id,
             contributor_aliases.c.id.label('ca_id'),
@@ -93,11 +98,37 @@ class OrganizationsContributorSummary:
             ).outerjoin(
                 contributor_aliases, contributor_aliases.c.id == repositories_contributor_aliases.c.contributor_alias_id
             )
-        ).where (
+        ).where(
             contributor_aliases.c.robot == False
         ).cte('contributor_nodes')
-
 
         return select_contributor_summary(contributor_nodes)
 
 
+class OrganizationsProjectCount:
+    interface = ProjectCount
+
+    @staticmethod
+    def selectable(organization_nodes, **kwargs):
+        return select([
+            organization_nodes.c.id,
+            func.count(projects.c.id).label('project_count')
+        ]).select_from(
+            organization_nodes.outerjoin(
+                projects, projects.c.organization_id == organization_nodes.c.id
+            )
+        ).group_by(organization_nodes.c.id)
+
+class OrganizationsRepositoryCount:
+    interface = RepositoryCount
+
+    @staticmethod
+    def selectable(organization_nodes, **kwargs):
+        return select([
+            organization_nodes.c.id,
+            func.count(repositories.c.id).label('repository_count')
+        ]).select_from(
+            organization_nodes.outerjoin(
+                repositories, repositories.c.organization_id == organization_nodes.c.id
+            )
+        ).group_by(organization_nodes.c.id)

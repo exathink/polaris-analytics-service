@@ -10,10 +10,10 @@
 from sqlalchemy import select, func, bindparam
 
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorSummary
+from ..interfaces import CommitSummary, ContributorSummary, OrganizationRef
 from ..selectables import select_contributor_summary
 
-from polaris.repos.db.model import repositories
+from polaris.repos.db.model import repositories, organizations
 from polaris.repos.db.schema import contributor_aliases, repositories_contributor_aliases
 
 class RepositoryNode:
@@ -73,3 +73,22 @@ class RepositoriesContributorSummary:
         ).cte('contributor_nodes')
 
         return select_contributor_summary(contributor_nodes)
+
+class RepositoriesOrganizationRef:
+    interface = OrganizationRef
+
+    @staticmethod
+    def selectable(repositories_nodes, **kwargs):
+        return select([
+            repositories_nodes.c.id,
+            organizations.c.organization_key,
+            organizations.c.name.label('organization_name')
+
+        ]).select_from(
+            repositories_nodes.outerjoin(
+                repositories,
+                repositories_nodes.c.id == repositories.c.id
+            ).outerjoin(
+                organizations, repositories.c.organization_id == organizations.c.id
+            )
+        )

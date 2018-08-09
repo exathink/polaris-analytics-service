@@ -7,13 +7,13 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam
+from sqlalchemy import select, func, bindparam, distinct
 
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorSummary
+from ..interfaces import CommitSummary, ContributorSummary, RepositoryCount, OrganizationRef
 from ..selectables import select_contributor_summary
 
-from polaris.repos.db.model import projects, projects_repositories
+from polaris.repos.db.model import projects, projects_repositories, organizations
 from polaris.repos.db.schema import repositories, contributor_aliases, repositories_contributor_aliases
 
 class ProjectNode:
@@ -90,3 +90,38 @@ class ProjectsContributorSummary:
         ).cte('contributor_nodes')
 
         return select_contributor_summary(contributor_nodes)
+
+class ProjectsRepositoryCount:
+    interface = RepositoryCount
+
+    @staticmethod
+    def selectable(project_nodes, **kwargs):
+        return select([
+            project_nodes.c.id,
+            func.count(repositories.c.id).label('repository_count')
+
+        ]).select_from(
+            project_nodes.outerjoin(
+                projects_repositories, project_nodes.c.id == projects_repositories.c.project_id
+            ).outerjoin(
+                repositories, projects_repositories.c.repository_id == repositories.c.id
+            )
+        ).group_by(project_nodes.c.id)
+
+class ProjectsOrganizationRef:
+    interface = OrganizationRef
+
+    @staticmethod
+    def selectable(project_nodes, **kwargs):
+        return select([
+            project_nodes.c.id,
+            organizations.c.organization_key.label('organization_key'),
+            organizations.c.name.label('organization_name')
+
+        ]).select_from(
+            project_nodes.outerjoin(
+                projects, project_nodes.c.id == projects.c.id
+            ).outerjoin(
+                organizations, projects.c.organization_id == organizations.c.id
+            )
+        )

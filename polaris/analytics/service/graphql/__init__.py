@@ -16,7 +16,7 @@ from .account import Account
 from .organization import Organization
 from .project import Project
 from .repository import Repository
-
+from .public import Public
 
 class Query(graphene.ObjectType):
     node = NamedNode.Field()
@@ -25,6 +25,8 @@ class Query(graphene.ObjectType):
     organization = Organization.Field()
     project = Project.Field()
     repository = Repository.Field()
+    public = Public.Field()
+
 
 
     def resolve_account(self, info, key,  **kwargs):
@@ -38,6 +40,9 @@ class Query(graphene.ObjectType):
 
     def resolve_repository(self, info, key, **kwargs):
         return Repository.resolve_field(self,info, key, **kwargs)
+
+    def resolve_public(self, info, **kwargs):
+        return Public.resolve_field(info, **kwargs)
 
 
 schema = graphene.Schema(query=Query)

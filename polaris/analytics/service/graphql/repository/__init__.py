@@ -10,6 +10,7 @@
 
 import graphene
 
+from polaris.graphql.selectable import Selectable
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import CommitSummary, ContributorSummary
 from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
@@ -22,50 +23,21 @@ class Repository(
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
-    graphene.ObjectType
+    Selectable
 ):
     class Meta:
         interfaces = (NamedNode, CommitSummary, ContributorSummary)
+        named_node_resolver = RepositoryNode
+        interface_resolvers = {
+            'CommitSummary': RepositoriesCommitSummary,
+            'ContributorSummary': RepositoriesContributorSummary
+        }
+        connection_class = lambda: Repositories
 
-    NamedNodeResolver = RepositoryNode
-    InterfaceResolvers = {
-        'CommitSummary': RepositoriesCommitSummary,
-        'ContributorSummary': RepositoriesContributorSummary
-    }
-    InterfaceEnum = graphene.Enum(
-        'RepositoryInterfaces', [
-            ('NamedNode', 'NamedNode'),
-            ('CommitSummary', 'CommitSummary'),
-            ('ContributorSummary', 'ContributorSummary')
-        ]
-    )
-
-    @classmethod
-    def Field(cls):
-        return graphene.Field(
-            cls,
-            key=graphene.Argument(type=graphene.String, required=True),
-            interfaces=graphene.Argument(
-                graphene.List(cls.InterfaceEnum),
-                required=False,
-            )
-        )
-
-    @classmethod
-    def ConnectionField(cls, **kwargs):
-        return QueryConnectionField(
-            Repositories,
-            interfaces=graphene.Argument(
-                graphene.List(cls.InterfaceEnum),
-                required=True,
-            ),
-            **kwargs
-        )
 
     @classmethod
     def resolve_field(cls, parent, info, repository_key, **kwargs):
         return cls.resolve_instance(repository_key, **kwargs)
-
 
 
 class Repositories(CountableConnection):

@@ -11,6 +11,8 @@
 import graphene
 
 from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.selectable import Selectable
+
 from ..interfaces import CommitSummary, ContributorSummary
 from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
 
@@ -25,48 +27,21 @@ class Project(
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
-    graphene.ObjectType
+    Selectable
 ):
     class Meta:
         interfaces = (NamedNode, CommitSummary, ContributorSummary)
+        named_node_resolver = ProjectNode
+        interface_resolvers = {
+            'CommitSummary': ProjectsCommitSummary,
+            'ContributorSummary': ProjectsContributorSummary
+        }
+        connection_class = lambda: Projects
 
-    NamedNodeResolver = ProjectNode
-    InterfaceResolvers = {
-        'CommitSummary': ProjectsCommitSummary,
-        'ContributorSummary': ProjectsContributorSummary
-    }
-    InterfaceEnum = graphene.Enum(
-        'ProjectInterfaces', [
-            ('NamedNode', 'NamedNode'),
-            ('CommitSummary', 'CommitSummary'),
-            ('ContributorSummary', 'ContributorSummary')
-        ]
-    )
 
     # Child Fields
     repositories = Repository.ConnectionField()
 
-    @classmethod
-    def Field(cls):
-        return graphene.Field(
-            cls,
-            key=graphene.Argument(type=graphene.String, required=True),
-            interfaces=graphene.Argument(
-                graphene.List(cls.InterfaceEnum),
-                required=False,
-            )
-        )
-
-    @classmethod
-    def ConnectionField(cls, **kwargs):
-        return QueryConnectionField(
-            Projects,
-            interfaces=graphene.Argument(
-                graphene.List(cls.InterfaceEnum),
-                required=True,
-            ),
-            **kwargs
-        )
 
     @classmethod
     def resolve_field(cls, parent, info, project_key, **kwargs):

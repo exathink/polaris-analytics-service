@@ -11,6 +11,8 @@
 import graphene
 
 from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.selectable import Selectable
+
 from ..interfaces import CommitSummary, ContributorSummary
 from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
 
@@ -27,49 +29,22 @@ class Organization(
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
-    graphene.ObjectType
+    Selectable
 ):
     class Meta:
         interfaces = (NamedNode, CommitSummary, ContributorSummary)
+        named_node_resolver = OrganizationNode
+        interface_resolvers = {
+            'CommitSummary': OrganizationsCommitSummary,
+            'ContributorSummary': OrganizationsContributorSummary
+        }
+        connection_class = lambda: Organizations
 
-    NamedNodeResolver = OrganizationNode
-    InterfaceResolvers = {
-        'CommitSummary': OrganizationsCommitSummary,
-        'ContributorSummary': OrganizationsContributorSummary
-    }
-    InterfaceEnum = graphene.Enum(
-        'OrganizationInterfaces', [
-            ('NamedNode', 'NamedNode'),
-            ('CommitSummary', 'CommitSummary'),
-            ('ContributorSummary', 'ContributorSummary')
-        ]
-    )
 
     # Child Fields
     projects = Project.ConnectionField()
     repositories = Repository.ConnectionField()
 
-    @classmethod
-    def Field(cls):
-        return graphene.Field(
-            cls,
-            key=graphene.Argument(type=graphene.String, required=True),
-            interfaces=graphene.Argument(
-                graphene.List(cls.InterfaceEnum),
-                required=False,
-            )
-        )
-
-    @classmethod
-    def ConnectionField(cls, **kwargs):
-        return QueryConnectionField(
-            Organizations,
-            interfaces=graphene.Argument(
-                graphene.List(cls.InterfaceEnum),
-                required=True,
-            ),
-            **kwargs
-        )
 
     @classmethod
     def resolve_field(cls, parent, info, organization_key, **kwargs):

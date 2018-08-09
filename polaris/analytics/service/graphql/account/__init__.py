@@ -11,6 +11,8 @@
 import graphene
 from flask_security import current_user
 
+from polaris.graphql.selectable import Selectable
+
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import CommitSummary, ContributorSummary
 from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
@@ -29,40 +31,24 @@ class Account(
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorSummaryResolverMixin,
-    graphene.ObjectType
+    Selectable
 ):
     class Meta:
         interfaces = (NamedNode, CommitSummary, ContributorSummary)
+        named_node_resolver = AccountNode
+        interface_resolvers = {
+            'CommitSummary': AccountCommitSummary,
+            'ContributorSummary': AccountContributorSummary
+        }
 
-    NamedNodeResolver = AccountNode
-    InterfaceResolvers = {
-        'CommitSummary': AccountCommitSummary,
-        'ContributorSummary': AccountContributorSummary
-    }
-    InterfaceEnum = graphene.Enum(
-        'AccountInterfaces', [
-            ('NamedNode', 'NamedNode'),
-            ('CommitSummary', 'CommitSummary'),
-            ('ContributorSummary', 'ContributorSummary')
-        ]
-    )
+
 
     # Child fields
     organizations = Organization.ConnectionField()
-
     projects = Project.ConnectionField()
     repositories = Repository.ConnectionField()
 
-    @classmethod
-    def Field(cls):
-        return graphene.Field(
-            cls,
-            key=graphene.Argument(type=graphene.String, required=True),
-            interfaces=graphene.Argument(
-                graphene.List(cls.InterfaceEnum),
-                required=False,
-            )
-        )
+
 
     @classmethod
     def resolve_field(cls, info, key, **kwargs):

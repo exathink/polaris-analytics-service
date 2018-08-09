@@ -10,7 +10,7 @@
 
 from polaris.graphql.mixins import *
 
-class CommitSummaryResolverMixin(InterfaceResolverMixin):
+class CommitSummaryResolverMixin(KeyIdResolverMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.earliest_commit = kwargs.get('earliest_commit')
@@ -19,17 +19,12 @@ class CommitSummaryResolverMixin(InterfaceResolverMixin):
         self.commit_summary = None
 
     def resolve_commit_summary(self, info, **kwargs):
-        if self.InterfaceResolvers:
-            return resolve_instance(
-                self.NamedNodeResolver,
-                self.InterfaceResolvers,
-                type(self).__name__,
-                params=self.get_node_query_params(),
-                interface=['CommitSummary'],
-                **kwargs
-            )
-        else:
-            raise NotImplemented()
+        return self.resolve_interface(
+            interface=['CommitSummary'],
+            params=self.get_node_query_params(),
+            **kwargs
+        )
+
 
     def get_commit_summary(self, info, **kwargs):
         if self.commit_summary is None:
@@ -46,7 +41,7 @@ class CommitSummaryResolverMixin(InterfaceResolverMixin):
         return self.commit_count or self.get_commit_summary(info, **kwargs).commit_count
 
 
-class ContributorSummaryResolverMixin(InterfaceResolverMixin):
+class ContributorSummaryResolverMixin(KeyIdResolverMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -57,17 +52,11 @@ class ContributorSummaryResolverMixin(InterfaceResolverMixin):
         self.contributor_summary = None
 
     def resolve_contributor_summary(self, info, **kwargs):
-        if self.InterfaceResolvers:
-            return resolve_instance(
-                self.NamedNodeResolver,
-                self.InterfaceResolvers,
-                type(self).__name__,
-                params=self.get_node_query_params(),
-                interface=['ContributorSummary'],
-                **kwargs
-            )
-        else:
-            raise NotImplemented()
+        return self.resolve_interface(
+            interface=['ContributorSummary'],
+            params=self.get_node_query_params(),
+            **kwargs
+        )
 
 
     def get_contributor_summary(self, info, **kwargs):

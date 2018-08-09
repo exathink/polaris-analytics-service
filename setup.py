@@ -15,7 +15,6 @@ import polaris.analytics.service
 
 here = path.abspath(path.dirname(__file__))
 
-
 setup(
     # --------------------------------------------------------------------------------
 
@@ -34,15 +33,16 @@ setup(
         'polaris.analytics.service',
         'polaris.analytics.datasources',
         'polaris.analytics.datasources.activities',
-	'polaris.analytics.service.graphql',
-	'polaris.analytics.service.graphql.account', 
-	'polaris.analytics.service.graphql.organization', 
-	'polaris.analytics.service.graphql.project',
-    'polaris.analytics.service.graphql.repository'
+        'polaris.analytics.service.graphql',
+        'polaris.analytics.service.graphql.account',
+        'polaris.analytics.service.graphql.organization',
+        'polaris.analytics.service.graphql.project',
+        'polaris.analytics.service.graphql.repository',
+	'polaris.analytics.service.graphql.public'
     ],
 
     url='',
-    license = 'Commercial',
+    license='Commercial',
     author='Krishna Kumar',
     author_email='kkumar@exathink.com',
     description='',

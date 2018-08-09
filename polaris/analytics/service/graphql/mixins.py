@@ -9,19 +9,24 @@
 # Author: Krishna Kumar
 
 from polaris.graphql.mixins import *
+from collections import namedtuple
+
+from polaris.graphql.utils import init_tuple, create_tuple
+
+from .interfaces import CommitSummary, ContributorSummary
 
 class CommitSummaryResolverMixin(KeyIdResolverMixin):
+    tuple_type = create_tuple(CommitSummary)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.earliest_commit = kwargs.get('earliest_commit')
-        self.latest_commit = kwargs.get('latest_commit')
-        self.commit_count = kwargs.get('commit_count')
-        self.commit_summary = None
+        self.commit_summary = init_tuple(self.tuple_type, **kwargs)
+
 
     def resolve_commit_summary(self, info, **kwargs):
-        return self.resolve_interface(
+        return self.resolve_interface_for_instance(
             interface=['CommitSummary'],
-            params=self.get_node_query_params(),
+            params=self.get_instance_query_params(),
             **kwargs
         )
 
@@ -32,29 +37,26 @@ class CommitSummaryResolverMixin(KeyIdResolverMixin):
         return self.commit_summary
 
     def resolve_earliest_commit(self, info, **kwargs):
-        return self.earliest_commit or self.get_commit_summary(info,**kwargs).earliest_commit
+        return self.get_commit_summary(info,**kwargs).earliest_commit
 
     def resolve_latest_commit(self, info, **kwargs):
-        return self.latest_commit or self.get_commit_summary(info, **kwargs).latest_commit
+        return self.get_commit_summary(info, **kwargs).latest_commit
 
     def resolve_commit_count(self, info, **kwargs):
-        return self.commit_count or self.get_commit_summary(info, **kwargs).commit_count
+        return self.get_commit_summary(info, **kwargs).commit_count
 
 
 class ContributorSummaryResolverMixin(KeyIdResolverMixin):
+    tuple_type = create_tuple(ContributorSummary)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.contributor_count = kwargs.get('contributor_count')
-        self.unassigned_alias_count = kwargs.get('unassigned_alias_count')
-        self.unique_contributor_count = kwargs.get('unique_contributor_count')
-
         self.contributor_summary = None
 
     def resolve_contributor_summary(self, info, **kwargs):
-        return self.resolve_interface(
+        return self.resolve_interface_for_instance(
             interface=['ContributorSummary'],
-            params=self.get_node_query_params(),
+            params=self.get_instance_query_params(),
             **kwargs
         )
 
@@ -67,13 +69,11 @@ class ContributorSummaryResolverMixin(KeyIdResolverMixin):
 
 
     def resolve_contributor_count(self, info, **kwargs):
-        return self.contributor_count or \
-               self.get_contributor_summary(info, **kwargs).contributor_count
+        return self.get_contributor_summary(info, **kwargs).contributor_count
 
     def resolve_unassigned_alias_count(self, info, **kwargs):
-        return self.unassigned_alias_count or \
-               self.get_contributor_summary(info, **kwargs).unassigned_alias_count
+        return self.get_contributor_summary(info, **kwargs).unassigned_alias_count
 
     def resolve_unique_contributor_count(self, info, **kwargs):
-        return self.unique_contributor_count or self.get_contributor_summary(info, **kwargs).unique_contributor_count
+        return self.get_contributor_summary(info, **kwargs).unique_contributor_count
 

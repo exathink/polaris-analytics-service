@@ -62,7 +62,7 @@ class Account(
         return Organization.resolve_connection(
             'account_organizations',
             AccountOrganizationsNodes,
-            self.get_node_query_params(),
+            self.get_instance_query_params(),
             **kwargs
         )
 
@@ -70,7 +70,7 @@ class Account(
         return Project.resolve_connection(
             'account_projects',
             AccountProjectsNodes,
-            self.get_node_query_params(),
+            self.get_instance_query_params(),
             **kwargs
         )
 
@@ -78,6 +78,6 @@ class Account(
         return Repository.resolve_connection(
             'account_repositories',
             AccountRepositoriesNodes,
-            self.get_node_query_params(),
+            self.get_instance_query_params(),
             **kwargs
         )

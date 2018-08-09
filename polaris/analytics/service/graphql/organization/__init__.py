@@ -54,7 +54,7 @@ class Organization(
         return Project.resolve_connection(
             'organization_projects',
             OrganizationProjectsNodes,
-            self.get_node_query_params(),
+            self.get_instance_query_params(),
             **kwargs
         )
 
@@ -62,7 +62,7 @@ class Organization(
         return Repository.resolve_connection(
             'organization_repositories',
             OrganizationRepositoriesNodes,
-            self.get_node_query_params(),
+            self.get_instance_query_params(),
             **kwargs
         )
 

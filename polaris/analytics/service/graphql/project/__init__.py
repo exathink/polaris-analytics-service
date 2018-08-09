@@ -51,7 +51,7 @@ class Project(
         return Repository.resolve_connection(
             'project_repositories',
             ProjectRepositoriesNodes,
-            self.get_node_query_params(),
+            self.get_instance_query_params(),
             **kwargs
         )
 

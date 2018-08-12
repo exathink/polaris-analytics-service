@@ -14,7 +14,12 @@ from polaris.graphql.selectable import Selectable
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import CommitSummary, ContributorSummary, OrganizationRef
 from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin, OrganizationRefResolverMixin
-from .selectables import RepositoryNode, RepositoriesCommitSummary, RepositoriesContributorSummary, RepositoriesOrganizationRef
+from .selectables import RepositoryNode, \
+    RepositoriesCommitSummary, \
+    RepositoryContributorNodes, \
+    RepositoriesContributorSummary, RepositoriesOrganizationRef
+
+from ..contributor import Contributor
 
 from polaris.graphql.connection_utils import CountableConnection, QueryConnectionField
 
@@ -36,11 +41,21 @@ class Repository(
         }
         connection_class = lambda: Repositories
 
+    # Child Fields
+    contributors = Contributor.ConnectionField()
 
     @classmethod
     def resolve_field(cls, parent, info, repository_key, **kwargs):
         return cls.resolve_instance(repository_key, **kwargs)
 
+
+    def resolve_contributors(self, info, **kwargs):
+        return Contributor.resolve_connection(
+            'repository_contributors',
+            RepositoryContributorNodes,
+            self.get_instance_query_params(),
+            **kwargs
+        )
 
 class Repositories(CountableConnection):
     class Meta:

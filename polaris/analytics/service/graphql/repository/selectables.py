@@ -14,7 +14,7 @@ from ..interfaces import CommitSummary, ContributorSummary, OrganizationRef
 from ..selectables import select_contributor_summary
 
 from polaris.repos.db.model import repositories, organizations
-from polaris.repos.db.schema import contributor_aliases, repositories_contributor_aliases
+from polaris.repos.db.schema import contributors, contributor_aliases, repositories_contributor_aliases
 
 class RepositoryNode:
     interface = NamedNode
@@ -31,6 +31,24 @@ class RepositoryNode:
             repositories.c.key == bindparam('key')
         )
 
+class RepositoryContributorNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            contributors.c.id,
+            contributors.c.key,
+            contributors.c.name
+        ]).select_from(
+            contributors.join(
+                contributor_aliases.join(
+                    repositories_contributor_aliases
+                ).join(
+                    repositories
+                )
+            )
+        ).where(repositories.c.key == bindparam('key')).distinct()
 
 class RepositoriesCommitSummary:
     interface = CommitSummary

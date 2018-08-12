@@ -22,12 +22,16 @@ from ..mixins import \
     OrganizationRefResolverMixin
 
 from ..repository import Repository
+from ..contributor import Contributor
+
 from .selectables import ProjectNode, \
 ProjectRepositoriesNodes, \
+    ProjectContributorNodes, \
     ProjectsContributorSummary, \
     ProjectsCommitSummary, \
     ProjectsRepositoryCount, \
     ProjectsOrganizationRef
+
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -54,6 +58,7 @@ class Project(
 
     # Child Fields
     repositories = Repository.ConnectionField()
+    contributors = Contributor.ConnectionField()
 
 
     @classmethod
@@ -64,6 +69,14 @@ class Project(
         return Repository.resolve_connection(
             'project_repositories',
             ProjectRepositoriesNodes,
+            self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def resolve_contributors(self, info, **kwargs):
+        return Contributor.resolve_connection(
+            'project_contributors',
+            ProjectContributorNodes,
             self.get_instance_query_params(),
             **kwargs
         )

@@ -14,7 +14,7 @@ from ..interfaces import CommitSummary, ContributorSummary, RepositoryCount, Org
 from ..selectables import select_contributor_summary
 
 from polaris.repos.db.model import projects, projects_repositories, organizations
-from polaris.repos.db.schema import repositories, contributor_aliases, repositories_contributor_aliases
+from polaris.repos.db.schema import repositories, contributors, contributor_aliases, repositories_contributor_aliases
 
 class ProjectNode:
     interface = NamedNode
@@ -45,6 +45,29 @@ class ProjectRepositoriesNodes:
                 repositories
             )
         ).where(projects.c.project_key == bindparam('key'))
+
+class ProjectContributorNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            contributors.c.id,
+            contributors.c.key,
+            contributors.c.name
+        ]).select_from(
+            contributors.join(
+                contributor_aliases.join(
+                    repositories_contributor_aliases
+                ).join(
+                    repositories.join(
+                        projects_repositories
+                    ).join(
+                        projects
+                    )
+                )
+            )
+        ).where(projects.c.project_key == bindparam('key')).distinct()
 
 class ProjectsCommitSummary:
     interface = CommitSummary

@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam
+from sqlalchemy import select, func, bindparam, or_
 
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import CommitSummary, ContributorSummary, ProjectCount, RepositoryCount
@@ -15,7 +15,8 @@ from ..interfaces import CommitSummary, ContributorSummary, ProjectCount, Reposi
 from ..selectables import select_contributor_summary
 
 from polaris.repos.db.model import organizations, projects, repositories
-from polaris.repos.db.schema import repositories, contributor_aliases, repositories_contributor_aliases
+from polaris.repos.db.schema import repositories, contributors, commits, contributor_aliases, \
+    repositories_contributor_aliases
 
 
 class OrganizationNode:
@@ -63,6 +64,28 @@ class OrganizationRepositoriesNodes:
                 organizations
             )
         ).where(organizations.c.organization_key == bindparam('key'))
+
+
+class OrganizationContributorNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            contributors.c.id,
+            contributors.c.key,
+            contributors.c.name
+        ]).select_from(
+            contributors.join(
+                contributor_aliases.join(
+                    repositories_contributor_aliases
+                ).join(
+                    repositories.join(
+                        organizations
+                    )
+                )
+            )
+        ).where(organizations.c.organization_key == bindparam('key')).distinct()
 
 
 class OrganizationsCommitSummary:
@@ -118,6 +141,7 @@ class OrganizationsProjectCount:
                 projects, projects.c.organization_id == organization_nodes.c.id
             )
         ).group_by(organization_nodes.c.id)
+
 
 class OrganizationsRepositoryCount:
     interface = RepositoryCount

@@ -22,7 +22,6 @@ class ContributorSummary(graphene.Interface):
     unique_contributor_count = graphene.Int(required=False)
     contributor_count = graphene.Int(required=False, default_value=0)
 
-
 class ProjectCount(graphene.Interface):
     project_count = graphene.Int(required=False, default_value=0)
 

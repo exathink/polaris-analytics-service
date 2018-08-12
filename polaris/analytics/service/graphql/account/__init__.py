@@ -20,9 +20,10 @@ from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, Contrib
 from ..organization import Organization
 from ..project import Project
 from ..repository import Repository
+from ..contributor import Contributor
 
 from .selectables import AccountNode, AccountCommitSummary, AccountContributorSummary, AccountOrganizationsNodes, \
-    AccountProjectsNodes, AccountRepositoriesNodes
+    AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes
 
 from polaris.graphql.exceptions import AccessDeniedException
 
@@ -47,8 +48,7 @@ class Account(
     organizations = Organization.ConnectionField()
     projects = Project.ConnectionField()
     repositories = Repository.ConnectionField()
-
-
+    contributors = Contributor.ConnectionField()
 
     @classmethod
     def resolve_field(cls, info, key, **kwargs):
@@ -78,6 +78,14 @@ class Account(
         return Repository.resolve_connection(
             'account_repositories',
             AccountRepositoriesNodes,
+            self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def resolve_contributors(self, info, **kwargs):
+        return Contributor.resolve_connection(
+            'account_contributors',
+            AccountContributorNodes,
             self.get_instance_query_params(),
             **kwargs
         )

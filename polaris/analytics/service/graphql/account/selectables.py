@@ -21,7 +21,7 @@
 from sqlalchemy import select, func, bindparam
 
 from polaris.repos.db.model import organizations, accounts_organizations, accounts, projects, repositories
-from polaris.repos.db.schema import repositories, contributor_aliases, repositories_contributor_aliases
+from polaris.repos.db.schema import repositories, contributors, contributor_aliases, repositories_contributor_aliases
 
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import CommitSummary, ContributorSummary
@@ -98,6 +98,32 @@ class AccountRepositoriesNodes:
                 accounts
             )
         ).where(accounts.c.account_key == bindparam('key'))
+
+
+class AccountContributorNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            contributors.c.id,
+            contributors.c.key,
+            contributors.c.name
+        ]).select_from(
+            contributors.join(
+                contributor_aliases.join(
+                    repositories_contributor_aliases
+                ).join(
+                    repositories.join(
+                        organizations
+                    ).join(
+                        accounts_organizations
+                    ).join(
+                        accounts
+                    )
+                )
+            )
+        ).where(accounts.c.account_key == bindparam('key')).distinct()
 
 
 class AccountCommitSummary:

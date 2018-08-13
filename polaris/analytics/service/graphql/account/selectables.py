@@ -18,7 +18,7 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, func, bindparam
+from sqlalchemy import select, func, bindparam, and_
 
 from polaris.repos.db.model import organizations, accounts_organizations, accounts, projects, repositories
 from polaris.repos.db.schema import repositories, contributors, contributor_aliases, repositories_contributor_aliases
@@ -123,7 +123,12 @@ class AccountContributorNodes:
                     )
                 )
             )
-        ).where(accounts.c.account_key == bindparam('key')).distinct()
+        ).where(
+            and_(
+                accounts.c.account_key == bindparam('key'),
+                contributor_aliases.c.robot == False
+            )
+        ).distinct()
 
 
 class AccountCommitSummary:

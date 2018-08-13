@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam
+from sqlalchemy import select, func, bindparam, and_
 
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import CommitSummary, ContributorSummary, OrganizationRef
@@ -48,7 +48,12 @@ class RepositoryContributorNodes:
                     repositories
                 )
             )
-        ).where(repositories.c.key == bindparam('key')).distinct()
+        ).where(
+            and_(
+                repositories.c.key == bindparam('key'),
+                contributor_aliases.c.robot == False
+            )
+        ).distinct()
 
 class RepositoriesCommitSummary:
     interface = CommitSummary

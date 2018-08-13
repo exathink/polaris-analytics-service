@@ -34,7 +34,7 @@ class Contributor(
 
 
     @classmethod
-    def resolve_field(cls, info, key, **kwargs):
+    def resolve_field(cls, parent, info, key, **kwargs):
         return cls.resolve_instance(key, **kwargs)
 
 

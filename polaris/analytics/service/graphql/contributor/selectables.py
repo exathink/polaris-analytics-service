@@ -37,7 +37,7 @@ class ContributorNodes:
             contributors.c.name
         ]).select_from(
             contributors
-        ).where(contributor_aliases.c.key == bindparam('key'))
+        ).where(contributors.c.key == bindparam('key'))
 
 
 

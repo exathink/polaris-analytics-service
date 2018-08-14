@@ -50,9 +50,9 @@ class ContributorsCommitSummary:
     def selectable(contributor_nodes, **kwargs):
         return select([
             contributor_nodes.c.id,
-            func.count(distinct(commits.c.id)).label('commit_count'),
-            func.min(commits.c.commit_date).label('earliest_commit'),
-            func.max(commits.c.commit_date).label('latest_commit')
+            func.sum(repositories_contributor_aliases.c.commit_count).label('commit_count'),
+            func.min(repositories_contributor_aliases.c.earliest_commit).label('earliest_commit'),
+            func.max(repositories_contributor_aliases.c.latest_commit).label('latest_commit')
 
         ]).select_from(
             contributor_nodes.outerjoin(
@@ -60,13 +60,9 @@ class ContributorsCommitSummary:
             ).outerjoin(
                 contributor_aliases, contributors.c.id == contributor_aliases.c.contributor_id
             ).outerjoin(
-                commits,
-                or_(
-                    commits.c.author_alias_id == contributor_aliases.c.id,
-                    commits.c.committer_alias_id == contributor_aliases.c.id
-                )
+                repositories_contributor_aliases, repositories_contributor_aliases.c.contributor_alias_id == contributor_aliases.c.id
             ).outerjoin(
-                repositories, repositories.c.id == commits.c.repository_id
+                repositories, repositories.c.id == repositories_contributor_aliases.c.repository_id
             )
         ).group_by(contributor_nodes.c.id)
 

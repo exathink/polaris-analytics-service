@@ -17,9 +17,7 @@ class CommitSummary(graphene.Interface):
     commit_count = graphene.Int(required=False, default_value=0)
 
 
-class ContributorSummary(graphene.Interface):
-    unassigned_alias_count = graphene.Int(required=False)
-    unique_contributor_count = graphene.Int(required=False)
+class ContributorCount(graphene.Interface):
     contributor_count = graphene.Int(required=False, default_value=0)
 
 class ProjectCount(graphene.Interface):

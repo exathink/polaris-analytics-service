@@ -18,11 +18,11 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, func, bindparam, or_, distinct
+from sqlalchemy import select, func, bindparam, distinct
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories
-from polaris.repos.db.schema import repositories, repositories_contributor_aliases, contributors, commits, contributor_aliases
+from polaris.repos.db.schema import repositories, repositories_contributor_aliases, contributors, contributor_aliases
 from ..interfaces import CommitSummary, RepositoryCount
 
 

@@ -12,12 +12,12 @@ import graphene
 
 from polaris.graphql.selectable import Selectable
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorSummary, OrganizationRef
-from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin, OrganizationRefResolverMixin
+from ..interfaces import CommitSummary, ContributorCount, OrganizationRef
+from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, OrganizationRefResolverMixin
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
     RepositoryContributorNodes, \
-    RepositoriesContributorSummary, RepositoriesOrganizationRef
+    RepositoriesContributorCount, RepositoriesOrganizationRef
 
 from ..contributor import Contributor
 
@@ -27,16 +27,16 @@ from polaris.graphql.connection_utils import CountableConnection, QueryConnectio
 class Repository(
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
-    ContributorSummaryResolverMixin,
+    ContributorCountResolverMixin,
     OrganizationRefResolverMixin,
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, ContributorSummary, OrganizationRef)
+        interfaces = (NamedNode, CommitSummary, ContributorCount, OrganizationRef)
         named_node_resolver = RepositoryNode
         interface_resolvers = {
             'CommitSummary': RepositoriesCommitSummary,
-            'ContributorSummary': RepositoriesContributorSummary,
+            'ContributorCount': RepositoriesContributorCount,
             'OrganizationRef': RepositoriesOrganizationRef
         }
         connection_class = lambda: Repositories

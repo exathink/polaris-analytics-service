@@ -10,11 +10,10 @@
 from sqlalchemy import select, func, bindparam, distinct, and_
 
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorSummary, RepositoryCount, OrganizationRef
-from ..selectables import select_contributor_summary
-
 from polaris.repos.db.model import projects, projects_repositories, organizations
 from polaris.repos.db.schema import repositories, contributors, contributor_aliases, repositories_contributor_aliases
+from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef
+
 
 class ProjectNode:
     interface = NamedNode
@@ -94,15 +93,14 @@ class ProjectsCommitSummary:
         ).group_by(project_nodes.c.id)
 
 
-class ProjectsContributorSummary:
-    interface = ContributorSummary
+class ProjectsContributorCount:
+    interface = ContributorCount
 
     @staticmethod
     def selectable(project_nodes, **kwargs):
-        contributor_nodes = select([
+        return select([
             project_nodes.c.id,
-            contributor_aliases.c.id.label('ca_id'),
-            contributor_aliases.c.contributor_key
+            func.count(distinct(contributor_aliases.c.contributor_id)).label('contributor_count')
         ]).select_from(
             project_nodes.outerjoin(
                 projects_repositories, projects_repositories.c.project_id == project_nodes.c.id
@@ -115,9 +113,7 @@ class ProjectsContributorSummary:
             )
         ).where(
             contributor_aliases.c.robot == False
-        ).cte('contributor_nodes')
-
-        return select_contributor_summary(contributor_nodes)
+        ).group_by(project_nodes.c.id)
 
 class ProjectsRepositoryCount:
     interface = RepositoryCount

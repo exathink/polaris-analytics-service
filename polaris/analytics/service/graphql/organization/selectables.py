@@ -7,16 +7,13 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, or_, and_
+from sqlalchemy import select, func, bindparam, distinct, and_
 
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorSummary, ProjectCount, RepositoryCount
-
-from ..selectables import select_contributor_summary
-
 from polaris.repos.db.model import organizations, projects, repositories
-from polaris.repos.db.schema import repositories, contributors, commits, contributor_aliases, \
+from polaris.repos.db.schema import repositories, contributors, contributor_aliases, \
     repositories_contributor_aliases
+from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
 
 
 class OrganizationNode:
@@ -110,15 +107,14 @@ class OrganizationsCommitSummary:
         ).group_by(organization_nodes.c.id)
 
 
-class OrganizationsContributorSummary:
-    interface = ContributorSummary
+class OrganizationsContributorCount:
+    interface = ContributorCount
 
     @staticmethod
     def selectable(organization_nodes, **kwargs):
-        contributor_nodes = select([
+        return select([
             organization_nodes.c.id,
-            contributor_aliases.c.id.label('ca_id'),
-            contributor_aliases.c.contributor_key
+            func.count(distinct(contributor_aliases.c.contributor_id)).label('contributor_count')
         ]).select_from(
             organization_nodes.outerjoin(
                 repositories, repositories.c.organization_id == organization_nodes.c.id
@@ -129,9 +125,9 @@ class OrganizationsContributorSummary:
             )
         ).where(
             contributor_aliases.c.robot == False
-        ).cte('contributor_nodes')
+        ).group_by(organization_nodes.c.id)
 
-        return select_contributor_summary(contributor_nodes)
+
 
 
 class OrganizationsProjectCount:

@@ -7,14 +7,13 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, and_
+from sqlalchemy import select, func, bindparam, and_, distinct
 
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorSummary, OrganizationRef
-from ..selectables import select_contributor_summary
-
 from polaris.repos.db.model import repositories, organizations
 from polaris.repos.db.schema import contributors, contributor_aliases, repositories_contributor_aliases
+from ..interfaces import CommitSummary, ContributorCount, OrganizationRef
+
 
 class RepositoryNode:
     interface = NamedNode
@@ -74,15 +73,14 @@ class RepositoriesCommitSummary:
         ).group_by(repositories_nodes.c.id)
 
 
-class RepositoriesContributorSummary:
-    interface = ContributorSummary
+class RepositoriesContributorCount:
+    interface = ContributorCount
 
     @staticmethod
     def selectable(repositories_nodes, **kwargs):
-        contributor_nodes = select([
+        return select([
             repositories_nodes.c.id,
-            contributor_aliases.c.id.label('ca_id'),
-            contributor_aliases.c.contributor_key
+            func.count(distinct(contributor_aliases.c.contributor_id)).label('contributor_count')
         ]).select_from(
             repositories_nodes.outerjoin(
                 repositories, repositories_nodes.c.id == repositories.c.id
@@ -93,9 +91,7 @@ class RepositoriesContributorSummary:
             )
         ).where(
             contributor_aliases.c.robot == False
-        ).cte('contributor_nodes')
-
-        return select_contributor_summary(contributor_nodes)
+        ).group_by(repositories_nodes.c.id)
 
 class RepositoriesOrganizationRef:
     interface = OrganizationRef

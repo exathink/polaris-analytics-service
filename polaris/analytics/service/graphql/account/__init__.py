@@ -14,15 +14,15 @@ from flask_security import current_user
 from polaris.graphql.selectable import Selectable
 
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorSummary
-from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin
+from ..interfaces import CommitSummary, ContributorCount
+from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
 
 from ..organization import Organization
 from ..project import Project
 from ..repository import Repository
 from ..contributor import Contributor
 
-from .selectables import AccountNode, AccountCommitSummary, AccountContributorSummary, AccountOrganizationsNodes, \
+from .selectables import AccountNode, AccountCommitSummary, AccountContributorCount, AccountOrganizationsNodes, \
     AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes
 
 from polaris.graphql.exceptions import AccessDeniedException
@@ -31,15 +31,15 @@ from polaris.graphql.exceptions import AccessDeniedException
 class Account(
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
-    ContributorSummaryResolverMixin,
+    ContributorCountResolverMixin,
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, ContributorSummary)
+        interfaces = (NamedNode, CommitSummary, ContributorCount)
         named_node_resolver = AccountNode
         interface_resolvers = {
             'CommitSummary': AccountCommitSummary,
-            'ContributorSummary': AccountContributorSummary
+            'ContributorCount': AccountContributorCount
         }
 
 

@@ -18,14 +18,12 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, func, bindparam, and_
-
-from polaris.repos.db.model import organizations, accounts_organizations, accounts, projects, repositories
-from polaris.repos.db.schema import repositories, contributors, contributor_aliases, repositories_contributor_aliases
+from sqlalchemy import select, func, bindparam, and_, distinct
 
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorSummary
-from ..selectables import select_contributor_summary
+from polaris.repos.db.model import organizations, accounts_organizations, accounts, projects, repositories
+from polaris.repos.db.schema import repositories, contributors, contributor_aliases, repositories_contributor_aliases
+from ..interfaces import CommitSummary, ContributorCount
 
 
 class AccountNode:
@@ -153,15 +151,14 @@ class AccountCommitSummary:
         ).group_by(account_node.c.id)
 
 
-class AccountContributorSummary:
-    interface = ContributorSummary
+class AccountContributorCount:
+    interface = ContributorCount
 
     @staticmethod
     def selectable(account_node, **kwargs):
-        contributor_nodes = select([
+        return select([
             account_node.c.id,
-            contributor_aliases.c.id.label('ca_id'),
-            contributor_aliases.c.contributor_key
+            func.count(distinct(contributor_aliases.c.contributor_id)).label('contributor_count')
         ]).select_from(
             account_node.outerjoin(
                 accounts_organizations, accounts_organizations.c.account_id == account_node.c.id
@@ -174,8 +171,4 @@ class AccountContributorSummary:
             ).outerjoin(
                 contributor_aliases, contributor_aliases.c.id == repositories_contributor_aliases.c.contributor_alias_id
             )
-        ).where(
-            contributor_aliases.c.robot == False
-        ).cte('contributor_nodes')
-
-        return select_contributor_summary(contributor_nodes)
+        ).group_by(account_node.c.id)

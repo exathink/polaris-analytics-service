@@ -15,7 +15,7 @@ from polaris.graphql.utils import init_tuple, create_tuple
 
 from .interfaces import \
     CommitSummary, \
-    ContributorSummary, \
+    ContributorCount, \
     ProjectCount, \
     RepositoryCount, \
     OrganizationRef
@@ -51,37 +51,33 @@ class CommitSummaryResolverMixin(KeyIdResolverMixin):
         return self.get_commit_summary(info, **kwargs).commit_count
 
 
-class ContributorSummaryResolverMixin(KeyIdResolverMixin):
-    contributor_summary_tuple_type = create_tuple(ContributorSummary)
+class ContributorCountResolverMixin(KeyIdResolverMixin):
+    contributor_count_tuple_type = create_tuple(ContributorCount)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.contributor_summary = init_tuple(self.contributor_summary_tuple_type, **kwargs)
+        self.contributor_count = init_tuple(self.contributor_count_tuple_type, **kwargs)
 
-    def resolve_contributor_summary(self, info, **kwargs):
+    def resolve_contributor_count_interface(self, info, **kwargs):
         return self.resolve_interface_for_instance(
-            interface=['ContributorSummary'],
+            interface=['ContributorCount'],
             params=self.get_instance_query_params(),
             **kwargs
         )
 
 
-    def get_contributor_summary(self, info, **kwargs):
-        if self.contributor_summary is None:
-            self.contributor_summary = self.resolve_contributor_summary(info, **kwargs)
+    def get_contributor_count(self, info, **kwargs):
+        if self.contributor_count is None:
+            self.contributor_count = self.resolve_contributor_count_interface(info, **kwargs)
 
-        return self.contributor_summary
+        return self.contributor_count
 
 
     def resolve_contributor_count(self, info, **kwargs):
-        return self.get_contributor_summary(info, **kwargs).contributor_count
+        return self.get_contributor_count(info, **kwargs).contributor_count
 
-    def resolve_unassigned_alias_count(self, info, **kwargs):
-        return self.get_contributor_summary(info, **kwargs).unassigned_alias_count
 
-    def resolve_unique_contributor_count(self, info, **kwargs):
-        return self.get_contributor_summary(info, **kwargs).unique_contributor_count
 
 
 class ProjectCountResolverMixin(KeyIdResolverMixin):

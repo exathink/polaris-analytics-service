@@ -13,9 +13,9 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 
-from ..interfaces import CommitSummary, ContributorSummary, ProjectCount, RepositoryCount
+from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
 from ..mixins import \
-    NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorSummaryResolverMixin, \
+    NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, \
     ProjectCountResolverMixin, RepositoryCountResolverMixin
 
 from ..project import Project
@@ -24,7 +24,7 @@ from ..contributor import Contributor
 
 from .selectables import \
     OrganizationNode, OrganizationsCommitSummary, OrganizationsProjectCount, OrganizationsRepositoryCount,\
-    OrganizationsContributorSummary, OrganizationProjectsNodes, OrganizationRepositoriesNodes, OrganizationContributorNodes
+    OrganizationsContributorCount, OrganizationProjectsNodes, OrganizationRepositoriesNodes, OrganizationContributorNodes
 
 
 from polaris.graphql.connection_utils import CountableConnection
@@ -33,17 +33,17 @@ from polaris.graphql.connection_utils import CountableConnection
 class Organization(
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
-    ContributorSummaryResolverMixin,
+    ContributorCountResolverMixin,
     ProjectCountResolverMixin,
     RepositoryCountResolverMixin,
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, ContributorSummary, ProjectCount, RepositoryCount)
+        interfaces = (NamedNode, CommitSummary, ContributorCount, ProjectCount, RepositoryCount)
         named_node_resolver = OrganizationNode
         interface_resolvers = {
             'CommitSummary': OrganizationsCommitSummary,
-            'ContributorSummary': OrganizationsContributorSummary,
+            'ContributorCount': OrganizationsContributorCount,
             'ProjectCount': OrganizationsProjectCount,
             'RepositoryCount': OrganizationsRepositoryCount
         }

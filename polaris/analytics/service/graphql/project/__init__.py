@@ -13,11 +13,11 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 
-from ..interfaces import CommitSummary, ContributorSummary, RepositoryCount, OrganizationRef
+from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef
 from ..mixins import \
     NamedNodeResolverMixin, \
     CommitSummaryResolverMixin, \
-    ContributorSummaryResolverMixin, \
+    ContributorCountResolverMixin, \
     RepositoryCountResolverMixin, \
     OrganizationRefResolverMixin
 
@@ -27,7 +27,7 @@ from ..contributor import Contributor
 from .selectables import ProjectNode, \
 ProjectRepositoriesNodes, \
     ProjectContributorNodes, \
-    ProjectsContributorSummary, \
+    ProjectsContributorCount, \
     ProjectsCommitSummary, \
     ProjectsRepositoryCount, \
     ProjectsOrganizationRef
@@ -39,17 +39,17 @@ from polaris.graphql.connection_utils import CountableConnection
 class Project(
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
-    ContributorSummaryResolverMixin,
+    ContributorCountResolverMixin,
     RepositoryCountResolverMixin,
     OrganizationRefResolverMixin,
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, ContributorSummary, RepositoryCount, OrganizationRef)
+        interfaces = (NamedNode, CommitSummary, ContributorCount, RepositoryCount, OrganizationRef)
         named_node_resolver = ProjectNode
         interface_resolvers = {
             'CommitSummary': ProjectsCommitSummary,
-            'ContributorSummary': ProjectsContributorSummary,
+            'ContributorCount': ProjectsContributorCount,
             'RepositoryCount': ProjectsRepositoryCount,
             'OrganizationRef': ProjectsOrganizationRef,
         }

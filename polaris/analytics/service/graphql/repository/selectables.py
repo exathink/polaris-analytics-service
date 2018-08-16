@@ -41,16 +41,14 @@ class RepositoryContributorNodes:
             contributors.c.name
         ]).select_from(
             contributors.join(
-                contributor_aliases.join(
-                    repositories_contributor_aliases
-                ).join(
+                    repositories_contributor_aliases.join(
                     repositories
                 )
             )
         ).where(
             and_(
                 repositories.c.key == bindparam('key'),
-                contributor_aliases.c.robot == False
+                repositories_contributor_aliases.c.robot == False
             )
         ).distinct()
 
@@ -80,17 +78,15 @@ class RepositoriesContributorCount:
     def selectable(repositories_nodes, **kwargs):
         return select([
             repositories_nodes.c.id,
-            func.count(distinct(contributor_aliases.c.contributor_id)).label('contributor_count')
+            func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
         ]).select_from(
             repositories_nodes.outerjoin(
                 repositories, repositories_nodes.c.id == repositories.c.id
             ).outerjoin(
                 repositories_contributor_aliases, repositories.c.id == repositories_contributor_aliases.c.repository_id
-            ).outerjoin(
-                contributor_aliases, contributor_aliases.c.id == repositories_contributor_aliases.c.contributor_alias_id
             )
         ).where(
-            contributor_aliases.c.robot == False
+            repositories_contributor_aliases.c.robot == False
         ).group_by(repositories_nodes.c.id)
 
 class RepositoriesOrganizationRef:

@@ -56,9 +56,7 @@ class ProjectContributorNodes:
             contributors.c.name
         ]).select_from(
             contributors.join(
-                contributor_aliases.join(
-                    repositories_contributor_aliases
-                ).join(
+                    repositories_contributor_aliases.join(
                     repositories.join(
                         projects_repositories
                     ).join(
@@ -69,7 +67,7 @@ class ProjectContributorNodes:
         ).where(
             and_(
                 projects.c.project_key == bindparam('key'),
-                contributor_aliases.c.robot == False
+                repositories_contributor_aliases.c.robot == False
             )
         ).distinct()
 
@@ -100,7 +98,7 @@ class ProjectsContributorCount:
     def selectable(project_nodes, **kwargs):
         return select([
             project_nodes.c.id,
-            func.count(distinct(contributor_aliases.c.contributor_id)).label('contributor_count')
+            func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
         ]).select_from(
             project_nodes.outerjoin(
                 projects_repositories, projects_repositories.c.project_id == project_nodes.c.id
@@ -108,11 +106,9 @@ class ProjectsContributorCount:
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             ).outerjoin(
                 repositories_contributor_aliases, repositories.c.id == repositories_contributor_aliases.c.repository_id
-            ).outerjoin(
-                contributor_aliases, contributor_aliases.c.id == repositories_contributor_aliases.c.contributor_alias_id
             )
         ).where(
-            contributor_aliases.c.robot == False
+            repositories_contributor_aliases.c.robot == False
         ).group_by(project_nodes.c.id)
 
 class ProjectsRepositoryCount:

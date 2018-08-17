@@ -87,5 +87,7 @@ class Account(
             'account_contributors',
             AccountContributorNodes,
             self.get_instance_query_params(),
+            level_of_detail='repository',
+            apply_distinct=True,
             **kwargs
         )

@@ -54,6 +54,8 @@ class Repository(
             'repository_contributors',
             RepositoryContributorNodes,
             self.get_instance_query_params(),
+            level_of_detail='repository',
+            apply_distinct=True,
             **kwargs
         )
 

@@ -80,6 +80,8 @@ class Organization(
             'organization_contributors',
             OrganizationContributorNodes,
             self.get_instance_query_params(),
+            level_of_detail='repository',
+            apply_distinct=True,
             **kwargs
         )
 

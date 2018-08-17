@@ -38,7 +38,8 @@ class RepositoryContributorNodes:
         return select([
             contributors.c.id,
             contributors.c.key,
-            contributors.c.name
+            contributors.c.name,
+            repositories_contributor_aliases.c.repository_id
         ]).select_from(
             contributors.join(
                     repositories_contributor_aliases.join(

@@ -20,13 +20,13 @@ from .interfaces import \
     RepositoryCount, \
     OrganizationRef
 
+
 class CommitSummaryResolverMixin(KeyIdResolverMixin):
     commit_summary_tuple = create_tuple(CommitSummary)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.commit_summary = init_tuple(self.commit_summary_tuple, **kwargs)
-
 
     def resolve_commit_summary(self, info, **kwargs):
         return self.resolve_interface_for_instance(
@@ -35,14 +35,13 @@ class CommitSummaryResolverMixin(KeyIdResolverMixin):
             **kwargs
         )
 
-
     def get_commit_summary(self, info, **kwargs):
         if self.commit_summary is None:
             self.commit_summary = self.resolve_commit_summary(info, **kwargs)
         return self.commit_summary
 
     def resolve_earliest_commit(self, info, **kwargs):
-        return self.get_commit_summary(info,**kwargs).earliest_commit
+        return self.get_commit_summary(info, **kwargs).earliest_commit
 
     def resolve_latest_commit(self, info, **kwargs):
         return self.get_commit_summary(info, **kwargs).latest_commit
@@ -66,18 +65,14 @@ class ContributorCountResolverMixin(KeyIdResolverMixin):
             **kwargs
         )
 
-
     def get_contributor_count(self, info, **kwargs):
         if self.contributor_count is None:
             self.contributor_count = self.resolve_contributor_count_interface(info, **kwargs)
 
         return self.contributor_count
 
-
     def resolve_contributor_count(self, info, **kwargs):
         return self.get_contributor_count(info, **kwargs).contributor_count
-
-
 
 
 class ProjectCountResolverMixin(KeyIdResolverMixin):

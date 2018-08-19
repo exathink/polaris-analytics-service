@@ -19,7 +19,6 @@
 # Author: Krishna Kumar
 
 from sqlalchemy import select, func, bindparam, distinct, and_
-
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories
 from polaris.repos.db.schema import repositories, repositories_contributor_aliases, contributors, contributor_aliases
@@ -92,7 +91,9 @@ class ContributorsCommitSummary:
         else:
             return ContributorsCommitSummary.contributor_level_of_detail(contributor_nodes, **kwargs)
 
-
+    @staticmethod
+    def sort_order(contributor_summary, **kwargs):
+        return [contributor_summary.c.commit_count.desc()]
 
 
 class ContributorsRepositoryCount:
@@ -130,3 +131,4 @@ class ContributorsRepositoryCount:
             return ContributorsRepositoryCount.repository_level_of_detail(contributor_nodes, **kwargs)
         else:
             return ContributorsRepositoryCount.contributor_level_of_detail(contributor_nodes, **kwargs)
+

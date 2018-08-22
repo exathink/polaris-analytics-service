@@ -30,7 +30,7 @@ class OrganizationRef(graphene.Interface):
     organization_name = graphene.String(required=True)
     organization_key = graphene.String(required=True)
 
-class ActivityLevelSummary(graphene.Interface):
+class ActivityLevelSummary(graphene.ObjectType):
     active_count = graphene.Int(required=False)
     quiescent_count = graphene.Int(required=False)
     dormant_count = graphene.Int(required=False)

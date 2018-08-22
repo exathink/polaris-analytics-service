@@ -65,28 +65,8 @@ class ActivityLevelSummaryResolverMixin:
             self.activity_level_summary = init_tuple(self.activity_level_summary_tuple, **result)
 
     def resolve_activity_level_summary(self, info, **kwargs):
-        raise UnableToResolveException(f'Unable to resolve Summary: {ActivityLevelSummary.__name__}')
-
-    def get_activity_level_summary(self, info, **kwargs):
-        if self.activity_level_summary is None:
-            self.activity_level_summary = init_tuple(
-                self.activity_level_summary_tuple,
-                **self.resolve_activity_level_summary(info, **kwargs)
-            )
-
         return self.activity_level_summary
 
-    def resolve_active_count(self, info, **kwargs):
-        return self.get_activity_level_summary(info, **kwargs).active_count
-
-    def resolve_quiescent_count(self, info, **kwargs):
-        return self.get_activity_level_summary(info, **kwargs).quiescent_count
-
-    def resolve_dormant_count(self, info, **kwargs):
-        return self.get_activity_level_summary(info, **kwargs).dormant_count
-
-    def resolve_inactive_count(self, info, **kwargs):
-        return self.get_activity_level_summary(info, **kwargs).inactive_count
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):

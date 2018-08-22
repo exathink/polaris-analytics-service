@@ -151,6 +151,7 @@ class AccountCommitSummary:
         ).group_by(account_node.c.id)
 
 
+
 class AccountContributorCount:
     interface = ContributorCount
 

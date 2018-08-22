@@ -71,6 +71,10 @@ class RepositoriesCommitSummary:
             )
         ).group_by(repositories_nodes.c.id)
 
+    @staticmethod
+    def sort_order(repositories_commit_summary, **kwargs):
+        return [repositories_commit_summary.c.commit_count.desc()]
+
 
 class RepositoriesContributorCount:
     interface = ContributorCount

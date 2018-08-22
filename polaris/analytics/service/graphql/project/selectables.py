@@ -91,6 +91,10 @@ class ProjectsCommitSummary:
             )
         ).group_by(project_nodes.c.id)
 
+    @staticmethod
+    def sort_order(projects_commit_summary, **kwargs):
+        return [projects_commit_summary.c.commit_count.desc()]
+
 
 class ProjectsContributorCount:
     interface = ContributorCount

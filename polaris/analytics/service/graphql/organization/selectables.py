@@ -105,6 +105,10 @@ class OrganizationsCommitSummary:
             organization_nodes.outerjoin(repositories, organization_nodes.c.id == repositories.c.organization_id)
         ).group_by(organization_nodes.c.id)
 
+    @staticmethod
+    def sort_order(organizations_commit_summary, **kwargs):
+        return [organizations_commit_summary.c.commit_count.desc()]
+
 
 class OrganizationsContributorCount:
     interface = ContributorCount

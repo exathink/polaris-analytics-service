@@ -12,8 +12,8 @@ import graphene
 
 from polaris.graphql.selectable import Selectable
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorCount, OrganizationRef
-from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, OrganizationRefResolverMixin
+from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, ActivityLevelSummary
+from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, OrganizationRefResolverMixin, ActivityLevelSummaryResolverMixin
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
     RepositoryContributorNodes, \
@@ -59,6 +59,7 @@ class Repository(
             **kwargs
         )
 
-class Repositories(CountableConnection):
+class Repositories(ActivityLevelSummaryResolverMixin, CountableConnection):
     class Meta:
         node = Repository
+        summaries = (ActivityLevelSummary,)

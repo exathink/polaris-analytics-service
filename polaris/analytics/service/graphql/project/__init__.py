@@ -13,13 +13,14 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 
-from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef
+from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, ActivityLevelSummary
 from ..mixins import \
     NamedNodeResolverMixin, \
     CommitSummaryResolverMixin, \
     ContributorCountResolverMixin, \
     RepositoryCountResolverMixin, \
-    OrganizationRefResolverMixin
+    OrganizationRefResolverMixin, \
+    ActivityLevelSummaryResolverMixin
 
 from ..repository import Repository
 from ..contributor import Contributor
@@ -84,6 +85,7 @@ class Project(
         )
 
 
-class Projects(CountableConnection):
+class Projects(ActivityLevelSummaryResolverMixin, CountableConnection):
     class Meta:
         node = Project
+        summaries = (ActivityLevelSummary, )

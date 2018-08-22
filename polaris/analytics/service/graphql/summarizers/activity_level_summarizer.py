@@ -81,16 +81,20 @@ class ActivityLevelSummarizer(ConnectionSummarizer):
         activity_level_summary = dict(active_count=0, quiescent_count=0, dormant_count=0, inactive_count=0)
         now = datetime.utcnow()
         for row in result_set:
-            latest_commit = getattr(row, 'latest_commit', None)
-            if latest_commit:
-                days_since_latest_commit = days_between(latest_commit, now)
-                if days_since_latest_commit <= 30:
-                    activity_level_summary['active_count'] = activity_level_summary['active_count'] + 1
-                elif 30 < days_since_latest_commit <= 90:
-                    activity_level_summary['quiescent_count'] = activity_level_summary['quiescent_count'] + 1
-                elif 90 < days_since_latest_commit <= 180:
-                    activity_level_summary['dormant_count'] = activity_level_summary['dormant_count'] + 1
+            if hasattr(row, 'latest_commit'):
+                latest_commit = getattr(row, 'latest_commit')
+                if latest_commit:
+                    days_since_latest_commit = days_between(latest_commit, now)
+                    if days_since_latest_commit <= 30:
+                        activity_level_summary['active_count'] = activity_level_summary['active_count'] + 1
+                    elif 30 < days_since_latest_commit <= 90:
+                        activity_level_summary['quiescent_count'] = activity_level_summary['quiescent_count'] + 1
+                    elif 90 < days_since_latest_commit <= 180:
+                        activity_level_summary['dormant_count'] = activity_level_summary['dormant_count'] + 1
+                    else:
+                        activity_level_summary['inactive_count'] = activity_level_summary['inactive_count'] + 1
                 else:
+                    # Items with Null latest_commits are considered inactive
                     activity_level_summary['inactive_count'] = activity_level_summary['inactive_count'] + 1
             else:
                 raise InvalidSummarizerException(

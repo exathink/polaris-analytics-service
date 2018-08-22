@@ -12,9 +12,10 @@ from polaris.graphql.connection_utils import CountableConnection
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 from .selectables import ContributorNodes, ContributorsCommitSummary, ContributorsRepositoryCount
-from ..interfaces import CommitSummary, RepositoryCount
-from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, RepositoryCountResolverMixin
+from ..interfaces import CommitSummary, RepositoryCount, ActivityLevelSummary
+from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, RepositoryCountResolverMixin, ActivityLevelSummaryResolverMixin
 
+from ..summarizers import activity_level_summarizer
 
 class Contributor(
     NamedNodeResolverMixin,
@@ -38,6 +39,11 @@ class Contributor(
         return cls.resolve_instance(key, **kwargs)
 
 
-class Contributors(CountableConnection):
+class Contributors(ActivityLevelSummaryResolverMixin, CountableConnection):
     class Meta:
         node = Contributor
+        summaries = (ActivityLevelSummary,)
+
+
+
+

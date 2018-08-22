@@ -9,6 +9,8 @@
 # Author: Krishna Kumar
 
 from polaris.graphql.mixins import *
+from polaris.graphql.exceptions import UnableToResolveException
+
 from collections import namedtuple
 
 from polaris.graphql.utils import init_tuple, create_tuple
@@ -63,7 +65,7 @@ class ActivityLevelSummaryResolverMixin:
             self.activity_level_summary = init_tuple(self.activity_level_summary_tuple, **result)
 
     def resolve_activity_level_summary(self, info, **kwargs):
-        raise NotImplemented()
+        raise UnableToResolveException(f'Unable to resolve Summary: {ActivityLevelSummary.__name__}')
 
     def get_activity_level_summary(self, info, **kwargs):
         if self.activity_level_summary is None:

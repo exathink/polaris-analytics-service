@@ -8,7 +8,7 @@
 
 # Author: Krishna Kumar
 from sqlalchemy import select, func, bindparam, and_, distinct
-
+from polaris.graphql.utils import nulls_to_zero
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories, organizations
 from polaris.repos.db.schema import contributors, contributor_aliases, repositories_contributor_aliases
@@ -73,7 +73,7 @@ class RepositoriesCommitSummary:
 
     @staticmethod
     def sort_order(repositories_commit_summary, **kwargs):
-        return [repositories_commit_summary.c.commit_count.desc()]
+        return [nulls_to_zero(repositories_commit_summary.c.commit_count).desc()]
 
 
 class RepositoriesContributorCount:

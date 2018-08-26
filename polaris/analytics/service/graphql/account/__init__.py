@@ -15,7 +15,7 @@ from polaris.graphql.selectable import Selectable
 
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import CommitSummary, ContributorCount
-from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
+from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
 
 from ..organization import Organization
 from ..project import Project

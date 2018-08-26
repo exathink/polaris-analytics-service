@@ -13,10 +13,12 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 
-from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount, ActivityLevelSummary
-from ..mixins import \
+from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
+from polaris.analytics.service.graphql.summaries import ActivityLevelSummary, Inceptions
+from ..interface_mixins import \
     NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, \
-    ProjectCountResolverMixin, RepositoryCountResolverMixin, ActivityLevelSummaryResolverMixin
+    ProjectCountResolverMixin, RepositoryCountResolverMixin
+from polaris.analytics.service.graphql.summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolverMixin
 
 from ..project import Project
 from ..repository import Repository
@@ -85,10 +87,15 @@ class Organization(
             **kwargs
         )
 
-class Organizations(ActivityLevelSummaryResolverMixin, CountableConnection):
+
+class Organizations(
+    ActivityLevelSummaryResolverMixin,
+    InceptionsResolverMixin,
+    CountableConnection
+):
     class Meta:
         node = Organization
-        summaries = (ActivityLevelSummary,)
+        summaries = (ActivityLevelSummary, graphene.List(Inceptions))
 
 
 

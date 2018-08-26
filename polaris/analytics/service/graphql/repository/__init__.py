@@ -12,8 +12,10 @@ import graphene
 
 from polaris.graphql.selectable import Selectable
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, ActivityLevelSummary
-from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, OrganizationRefResolverMixin, ActivityLevelSummaryResolverMixin
+from ..interfaces import CommitSummary, ContributorCount, OrganizationRef
+from polaris.analytics.service.graphql.summaries import ActivityLevelSummary
+from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, OrganizationRefResolverMixin
+from polaris.analytics.service.graphql.summary_mixins import ActivityLevelSummaryResolverMixin
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
     RepositoryContributorNodes, \

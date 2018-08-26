@@ -8,17 +8,18 @@
 
 # Author: Krishna Kumar
 
+from datetime import datetime
+
+from sqlalchemy import select, literal_column, func, extract, between, union_all
+
 from polaris.graphql.connection_utils import ConnectionSummarizer
 from polaris.graphql.exceptions import InvalidSummarizerException
-from polaris.graphql.utils import days_between
-from sqlalchemy import Column, DateTime
-from polaris.common import db
-from sqlalchemy import select, literal_column, func, extract, between, union_all
-from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime
-from ..interfaces import ActivityLevelSummary
+from polaris.graphql.utils import days_between, create_tuple
+from polaris.analytics.service.graphql.summaries import ActivityLevelSummary
 
 SECS_IN_DAY = 60 * 60 * 24  # secs
+
+activity_level_summary_tuple = create_tuple(ActivityLevelSummary)
 
 
 class ActivityLevelSummarizer(ConnectionSummarizer):
@@ -43,7 +44,7 @@ class ActivityLevelSummarizer(ConnectionSummarizer):
             ]).where(
                 between(func.trunc(
                     (extract('epoch', now) - extract('epoch', connection_query_temp.c.latest_commit)) / SECS_IN_DAY),
-                        31, 90)
+                    31, 90)
             )
 
             dormant_count = select([
@@ -69,7 +70,7 @@ class ActivityLevelSummarizer(ConnectionSummarizer):
 
             result = session.connection.execute(select([summary_query.c.category, summary_query.c.count])).fetchall()
 
-            return {row['category']: row['count'] for row in result}
+            return activity_level_summary_tuple(**{row['category']: row['count'] for row in result})
 
         else:
             raise InvalidSummarizerException(
@@ -100,4 +101,4 @@ class ActivityLevelSummarizer(ConnectionSummarizer):
                 raise InvalidSummarizerException(
                     f'Class {cls.__name__} cannot summarize result set. Row is missing attribute: latest_commit'
                 )
-        return activity_level_summary
+        return activity_level_summary_tuple(**activity_level_summary)

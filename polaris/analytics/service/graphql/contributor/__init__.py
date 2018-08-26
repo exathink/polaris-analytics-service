@@ -12,10 +12,11 @@ from polaris.graphql.connection_utils import CountableConnection
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 from .selectables import ContributorNodes, ContributorsCommitSummary, ContributorsRepositoryCount
-from ..interfaces import CommitSummary, RepositoryCount, ActivityLevelSummary
-from ..mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, RepositoryCountResolverMixin, ActivityLevelSummaryResolverMixin
+from ..interfaces import CommitSummary, RepositoryCount
+from polaris.analytics.service.graphql.summaries import ActivityLevelSummary
+from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, RepositoryCountResolverMixin
+from polaris.analytics.service.graphql.summary_mixins import ActivityLevelSummaryResolverMixin
 
-from ..summarizers import activity_level_summarizer
 
 class Contributor(
     NamedNodeResolverMixin,

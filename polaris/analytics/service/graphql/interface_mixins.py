@@ -9,9 +9,6 @@
 # Author: Krishna Kumar
 
 from polaris.graphql.mixins import *
-from polaris.graphql.exceptions import UnableToResolveException
-
-from collections import namedtuple
 
 from polaris.graphql.utils import init_tuple, create_tuple
 
@@ -20,9 +17,7 @@ from .interfaces import \
     ContributorCount, \
     ProjectCount, \
     RepositoryCount, \
-    OrganizationRef,\
-    ActivityLevelSummary
-
+    OrganizationRef
 
 
 class CommitSummaryResolverMixin(KeyIdResolverMixin):
@@ -52,21 +47,6 @@ class CommitSummaryResolverMixin(KeyIdResolverMixin):
 
     def resolve_commit_count(self, info, **kwargs):
         return self.get_commit_summary(info, **kwargs).commit_count
-
-class ActivityLevelSummaryResolverMixin:
-    activity_level_summary_tuple = create_tuple(ActivityLevelSummary)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.activity_level_summary = init_tuple(self.activity_level_summary_tuple, **kwargs)
-
-    def update_resolved(self, interface, result):
-        if interface == ActivityLevelSummary.__name__:
-            self.activity_level_summary = init_tuple(self.activity_level_summary_tuple, **result)
-
-    def resolve_activity_level_summary(self, info, **kwargs):
-        return self.activity_level_summary
-
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):

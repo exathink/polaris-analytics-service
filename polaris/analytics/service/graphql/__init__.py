@@ -18,6 +18,8 @@ from .project import Project
 from .repository import Repository
 from .contributor import Contributor
 from .public import Public
+from .summarizers import *
+
 
 class Query(graphene.ObjectType):
     node = NamedNode.Field()

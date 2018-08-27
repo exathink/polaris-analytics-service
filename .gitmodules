@@ -2,6 +2,9 @@
 	path = polaris-build
 	url = ../../polaris-common/polaris-build
 
+[submodule "polaris-utils"]
+        path = polaris-utils
+        url = ../../polaris-common/polaris-utils
 
 [submodule "polaris-repos-db"]
 	path = polaris-repos-db

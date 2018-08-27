@@ -17,7 +17,7 @@ class ActivityLevelSummary(graphene.ObjectType):
     inactive_count = graphene.Int(required=False)
 
 
-class Inceptions(graphene.ObjectType):
+class InceptionsSummary(graphene.ObjectType):
     year = graphene.Int(required=True)
     month = graphene.Int(required=False)
     week = graphene.Int(required=False)

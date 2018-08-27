@@ -22,7 +22,7 @@ from ..interface_mixins import \
     OrganizationRefResolverMixin
 
 
-from ..summaries import ActivityLevelSummary, Inceptions
+from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
     ActivityLevelSummaryResolverMixin, \
     InceptionsResolverMixin
@@ -97,4 +97,4 @@ class Projects(
 ):
     class Meta:
         node = Project
-        summaries = (ActivityLevelSummary, graphene.List(Inceptions) )
+        summaries = (ActivityLevelSummary, graphene.List(InceptionsSummary))

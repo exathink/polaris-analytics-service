@@ -11,17 +11,17 @@
 from polaris.graphql.connection_utils import ConnectionSummarizer
 from polaris.graphql.exceptions import InvalidSummarizerException
 
-from polaris.analytics.service.graphql.summaries import Inceptions
+from polaris.analytics.service.graphql.summaries import InceptionsSummary
 from collections import namedtuple
 from polaris.graphql.utils import  create_tuple
 
 
 inception_key = namedtuple('inception_key', 'year month week')
-inceptions_tuple = create_tuple(Inceptions)
+inceptions_tuple = create_tuple(InceptionsSummary)
 
 class InceptionsSummarizer(ConnectionSummarizer):
     class Meta:
-        interface = Inceptions
+        interface = InceptionsSummary
 
     @classmethod
     def summarize_result_set(cls, result_set):

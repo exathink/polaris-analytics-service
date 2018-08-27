@@ -17,7 +17,7 @@ from .selectables import ContributorNodes, ContributorsCommitSummary, Contributo
 from ..interfaces import CommitSummary, RepositoryCount
 from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, RepositoryCountResolverMixin
 
-from ..summaries import ActivityLevelSummary, Inceptions
+from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
     ActivityLevelSummaryResolverMixin, \
     InceptionsResolverMixin
@@ -52,7 +52,7 @@ class Contributors(
 ):
     class Meta:
         node = Contributor
-        summaries = (ActivityLevelSummary, graphene.List(Inceptions))
+        summaries = (ActivityLevelSummary, graphene.List(InceptionsSummary))
 
 
 

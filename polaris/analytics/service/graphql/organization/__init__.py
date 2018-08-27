@@ -14,7 +14,7 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 
 from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
-from polaris.analytics.service.graphql.summaries import ActivityLevelSummary, Inceptions
+from polaris.analytics.service.graphql.summaries import ActivityLevelSummary, InceptionsSummary
 
 from ..interface_mixins import \
     NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, \
@@ -97,7 +97,7 @@ class Organizations(
 ):
     class Meta:
         node = Organization
-        summaries = (ActivityLevelSummary, graphene.List(Inceptions))
+        summaries = (ActivityLevelSummary, graphene.List(InceptionsSummary))
 
 
 

@@ -29,12 +29,13 @@ class InceptionsSummarizer(ConnectionSummarizer):
         for row in result_set:
             if hasattr(row, 'earliest_commit'):
                 earliest_commit = row['earliest_commit']
-                inceptions_key = inception_key(
-                    year=earliest_commit.year,
-                    month=earliest_commit.month,
-                    week=earliest_commit.isocalendar()[2]
-                )
-                inceptions[inceptions_key] = inceptions.setdefault(inceptions_key, 0) + 1
+                if earliest_commit:
+                    inceptions_key = inception_key(
+                        year=earliest_commit.year,
+                        month=earliest_commit.month,
+                        week=earliest_commit.isocalendar()[2]
+                    )
+                    inceptions[inceptions_key] = inceptions.setdefault(inceptions_key, 0) + 1
             else:
                 raise InvalidSummarizerException(f"InceptionsSummarizer: Cannot summarize result set. "
                                                  f"Column 'earliest_commit' is missing")

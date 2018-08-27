@@ -13,9 +13,11 @@ import graphene
 from polaris.graphql.selectable import Selectable
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef
-from polaris.analytics.service.graphql.summaries import ActivityLevelSummary
 from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, OrganizationRefResolverMixin
-from polaris.analytics.service.graphql.summary_mixins import ActivityLevelSummaryResolverMixin
+
+from ..summaries import ActivityLevelSummary, Inceptions
+from ..summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolverMixin
+
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
     RepositoryContributorNodes, \
@@ -50,7 +52,6 @@ class Repository(
     def resolve_field(cls, parent, info, repository_key, **kwargs):
         return cls.resolve_instance(repository_key, **kwargs)
 
-
     def resolve_contributors(self, info, **kwargs):
         return Contributor.resolve_connection(
             'repository_contributors',
@@ -61,7 +62,12 @@ class Repository(
             **kwargs
         )
 
-class Repositories(ActivityLevelSummaryResolverMixin, CountableConnection):
+
+class Repositories(
+    ActivityLevelSummaryResolverMixin,
+    InceptionsResolverMixin,
+    CountableConnection
+):
     class Meta:
         node = Repository
-        summaries = (ActivityLevelSummary,)
+        summaries = (ActivityLevelSummary, graphene.List(Inceptions))

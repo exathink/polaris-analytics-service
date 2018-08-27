@@ -15,9 +15,11 @@ from polaris.graphql.selectable import Selectable
 
 from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
 from polaris.analytics.service.graphql.summaries import ActivityLevelSummary, Inceptions
+
 from ..interface_mixins import \
     NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, \
     ProjectCountResolverMixin, RepositoryCountResolverMixin
+
 from polaris.analytics.service.graphql.summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolverMixin
 
 from ..project import Project

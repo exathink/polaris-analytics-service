@@ -8,14 +8,19 @@
 
 # Author: Krishna Kumar
 
+import graphene
 from polaris.graphql.connection_utils import CountableConnection
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 from .selectables import ContributorNodes, ContributorsCommitSummary, ContributorsRepositoryCount
+
 from ..interfaces import CommitSummary, RepositoryCount
-from polaris.analytics.service.graphql.summaries import ActivityLevelSummary
 from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, RepositoryCountResolverMixin
-from polaris.analytics.service.graphql.summary_mixins import ActivityLevelSummaryResolverMixin
+
+from ..summaries import ActivityLevelSummary, Inceptions
+from ..summary_mixins import \
+    ActivityLevelSummaryResolverMixin, \
+    InceptionsResolverMixin
 
 
 class Contributor(
@@ -40,10 +45,14 @@ class Contributor(
         return cls.resolve_instance(key, **kwargs)
 
 
-class Contributors(ActivityLevelSummaryResolverMixin, CountableConnection):
+class Contributors(
+    ActivityLevelSummaryResolverMixin,
+    InceptionsResolverMixin,
+    CountableConnection
+):
     class Meta:
         node = Contributor
-        summaries = (ActivityLevelSummary,)
+        summaries = (ActivityLevelSummary, graphene.List(Inceptions))
 
 
 

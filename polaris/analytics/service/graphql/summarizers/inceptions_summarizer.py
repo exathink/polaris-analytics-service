@@ -13,15 +13,36 @@ from polaris.graphql.exceptions import InvalidSummarizerException
 
 from polaris.analytics.service.graphql.summaries import InceptionsSummary
 from collections import namedtuple
-from polaris.graphql.utils import  create_tuple
+from polaris.graphql.utils import create_tuple
 
+from sqlalchemy import select, func, extract
 
 inception_key = namedtuple('inception_key', 'year month week')
 inceptions_tuple = create_tuple(InceptionsSummary)
 
+
 class InceptionsSummarizer(ConnectionSummarizer):
     class Meta:
         interface = InceptionsSummary
+
+    @classmethod
+    def summarize_db(cls, connection_query_temp, session):
+        if 'earliest_commit' in connection_query_temp.c:
+            return session.connection.execute(
+                select([
+                    extract('year', connection_query_temp.c.earliest_commit).label('year'),
+                    extract('month', connection_query_temp.c.earliest_commit).label('month'),
+                    extract('week', connection_query_temp.c.earliest_commit).label('week'),
+                    func.count(connection_query_temp.c.key).label('inceptions')
+                ]).where(
+                    connection_query_temp.c.earliest_commit != None
+                ).group_by(
+                    extract('year', connection_query_temp.c.earliest_commit),
+                    extract('month', connection_query_temp.c.earliest_commit),
+                    extract('week', connection_query_temp.c.earliest_commit)
+                )
+            ).fetchall()
+
 
     @classmethod
     def summarize_result_set(cls, result_set):

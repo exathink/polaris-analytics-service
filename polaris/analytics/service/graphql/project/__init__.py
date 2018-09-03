@@ -11,10 +11,11 @@
 import graphene
 
 from polaris.graphql.interfaces import NamedNode
-from polaris.graphql.selectable import Selectable
+from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef
 from ..interface_mixins import \
+    KeyIdResolverMixin, \
     NamedNodeResolverMixin, \
     CommitSummaryResolverMixin, \
     ContributorCountResolverMixin, \
@@ -27,8 +28,8 @@ from ..summary_mixins import \
     ActivityLevelSummaryResolverMixin, \
     InceptionsResolverMixin
 
-from ..repository import Repository
-from ..contributor import Contributor
+from ..repository import RepositoriesConnectionMixin
+from ..contributor import ContributorsConnectionMixin
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -43,11 +44,16 @@ from polaris.graphql.connection_utils import CountableConnection
 
 
 class Project(
+    # interface mixins
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorCountResolverMixin,
     RepositoryCountResolverMixin,
     OrganizationRefResolverMixin,
+    # Connection Mixins
+    RepositoriesConnectionMixin,
+    ContributorsConnectionMixin,
+    #
     Selectable
 ):
     class Meta:
@@ -59,35 +65,17 @@ class Project(
             'RepositoryCount': ProjectsRepositoryCount,
             'OrganizationRef': ProjectsOrganizationRef,
         }
+        connection_node_resolvers = {
+            'repositories': ProjectRepositoriesNodes,
+            'contributors': ProjectContributorNodes
+        }
         connection_class = lambda: Projects
 
-
-    # Child Fields
-    repositories = Repository.ConnectionField()
-    contributors = Contributor.ConnectionField()
 
 
     @classmethod
     def resolve_field(cls, parent, info, project_key, **kwargs):
         return cls.resolve_instance(key=project_key, **kwargs)
-
-    def resolve_repositories(self, info, **kwargs):
-        return Repository.resolve_connection(
-            'project_repositories',
-            ProjectRepositoriesNodes,
-            self.get_instance_query_params(),
-            **kwargs
-        )
-
-    def resolve_contributors(self, info, **kwargs):
-        return Contributor.resolve_connection(
-            'project_contributors',
-            ProjectContributorNodes,
-            self.get_instance_query_params(),
-            level_of_detail='repository',
-            apply_distinct=True,
-            **kwargs
-        )
 
 
 class Projects(
@@ -98,3 +86,17 @@ class Projects(
     class Meta:
         node = Project
         summaries = (ActivityLevelSummary, graphene.List(InceptionsSummary))
+
+
+class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
+
+    projects = Project.ConnectionField()
+
+    def resolve_projects(self, info, **kwargs):
+        return Project.resolve_connection(
+            self.get_connection_resolver_context('projects'),
+            self.get_connection_node_resolver('projects'),
+            self.get_instance_query_params(),
+            **kwargs
+        )
+

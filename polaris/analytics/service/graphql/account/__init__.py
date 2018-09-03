@@ -8,30 +8,32 @@
 
 # Author: Krishna Kumar
 
-import graphene
 from flask_security import current_user
 
-from polaris.graphql.selectable import Selectable
-
+from polaris.graphql.exceptions import AccessDeniedException
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import CommitSummary, ContributorCount
-from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
-
-from ..organization import Organization
-from ..project import Project
-from ..repository import Repository
-from ..contributor import Contributor
-
+from polaris.graphql.selectable import Selectable
 from .selectables import AccountNode, AccountCommitSummary, AccountContributorCount, AccountOrganizationsNodes, \
     AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes
-
-from polaris.graphql.exceptions import AccessDeniedException
+from ..contributor import ContributorsConnectionMixin
+from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
+from ..interfaces import CommitSummary, ContributorCount
+from ..organization import OrganizationsConnectionMixin
+from ..project import ProjectsConnectionMixin
+from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 
 
 class Account(
+    # Interface Mixins
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorCountResolverMixin,
+    # ConnectionMixins
+    OrganizationsConnectionMixin,
+    ProjectsConnectionMixin,
+    RepositoriesConnectionMixin,
+    ContributorsConnectionMixin,
+    #
     Selectable
 ):
     class Meta:
@@ -41,14 +43,12 @@ class Account(
             'CommitSummary': AccountCommitSummary,
             'ContributorCount': AccountContributorCount
         }
-
-
-
-    # Child fields
-    organizations = Organization.ConnectionField()
-    projects = Project.ConnectionField()
-    repositories = Repository.ConnectionField()
-    contributors = Contributor.ConnectionField()
+        connection_node_resolvers = {
+            'organizations': AccountOrganizationsNodes,
+            'projects': AccountProjectsNodes,
+            'repositories': AccountRepositoriesNodes,
+            'contributors': AccountContributorNodes
+        }
 
     @classmethod
     def resolve_field(cls, info, key, **kwargs):
@@ -56,38 +56,3 @@ class Account(
             return cls.resolve_instance(key, **kwargs)
         else:
             raise AccessDeniedException('Access denied for specified account')
-
-
-    def resolve_organizations(self, info, **kwargs):
-        return Organization.resolve_connection(
-            'account_organizations',
-            AccountOrganizationsNodes,
-            self.get_instance_query_params(),
-            **kwargs
-        )
-
-    def resolve_projects(self, info, **kwargs):
-        return Project.resolve_connection(
-            'account_projects',
-            AccountProjectsNodes,
-            self.get_instance_query_params(),
-            **kwargs
-        )
-
-    def resolve_repositories(self, info, **kwargs):
-        return Repository.resolve_connection(
-            'account_repositories',
-            AccountRepositoriesNodes,
-            self.get_instance_query_params(),
-            **kwargs
-        )
-
-    def resolve_contributors(self, info, **kwargs):
-        return Contributor.resolve_connection(
-            'account_contributors',
-            AccountContributorNodes,
-            self.get_instance_query_params(),
-            level_of_detail='repository',
-            apply_distinct=True,
-            **kwargs
-        )

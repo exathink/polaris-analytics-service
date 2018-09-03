@@ -10,39 +10,43 @@
 
 import graphene
 
-from polaris.graphql.interfaces import NamedNode
-from polaris.graphql.selectable import Selectable
-
-from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
 from polaris.analytics.service.graphql.summaries import ActivityLevelSummary, InceptionsSummary
-
-from ..interface_mixins import \
-    NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, \
-    ProjectCountResolverMixin, RepositoryCountResolverMixin
-
 from polaris.analytics.service.graphql.summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolverMixin
-
-from ..project import Project
-from ..repository import Repository
-from ..contributor import Contributor
-
+from polaris.graphql.connection_utils import CountableConnection
+from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from .selectables import \
-    OrganizationNode, OrganizationsCommitSummary, OrganizationsProjectCount, OrganizationsRepositoryCount,\
+    OrganizationNode, OrganizationsCommitSummary, OrganizationsProjectCount, OrganizationsRepositoryCount, \
     OrganizationsContributorCount, OrganizationProjectsNodes, \
     OrganizationRepositoriesNodes, OrganizationMostActiveRepositoriesNodes, \
     OrganizationContributorNodes
 
 
+from ..interface_mixins import \
+    KeyIdResolverMixin, \
+    NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, \
+    ProjectCountResolverMixin, RepositoryCountResolverMixin
 
-from polaris.graphql.connection_utils import CountableConnection
+from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
+
+from ..project import ProjectsConnectionMixin
+from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
+from ..contributor import ContributorsConnectionMixin
 
 
 class Organization(
+    # Interface Mixins
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     ContributorCountResolverMixin,
     ProjectCountResolverMixin,
     RepositoryCountResolverMixin,
+    # Connection Mixins
+    ProjectsConnectionMixin,
+    ContributorsConnectionMixin,
+    RepositoriesConnectionMixin,
+    RecentlyActiveRepositoriesConnectionMixin,
+    #
     Selectable
 ):
     class Meta:
@@ -54,62 +58,20 @@ class Organization(
             'ProjectCount': OrganizationsProjectCount,
             'RepositoryCount': OrganizationsRepositoryCount
         }
+        connection_node_resolvers = {
+            'projects': OrganizationProjectsNodes,
+            'contributors': OrganizationContributorNodes,
+            'repositories': OrganizationRepositoriesNodes,
+            'recently_active_repositories': OrganizationMostActiveRepositoriesNodes
+        }
+
         connection_class = lambda: Organizations
 
-
-
-    # Connection Fields
-    projects = Project.ConnectionField()
-
-    repositories = Repository.ConnectionField()
-    recently_active_repositories = Repository.ConnectionField(
-        days=graphene.Argument(
-            graphene.Int,
-            required=False,
-            default_value=7,
-            description="Return repos with commits within the specified number of days"
-        )
-    )
-    contributors = Contributor.ConnectionField()
 
     @classmethod
     def resolve_field(cls, parent, info, organization_key, **kwargs):
         return cls.resolve_instance(key=organization_key, **kwargs)
 
-    def resolve_projects(self, info, **kwargs):
-        return Project.resolve_connection(
-            'organization_projects',
-            OrganizationProjectsNodes,
-            self.get_instance_query_params(),
-            **kwargs
-        )
-
-    def resolve_repositories(self, info, **kwargs):
-        return Repository.resolve_connection(
-            'organization_repositories',
-            OrganizationRepositoriesNodes,
-            self.get_instance_query_params(),
-            **kwargs
-        )
-
-    def resolve_recently_active_repositories(self, info, **kwargs):
-        return Repository.resolve_connection(
-            'organization_most_active_repositories',
-            OrganizationMostActiveRepositoriesNodes,
-            self.get_instance_query_params(),
-            **kwargs
-        )
-
-
-    def resolve_contributors(self, info, **kwargs):
-        return Contributor.resolve_connection(
-            'organization_contributors',
-            OrganizationContributorNodes,
-            self.get_instance_query_params(),
-            level_of_detail='repository',
-            apply_distinct=True,
-            **kwargs
-        )
 
 
 class Organizations(
@@ -122,6 +84,15 @@ class Organizations(
         summaries = (ActivityLevelSummary, graphene.List(InceptionsSummary))
 
 
+class OrganizationsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
+    organizations = Organization.ConnectionField()
 
+    def resolve_organizations(self, info, **kwargs):
+        return Organization.resolve_connection(
+            self.get_connection_resolver_context('organizations'),
+            self.get_connection_node_resolver('organizations'),
+            self.get_instance_query_params(),
+            **kwargs
+        )
 

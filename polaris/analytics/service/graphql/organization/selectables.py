@@ -7,13 +7,20 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, distinct, and_
+
+from datetime import datetime, timedelta
+from polaris.utils.datetime_utils import time_window
+
+from sqlalchemy import select, func, bindparam, distinct, and_, between, cast, Text, desc
+
 from polaris.graphql.utils import nulls_to_zero
 from polaris.graphql.interfaces import NamedNode
+
+
 from polaris.repos.db.model import organizations, projects, repositories
-from polaris.repos.db.schema import repositories, contributors, contributor_aliases, \
+from polaris.repos.db.schema import repositories, contributors, commits,\
     repositories_contributor_aliases
-from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
+from ..interfaces import CommitSummary, CommitCount, ContributorCount, ProjectCount, RepositoryCount
 
 
 class OrganizationNode:
@@ -61,6 +68,39 @@ class OrganizationRepositoriesNodes:
                 organizations
             )
         ).where(organizations.c.organization_key == bindparam('key'))
+
+
+class OrganizationMostActiveRepositoriesNodes:
+    interfaces = (NamedNode, CommitCount)
+
+    @staticmethod
+    def selectable(**kwargs):
+        now = datetime.utcnow()
+        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+
+        return select([
+            repositories.c.id,
+            func.min(cast(repositories.c.key, Text)).label('key'),
+            func.min(repositories.c.name).label('name'),
+            func.count(commits.c.id).label('commit_count')
+        ]).select_from(
+            organizations.join(
+                repositories.join(
+                    commits
+                )
+            )
+        ).where(
+            and_(
+                organizations.c.organization_key == bindparam('key'),
+                between(commits.c.commit_date, window.begin, window.end)
+            )
+        ).group_by(
+            repositories.c.id
+        )
+
+    @staticmethod
+    def sort_order(organizations_most_active_repository, **kwargs):
+        return [organizations_most_active_repository.c.commit_count.desc()]
 
 
 class OrganizationContributorNodes:

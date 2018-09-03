@@ -28,7 +28,10 @@ from ..contributor import Contributor
 
 from .selectables import \
     OrganizationNode, OrganizationsCommitSummary, OrganizationsProjectCount, OrganizationsRepositoryCount,\
-    OrganizationsContributorCount, OrganizationProjectsNodes, OrganizationRepositoriesNodes, OrganizationContributorNodes
+    OrganizationsContributorCount, OrganizationProjectsNodes, \
+    OrganizationRepositoriesNodes, OrganizationMostActiveRepositoriesNodes, \
+    OrganizationContributorNodes
+
 
 
 from polaris.graphql.connection_utils import CountableConnection
@@ -54,9 +57,19 @@ class Organization(
         connection_class = lambda: Organizations
 
 
-    # Child Fields
+
+    # Connection Fields
     projects = Project.ConnectionField()
+
     repositories = Repository.ConnectionField()
+    recently_active_repositories = Repository.ConnectionField(
+        days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            default_value=7,
+            description="Return repos with commits within the specified number of days"
+        )
+    )
     contributors = Contributor.ConnectionField()
 
     @classmethod
@@ -78,6 +91,15 @@ class Organization(
             self.get_instance_query_params(),
             **kwargs
         )
+
+    def resolve_recently_active_repositories(self, info, **kwargs):
+        return Repository.resolve_connection(
+            'organization_most_active_repositories',
+            OrganizationMostActiveRepositoriesNodes,
+            self.get_instance_query_params(),
+            **kwargs
+        )
+
 
     def resolve_contributors(self, info, **kwargs):
         return Contributor.resolve_connection(

@@ -9,6 +9,11 @@
 # Author: Krishna Kumar
 
 import graphene
+from polaris.graphql.interfaces import NamedNode
+
+
+class CommitCount(NamedNode):
+    commit_count = graphene.Int()
 
 
 class CommitSummary(graphene.Interface):

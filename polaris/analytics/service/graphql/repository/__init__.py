@@ -71,7 +71,6 @@ class Repositories(
         summaries = (ActivityLevelSummary, graphene.List(InceptionsSummary))
 
 
-
 class RepositoriesConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
     repositories = Repository.ConnectionField()

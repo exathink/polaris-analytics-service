@@ -14,7 +14,7 @@ from polaris.graphql.exceptions import AccessDeniedException
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 from .selectables import AccountNode, AccountCommitSummary, AccountContributorCount, AccountOrganizationsNodes, \
-    AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes
+    AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes, AccountRecentlyActiveRepositoriesNodes
 from ..contributor import ContributorsConnectionMixin
 from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
 from ..interfaces import CommitSummary, ContributorCount
@@ -32,6 +32,7 @@ class Account(
     OrganizationsConnectionMixin,
     ProjectsConnectionMixin,
     RepositoriesConnectionMixin,
+    RecentlyActiveRepositoriesConnectionMixin,
     ContributorsConnectionMixin,
     #
     Selectable
@@ -47,6 +48,7 @@ class Account(
             'organizations': AccountOrganizationsNodes,
             'projects': AccountProjectsNodes,
             'repositories': AccountRepositoriesNodes,
+            'recently_active_repositories': AccountRecentlyActiveRepositoriesNodes,
             'contributors': AccountContributorNodes
         }
 

@@ -22,7 +22,7 @@ from sqlalchemy import select, func, bindparam, and_, distinct, between, cast, T
 
 from polaris.utils.datetime_utils import time_window
 from polaris.graphql.interfaces import NamedNode
-from polaris.repos.db.model import organizations, accounts_organizations, accounts, projects, repositories
+from polaris.repos.db.model import organizations, accounts_organizations, accounts, projects, repositories, projects_repositories
 from polaris.repos.db.schema import repositories, contributors, commits, repositories_contributor_aliases
 from ..interfaces import CommitSummary, ContributorCount, CommitCount
 
@@ -77,6 +77,48 @@ class AccountProjectsNodes:
                 accounts
             )
         ).where(accounts.c.account_key == bindparam('key'))
+
+
+class AccountRecentlyActiveProjectsNodes:
+    interfaces = (NamedNode, CommitCount)
+
+    @staticmethod
+    def selectable(**kwargs):
+        now = datetime.utcnow()
+        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+
+        return select([
+            projects.c.id,
+            func.min(cast(projects.c.project_key, Text)).label('key'),
+            func.min(projects.c.name).label('name'),
+            func.count(commits.c.id).label('commit_count')
+        ]).select_from(
+            accounts.join(
+                accounts_organizations.join(
+                    organizations.join(
+                        projects, organizations.c.id == projects.c.organization_id
+                    ).join(
+                        projects_repositories, projects_repositories.c.project_id == projects.c.id
+                    ).join(
+                        repositories, projects_repositories.c.repository_id == repositories.c.id
+                    ).join(
+                        commits
+                    )
+                )
+            )
+        ).where(
+            and_(
+                accounts.c.account_key == bindparam('key'),
+                between(commits.c.commit_date, window.begin, window.end)
+            )
+        ).group_by(
+            projects.c.id
+        )
+
+    @staticmethod
+    def sort_order(account_recently_active_projects, **kwargs):
+        return [account_recently_active_projects.c.commit_count.desc()]
+
 
 
 class AccountRepositoriesNodes:

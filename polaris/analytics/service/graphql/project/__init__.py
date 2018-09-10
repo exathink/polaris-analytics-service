@@ -100,3 +100,20 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             **kwargs
         )
 
+
+class RecentlyActiveProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
+
+    recently_active_projects = Project.ConnectionField(days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            default_value=7,
+            description="Return projects with commits within the specified number of days"
+        ))
+
+    def resolve_recently_active_projects(self, info, **kwargs):
+        return Project.resolve_connection(
+            self.get_connection_resolver_context('recently_active_projects'),
+            self.get_connection_node_resolver('recently_active_projects'),
+            self.get_instance_query_params(),
+            **kwargs
+        )

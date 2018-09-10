@@ -59,6 +59,43 @@ class AccountOrganizationsNodes:
         ).where(accounts.c.account_key == bindparam('key'))
 
 
+class AccountRecentlyActiveOrganizationsNodes:
+    interfaces = (NamedNode, CommitCount)
+
+    @staticmethod
+    def selectable(**kwargs):
+        now = datetime.utcnow()
+        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+
+        return select([
+            organizations.c.id,
+            func.min(cast(organizations.c.organization_key, Text)).label('key'),
+            func.min(organizations.c.name).label('name'),
+            func.count(commits.c.id).label('commit_count')
+        ]).select_from(
+            accounts.join(
+                accounts_organizations.join(
+                    organizations.join(
+                        repositories.join(
+                            commits
+                        )
+                    )
+                )
+            )
+        ).where(
+            and_(
+                accounts.c.account_key == bindparam('key'),
+                between(commits.c.commit_date, window.begin, window.end)
+            )
+        ).group_by(
+            organizations.c.id
+        )
+
+    @staticmethod
+    def sort_order(account_recently_active_organizations, **kwargs):
+        return [account_recently_active_organizations.c.commit_count.desc()]
+
+
 class AccountProjectsNodes:
     interface = NamedNode
 

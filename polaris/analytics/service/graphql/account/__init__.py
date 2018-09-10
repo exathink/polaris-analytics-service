@@ -15,12 +15,12 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 from .selectables import AccountNode, AccountCommitSummary, AccountContributorCount, AccountOrganizationsNodes, \
     AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes, AccountRecentlyActiveRepositoriesNodes,\
-    AccountRecentlyActiveProjectsNodes
+    AccountRecentlyActiveProjectsNodes, AccountRecentlyActiveOrganizationsNodes
 
 from ..contributor import ContributorsConnectionMixin
 from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
 from ..interfaces import CommitSummary, ContributorCount
-from ..organization import OrganizationsConnectionMixin
+from ..organization import OrganizationsConnectionMixin, RecentlyActiveOrganizationsConnectionMixin
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 
@@ -36,6 +36,7 @@ class Account(
     RepositoriesConnectionMixin,
     RecentlyActiveRepositoriesConnectionMixin,
     RecentlyActiveProjectsConnectionMixin,
+    RecentlyActiveOrganizationsConnectionMixin,
     ContributorsConnectionMixin,
     #
     Selectable
@@ -53,6 +54,7 @@ class Account(
             'repositories': AccountRepositoriesNodes,
             'recently_active_repositories': AccountRecentlyActiveRepositoriesNodes,
             'recently_active_projects': AccountRecentlyActiveProjectsNodes,
+            'recently_active_organizations': AccountRecentlyActiveOrganizationsNodes,
             'contributors': AccountContributorNodes
         }
 

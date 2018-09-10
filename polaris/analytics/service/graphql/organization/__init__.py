@@ -96,3 +96,20 @@ class OrganizationsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             **kwargs
         )
 
+
+class RecentlyActiveOrganizationsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
+
+    recently_active_organizations = Organization.ConnectionField(days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            default_value=7,
+            description="Return organizations with commits within the specified number of days"
+        ))
+
+    def resolve_recently_active_organizations(self, info, **kwargs):
+        return Organization.resolve_connection(
+            self.get_connection_resolver_context('recently_active_organizations'),
+            self.get_connection_node_resolver('recently_active_organizations'),
+            self.get_instance_query_params(),
+            **kwargs
+        )

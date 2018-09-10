@@ -16,9 +16,8 @@ from sqlalchemy import select, func, bindparam, distinct, and_, between, cast, T
 from polaris.graphql.utils import nulls_to_zero
 from polaris.graphql.interfaces import NamedNode
 
-
-from polaris.repos.db.model import organizations, projects, repositories
-from polaris.repos.db.schema import repositories, contributors, commits,\
+from polaris.repos.db.model import organizations, projects, repositories, projects_repositories
+from polaris.repos.db.schema import repositories, contributors, commits, \
     repositories_contributor_aliases
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, ProjectCount, RepositoryCount
 
@@ -54,6 +53,43 @@ class OrganizationProjectsNodes:
         ).where(organizations.c.organization_key == bindparam('key'))
 
 
+class OrganizationRecentlyActiveProjectsNodes:
+    interfaces = (NamedNode, CommitCount)
+
+    @staticmethod
+    def selectable(**kwargs):
+        now = datetime.utcnow()
+        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+
+        return select([
+            projects.c.id,
+            func.min(cast(projects.c.project_key, Text)).label('key'),
+            func.min(projects.c.name).label('name'),
+            func.count(commits.c.id).label('commit_count')
+        ]).select_from(
+            organizations.join(
+                projects, projects.c.organization_id == organizations.c.id
+            ).join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
+                repositories, projects_repositories.c.repository_id == repositories.c.id
+            ).join(
+                commits
+            )
+        ).where(
+            and_(
+                organizations.c.organization_key == bindparam('key'),
+                between(commits.c.commit_date, window.begin, window.end)
+            )
+        ).group_by(
+            projects.c.id
+        )
+
+    @staticmethod
+    def sort_order(organizations_recently_active_projects, **kwargs):
+        return [organizations_recently_active_projects.c.commit_count.desc()]
+
+
 class OrganizationRepositoriesNodes:
     interface = NamedNode
 
@@ -70,7 +106,7 @@ class OrganizationRepositoriesNodes:
         ).where(organizations.c.organization_key == bindparam('key'))
 
 
-class OrganizationMostActiveRepositoriesNodes:
+class OrganizationRecentlyActiveRepositoriesNodes:
     interfaces = (NamedNode, CommitCount)
 
     @staticmethod
@@ -99,8 +135,8 @@ class OrganizationMostActiveRepositoriesNodes:
         )
 
     @staticmethod
-    def sort_order(organizations_most_active_repository, **kwargs):
-        return [organizations_most_active_repository.c.commit_count.desc()]
+    def sort_order(organizations_recently_active_repositories, **kwargs):
+        return [organizations_recently_active_repositories.c.commit_count.desc()]
 
 
 class OrganizationContributorNodes:
@@ -127,7 +163,6 @@ class OrganizationContributorNodes:
                 repositories_contributor_aliases.c.robot == False
             )
         ).distinct()
-
 
 
 class OrganizationsCommitSummary:
@@ -167,8 +202,6 @@ class OrganizationsContributorCount:
         ).where(
             repositories_contributor_aliases.c.robot == False
         ).group_by(organization_nodes.c.id)
-
-
 
 
 class OrganizationsProjectCount:

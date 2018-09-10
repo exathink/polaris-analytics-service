@@ -18,8 +18,8 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from .selectables import \
     OrganizationNode, OrganizationsCommitSummary, OrganizationsProjectCount, OrganizationsRepositoryCount, \
     OrganizationsContributorCount, OrganizationProjectsNodes, \
-    OrganizationRepositoriesNodes, OrganizationMostActiveRepositoriesNodes, \
-    OrganizationContributorNodes
+    OrganizationRepositoriesNodes, OrganizationRecentlyActiveRepositoriesNodes, \
+    OrganizationContributorNodes, OrganizationRecentlyActiveProjectsNodes
 
 
 from ..interface_mixins import \
@@ -29,7 +29,7 @@ from ..interface_mixins import \
 
 from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
 
-from ..project import ProjectsConnectionMixin
+from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 from ..contributor import ContributorsConnectionMixin
 
@@ -46,6 +46,7 @@ class Organization(
     ContributorsConnectionMixin,
     RepositoriesConnectionMixin,
     RecentlyActiveRepositoriesConnectionMixin,
+    RecentlyActiveProjectsConnectionMixin,
     #
     Selectable
 ):
@@ -62,7 +63,8 @@ class Organization(
             'projects': OrganizationProjectsNodes,
             'contributors': OrganizationContributorNodes,
             'repositories': OrganizationRepositoriesNodes,
-            'recently_active_repositories': OrganizationMostActiveRepositoriesNodes
+            'recently_active_projects': OrganizationRecentlyActiveProjectsNodes,
+            'recently_active_repositories': OrganizationRecentlyActiveRepositoriesNodes
         }
 
         connection_class = lambda: Organizations

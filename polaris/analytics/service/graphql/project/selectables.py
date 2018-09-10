@@ -7,13 +7,15 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, distinct, and_
+from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between
 from polaris.graphql.utils import nulls_to_zero
+from datetime import datetime, timedelta
+from polaris.utils.datetime_utils import time_window
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import projects, projects_repositories, organizations
-from polaris.repos.db.schema import repositories, contributors, contributor_aliases, repositories_contributor_aliases
-from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef
+from polaris.repos.db.schema import repositories, contributors, repositories_contributor_aliases, commits
+from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount
 
 
 class ProjectNode:
@@ -28,6 +30,7 @@ class ProjectNode:
         ]).select_from(
             projects
         ).where(projects.c.project_key == bindparam('key'))
+
 
 class ProjectRepositoriesNodes:
     interface = NamedNode
@@ -45,6 +48,42 @@ class ProjectRepositoriesNodes:
                 repositories
             )
         ).where(projects.c.project_key == bindparam('key'))
+
+
+class ProjectRecentlyActiveRepositoriesNodes:
+    interfaces = (NamedNode, CommitCount)
+
+    @staticmethod
+    def selectable(**kwargs):
+        now = datetime.utcnow()
+        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+
+        return select([
+            repositories.c.id,
+            func.min(cast(repositories.c.key, Text)).label('key'),
+            func.min(repositories.c.name).label('name'),
+            func.count(commits.c.id).label('commit_count')
+        ]).select_from(
+            projects.join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
+                repositories, projects_repositories.c.repository_id == repositories.c.id
+            ).join(
+                commits
+            )
+        ).where(
+            and_(
+                projects.c.project_key == bindparam('key'),
+                between(commits.c.commit_date, window.begin, window.end)
+            )
+        ).group_by(
+            repositories.c.id
+        )
+
+    @staticmethod
+    def sort_order(project_recently_active_repositories, **kwargs):
+        return [project_recently_active_repositories.c.commit_count.desc()]
+
 
 class ProjectContributorNodes:
     interface = NamedNode

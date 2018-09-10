@@ -28,7 +28,7 @@ from ..summary_mixins import \
     ActivityLevelSummaryResolverMixin, \
     InceptionsResolverMixin
 
-from ..repository import RepositoriesConnectionMixin
+from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 from ..contributor import ContributorsConnectionMixin
 
 from .selectables import ProjectNode, \
@@ -37,7 +37,8 @@ from .selectables import ProjectNode, \
     ProjectsContributorCount, \
     ProjectsCommitSummary, \
     ProjectsRepositoryCount, \
-    ProjectsOrganizationRef
+    ProjectsOrganizationRef, \
+    ProjectRecentlyActiveRepositoriesNodes
 
 
 from polaris.graphql.connection_utils import CountableConnection
@@ -53,6 +54,7 @@ class Project(
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
+    RecentlyActiveRepositoriesConnectionMixin,
     #
     Selectable
 ):
@@ -67,7 +69,8 @@ class Project(
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
-            'contributors': ProjectContributorNodes
+            'contributors': ProjectContributorNodes,
+            'recently_active_repositories': ProjectRecentlyActiveRepositoriesNodes,
         }
         connection_class = lambda: Projects
 

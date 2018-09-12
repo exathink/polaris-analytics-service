@@ -13,6 +13,7 @@ import graphene
 
 from polaris.graphql.interfaces import NamedNode
 from .account import Account
+from .commit import Commit
 from .organization import Organization
 from .project import Project
 from .repository import Repository
@@ -25,16 +26,18 @@ class Query(graphene.ObjectType):
     node = NamedNode.Field()
 
     account = Account.Field()
+    commit = Commit.Field()
     organization = Organization.Field()
     project = Project.Field()
     repository = Repository.Field()
     contributor = Contributor.Field()
     public = Public.Field()
 
-
-
     def resolve_account(self, info, key,  **kwargs):
         return Account.resolve_field(info, key, **kwargs)
+
+    def resolve_commit(self, info, key, **kwargs):
+        return Commit.resolve_field(info, key, **kwargs)
 
     def resolve_organization(self, info, key, **kwargs):
         return Organization.resolve_field(self, info, key,  **kwargs)

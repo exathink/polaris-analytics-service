@@ -12,6 +12,14 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 
 
+class Commit(NamedNode):
+    commit_date = graphene.DateTime(required=True)
+    committer = graphene.String(required=True)
+    author_date = graphene.DateTime(required=False)
+    author = graphene.String(required=False)
+    message = graphene.String(required=True)
+
+
 class CommitCount(NamedNode):
     commit_count = graphene.Int()
 

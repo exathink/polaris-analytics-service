@@ -23,11 +23,14 @@ from ..summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolv
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
     RepositoryContributorNodes, \
-    RepositoriesContributorCount, RepositoriesOrganizationRef
+    RepositoriesContributorCount, RepositoriesOrganizationRef,\
+    RepositoryCommitNodes
+
 
 from ..contributor import ContributorsConnectionMixin
+from ..commit import CommitsConnectionMixin
 
-from polaris.graphql.connection_utils import CountableConnection, QueryConnectionField
+from polaris.graphql.connection_utils import CountableConnection
 
 
 class Repository(
@@ -38,6 +41,7 @@ class Repository(
     OrganizationRefResolverMixin,
     # connection mixins
     ContributorsConnectionMixin,
+    CommitsConnectionMixin,
     #
     Selectable
 ):
@@ -50,7 +54,8 @@ class Repository(
             'OrganizationRef': RepositoriesOrganizationRef
         }
         connection_node_resolvers = {
-            'contributors': RepositoryContributorNodes
+            'contributors': RepositoryContributorNodes,
+            'commits': RepositoryCommitNodes
         }
 
         connection_class = lambda: Repositories

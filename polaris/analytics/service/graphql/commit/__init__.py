@@ -17,7 +17,7 @@ from polaris.graphql.connection_utils import CountableConnection
 
 from ..interfaces import CommitInfo
 
-from ..interface_mixins import CommitInfoResolverMixin
+from ..interface_mixins import CommitInfoResolverMixin, KeyIdResolverMixin
 
 from .selectables import CommitNode
 
@@ -32,6 +32,7 @@ class Commit(
         interfaces = (CommitInfo,)
         named_node_resolver = CommitNode
         interface_resolvers = {}
+        connection_class = lambda: Commits
 
     @classmethod
     def key_to_instance_resolver_params(cls, key):
@@ -50,3 +51,15 @@ class Commits(
     class Meta:
         node = Commit
 
+
+class CommitsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
+
+    commits = Commit.ConnectionField()
+
+    def resolve_commits(self, info, **kwargs):
+        return Commit.resolve_connection(
+            self.get_connection_resolver_context('commits'),
+            self.get_connection_node_resolver('commits'),
+            self.get_instance_query_params(),
+            **kwargs
+        )

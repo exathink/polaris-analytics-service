@@ -8,12 +8,12 @@
 
 # Author: Krishna Kumar
 from sqlalchemy import select, func, bindparam, and_, distinct
-from polaris.graphql.utils import nulls_to_zero
+from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories, organizations
-from polaris.repos.db.schema import contributors, contributor_aliases, repositories_contributor_aliases
-from ..interfaces import CommitSummary, ContributorCount, OrganizationRef
-
+from polaris.repos.db.schema import contributors, commits, repositories_contributor_aliases
+from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo
+from ..commit.column_expressions import commit_info_columns
 
 class RepositoryNode:
     interface = NamedNode
@@ -29,6 +29,26 @@ class RepositoryNode:
         ).where(
             repositories.c.key == bindparam('key')
         )
+
+
+class RepositoryCommitNodes:
+    interface = CommitInfo
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            *commit_info_columns()
+        ]).select_from(
+            repositories.join(commits)
+        ).where(
+            repositories.c.key == bindparam('key')
+        )
+
+    @staticmethod
+    def sort_order(repository_commit_nodes, **kwargs):
+        return [repository_commit_nodes.c.commit_date.desc()]
+
+
 
 class RepositoryContributorNodes:
     interface = NamedNode

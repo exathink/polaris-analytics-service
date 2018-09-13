@@ -13,6 +13,7 @@ from polaris.graphql.mixins import *
 from polaris.graphql.utils import init_tuple, create_tuple
 
 from .interfaces import \
+    CommitInfo, \
     CommitSummary, \
     ContributorCount, \
     ProjectCount, \
@@ -47,6 +48,52 @@ class CommitSummaryResolverMixin(KeyIdResolverMixin):
 
     def resolve_commit_count(self, info, **kwargs):
         return self.get_commit_summary(info, **kwargs).commit_count
+
+
+class CommitInfoResolverMixin(KeyIdResolverMixin):
+    commit_tuple = create_tuple(CommitInfo)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.commit_info = init_tuple(self.commit_tuple, **kwargs)
+
+    def resolve_commit(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['Commit'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_commit(self, info, **kwargs):
+        if self.commit_info is None:
+            self.commit_info = self.resolve_commit(info, **kwargs)
+        return self.commit_info
+
+    def resolve_commit_date(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).commit_date
+
+    def resolve_committer(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).committer
+
+    def resolve_committer_key(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).committer_key
+
+    def resolve_author_date(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).author_date
+
+    def resolve_author(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).author
+
+    def resolve_author_key(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).author_key
+
+    def resolve_commit_message(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).commit_message
+
+    def resolve_num_parents(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).num_parents
+
+
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):

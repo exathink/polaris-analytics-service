@@ -8,23 +8,27 @@
 
 # Author: Krishna Kumar
 
-from ..interfaces import NamedNode
-from sqlalchemy import select, func, bindparam
-from polaris.repos.db.schema import commits
+from ..interfaces import CommitInfo
+from sqlalchemy import select, func, bindparam, and_
+from polaris.repos.db.schema import commits, repositories
+
+from .column_expressions import commit_info_columns
 
 
 class CommitNode:
-    interface = NamedNode
+    interface = CommitInfo
 
     @staticmethod
     def selectable(**kwargs):
         return select([
-            commits.c.id,
-            commits.c.key,
-            func.substr(commits.c.key, 1, 12).label('name')
-
+            *commit_info_columns()
         ]).select_from(
-            commits
+            repositories.join(
+                commits
+            )
         ).where(
-            commits.c.key == bindparam('key')
+            and_(
+                repositories.c.key == bindparam('repository_key'),
+                commits.c.key == bindparam('commit_key')
+            )
         )

@@ -1,0 +1,36 @@
+# -*- coding: utf-8 -*-
+
+# Copyright: © Exathink, LLC (2016-2017) All Rights Reserved
+
+# Unauthorized use or copying of this file and its contents, via any medium
+# is strictly prohibited. The work product in this file is proprietary and
+# confidential.
+
+# Author: Krishna Kumar
+
+from sqlalchemy import cast, Text, func
+from polaris.repos.db.schema import commits, repositories
+
+
+def commit_key_column():
+    return (cast(repositories.c.key, Text) + ':' + cast(commits.c.key, Text)).label('key')
+
+
+def commit_name_column():
+    return func.substr(commits.c.key, 1, 12).label('name')
+
+
+def commit_info_columns():
+    return [
+        commits.c.id,
+        commit_key_column(),
+        commit_name_column(),
+        commits.c.commit_date,
+        commits.c.committer_contributor_name.label('committer'),
+        commits.c.committer_contributor_key.label('committer_key'),
+        commits.c.author_date,
+        commits.c.author_contributor_name.label('author'),
+        commits.c.author_contributor_key.label('author_key'),
+        commits.c.commit_message,
+        commits.c.num_parents
+    ]

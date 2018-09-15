@@ -13,8 +13,6 @@ import graphene
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 
-
-
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef
 from ..interface_mixins import KeyIdResolverMixin, \
     NamedNodeResolverMixin, CommitSummaryResolverMixin, \
@@ -27,18 +25,15 @@ from ..property_mixins import CumulativeCommitCountResolverMixin
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
     RepositoryContributorNodes, \
-    RepositoriesContributorCount, RepositoriesOrganizationRef,\
-    RepositoryCommitNodes,\
+    RepositoriesContributorCount, RepositoriesOrganizationRef, \
+    RepositoryCommitNodes, \
     RepositoryCumulativeCommitCount
-
-
-
 
 from ..contributor import ContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
 
-
 from polaris.graphql.connection_utils import CountableConnection
+
 
 class Repository(
     # interface mixins
@@ -72,11 +67,9 @@ class Repository(
 
         connection_class = lambda: Repositories
 
-
     @classmethod
     def resolve_field(cls, parent, info, repository_key, **kwargs):
         return cls.resolve_instance(repository_key, **kwargs)
-
 
 
 class Repositories(
@@ -90,7 +83,6 @@ class Repositories(
 
 
 class RepositoriesConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
-
     repositories = Repository.ConnectionField()
 
     def resolve_repositories(self, info, **kwargs):
@@ -103,7 +95,6 @@ class RepositoriesConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
 
 class RecentlyActiveRepositoriesConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
-
     recently_active_repositories = Repository.ConnectionField(
         days=graphene.Argument(
             graphene.Int,

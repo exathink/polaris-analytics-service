@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between
+from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract
 from polaris.graphql.utils import nulls_to_zero
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
@@ -15,7 +15,9 @@ from polaris.utils.datetime_utils import time_window
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import projects, projects_repositories, organizations
 from polaris.repos.db.schema import repositories, contributors, repositories_contributor_aliases, commits
-from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount
+from ..interfaces import \
+    CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
+    CumulativeCommitCount
 
 
 class ProjectNode:
@@ -111,6 +113,42 @@ class ProjectContributorNodes:
                 repositories_contributor_aliases.c.robot == False
             )
         ).distinct()
+
+
+class ProjectCumulativeCommitCount:
+
+    interface = CumulativeCommitCount
+
+    @staticmethod
+    def selectable(**kwargs):
+        commit_counts = select([
+            extract('year', commits.c.commit_date).label('year'),
+            extract('week', commits.c.commit_date).label('week'),
+            func.count(commits.c.id).label('commit_count')
+        ]).select_from(
+            projects.join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
+                repositories, projects_repositories.c.repository_id == repositories.c.id
+            ).join(
+                commits, commits.c.repository_id == repositories.c.id
+            )
+        ).where(
+            projects.c.project_key == bindparam('key')
+        ).group_by(
+            extract('year', commits.c.commit_date),
+            extract('week', commits.c.commit_date)
+        ).alias('weekly_commit_counts')
+
+        return select([
+            commit_counts.c.year,
+            commit_counts.c.week,
+            func.sum(commit_counts.c.commit_count).over(order_by=[
+                commit_counts.c.year,
+                commit_counts.c.week
+            ]).label('cumulative_commit_count')
+        ])
+
 
 class ProjectsCommitSummary:
     interface = CommitSummary

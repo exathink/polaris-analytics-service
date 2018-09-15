@@ -23,6 +23,12 @@ class CommitInfo(NamedNode):
     num_parents = graphene.Int(required=True)
 
 
+class CumulativeCommitCount(graphene.Interface):
+    year = graphene.Int(required=True)
+    week = graphene.Int(required=True)
+    cumulative_commit_count = graphene.Int(required=True)
+
+
 class CommitCount(NamedNode):
     commit_count = graphene.Int()
 

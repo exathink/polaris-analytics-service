@@ -16,10 +16,11 @@ from polaris.graphql.connection_utils import CountableConnection
 
 
 from ..interfaces import CommitInfo
-
 from ..interface_mixins import CommitInfoResolverMixin, KeyIdResolverMixin
-
 from .selectables import CommitNode
+
+
+
 
 
 class Commit(
@@ -50,7 +51,6 @@ class Commits(
 ):
     class Meta:
         node = Commit
-
 
 class CommitsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 

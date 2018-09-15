@@ -7,12 +7,12 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, and_, distinct
+from sqlalchemy import select, func, bindparam, and_, distinct, extract
 from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories, organizations
 from polaris.repos.db.schema import contributors, commits, repositories_contributor_aliases
-from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo
+from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount
 from ..commit.column_expressions import commit_info_columns
 
 class RepositoryNode:
@@ -49,7 +49,6 @@ class RepositoryCommitNodes:
         return [repository_commit_nodes.c.commit_date.desc()]
 
 
-
 class RepositoryContributorNodes:
     interface = NamedNode
 
@@ -72,6 +71,39 @@ class RepositoryContributorNodes:
                 repositories_contributor_aliases.c.robot == False
             )
         ).distinct()
+
+
+class RepositoryCumulativeCommitCount:
+
+    interface = CumulativeCommitCount
+
+    @staticmethod
+    def selectable(**kwargs):
+        commit_counts = select([
+            extract('year', commits.c.commit_date).label('year'),
+            extract('week', commits.c.commit_date).label('week'),
+            func.count(commits.c.id).label('commit_count')
+        ]).select_from(
+            repositories.join(commits)
+        ).where(
+            repositories.c.key == bindparam('key')
+        ).group_by(
+            extract('year', commits.c.commit_date),
+            extract('week', commits.c.commit_date)
+        ).alias()
+
+        return select([
+            commit_counts.c.year,
+            commit_counts.c.week,
+            func.sum(commit_counts.c.commit_count).over(order_by=[
+                commit_counts.c.year,
+                commit_counts.c.week
+            ]).label('cumulative_commit_count')
+        ])
+
+
+
+
 
 class RepositoriesCommitSummary:
     interface = CommitSummary

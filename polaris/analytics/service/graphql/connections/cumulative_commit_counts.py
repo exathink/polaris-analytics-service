@@ -7,21 +7,24 @@
 # confidential.
 
 # Author: Krishna Kumar
+
 import graphene
+from polaris.graphql.connection_utils import CountableConnection
+from polaris.graphql.interfaces import NamedNode
 
 
-class ActivityLevelSummary(graphene.ObjectType):
-    active_count = graphene.Int(required=False)
-    quiescent_count = graphene.Int(required=False)
-    dormant_count = graphene.Int(required=False)
-    inactive_count = graphene.Int(required=False)
-
-
-class InceptionsSummary(graphene.ObjectType):
+class CumulativeCommitCount(NamedNode):
     year = graphene.Int(required=True)
     month = graphene.Int(required=False)
     week = graphene.Int(required=False)
-    inceptions = graphene.Int(required=True)
+    commit_count = graphene.Int(required=True)
+
+
+class CumulativeCommitCountConnection(
+    CountableConnection
+):
+    class Meta:
+        node = CumulativeCommitCount
 
 
 

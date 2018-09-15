@@ -12,6 +12,9 @@ import graphene
 
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
+
+
+
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef
 from ..interface_mixins import KeyIdResolverMixin, \
     NamedNodeResolverMixin, CommitSummaryResolverMixin, \
@@ -19,19 +22,23 @@ from ..interface_mixins import KeyIdResolverMixin, \
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolverMixin
+from ..property_mixins import CumulativeCommitCountResolverMixin
 
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
     RepositoryContributorNodes, \
     RepositoriesContributorCount, RepositoriesOrganizationRef,\
-    RepositoryCommitNodes
+    RepositoryCommitNodes,\
+    RepositoryCumulativeCommitCount
+
+
 
 
 from ..contributor import ContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
 
-from polaris.graphql.connection_utils import CountableConnection
 
+from polaris.graphql.connection_utils import CountableConnection
 
 class Repository(
     # interface mixins
@@ -42,6 +49,8 @@ class Repository(
     # connection mixins
     ContributorsConnectionMixin,
     CommitsConnectionMixin,
+    # property mixins
+    CumulativeCommitCountResolverMixin,
     #
     Selectable
 ):
@@ -57,6 +66,9 @@ class Repository(
             'contributors': RepositoryContributorNodes,
             'commits': RepositoryCommitNodes
         }
+        property_resolvers = {
+            'cumulative_commit_count': RepositoryCumulativeCommitCount
+        }
 
         connection_class = lambda: Repositories
 
@@ -64,6 +76,7 @@ class Repository(
     @classmethod
     def resolve_field(cls, parent, info, repository_key, **kwargs):
         return cls.resolve_instance(repository_key, **kwargs)
+
 
 
 class Repositories(

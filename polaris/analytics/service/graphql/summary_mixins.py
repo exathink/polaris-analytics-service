@@ -8,6 +8,7 @@
 
 # Author: Krishna Kumar
 
+
 class ActivityLevelSummaryResolverMixin:
 
     def __init__(self, *args, **kwargs):
@@ -26,3 +27,8 @@ class InceptionsResolverMixin:
 
     def resolve_inceptions(self, info, **kwargs):
         return self.inceptions
+
+
+
+
+

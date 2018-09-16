@@ -12,6 +12,6 @@ import graphene
 from .interfaces import CumulativeCommitCount
 
 
-class CumulativeCommitCountProperty(graphene.ObjectType):
+class CumulativeCommitCountField(graphene.ObjectType):
     class Meta:
         interfaces = (CumulativeCommitCount,)

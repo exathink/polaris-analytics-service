@@ -11,21 +11,21 @@
 import graphene
 
 from polaris.graphql.selectable import SimpleSelectableResolverMixin
-from .properties import CumulativeCommitCountProperty
+from .selectable_fields import CumulativeCommitCountField
 from .interface_mixins import KeyIdResolverMixin
 
 
 class SelectablePropertyResolverMixin(KeyIdResolverMixin, SimpleSelectableResolverMixin):
 
-    def resolve_property(self, property_name, **kwargs):
-        selectable = self._meta.property_resolvers.get(property_name)
+    def resolve_selectable_field(self, property_name, **kwargs):
+        selectable = self._meta.selectable_field_resolvers.get(property_name)
         return self.resolve_selectable(selectable(**kwargs), self.get_instance_query_params())
 
 
 class CumulativeCommitCountResolverMixin(SelectablePropertyResolverMixin):
 
-    cumulative_commit_count = graphene.Field(graphene.List(CumulativeCommitCountProperty))
+    cumulative_commit_count = graphene.Field(graphene.List(CumulativeCommitCountField))
 
     def resolve_cumulative_commit_count(self, info, **kwargs):
-        return self.resolve_property('cumulative_commit_count')
+        return self.resolve_selectable_field('cumulative_commit_count')
 

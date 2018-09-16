@@ -20,7 +20,7 @@ from ..interface_mixins import KeyIdResolverMixin, \
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolverMixin
-from ..property_mixins import CumulativeCommitCountResolverMixin
+from ..selectable_field_mixins import CumulativeCommitCountResolverMixin
 
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
@@ -61,7 +61,7 @@ class Repository(
             'contributors': RepositoryContributorNodes,
             'commits': RepositoryCommitNodes
         }
-        property_resolvers = {
+        selectable_field_resolvers = {
             'cumulative_commit_count': RepositoryCumulativeCommitCount
         }
 

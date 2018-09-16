@@ -28,7 +28,7 @@ from ..summary_mixins import \
     ActivityLevelSummaryResolverMixin, \
     InceptionsResolverMixin
 
-from ..property_mixins import CumulativeCommitCountResolverMixin
+from ..selectable_field_mixins import CumulativeCommitCountResolverMixin
 
 
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
@@ -78,7 +78,7 @@ class Project(
             'contributors': ProjectContributorNodes,
             'recently_active_repositories': ProjectRecentlyActiveRepositoriesNodes,
         }
-        property_resolvers = {
+        selectable_field_resolvers = {
           'cumulative_commit_count': ProjectCumulativeCommitCount
         }
         connection_class = lambda: Projects

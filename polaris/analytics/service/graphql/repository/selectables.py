@@ -14,6 +14,7 @@ from polaris.repos.db.model import repositories, organizations
 from polaris.repos.db.schema import contributors, commits, repositories_contributor_aliases
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount
 from ..commit.column_expressions import commit_info_columns
+from datetime import datetime, timedelta
 
 class RepositoryNode:
     interface = NamedNode
@@ -36,13 +37,21 @@ class RepositoryCommitNodes:
 
     @staticmethod
     def selectable(**kwargs):
-        return select([
+        select_stmt = select([
             *commit_info_columns()
         ]).select_from(
             repositories.join(commits)
         ).where(
             repositories.c.key == bindparam('key')
         )
+        if 'days' in kwargs and kwargs['days'] > 0:
+            now = datetime.utcnow()
+            commit_window_start = now - timedelta(days=kwargs['days'])
+            select_stmt = select_stmt.where(
+                commits.c.commit_date >= commit_window_start
+            )
+
+        return select_stmt
 
     @staticmethod
     def sort_order(repository_commit_nodes, **kwargs):

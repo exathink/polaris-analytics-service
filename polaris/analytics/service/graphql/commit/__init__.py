@@ -54,7 +54,14 @@ class Commits(
 
 class CommitsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
-    commits = Commit.ConnectionField()
+    commits = Commit.ConnectionField(
+        days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            default_value=7,
+            description="Return commits within the specified number of days"
+        )
+    )
 
     def resolve_commits(self, info, **kwargs):
         return Commit.resolve_connection(

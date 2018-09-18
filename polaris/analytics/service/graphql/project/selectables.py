@@ -15,9 +15,12 @@ from polaris.utils.datetime_utils import time_window
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import projects, projects_repositories, organizations
 from polaris.repos.db.schema import repositories, contributors, repositories_contributor_aliases, commits
+
 from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
-    CumulativeCommitCount
+    CumulativeCommitCount, CommitInfo
+
+from ..commit.column_expressions import commit_info_columns
 
 
 class ProjectNode:
@@ -85,6 +88,36 @@ class ProjectRecentlyActiveRepositoriesNodes:
     @staticmethod
     def sort_order(project_recently_active_repositories, **kwargs):
         return [project_recently_active_repositories.c.commit_count.desc()]
+
+
+class ProjectCommitNodes:
+    interface = CommitInfo
+
+    @staticmethod
+    def selectable(**kwargs):
+        select_stmt = select([
+            *commit_info_columns(repositories, commits)
+        ]).select_from(
+            projects.join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join (
+                repositories, projects_repositories.c.repository_id == repositories.c.id
+            ).join(commits)
+        ).where(
+            projects.c.project_key == bindparam('key')
+        )
+        if 'days' in kwargs and kwargs['days'] > 0:
+            now = datetime.utcnow()
+            commit_window_start = now - timedelta(days=kwargs['days'])
+            select_stmt = select_stmt.where(
+                commits.c.commit_date >= commit_window_start
+            )
+
+        return select_stmt
+
+    @staticmethod
+    def sort_order(project_commit_nodes, **kwargs):
+        return [project_commit_nodes.c.commit_date.desc()]
 
 
 class ProjectContributorNodes:

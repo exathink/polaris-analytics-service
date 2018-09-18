@@ -16,6 +16,7 @@ from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, Commi
 from ..commit.column_expressions import commit_info_columns
 from datetime import datetime, timedelta
 
+
 class RepositoryNode:
     interface = NamedNode
 
@@ -38,7 +39,7 @@ class RepositoryCommitNodes:
     @staticmethod
     def selectable(**kwargs):
         select_stmt = select([
-            *commit_info_columns()
+            *commit_info_columns(repositories, commits)
         ]).select_from(
             repositories.join(commits)
         ).where(

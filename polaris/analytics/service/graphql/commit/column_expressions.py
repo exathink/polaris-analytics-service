@@ -9,22 +9,23 @@
 # Author: Krishna Kumar
 
 from sqlalchemy import cast, Text, func
-from polaris.repos.db.schema import commits, repositories
 
 
-def commit_key_column():
+def commit_key_column(repositories, commits):
     return (cast(repositories.c.key, Text) + ':' + cast(commits.c.key, Text)).label('key')
 
 
-def commit_name_column():
+def commit_name_column(commits):
     return func.substr(commits.c.key, 1, 12).label('name')
 
 
-def commit_info_columns():
+def commit_info_columns(repositories, commits):
     return [
         commits.c.id,
-        commit_key_column(),
-        commit_name_column(),
+        commit_key_column(repositories, commits),
+        commit_name_column(commits),
+        repositories.c.name.label('repository'),
+        repositories.c.key.label('repository_key'),
         commits.c.commit_date,
         commits.c.committer_contributor_name.label('committer'),
         commits.c.committer_contributor_key.label('committer_key'),

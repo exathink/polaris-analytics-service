@@ -21,7 +21,7 @@ class CommitNode:
     @staticmethod
     def selectable(**kwargs):
         return select([
-            *commit_info_columns()
+            *commit_info_columns(repositories, commits)
         ]).select_from(
             repositories.join(
                 commits

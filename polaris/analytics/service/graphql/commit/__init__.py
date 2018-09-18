@@ -58,7 +58,6 @@ class CommitsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
         days=graphene.Argument(
             graphene.Int,
             required=False,
-            default_value=7,
             description="Return commits within the specified number of days"
         )
     )

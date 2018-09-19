@@ -7,15 +7,15 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, and_, distinct, extract
+from sqlalchemy import select, func, bindparam, and_, distinct, extract, between
 from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories, organizations
 from polaris.repos.db.schema import contributors, commits, repositories_contributor_aliases
-from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount
+from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, CommitCount
 from ..commit.column_expressions import commit_info_columns
 from datetime import datetime, timedelta
-
+from polaris.utils.datetime_utils import time_window
 
 class RepositoryNode:
     interface = NamedNode
@@ -83,6 +83,37 @@ class RepositoryContributorNodes:
         ).distinct()
 
 
+class RepositoryRecentlyActiveContributorNodes:
+    interfaces = (NamedNode, CommitCount)
+
+    @staticmethod
+    def selectable(**kwargs):
+        now = datetime.utcnow()
+        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+
+        return select([
+            commits.c.author_contributor_key.label('key'),
+            func.min(commits.c.author_contributor_name).label('name'),
+            func.count(commits.c.id).label('commit_count')
+
+        ]).select_from(
+            commits.join(
+                repositories
+            )
+        ).where(
+            and_(
+                repositories.c.key == bindparam('key'),
+                between(commits.c.commit_date, window.begin, window.end)
+            )
+        ).group_by(
+            commits.c.author_contributor_key
+        )
+
+    @staticmethod
+    def sort_order(recently_active_contributors, **kwargs):
+        return [recently_active_contributors.c.commit_count.desc()]
+
+
 class RepositoryCumulativeCommitCount:
 
     interface = CumulativeCommitCount
@@ -110,9 +141,6 @@ class RepositoryCumulativeCommitCount:
                 commit_counts.c.week
             ]).label('cumulative_commit_count')
         ])
-
-
-
 
 
 class RepositoriesCommitSummary:
@@ -155,6 +183,7 @@ class RepositoriesContributorCount:
         ).where(
             repositories_contributor_aliases.c.robot == False
         ).group_by(repositories_nodes.c.id)
+
 
 class RepositoriesOrganizationRef:
     interface = OrganizationRef

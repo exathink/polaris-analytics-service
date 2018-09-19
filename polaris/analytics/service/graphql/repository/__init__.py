@@ -25,11 +25,12 @@ from ..selectable_field_mixins import CumulativeCommitCountResolverMixin
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
     RepositoryContributorNodes, \
+    RepositoryRecentlyActiveContributorNodes, \
     RepositoriesContributorCount, RepositoriesOrganizationRef, \
     RepositoryCommitNodes, \
     RepositoryCumulativeCommitCount
 
-from ..contributor import ContributorsConnectionMixin
+from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
 
 from polaris.graphql.connection_utils import CountableConnection
@@ -43,6 +44,7 @@ class Repository(
     OrganizationRefResolverMixin,
     # connection mixins
     ContributorsConnectionMixin,
+    RecentlyActiveContributorsConnectionMixin,
     CommitsConnectionMixin,
     # property mixins
     CumulativeCommitCountResolverMixin,
@@ -59,6 +61,7 @@ class Repository(
         }
         connection_node_resolvers = {
             'contributors': RepositoryContributorNodes,
+            'recently_active_contributors': RepositoryRecentlyActiveContributorNodes,
             'commits': RepositoryCommitNodes
         }
         selectable_field_resolvers = {

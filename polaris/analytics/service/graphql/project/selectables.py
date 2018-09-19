@@ -148,6 +148,41 @@ class ProjectContributorNodes:
         ).distinct()
 
 
+class ProjectRecentlyActiveContributorNodes:
+    interfaces = (NamedNode, CommitCount)
+
+    @staticmethod
+    def selectable(**kwargs):
+        now = datetime.utcnow()
+        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+
+        return select([
+            commits.c.author_contributor_key.label('key'),
+            func.min(commits.c.author_contributor_name).label('name'),
+            func.count(commits.c.id).label('commit_count')
+
+        ]).select_from(
+            projects.join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
+                repositories, projects_repositories.c.repository_id == repositories.c.id
+            ).join(
+                commits
+            )
+        ).where(
+            and_(
+                projects.c.project_key == bindparam('key'),
+                between(commits.c.commit_date, window.begin, window.end)
+            )
+        ).group_by(
+            commits.c.author_contributor_key
+        )
+
+    @staticmethod
+    def sort_order(recently_active_contributors, **kwargs):
+        return [recently_active_contributors.c.commit_count.desc()]
+
+
 class ProjectCumulativeCommitCount:
 
     interface = CumulativeCommitCount

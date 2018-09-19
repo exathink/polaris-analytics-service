@@ -19,7 +19,8 @@ from .selectables import \
     OrganizationNode, OrganizationsCommitSummary, OrganizationsProjectCount, OrganizationsRepositoryCount, \
     OrganizationsContributorCount, OrganizationProjectsNodes, \
     OrganizationRepositoriesNodes, OrganizationRecentlyActiveRepositoriesNodes, \
-    OrganizationContributorNodes, OrganizationRecentlyActiveProjectsNodes
+    OrganizationContributorNodes, OrganizationRecentlyActiveProjectsNodes, \
+    OrganizationRecentlyActiveContributorNodes
 
 
 from ..interface_mixins import \
@@ -31,7 +32,7 @@ from ..interfaces import CommitSummary, ContributorCount, ProjectCount, Reposito
 
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
-from ..contributor import ContributorsConnectionMixin
+from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 
 
 class Organization(
@@ -46,6 +47,7 @@ class Organization(
     ContributorsConnectionMixin,
     RepositoriesConnectionMixin,
     RecentlyActiveRepositoriesConnectionMixin,
+    RecentlyActiveContributorsConnectionMixin,
     RecentlyActiveProjectsConnectionMixin,
     #
     Selectable
@@ -64,7 +66,8 @@ class Organization(
             'contributors': OrganizationContributorNodes,
             'repositories': OrganizationRepositoriesNodes,
             'recently_active_projects': OrganizationRecentlyActiveProjectsNodes,
-            'recently_active_repositories': OrganizationRecentlyActiveRepositoriesNodes
+            'recently_active_repositories': OrganizationRecentlyActiveRepositoriesNodes,
+            'recently_active_contributors': OrganizationRecentlyActiveContributorNodes
         }
 
         connection_class = lambda: Organizations

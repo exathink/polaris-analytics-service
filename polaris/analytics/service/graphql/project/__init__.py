@@ -32,7 +32,7 @@ from ..selectable_field_mixins import CumulativeCommitCountResolverMixin
 
 
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
-from ..contributor import ContributorsConnectionMixin
+from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
 
 from .selectables import ProjectNode, \
@@ -44,6 +44,7 @@ from .selectables import ProjectNode, \
     ProjectsRepositoryCount, \
     ProjectsOrganizationRef, \
     ProjectRecentlyActiveRepositoriesNodes, \
+    ProjectRecentlyActiveContributorNodes, \
     ProjectCumulativeCommitCount
 
 
@@ -61,6 +62,7 @@ class Project(
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
     RecentlyActiveRepositoriesConnectionMixin,
+    RecentlyActiveContributorsConnectionMixin,
     CommitsConnectionMixin,
     # property mixins
     CumulativeCommitCountResolverMixin,
@@ -80,6 +82,7 @@ class Project(
             'repositories': ProjectRepositoriesNodes,
             'contributors': ProjectContributorNodes,
             'recently_active_repositories': ProjectRecentlyActiveRepositoriesNodes,
+            'recently_active_contributors': ProjectRecentlyActiveContributorNodes,
             'commits': ProjectCommitNodes
         }
         selectable_field_resolvers = {

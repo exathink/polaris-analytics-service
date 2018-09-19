@@ -20,7 +20,7 @@ from ..interface_mixins import KeyIdResolverMixin, \
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolverMixin
-from ..selectable_field_mixins import CumulativeCommitCountResolverMixin
+from ..selectable_field_mixins import CumulativeCommitCountResolverMixin, WeeklyContributorCountsResolverMixin
 
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
@@ -28,7 +28,8 @@ from .selectables import RepositoryNode, \
     RepositoryRecentlyActiveContributorNodes, \
     RepositoriesContributorCount, RepositoriesOrganizationRef, \
     RepositoryCommitNodes, \
-    RepositoryCumulativeCommitCount
+    RepositoryCumulativeCommitCount, \
+    RepositoryWeeklyContributorCount
 
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
@@ -46,8 +47,9 @@ class Repository(
     ContributorsConnectionMixin,
     RecentlyActiveContributorsConnectionMixin,
     CommitsConnectionMixin,
-    # property mixins
+    # field mixins
     CumulativeCommitCountResolverMixin,
+    WeeklyContributorCountsResolverMixin,
     #
     Selectable
 ):
@@ -65,7 +67,8 @@ class Repository(
             'commits': RepositoryCommitNodes
         }
         selectable_field_resolvers = {
-            'cumulative_commit_count': RepositoryCumulativeCommitCount
+            'cumulative_commit_count': RepositoryCumulativeCommitCount,
+            'weekly_contributor_counts': RepositoryWeeklyContributorCount,
         }
 
         connection_class = lambda: Repositories

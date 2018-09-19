@@ -19,7 +19,7 @@ from polaris.repos.db.schema import repositories, contributors, \
 
 from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
-    CumulativeCommitCount, CommitInfo
+    CumulativeCommitCount, CommitInfo, WeeklyContributorCount
 
 from ..commit.column_expressions import commit_info_columns
 
@@ -220,6 +220,34 @@ class ProjectCumulativeCommitCount:
                 commit_counts.c.week
             ]).label('cumulative_commit_count')
         ])
+
+
+class ProjectWeeklyContributorCount:
+
+    interface = WeeklyContributorCount
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            extract('year', commits.c.commit_date).label('year'),
+            extract('week', commits.c.commit_date).label('week'),
+            func.count(distinct(commits.c.author_contributor_key)).label('contributor_count')
+        ]).select_from(
+            projects.join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
+                repositories, projects_repositories.c.repository_id == repositories.c.id
+            ).join(
+                commits, commits.c.repository_id == repositories.c.id
+            )
+        ).where(
+            projects.c.project_key == bindparam('key')
+        ).group_by(
+            extract('year', commits.c.commit_date),
+            extract('week', commits.c.commit_date)
+        )
+
+
 
 
 class ProjectsCommitSummary:

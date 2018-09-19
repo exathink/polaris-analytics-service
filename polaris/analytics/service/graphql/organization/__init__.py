@@ -20,7 +20,7 @@ from .selectables import \
     OrganizationsContributorCount, OrganizationProjectsNodes, \
     OrganizationRepositoriesNodes, OrganizationRecentlyActiveRepositoriesNodes, \
     OrganizationContributorNodes, OrganizationRecentlyActiveProjectsNodes, \
-    OrganizationRecentlyActiveContributorNodes
+    OrganizationRecentlyActiveContributorNodes, OrganizationWeeklyContributorCount
 
 
 from ..interface_mixins import \
@@ -34,6 +34,7 @@ from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionM
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 
+from ..selectable_field_mixins import WeeklyContributorCountsResolverMixin
 
 class Organization(
     # Interface Mixins
@@ -49,6 +50,8 @@ class Organization(
     RecentlyActiveRepositoriesConnectionMixin,
     RecentlyActiveContributorsConnectionMixin,
     RecentlyActiveProjectsConnectionMixin,
+    # field mixins
+    WeeklyContributorCountsResolverMixin,
     #
     Selectable
 ):
@@ -69,6 +72,9 @@ class Organization(
             'recently_active_repositories': OrganizationRecentlyActiveRepositoriesNodes,
             'recently_active_contributors': OrganizationRecentlyActiveContributorNodes
         }
+        selectable_field_resolvers = {
+            'weekly_contributor_counts': OrganizationWeeklyContributorCount
+        }
 
         connection_class = lambda: Organizations
 
@@ -76,7 +82,6 @@ class Organization(
     @classmethod
     def resolve_field(cls, parent, info, organization_key, **kwargs):
         return cls.resolve_instance(key=organization_key, **kwargs)
-
 
 
 class Organizations(

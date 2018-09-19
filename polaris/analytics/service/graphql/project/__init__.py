@@ -28,7 +28,7 @@ from ..summary_mixins import \
     ActivityLevelSummaryResolverMixin, \
     InceptionsResolverMixin
 
-from ..selectable_field_mixins import CumulativeCommitCountResolverMixin
+from ..selectable_field_mixins import CumulativeCommitCountResolverMixin, WeeklyContributorCountsResolverMixin
 
 
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
@@ -45,7 +45,8 @@ from .selectables import ProjectNode, \
     ProjectsOrganizationRef, \
     ProjectRecentlyActiveRepositoriesNodes, \
     ProjectRecentlyActiveContributorNodes, \
-    ProjectCumulativeCommitCount
+    ProjectCumulativeCommitCount, \
+    ProjectWeeklyContributorCount
 
 
 from polaris.graphql.connection_utils import CountableConnection
@@ -64,8 +65,10 @@ class Project(
     RecentlyActiveRepositoriesConnectionMixin,
     RecentlyActiveContributorsConnectionMixin,
     CommitsConnectionMixin,
-    # property mixins
+    # field mixins
     CumulativeCommitCountResolverMixin,
+    WeeklyContributorCountsResolverMixin,
+
     #
     Selectable
 ):
@@ -86,7 +89,8 @@ class Project(
             'commits': ProjectCommitNodes
         }
         selectable_field_resolvers = {
-          'cumulative_commit_count': ProjectCumulativeCommitCount
+          'cumulative_commit_count': ProjectCumulativeCommitCount,
+          'weekly_contributor_counts': ProjectWeeklyContributorCount
         }
         connection_class = lambda: Projects
 

@@ -12,7 +12,8 @@ from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories, organizations
 from polaris.repos.db.schema import contributors, commits, repositories_contributor_aliases, contributor_aliases
-from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, CommitCount
+from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, \
+    CommitCount, WeeklyContributorCount
 from ..commit.column_expressions import commit_info_columns
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
@@ -144,6 +145,26 @@ class RepositoryCumulativeCommitCount:
                 commit_counts.c.week
             ]).label('cumulative_commit_count')
         ])
+
+class RepositoryWeeklyContributorCount:
+
+    interface = WeeklyContributorCount
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            extract('year', commits.c.commit_date).label('year'),
+            extract('week', commits.c.commit_date).label('week'),
+            func.count(distinct(commits.c.author_contributor_key)).label('contributor_count')
+        ]).select_from(
+            repositories.join(commits)
+        ).where(
+            repositories.c.key == bindparam('key')
+        ).group_by(
+            extract('year', commits.c.commit_date),
+            extract('week', commits.c.commit_date)
+        )
+
 
 
 class RepositoriesCommitSummary:

@@ -9,9 +9,14 @@
 # Author: Krishna Kumar
 
 import graphene
-from .interfaces import CumulativeCommitCount
+from .interfaces import CumulativeCommitCount, WeeklyContributorCount
 
 
 class CumulativeCommitCountField(graphene.ObjectType):
     class Meta:
         interfaces = (CumulativeCommitCount,)
+
+
+class WeeklyContributorCountsField(graphene.ObjectType):
+    class Meta:
+        interfaces = (CumulativeCommitCount, WeeklyContributorCount)

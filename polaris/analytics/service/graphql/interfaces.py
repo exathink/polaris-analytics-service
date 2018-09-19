@@ -31,6 +31,12 @@ class CumulativeCommitCount(graphene.Interface):
     cumulative_commit_count = graphene.Int(required=True)
 
 
+class WeeklyContributorCount(graphene.Interface):
+    year = graphene.Int(required=True)
+    week = graphene.Int(required=True)
+    contributor_count = graphene.Int(required=True)
+
+
 class CommitCount(NamedNode):
     commit_count = graphene.Int()
 

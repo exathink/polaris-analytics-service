@@ -11,7 +11,7 @@
 import graphene
 
 from polaris.graphql.selectable import SimpleSelectableResolverMixin
-from .selectable_fields import CumulativeCommitCountField
+from .selectable_fields import CumulativeCommitCountField, WeeklyContributorCountsField
 from .interface_mixins import KeyIdResolverMixin
 
 
@@ -29,3 +29,10 @@ class CumulativeCommitCountResolverMixin(SelectablePropertyResolverMixin):
     def resolve_cumulative_commit_count(self, info, **kwargs):
         return self.resolve_selectable_field('cumulative_commit_count')
 
+
+class WeeklyContributorCountsResolverMixin(SelectablePropertyResolverMixin):
+
+    weekly_contributor_counts = graphene.Field(graphene.List(WeeklyContributorCountsField))
+
+    def resolve_weekly_contributor_counts(self, info, **kwargs):
+        return self.resolve_selectable_field('weekly_contributor_counts')

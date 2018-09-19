@@ -11,7 +11,7 @@
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
 
-from sqlalchemy import select, func, bindparam, distinct, and_, between, cast, Text, desc
+from sqlalchemy import select, func, bindparam, distinct, and_, between, cast, Text, extract
 
 from polaris.graphql.utils import nulls_to_zero
 from polaris.graphql.interfaces import NamedNode
@@ -19,7 +19,8 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import organizations, projects, repositories, projects_repositories
 from polaris.repos.db.schema import repositories, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases
-from ..interfaces import CommitSummary, CommitCount, ContributorCount, ProjectCount, RepositoryCount
+from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
+    ProjectCount, RepositoryCount, WeeklyContributorCount
 
 
 class OrganizationNode:
@@ -219,6 +220,30 @@ class OrganizationsCommitSummary:
     @staticmethod
     def sort_order(organizations_commit_summary, **kwargs):
         return [nulls_to_zero(organizations_commit_summary.c.commit_count).desc()]
+
+
+class OrganizationWeeklyContributorCount:
+
+    interface = WeeklyContributorCount
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            extract('year', commits.c.commit_date).label('year'),
+            extract('week', commits.c.commit_date).label('week'),
+            func.count(distinct(commits.c.author_contributor_key)).label('contributor_count')
+        ]).select_from(
+            organizations.join(
+                repositories
+            ).join(
+                commits, commits.c.repository_id == repositories.c.id
+            )
+        ).where(
+            organizations.c.organization_key == bindparam('key')
+        ).group_by(
+            extract('year', commits.c.commit_date),
+            extract('week', commits.c.commit_date)
+        )
 
 
 class OrganizationsContributorCount:

@@ -14,7 +14,8 @@ from polaris.utils.datetime_utils import time_window
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import projects, projects_repositories, organizations
-from polaris.repos.db.schema import repositories, contributors, repositories_contributor_aliases, commits
+from polaris.repos.db.schema import repositories, contributors, \
+    contributor_aliases, repositories_contributor_aliases, commits
 
 from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
@@ -159,7 +160,7 @@ class ProjectRecentlyActiveContributorNodes:
         return select([
             commits.c.author_contributor_key.label('key'),
             func.min(commits.c.author_contributor_name).label('name'),
-            func.count(commits.c.id).label('commit_count')
+            func.count(distinct(commits.c.id)).label('commit_count')
 
         ]).select_from(
             projects.join(
@@ -168,11 +169,14 @@ class ProjectRecentlyActiveContributorNodes:
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             ).join(
                 commits
+            ).join(
+                contributor_aliases, commits.c.author_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(
                 projects.c.project_key == bindparam('key'),
-                between(commits.c.commit_date, window.begin, window.end)
+                between(commits.c.commit_date, window.begin, window.end),
+                contributor_aliases.c.robot == False
             )
         ).group_by(
             commits.c.author_contributor_key

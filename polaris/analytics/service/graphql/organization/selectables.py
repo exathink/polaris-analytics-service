@@ -18,7 +18,7 @@ from polaris.graphql.interfaces import NamedNode
 
 from polaris.repos.db.model import organizations, projects, repositories, projects_repositories
 from polaris.repos.db.schema import repositories, contributors, commits, \
-    repositories_contributor_aliases
+    repositories_contributor_aliases, contributor_aliases
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, ProjectCount, RepositoryCount
 
 
@@ -182,12 +182,15 @@ class OrganizationRecentlyActiveContributorNodes:
             organizations.join(
                 repositories
             ).join(
-                commits
+                commits.join(
+                    contributor_aliases, commits.c.author_alias_id == contributor_aliases.c.id
+                )
             )
         ).where(
             and_(
                 organizations.c.organization_key == bindparam('key'),
-                between(commits.c.commit_date, window.begin, window.end)
+                between(commits.c.commit_date, window.begin, window.end),
+                contributor_aliases.c.robot == False
             )
         ).group_by(
             commits.c.author_contributor_key

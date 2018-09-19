@@ -11,7 +11,7 @@ from sqlalchemy import select, func, bindparam, and_, distinct, extract, between
 from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories, organizations
-from polaris.repos.db.schema import contributors, commits, repositories_contributor_aliases
+from polaris.repos.db.schema import contributors, commits, repositories_contributor_aliases, contributor_aliases
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, CommitCount
 from ..commit.column_expressions import commit_info_columns
 from datetime import datetime, timedelta
@@ -72,7 +72,7 @@ class RepositoryContributorNodes:
         ]).select_from(
             contributors.join(
                     repositories_contributor_aliases.join(
-                    repositories
+                        repositories
                 )
             )
         ).where(
@@ -97,13 +97,16 @@ class RepositoryRecentlyActiveContributorNodes:
             func.count(commits.c.id).label('commit_count')
 
         ]).select_from(
-            commits.join(
-                repositories
+            repositories.join(
+                commits.join(
+                    contributor_aliases, commits.c.author_alias_id == contributor_aliases.c.id
+                )
             )
         ).where(
             and_(
                 repositories.c.key == bindparam('key'),
-                between(commits.c.commit_date, window.begin, window.end)
+                between(commits.c.commit_date, window.begin, window.end),
+                contributor_aliases.c.robot == False
             )
         ).group_by(
             commits.c.author_contributor_key

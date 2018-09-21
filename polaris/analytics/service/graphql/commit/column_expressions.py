@@ -33,5 +33,6 @@ def commit_info_columns(repositories, commits):
         commits.c.author_contributor_name.label('author'),
         commits.c.author_contributor_key.label('author_key'),
         commits.c.commit_message,
-        commits.c.num_parents
+        commits.c.num_parents,
+        commits.c.created_on_branch.label('branch'),
     ]

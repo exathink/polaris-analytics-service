@@ -23,6 +23,7 @@ class CommitInfo(NamedNode):
     author_key = graphene.String(required=True)
     commit_message = graphene.String(required=True)
     num_parents = graphene.Int(required=True)
+    branch = graphene.String(required=False)
 
 
 class CumulativeCommitCount(graphene.Interface):

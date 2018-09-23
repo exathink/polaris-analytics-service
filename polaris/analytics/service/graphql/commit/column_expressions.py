@@ -16,7 +16,7 @@ def commit_key_column(repositories, commits):
 
 
 def commit_name_column(commits):
-    return func.substr(commits.c.key, 1, 12).label('name')
+    return func.substr(commits.c.key, 1, 8).label('name')
 
 
 def commit_info_columns(repositories, commits):
@@ -25,6 +25,7 @@ def commit_info_columns(repositories, commits):
         commit_key_column(repositories, commits),
         commit_name_column(commits),
         repositories.c.name.label('repository'),
+        repositories.c.url.label('repository_url'),
         repositories.c.key.label('repository_key'),
         commits.c.commit_date,
         commits.c.committer_contributor_name.label('committer'),

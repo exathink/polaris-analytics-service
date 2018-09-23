@@ -15,6 +15,7 @@ from polaris.graphql.interfaces import NamedNode
 class CommitInfo(NamedNode):
     repository = graphene.String(required=True)
     repository_key = graphene.String(required=True)
+    repository_url = graphene.String(required=True)
     commit_date = graphene.DateTime(required=True)
     committer = graphene.String(required=True)
     committer_key = graphene.String(required=True)

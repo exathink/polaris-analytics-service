@@ -75,6 +75,9 @@ class CommitInfoResolverMixin(KeyIdResolverMixin):
     def resolve_repository_key(self, info, **kwargs):
         return self.get_commit(info, **kwargs).repository_key
 
+    def resolve_repository_url(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).repository_url
+
     def resolve_commit_date(self, info, **kwargs):
         return self.get_commit(info, **kwargs).commit_date
 

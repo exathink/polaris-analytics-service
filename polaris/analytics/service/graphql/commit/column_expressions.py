@@ -24,6 +24,7 @@ def commit_info_columns(repositories, commits):
         commits.c.id,
         commit_key_column(repositories, commits),
         commit_name_column(commits),
+        commits.c.key.label('commit_hash'),
         repositories.c.name.label('repository'),
         repositories.c.url.label('repository_url'),
         repositories.c.key.label('repository_key'),

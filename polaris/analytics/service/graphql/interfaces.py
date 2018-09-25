@@ -12,6 +12,13 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 
 
+class CommitChangeStats(graphene.ObjectType):
+    lines = graphene.Int(required=True)
+    insertions = graphene.Int(required=True)
+    deletions = graphene.Int(required=True)
+    files = graphene.Int(required=True)
+
+
 class CommitInfo(NamedNode):
     commit_hash = graphene.String(required=True)
     repository = graphene.String(required=True)
@@ -26,6 +33,7 @@ class CommitInfo(NamedNode):
     commit_message = graphene.String(required=True)
     num_parents = graphene.Int(required=True)
     branch = graphene.String(required=False)
+    stats = graphene.Field(CommitChangeStats, required=False)
 
 
 class CumulativeCommitCount(graphene.Interface):

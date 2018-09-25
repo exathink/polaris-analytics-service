@@ -18,7 +18,8 @@ from .interfaces import \
     ContributorCount, \
     ProjectCount, \
     RepositoryCount, \
-    OrganizationRef
+    OrganizationRef, \
+    CommitChangeStats
 
 
 class CommitSummaryResolverMixin(KeyIdResolverMixin):
@@ -52,6 +53,7 @@ class CommitSummaryResolverMixin(KeyIdResolverMixin):
 
 class CommitInfoResolverMixin(KeyIdResolverMixin):
     commit_tuple = create_tuple(CommitInfo)
+    stats_tuple = create_tuple(CommitChangeStats)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -105,7 +107,8 @@ class CommitInfoResolverMixin(KeyIdResolverMixin):
     def resolve_num_parents(self, info, **kwargs):
         return self.get_commit(info, **kwargs).num_parents
 
-
+    def resolve_stats(self, info, **kwargs):
+        return init_tuple(self.stats_tuple, **self.get_commit(info, **kwargs).stats)
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):

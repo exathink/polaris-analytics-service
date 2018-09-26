@@ -8,9 +8,9 @@
 
 # Author: Krishna Kumar
 
-from ..interfaces import CommitInfo
+from ..interfaces import CommitInfo, FileTypesSummary
 from sqlalchemy import select, func, bindparam, and_
-from polaris.repos.db.schema import commits, repositories
+from polaris.repos.db.schema import commits, repositories, source_file_versions, source_files
 
 from .column_expressions import commit_info_columns
 
@@ -31,4 +31,31 @@ class CommitNode:
                 repositories.c.key == bindparam('repository_key'),
                 commits.c.key == bindparam('commit_key')
             )
+        )
+
+
+class CommitFileTypesSummary:
+    interface = FileTypesSummary
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            source_files.c.file_type,
+            func.count(source_files.c.id).label('count')
+
+        ]).select_from(
+            repositories.join(
+                commits, commits.c.repository_id == repositories.c.id
+            ).join(
+                source_file_versions, source_file_versions.c.commit_id == commits.c.id
+            ).join(
+                source_files, source_file_versions.c.source_file_id == source_files.c.id
+            )
+        ).where(
+            and_(
+                repositories.c.key == bindparam('repository_key'),
+                commits.c.key == bindparam('commit_key')
+            )
+        ).group_by(
+            source_files.c.file_type
         )

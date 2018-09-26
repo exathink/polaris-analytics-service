@@ -17,7 +17,8 @@ from polaris.graphql.connection_utils import CountableConnection
 
 from ..interfaces import CommitInfo
 from ..interface_mixins import CommitInfoResolverMixin, KeyIdResolverMixin
-from .selectables import CommitNode
+from ..selectable_field_mixins import FileTypesSummaryResolverMixin
+from .selectables import CommitNode, CommitFileTypesSummary
 
 
 
@@ -26,6 +27,7 @@ from .selectables import CommitNode
 class Commit(
     # interface mixins
     CommitInfoResolverMixin,
+    FileTypesSummaryResolverMixin,
     #
     Selectable
 ):
@@ -33,6 +35,9 @@ class Commit(
         interfaces = (CommitInfo,)
         named_node_resolver = CommitNode
         interface_resolvers = {}
+        selectable_field_resolvers = {
+            'file_types_summary': CommitFileTypesSummary
+        }
         connection_class = lambda: Commits
 
     @classmethod

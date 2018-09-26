@@ -54,6 +54,7 @@ class CommitSummaryResolverMixin(KeyIdResolverMixin):
 class CommitInfoResolverMixin(KeyIdResolverMixin):
     commit_tuple = create_tuple(CommitInfo)
     stats_tuple = create_tuple(CommitChangeStats)
+    no_stats = dict(files=0, lines=0, insertions=0, deletions=0)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,7 +109,7 @@ class CommitInfoResolverMixin(KeyIdResolverMixin):
         return self.get_commit(info, **kwargs).num_parents
 
     def resolve_stats(self, info, **kwargs):
-        return init_tuple(self.stats_tuple, **self.get_commit(info, **kwargs).stats)
+        return init_tuple(self.stats_tuple, **(self.get_commit(info, **kwargs).stats or self.no_stats))
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):

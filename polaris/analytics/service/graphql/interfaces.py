@@ -12,6 +12,8 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 
 
+
+
 class CommitChangeStats(graphene.ObjectType):
     lines = graphene.Int(required=True)
     insertions = graphene.Int(required=True)
@@ -75,3 +77,6 @@ class OrganizationRef(graphene.Interface):
     organization_key = graphene.String(required=True)
 
 
+class FileTypesSummary(graphene.Interface):
+    file_type = graphene.String(required=True)
+    count = graphene.Int(required=True)

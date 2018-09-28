@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 from ..interfaces import CommitInfo, FileTypesSummary
-from sqlalchemy import select, func, bindparam, and_
+from sqlalchemy import select, func, bindparam, and_, case
 from polaris.repos.db.schema import commits, repositories, source_file_versions, source_files
 
 from .column_expressions import commit_info_columns
@@ -40,7 +40,12 @@ class CommitFileTypesSummary:
     @staticmethod
     def selectable(**kwargs):
         return select([
-            source_files.c.file_type,
+            case(
+                [
+                    (source_files.c.file_type != None, source_files.c.file_type)
+                ],
+                else_=''
+            ).label('file_type'),
             func.count(source_files.c.id).label('count')
 
         ]).select_from(

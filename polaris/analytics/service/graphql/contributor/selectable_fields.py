@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 import graphene
 from ..selectable_field_mixins import SelectablePropertyResolverMixin
-from ..interfaces import NamedNode, CommitSummary
+from ..interfaces import NamedNode, CommitSummary, CommitCount
 
 
 class ContributorRepositoriesActivitySummaryField(graphene.ObjectType):
@@ -23,3 +23,19 @@ class ContributorRepositoriesActivitySummaryResolverMixin(SelectablePropertyReso
 
     def resolve_repositories_activity_summary(self, info, **kwargs):
         return self.resolve_selectable_field('repositories_activity_summary')
+
+
+class ContributorRecentlyActiveRepositoriesField(graphene.ObjectType):
+    class Meta:
+        interfaces = (NamedNode, CommitCount)
+
+
+class ContributorRecentlyActiveRepositoriesResolverMixin(SelectablePropertyResolverMixin):
+    recently_active_repositories = graphene.Field(
+        graphene.List(ContributorRecentlyActiveRepositoriesField),
+        top=graphene.Argument(graphene.Int, required=False),
+        days=graphene.Argument(graphene.Int, required=False, default_value=7)
+    )
+
+    def resolve_recently_active_repositories(self, info, **kwargs):
+        return self.resolve_selectable_field('recently_active_repositories', **kwargs)

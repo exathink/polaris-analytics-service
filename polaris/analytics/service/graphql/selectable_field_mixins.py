@@ -19,7 +19,7 @@ class SelectablePropertyResolverMixin(KeyIdResolverMixin, SimpleSelectableResolv
 
     def resolve_selectable_field(self, property_name, **kwargs):
         selectable = self._meta.selectable_field_resolvers.get(property_name)
-        return self.resolve_selectable(selectable(**kwargs), self.get_instance_query_params())
+        return self.resolve_selectable(selectable, self.get_instance_query_params(), **kwargs)
 
 
 class CumulativeCommitCountResolverMixin(SelectablePropertyResolverMixin):

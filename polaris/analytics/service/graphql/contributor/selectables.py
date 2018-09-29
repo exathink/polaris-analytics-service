@@ -18,16 +18,16 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, func, bindparam, distinct, and_
+from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories
 from datetime import datetime, timedelta
-
+from polaris.utils.datetime_utils import time_window
 
 from polaris.repos.db.schema import repositories, repositories_contributor_aliases, contributors, \
     contributor_aliases, commits
 
-from ..interfaces import CommitSummary, RepositoryCount, CommitInfo
+from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount
 from ..commit.column_expressions import commit_info_columns
 
 
@@ -66,6 +66,40 @@ class ContributorRepositoriesNodes:
         ).where(
             contributors.c.key == bindparam('key')
         )
+
+
+class ContributorRecentlyActiveRepositoriesNodes:
+    interfaces = (NamedNode, CommitCount)
+
+    @staticmethod
+    def selectable(**kwargs):
+        now = datetime.utcnow()
+        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+
+        query = select([
+            repositories.c.id,
+            func.min(cast(repositories.c.key, Text)).label('key'),
+            func.min(repositories.c.name).label('name'),
+            func.count(commits.c.id).label('commit_count')
+        ]).select_from(
+            commits.join(
+                repositories
+            )
+        ).where(
+            and_(
+                commits.c.author_contributor_key == bindparam('key'),
+                between(commits.c.commit_date, window.begin, window.end)
+            )
+        ).group_by(
+            repositories.c.id
+        ).order_by(
+            func.count(commits.c.id).desc()
+        )
+
+        if kwargs.get('top'):
+            query = query.limit(kwargs['top'])
+
+        return query
 
 
 class ContributorCommitNodes:

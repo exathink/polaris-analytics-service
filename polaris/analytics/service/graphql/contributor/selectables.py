@@ -21,8 +21,14 @@
 from sqlalchemy import select, func, bindparam, distinct, and_
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories
-from polaris.repos.db.schema import repositories, repositories_contributor_aliases, contributors, contributor_aliases
-from ..interfaces import CommitSummary, RepositoryCount
+from datetime import datetime, timedelta
+
+
+from polaris.repos.db.schema import repositories, repositories_contributor_aliases, contributors, \
+    contributor_aliases, commits
+
+from ..interfaces import CommitSummary, RepositoryCount, CommitInfo
+from ..commit.column_expressions import commit_info_columns
 
 
 class ContributorNodes:
@@ -37,6 +43,34 @@ class ContributorNodes:
         ]).select_from(
             contributors
         ).where(contributors.c.key == bindparam('key'))
+
+
+class ContributorCommitNodes:
+    interface = CommitInfo
+
+    @staticmethod
+    def selectable(**kwargs):
+        select_stmt = select([
+            *commit_info_columns(repositories, commits)
+        ]).select_from(
+            commits.join(
+                repositories
+            )
+        ).where(
+            commits.c.author_contributor_key == bindparam('key')
+        )
+        if 'days' in kwargs and kwargs['days'] > 0:
+            now = datetime.utcnow()
+            commit_window_start = now - timedelta(days=kwargs['days'])
+            select_stmt = select_stmt.where(
+                commits.c.commit_date >= commit_window_start
+            )
+
+        return select_stmt
+
+    @staticmethod
+    def sort_order(contributor_commit_nodes, **kwargs):
+        return [contributor_commit_nodes.c.commit_date.desc()]
 
 
 

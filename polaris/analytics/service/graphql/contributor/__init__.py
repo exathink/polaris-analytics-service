@@ -12,7 +12,9 @@ import graphene
 from polaris.graphql.connection_utils import CountableConnection
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
-from .selectables import ContributorNodes, ContributorsCommitSummary, ContributorsRepositoryCount
+from .selectables import \
+    ContributorNodes, ContributorCommitNodes, \
+    ContributorsCommitSummary, ContributorsRepositoryCount
 
 from ..interfaces import CommitSummary, RepositoryCount
 from ..interface_mixins import KeyIdResolverMixin, \
@@ -23,11 +25,14 @@ from ..summary_mixins import \
     ActivityLevelSummaryResolverMixin, \
     InceptionsResolverMixin
 
+from ..commit import CommitsConnectionMixin
 
 class Contributor(
     NamedNodeResolverMixin,
     CommitSummaryResolverMixin,
     RepositoryCountResolverMixin,
+    # connection mixins
+    CommitsConnectionMixin,
     Selectable
 ):
     class Meta:
@@ -36,6 +41,9 @@ class Contributor(
         interface_resolvers = {
             'CommitSummary': ContributorsCommitSummary,
             'RepositoryCount': ContributorsRepositoryCount
+        }
+        connection_node_resolvers = {
+            'commits': ContributorCommitNodes
         }
         connection_class = lambda: Contributors
 

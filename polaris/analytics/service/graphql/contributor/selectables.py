@@ -45,6 +45,29 @@ class ContributorNodes:
         ).where(contributors.c.key == bindparam('key'))
 
 
+class ContributorRepositoriesNodes:
+    interfaces = (NamedNode, CommitSummary)
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            repositories.c.id,
+            repositories.c.name,
+            repositories.c.key,
+            repositories_contributor_aliases.c.earliest_commit,
+            repositories_contributor_aliases.c.latest_commit,
+            repositories_contributor_aliases.c.commit_count
+        ]).select_from(
+            contributors.join(
+                repositories_contributor_aliases, repositories_contributor_aliases.c.contributor_id == contributors.c.id
+            ).join (
+                repositories, repositories_contributor_aliases.c.repository_id == repositories.c.id
+            )
+        ).where(
+            contributors.c.key == bindparam('key')
+        )
+
+
 class ContributorCommitNodes:
     interface = CommitInfo
 
@@ -71,7 +94,6 @@ class ContributorCommitNodes:
     @staticmethod
     def sort_order(contributor_commit_nodes, **kwargs):
         return [contributor_commit_nodes.c.commit_date.desc()]
-
 
 
 class ContributorsCommitSummary:

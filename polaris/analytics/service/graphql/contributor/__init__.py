@@ -13,7 +13,7 @@ from polaris.graphql.connection_utils import CountableConnection
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from .selectables import \
-    ContributorNodes, ContributorCommitNodes, \
+    ContributorNodes, ContributorCommitNodes, ContributorRepositoriesNodes,\
     ContributorsCommitSummary, ContributorsRepositoryCount
 
 from ..interfaces import CommitSummary, RepositoryCount
@@ -26,6 +26,8 @@ from ..summary_mixins import \
     InceptionsResolverMixin
 
 from ..commit import CommitsConnectionMixin
+from .selectable_fields import ContributorRepositoriesActivitySummaryResolverMixin
+
 
 class Contributor(
     NamedNodeResolverMixin,
@@ -33,6 +35,9 @@ class Contributor(
     RepositoryCountResolverMixin,
     # connection mixins
     CommitsConnectionMixin,
+    # Selectable fields
+    ContributorRepositoriesActivitySummaryResolverMixin,
+    #
     Selectable
 ):
     class Meta:
@@ -41,6 +46,9 @@ class Contributor(
         interface_resolvers = {
             'CommitSummary': ContributorsCommitSummary,
             'RepositoryCount': ContributorsRepositoryCount
+        }
+        selectable_field_resolvers = {
+            'repositories_activity_summary': ContributorRepositoriesNodes
         }
         connection_node_resolvers = {
             'commits': ContributorCommitNodes
@@ -52,6 +60,8 @@ class Contributor(
     @classmethod
     def resolve_field(cls, parent, info, key, **kwargs):
         return cls.resolve_instance(key, **kwargs)
+
+
 
 
 class Contributors(
@@ -96,3 +106,5 @@ class RecentlyActiveContributorsConnectionMixin(KeyIdResolverMixin, ConnectionRe
             self.get_instance_query_params(),
             **kwargs
         )
+
+

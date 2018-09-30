@@ -52,11 +52,11 @@ class ContributorRepositoriesNodes:
     def selectable(**kwargs):
         return select([
             repositories.c.id,
-            repositories.c.name,
-            repositories.c.key,
-            repositories_contributor_aliases.c.earliest_commit,
-            repositories_contributor_aliases.c.latest_commit,
-            repositories_contributor_aliases.c.commit_count
+            func.min(repositories.c.name).label('name'),
+            func.min(cast(repositories.c.key, Text)).label('key'),
+            func.min(repositories_contributor_aliases.c.earliest_commit).label('earliest_commit'),
+            func.max(repositories_contributor_aliases.c.latest_commit).label('latest_commit'),
+            func.sum(repositories_contributor_aliases.c.commit_count).label('commit_count')
         ]).select_from(
             contributors.join(
                 repositories_contributor_aliases, repositories_contributor_aliases.c.contributor_id == contributors.c.id
@@ -65,6 +65,8 @@ class ContributorRepositoriesNodes:
             )
         ).where(
             contributors.c.key == bindparam('key')
+        ).group_by(
+            repositories.c.id
         )
 
 

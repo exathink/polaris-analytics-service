@@ -18,7 +18,7 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between
+from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract
 from polaris.graphql.interfaces import NamedNode
 from polaris.repos.db.model import repositories
 from datetime import datetime, timedelta
@@ -27,7 +27,7 @@ from polaris.utils.datetime_utils import time_window
 from polaris.repos.db.schema import repositories, repositories_contributor_aliases, contributors, \
     contributor_aliases, commits
 
-from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount
+from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount
 from ..commit.column_expressions import commit_info_columns
 
 
@@ -223,4 +223,32 @@ class ContributorsRepositoryCount:
             return ContributorsRepositoryCount.repository_level_of_detail(contributor_nodes, **kwargs)
         else:
             return ContributorsRepositoryCount.contributor_level_of_detail(contributor_nodes, **kwargs)
+
+class ContributorCumulativeCommitCount:
+
+    interface = CumulativeCommitCount
+
+    @staticmethod
+    def selectable(**kwargs):
+        commit_counts = select([
+            extract('year', commits.c.commit_date).label('year'),
+            extract('week', commits.c.commit_date).label('week'),
+            func.count(commits.c.id).label('commit_count')
+        ]).select_from(
+            commits
+        ).where(
+            commits.c.author_contributor_key == bindparam('key')
+        ).group_by(
+            extract('year', commits.c.commit_date),
+            extract('week', commits.c.commit_date)
+        ).alias()
+
+        return select([
+            commit_counts.c.year,
+            commit_counts.c.week,
+            func.sum(commit_counts.c.commit_count).over(order_by=[
+                commit_counts.c.year,
+                commit_counts.c.week
+            ]).label('cumulative_commit_count')
+        ])
 

@@ -12,7 +12,7 @@ from ..interfaces import CommitInfo, FileTypesSummary
 from sqlalchemy import select, func, bindparam, and_, case
 from polaris.repos.db.schema import commits, repositories, source_file_versions, source_files
 
-from .column_expressions import commit_info_columns
+from .sql_expressions import commit_info_columns
 
 
 class CommitNode:

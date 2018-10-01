@@ -60,10 +60,18 @@ class Commits(
 class CommitsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
     commits = Commit.ConnectionField(
+        before=graphene.Argument(
+            graphene.DateTime, required=False,
+            description='show commits strictly before this timestamp. '
+        ),
         days=graphene.Argument(
             graphene.Int,
             required=False,
-            description="Return commits within the specified number of days"
+            description="Return commits within the specified number of days. "
+                        "If before is specified, it returns commits with commit dates"
+                        "between (before - days) and before"
+                        "If before is not specified the it returns commits for the"
+                        "previous n days starting from utc now"
         )
     )
 

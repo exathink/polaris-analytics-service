@@ -8,8 +8,8 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import cast, Text, func
-
+from sqlalchemy import cast, Text, func, and_
+from datetime import datetime, timedelta
 
 def commit_key_column(repositories, commits):
     return (cast(repositories.c.key, Text) + ':' + cast(commits.c.key, Text)).label('key')
@@ -39,3 +39,31 @@ def commit_info_columns(repositories, commits):
         commits.c.created_on_branch.label('branch'),
         commits.c.stats
     ]
+
+
+def commits_connection_apply_time_window_filters(select_stmt, commits,  **kwargs):
+    before = None
+    if 'before' in kwargs:
+        before = kwargs['before']
+
+    if 'days' in kwargs and kwargs['days'] > 0:
+        if before:
+            commit_window_start = before - timedelta(days=kwargs['days'])
+            return select_stmt.where(
+                and_(
+                    commits.c.commit_date >= commit_window_start,
+                    commits.c.commit_date <= before
+                )
+            )
+        else:
+            commit_window_start = datetime.utcnow() - timedelta(days=kwargs['days'])
+            return select_stmt.where(
+                    commits.c.commit_date >= commit_window_start
+                )
+    elif before:
+        return select_stmt.where(
+            commits.c.commit_date <= before
+        )
+    else:
+        return select_stmt
+

@@ -28,7 +28,7 @@ from polaris.repos.db.schema import repositories, repositories_contributor_alias
     contributor_aliases, commits
 
 from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount
-from ..commit.column_expressions import commit_info_columns
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 
 
 class ContributorNodes:
@@ -118,14 +118,7 @@ class ContributorCommitNodes:
         ).where(
             commits.c.author_contributor_key == bindparam('key')
         )
-        if 'days' in kwargs and kwargs['days'] > 0:
-            now = datetime.utcnow()
-            commit_window_start = now - timedelta(days=kwargs['days'])
-            select_stmt = select_stmt.where(
-                commits.c.commit_date >= commit_window_start
-            )
-
-        return select_stmt
+        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
 
     @staticmethod
     def sort_order(contributor_commit_nodes, **kwargs):

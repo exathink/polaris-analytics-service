@@ -20,7 +20,10 @@ from polaris.repos.db.model import organizations, projects, repositories, projec
 from polaris.repos.db.schema import repositories, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
-    ProjectCount, RepositoryCount, WeeklyContributorCount
+    ProjectCount, RepositoryCount, WeeklyContributorCount, CommitInfo
+
+from ..commit.selectables import commit_info_columns
+from ..commit.sql_expressions import commits_connection_apply_time_window_filters
 
 
 class OrganizationNode:
@@ -165,6 +168,28 @@ class OrganizationContributorNodes:
             )
         ).distinct()
 
+
+class OrganizationCommitNodes:
+    interface = CommitInfo
+
+    @staticmethod
+    def selectable(**kwargs):
+        select_stmt = select([
+            *commit_info_columns(repositories, commits)
+        ]).select_from(
+            organizations.join(
+                repositories, repositories.c.organization_id == organizations.c.id
+            ).join(
+                commits
+            )
+        ).where(
+            organizations.c.organization_key == bindparam('key')
+        )
+        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+
+    @staticmethod
+    def sort_order(repository_commit_nodes, **kwargs):
+        return [repository_commit_nodes.c.commit_date.desc()]
 
 class OrganizationRecentlyActiveContributorNodes:
     interfaces = (NamedNode, CommitCount)

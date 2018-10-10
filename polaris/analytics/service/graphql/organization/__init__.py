@@ -20,13 +20,14 @@ from .selectables import \
     OrganizationsContributorCount, OrganizationProjectsNodes, \
     OrganizationRepositoriesNodes, OrganizationRecentlyActiveRepositoriesNodes, \
     OrganizationContributorNodes, OrganizationRecentlyActiveProjectsNodes, \
-    OrganizationRecentlyActiveContributorNodes, OrganizationWeeklyContributorCount
+    OrganizationRecentlyActiveContributorNodes, OrganizationWeeklyContributorCount, \
+    OrganizationCommitNodes
 
 
 from ..interface_mixins import \
     KeyIdResolverMixin, \
     NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, \
-    ProjectCountResolverMixin, RepositoryCountResolverMixin
+    ProjectCountResolverMixin, RepositoryCountResolverMixin, CommitInfoResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
 
@@ -35,6 +36,7 @@ from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositories
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 
 from ..selectable_field_mixins import WeeklyContributorCountsResolverMixin
+from ..commit import CommitsConnectionMixin
 
 class Organization(
     # Interface Mixins
@@ -50,6 +52,7 @@ class Organization(
     RecentlyActiveRepositoriesConnectionMixin,
     RecentlyActiveContributorsConnectionMixin,
     RecentlyActiveProjectsConnectionMixin,
+    CommitsConnectionMixin,
     # field mixins
     WeeklyContributorCountsResolverMixin,
     #
@@ -67,6 +70,7 @@ class Organization(
         connection_node_resolvers = {
             'projects': OrganizationProjectsNodes,
             'contributors': OrganizationContributorNodes,
+            'commits': OrganizationCommitNodes,
             'repositories': OrganizationRepositoriesNodes,
             'recently_active_projects': OrganizationRecentlyActiveProjectsNodes,
             'recently_active_repositories': OrganizationRecentlyActiveRepositoriesNodes,

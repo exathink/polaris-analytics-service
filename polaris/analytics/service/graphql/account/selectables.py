@@ -64,8 +64,8 @@ class AccountRecentlyActiveOrganizationsNodes:
 
     @staticmethod
     def selectable(**kwargs):
-        now = datetime.utcnow()
-        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+        end_date = kwargs.get('before') or datetime.utcnow()
+        window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
         return select([
             organizations.c.id,
@@ -121,8 +121,8 @@ class AccountRecentlyActiveProjectsNodes:
 
     @staticmethod
     def selectable(**kwargs):
-        now = datetime.utcnow()
-        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+        end_date = kwargs.get('before') or datetime.utcnow()
+        window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
         return select([
             projects.c.id,
@@ -183,8 +183,8 @@ class AccountRecentlyActiveRepositoriesNodes:
 
     @staticmethod
     def selectable(**kwargs):
-        now = datetime.utcnow()
-        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+        end_date = kwargs.get('before') or datetime.utcnow()
+        window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
         return select([
             repositories.c.id,

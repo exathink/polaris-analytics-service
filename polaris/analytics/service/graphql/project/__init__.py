@@ -126,7 +126,13 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
 class RecentlyActiveProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
-    recently_active_projects = Project.ConnectionField(days=graphene.Argument(
+    recently_active_projects = Project.ConnectionField(
+        before=graphene.Argument(
+            graphene.DateTime,
+            required=False,
+            description="End date of period to search for activity. If not specified it defaults to utc now"
+        ),
+        days=graphene.Argument(
             graphene.Int,
             required=False,
             default_value=7,

@@ -62,8 +62,8 @@ class OrganizationRecentlyActiveProjectsNodes:
 
     @staticmethod
     def selectable(**kwargs):
-        now = datetime.utcnow()
-        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+        end_date = kwargs.get('before') or datetime.utcnow()
+        window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
         return select([
             projects.c.id,
@@ -115,8 +115,8 @@ class OrganizationRecentlyActiveRepositoriesNodes:
 
     @staticmethod
     def selectable(**kwargs):
-        now = datetime.utcnow()
-        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+        end_date = kwargs.get('before') or datetime.utcnow()
+        window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
         return select([
             repositories.c.id,
@@ -196,8 +196,8 @@ class OrganizationRecentlyActiveContributorNodes:
 
     @staticmethod
     def selectable(**kwargs):
-        now = datetime.utcnow()
-        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+        end_date = kwargs.get('before') or datetime.utcnow()
+        window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
         return select([
             commits.c.author_contributor_key.label('key'),

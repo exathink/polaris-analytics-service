@@ -75,8 +75,8 @@ class ContributorRecentlyActiveRepositoriesNodes:
 
     @staticmethod
     def selectable(**kwargs):
-        now = datetime.utcnow()
-        window = time_window(begin=now - timedelta(days=kwargs.get('days', 7)), end=now)
+        end_date = kwargs.get('before') or datetime.utcnow()
+        window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
         query = select([
             repositories.c.id,

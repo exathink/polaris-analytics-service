@@ -34,6 +34,7 @@ class ContributorRecentlyActiveRepositoriesResolverMixin(SelectablePropertyResol
     recently_active_repositories = graphene.Field(
         graphene.List(ContributorRecentlyActiveRepositoriesField),
         top=graphene.Argument(graphene.Int, required=False),
+        before=graphene.Argument(graphene.DateTime, required=False),
         days=graphene.Argument(graphene.Int, required=False, default_value=7)
     )
 

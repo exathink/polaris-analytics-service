@@ -31,7 +31,9 @@ class Contributor(Base):
     key=Column(UUID(as_uuid=True), unique=True, nullable=False)
     name=Column(String, nullable=False)
     source=Column(String, nullable=False)
-    alias_for=Column(UUID(as_uuid=True), ForeignKey('contributors.key'), nullable=True )
+    source_alias=Column(String, nullable=False)
+    alias_for=Column(UUID(as_uuid=True), ForeignKey('contributors.key'), nullable=True)
+
 
 
 
@@ -52,11 +54,16 @@ class Commit(Base):
     committer_contributor_key = Column(UUID(as_uuid=True), nullable=True)
     commit_date = Column(DateTime, index=True, nullable=False)
     commit_date_tz_offset = Column(Integer, default=0)
+    committer_contributor_id = Column(Integer, ForeignKey('contributors.id'), nullable=False, index=True)
+
 
     author_contributor_name = Column(String, nullable=True)
     author_contributor_key = Column(UUID(as_uuid=True), nullable=True)
     author_date = Column(DateTime, nullable=True)
     author_date_tz_offset = Column(Integer, default=0)
+    author_contributor_id = Column(Integer, ForeignKey('contributors.id'), nullable=False, index=True)
+
+
 
     parents = Column(ARRAY(String))
 
@@ -67,6 +74,9 @@ class Commit(Base):
     num_parents = Column(Integer, default=1)
     stats  = Column(JSONB, nullable=False)
 
+    # relationships
+    committer = relationship('Contributor', foreign_keys=['committer_contributor_id'])
+    author = relationship('Contributor', foreign_keys=['author_contributor_id'])
     work_items = relationship('WorkItem',
                               secondary=commits_work_items,
                               back_populates="commits")
@@ -125,3 +135,7 @@ class WorkItem(Base):
                                  back_populates="work_items")
 
 
+
+def recreate_all(engine):
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)

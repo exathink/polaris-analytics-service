@@ -20,8 +20,7 @@ fileConfig(config.config_file_name)
 
 from polaris.utils.config import get_config_provider
 # Update this to the correct path to package where the model lives.
-from <path-to-model-package> import model
-target_metadata = model.Base.metadata
+from polaris.analytics.db.schema import analytics
 
 
 def include_schemas(names):
@@ -57,11 +56,11 @@ def run_migrations_offline():
 
     context.configure(
         url=url,
-        target_metadata=target_metadata,
+        target_metadata=analytics,
         include_schemas=True,
         literal_binds=True,
         version_table='alembic_version',
-        version_table_schema=target_metadata.schema
+        version_table_schema=analytics.schema
     )
 
     with context.begin_transaction():
@@ -82,11 +81,11 @@ def run_migrations_online():
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=target_metadata,
+            target_metadata=analytics,
             include_schemas=True,
-            include_object=include_schemas([target_metadata.schema]),
+            include_object=include_schemas([analytics.schema]),
             version_table='alembic_version',
-            version_table_schema=target_metadata.schema
+            version_table_schema=analytics.schema
         )
 
         with context.begin_transaction():

@@ -45,8 +45,11 @@ class Commit(Base):
 
     id = Column(BigInteger, primary_key=True)
     key = Column(UUID(as_uuid=True), unique=True, index=True, nullable=False)
+    organization_key = Column(UUID(as_uuid=True), index=True, nullable=False)
     repository_key = Column(UUID(as_uuid=True), index=True, nullable=False)
-    source_id = Column(String, nullable=False)
+
+    # This is the id of the commit within the repository. For git it is the commit hash.
+    source_commit_id = Column(String, nullable=False)
 
     commit_message = Column(Text, default='')
 
@@ -65,14 +68,15 @@ class Commit(Base):
 
 
 
-    parents = Column(ARRAY(String))
+
 
     is_orphan = Column(Boolean, default=False)
     created_at = Column(DateTime, nullable=True)
     created_on_branch = Column(String, nullable=True)
 
     num_parents = Column(Integer, default=1)
-    stats  = Column(JSONB, nullable=False)
+    parents = Column(ARRAY(String), nullable=True)
+    stats  = Column(JSONB, nullable=True)
 
     # relationships
     committer = relationship('Contributor', foreign_keys=['committer_contributor_id'])
@@ -83,7 +87,7 @@ class Commit(Base):
 
 commits = Commit.__table__
 
-UniqueConstraint(commits.c.repository_key, commits.c.source_id)
+UniqueConstraint(commits.c.repository_key, commits.c.source_commit_id)
 Index('ix_analytics_commits_author_contributor_key', commits.c.author_contributor_key, commits.c.committer_contributor_key)
 
 class WorkItemsSource(Base):

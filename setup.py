@@ -31,6 +31,8 @@ setup(
         'polaris.analytics',
         'polaris.analytics.cli',
         'polaris.analytics.messaging',
+        'polaris.analytics.messaging.commands',
+        'polaris.analytics.messaging.subscribers',
         'polaris.analytics.service',
         'polaris.analytics.db',
         'polaris.analytics.db.impl',

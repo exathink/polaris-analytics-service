@@ -17,6 +17,8 @@ from polaris.messaging.message_consumer import MessageConsumer
 from polaris.utils.config import get_config_provider
 from polaris.utils.logging import config_logging
 from polaris.utils.token_provider import get_token_provider
+from polaris.messaging.utils import init_topics_to_publish
+from polaris.messaging.topics import AnalyticsTopic, CommandsTopic
 
 logger = logging.getLogger('polaris.analytics.message_listener')
 
@@ -28,6 +30,8 @@ if __name__ == "__main__":
     logger.info('Connecting to polaris db...')
     db.init(config_provider.get('POLARIS_DB_URL'))
     token_provider = get_token_provider()
+
+    init_topics_to_publish(AnalyticsTopic, CommandsTopic)
 
     MessageConsumer(
         name='polaris.analytics.message_listener',

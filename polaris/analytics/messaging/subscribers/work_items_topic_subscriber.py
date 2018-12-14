@@ -7,11 +7,13 @@
 # confidential.
 
 # Author: Krishna Kumar
-from polaris.analytics.messaging.message_listener import logger
+import logging
+
 from polaris.messaging.messages import WorkItemsCommitsResolved, ImportWorkItems, WorkItemsCommitsUpdated
 from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic
 from polaris.work_tracking import work_tracker
 
+logger = logging.getLogger('polaris.analytics.work_items_topic_subscriber')
 
 class WorkItemsTopicSubscriber(TopicSubscriber):
     def __init__(self, channel):

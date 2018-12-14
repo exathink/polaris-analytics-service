@@ -7,16 +7,21 @@
 # confidential.
 
 # Author: Krishna Kumar
-from polaris.analytics.messaging.message_listener import logger
-from polaris.messaging.messages import CommitHistoryImported
-from polaris.messaging.topics import TopicSubscriber, CommitsTopic, WorkItemsTopic
-from polaris.analytics.db import api
 
+import logging
+
+from polaris.messaging.utils import raise_on_failure
+from polaris.messaging.messages import CommitHistoryImported, CommitsCreated
+from polaris.messaging.topics import TopicSubscriber, CommitsTopic, AnalyticsTopic, CommandsTopic
+from polaris.analytics.db import api
+from polaris.analytics.messaging.commands import ResolveCommitsWorkItems
+
+logger = logging.getLogger('polaris.analytics.messaging.commits_topic_subscriber')
 
 class CommitsTopicSubscriber(TopicSubscriber):
     def __init__(self, channel):
         super().__init__(
-            topic = CommitsTopic(channel, create=True),
+            topic=CommitsTopic(channel, create=True),
             subscriber_queue='commits_analytics',
             message_classes=[
                 CommitHistoryImported
@@ -25,30 +30,54 @@ class CommitsTopicSubscriber(TopicSubscriber):
             no_ack=True
         )
 
-
     def dispatch(self, channel, message):
         if CommitHistoryImported.message_type == message.message_type:
-            resolved = self.process_commit_history_imported(message)
-            if resolved:
-               pass
+            result = self.process_commit_history_imported(message)
+            if result:
+                commits_created_message = CommitsCreated(
+                    send=dict(
+                        organization_key=message['organization_key'],
+                        repository_key=message['repository_key'],
+                        branch=message['branch_info']['name'],
+                        new_commits=result['new_commits']
+                    ),
+                    in_response_to=message
+                )
+                AnalyticsTopic(channel).publish(commits_created_message)
 
-
-
+                resolve_work_items_command = ResolveCommitsWorkItems(
+                    send=dict(
+                        organization_key=message['organization_key'],
+                        repository_key=message['repository_key'],
+                        new_commits=result['new_commits']
+                    ),
+                    in_response_to=message
+                )
+                CommandsTopic(channel).publish(
+                    resolve_work_items_command
+                )
+                return commits_created_message, resolve_work_items_command
 
     @staticmethod
     def process_commit_history_imported(message):
+
         organization_key = message['organization_key']
         repository_name = message['repository_name']
+        repository_key = message['repository_key']
+        logger.info(
+            f'Processing {message.message_type} for organization {organization_key} repository {repository_name}')
 
-        logger.info(f'Processing {message.message_type} for organization {organization_key} repository {repository_name}')
         if len(message['new_commits']) > 0:
-            result = api.import_new_commits(
-                organization_key=organization_key,
-                repository_key=message['repository_key'],
-                new_commits = message['new_commits'],
-                new_contributors = message['new_contributors']
+            return raise_on_failure(
+                message,
+                api.import_new_commits(
+                    organization_key=organization_key,
+                    repository_key=repository_key,
+                    new_commits=message['new_commits'],
+                    new_contributors=message.dict['new_contributors']
+                )
             )
+
 
         else:
             logger.info(f" {message['total_commits']} total commits. No new commits")
-

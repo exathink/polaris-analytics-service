@@ -12,14 +12,15 @@ from polaris.common import db
 from polaris.analytics.db import impl
 from sqlalchemy.exc import SQLAlchemyError
 
+def success(result):
+    return dict(success=True, **result)
+
 def import_new_commits(organization_key, repository_key, new_commits, new_contributors):
     try:
         with db.create_session() as session:
-            result = impl.import_new_commits(session, organization_key, repository_key, new_commits, new_contributors)
-            return dict(
-                success=True
+            return success(
+                impl.import_new_commits(session, organization_key, repository_key, new_commits, new_contributors)
             )
-
     except SQLAlchemyError as exc:
         return db.process_exception("Import new_commits failed", exc)
     except Exception as e:

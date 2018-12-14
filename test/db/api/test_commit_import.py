@@ -8,52 +8,9 @@
 
 # Author: Krishna Kumar
 
-from test.constants import *
+from test.fixtures.commit_history_imported import *
 
-from _datetime import datetime
-import uuid
-import pytest
-
-from polaris.common import db
 from polaris.analytics.db import api, model
-
-joe_contributor_key = uuid.uuid4().hex
-billy_contributor_key = uuid.uuid4().hex
-
-commit_common_fields = dict(
-    commit_date=datetime.utcnow(),
-    commit_date_tz_offset=0,
-    committer_contributor_key=joe_contributor_key,
-    committer_contributor_name='Joe Blow',
-    author_date=datetime.utcnow(),
-    author_date_tz_offset=0,
-    author_contributor_key=billy_contributor_key,
-    author_contributor_name='Billy Bob',
-    parents=["0000", "0001"],
-    stats=dict(
-        files=10,
-        lines=20,
-        insertions=10,
-        deletions=10
-    ),
-    created_at=datetime.utcnow()
-
-)
-
-commit_history_imported_common = dict(
-            organization_key=rails_organization_key,
-            repository_name='rails',
-            repository_key=rails_repository_key,
-            branch_info={}
-
-        )
-
-@pytest.yield_fixture
-def cleanup(setup_schema):
-    yield
-
-    db.connection().execute("delete from analytics.commits")
-    db.connection().execute("delete from analytics.contributors")
 
 class TestCommitImport:
 
@@ -64,7 +21,7 @@ class TestCommitImport:
             repository_key=rails_repository_key,
             new_commits= [
                 dict(
-                    commit_key='XXXX',
+                    source_commit_id='XXXX',
                     **commit_common_fields
                 )
             ],
@@ -83,8 +40,42 @@ class TestCommitImport:
         )
 
         assert result['success']
+        assert len(result['new_commits']) == 1
+        assert len(result['new_contributors']) == 2
+
+        # it assigns keys to new commits
+        assert all(map(lambda commit: commit.get('key'), result['new_commits']))
         assert db.connection().execute("select count(id) from analytics.commits").scalar() == 1
         assert db.connection().execute("select count(id) from analytics.contributors").scalar() == 2
+
+    def it_returns_a_valid_result_object(self, cleanup):
+        result = api.import_new_commits(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            new_commits=[
+                dict(
+                    source_commit_id='XXXX',
+                    **commit_common_fields
+                )
+            ],
+            new_contributors=[
+                dict(
+                    name='Joe Blow',
+                    contributor_key=joe_contributor_key,
+                    alias='joe@blow.com'
+                ),
+                dict(
+                    name='Billy Bob',
+                    contributor_key=billy_contributor_key,
+                    alias='billy@bob.com'
+                )
+            ]
+        )
+
+        assert result['success']
+        assert len(result['new_commits']) == 1
+        assert len(result['new_contributors']) == 2
+        assert all(map(lambda commit: commit.get('key'), result['new_commits']))
 
 
     def it_imports_a_single_new_commit_with_existing_contributors(self, cleanup):
@@ -112,7 +103,7 @@ class TestCommitImport:
             repository_key=rails_repository_key,
             new_commits= [
                 dict(
-                    commit_key='XXXX',
+                    source_commit_id='XXXX',
                     **commit_common_fields
                 )
             ],
@@ -142,7 +133,7 @@ class TestCommitImport:
             repository_key=rails_repository_key,
             new_commits= [
                 dict(
-                    commit_key='XXXX',
+                    source_commit_id='XXXX',
                     **commit_common_fields
                 )
             ],
@@ -178,7 +169,7 @@ class TestCommitImport:
             repository_key=rails_repository_key,
             new_commits= [
                 dict(
-                    commit_key=f'XXXX-{i}',
+                    source_commit_id=f'XXXX-{i}',
                     **commit_common_fields
                 )
                 for i in range(0,9)
@@ -215,7 +206,7 @@ class TestCommitImport:
             repository_key=rails_repository_key,
             new_commits=[
                 dict(
-                    commit_key=f'XXXX-{i}',
+                    source_commit_id=f'XXXX-{i}',
                     **commit_common_fields
                 )
                 for i in range(0, 9)

@@ -12,7 +12,7 @@ import uuid
 from polaris.common import db
 from polaris.utils.collections import dict_select
 from polaris.analytics.db.model import commits, contributors
-from sqlalchemy import Column, select, BigInteger, Integer
+from sqlalchemy import Column, select, BigInteger, Integer, and_
 
 from sqlalchemy.dialects.postgresql import insert
 
@@ -50,9 +50,10 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
     session.connection.execute(
         commits_temp.insert([
             dict(
+                organization_key=organization_key,
                 repository_key=repository_key,
                 key = uuid.uuid4().hex,
-                source_id=commit['commit_key'],
+                source_commit_id=commit['source_commit_id'],
                 **dict_select(
                     commit, [
                         'commit_date',
@@ -63,8 +64,6 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
                         'author_date_tz_offset',
                         'author_contributor_key',
                         'author_contributor_name',
-                        'parents',
-                        'stats',
                         'commit_message',
                         'created_at',
                         'created_on_branch'
@@ -97,14 +96,39 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
         )
     )
 
+
     session.connection.execute(
         insert(commits).from_select(
             [column.name for column in commits_temp.columns],
             select([commits_temp])
         ).on_conflict_do_nothing(
-            index_elements=['repository_key', 'source_id']
+            index_elements=['repository_key', 'source_commit_id']
         )
     )
+
+    new_commits_with_keys = session.connection.execute(
+        select(
+            [
+                commits.c.key.label('commit_key'),
+                *commits.columns
+            ]
+        ).select_from(
+            commits_temp.join(
+                commits,
+                and_(
+                    commits_temp.c.repository_key == commits.c.repository_key,
+                    commits_temp.c.source_commit_id == commits.c.source_commit_id
+                )
+            )
+        )
+    ).fetchall()
+
+    return dict(
+        new_commits = db.row_proxies_to_dict(new_commits_with_keys),
+        new_contributors = new_contributors
+    )
+
+
 
 
 

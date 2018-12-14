@@ -9,7 +9,8 @@
 # Author: Krishna Kumar
 
 from polaris.messaging.topics import TopicSubscriber, CommandsTopic
-
+from polaris.analytics.messaging.commands import \
+    ResolveCommitsWorkItems
 
 class CommandsTopicSubscriber(TopicSubscriber):
     def __init__(self, channel):
@@ -21,3 +22,13 @@ class CommandsTopicSubscriber(TopicSubscriber):
             exclusive=False,
             no_ack=True
         )
+
+    def dispatch(self, channel, message):
+        if ResolveCommitsWorkItems.message_type == message.message_type:
+            return self.process_resolve_commits_work_items(channel, message)
+
+
+    @staticmethod
+    def process_resolve_commits_work_items(channel, message):
+        pass
+

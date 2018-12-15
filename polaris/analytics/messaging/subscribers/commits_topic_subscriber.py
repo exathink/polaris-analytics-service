@@ -27,8 +27,7 @@ class CommitsTopicSubscriber(TopicSubscriber):
                 CommitHistoryImported,
                 CommitDetailsImported
             ],
-            exclusive=False,
-            no_ack=True
+            exclusive=False
         )
 
     def dispatch(self, channel, message):

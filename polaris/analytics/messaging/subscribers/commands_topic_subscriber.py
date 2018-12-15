@@ -19,8 +19,7 @@ class CommandsTopicSubscriber(TopicSubscriber):
             subscriber_queue='commands_analytics',
             message_classes=[
             ],
-            exclusive=False,
-            no_ack=True
+            exclusive=False
         )
 
     def dispatch(self, channel, message):

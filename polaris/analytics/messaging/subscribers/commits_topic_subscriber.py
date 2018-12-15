@@ -11,7 +11,7 @@
 import logging
 
 from polaris.messaging.utils import raise_on_failure
-from polaris.messaging.messages import CommitHistoryImported, CommitsCreated
+from polaris.messaging.messages import CommitHistoryImported, CommitsCreated, CommitDetailsImported
 from polaris.messaging.topics import TopicSubscriber, CommitsTopic, AnalyticsTopic, CommandsTopic
 from polaris.analytics.db import api
 from polaris.analytics.messaging.commands import ResolveCommitsWorkItems
@@ -24,7 +24,8 @@ class CommitsTopicSubscriber(TopicSubscriber):
             topic=CommitsTopic(channel, create=True),
             subscriber_queue='commits_analytics',
             message_classes=[
-                CommitHistoryImported
+                CommitHistoryImported,
+                CommitDetailsImported
             ],
             exclusive=False,
             no_ack=True
@@ -58,6 +59,13 @@ class CommitsTopicSubscriber(TopicSubscriber):
                 )
                 return commits_created_message, resolve_work_items_command
 
+        elif CommitDetailsImported.message_type == message.message_type:
+            result = self.process_commit_details_imported(message)
+            if result:
+                pass
+
+
+
     @staticmethod
     def process_commit_history_imported(message):
 
@@ -81,3 +89,22 @@ class CommitsTopicSubscriber(TopicSubscriber):
 
         else:
             logger.info(f" {message['total_commits']} total commits. No new commits")
+
+    @staticmethod
+    def process_commit_details_imported(message):
+        organization_key = message['organization_key']
+        repository_name = message['repository_name']
+        repository_key = message['repository_key']
+        commit_details = message['commit_details']
+        logger.info(
+            f'Processing {message.message_type} for organization {organization_key} repository {repository_name}')
+
+        if len(commit_details) > 0:
+            return raise_on_failure(
+                message,
+                api.import_commit_details(
+                    organization_key=organization_key,
+                    repository_key=repository_key,
+                    commit_details=commit_details
+                )
+            )

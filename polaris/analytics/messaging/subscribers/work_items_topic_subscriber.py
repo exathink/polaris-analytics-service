@@ -11,7 +11,7 @@ import logging
 
 from polaris.messaging.messages import WorkItemsCommitsResolved, ImportWorkItems, WorkItemsCommitsUpdated
 from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic
-from polaris.work_tracking import work_tracker
+
 
 logger = logging.getLogger('polaris.analytics.work_items_topic_subscriber')
 
@@ -31,26 +31,4 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
         )
 
     def dispatch(self, channel, message ):
-        if WorkItemsCommitsResolved.message_type == message.message_type:
-            result = self.process_work_items_commits_resolved(message)
-            if result:
-                work_items_commits_updated_message = WorkItemsCommitsUpdated(
-                    send=result,
-                    in_response_to=message
-                )
-                WorkItemsTopic(channel).publish(message=work_items_commits_updated_message)
-                return work_items_commits_updated_message
-
-
-
-    @staticmethod
-    def process_work_items_commits_resolved(message):
-        work_items_commits_resolved = message.dict
-        organization_key = work_items_commits_resolved['organization_key']
-        repository_name = work_items_commits_resolved['repository_name']
-        logger.info(f"Processing  {message.message_type}: "
-                    f" Organization: {organization_key}"
-                    f" Repository: {repository_name}")
-
-        work_tracker.update_work_items_commits(organization_key, repository_name, work_items_commits_resolved['work_items_commits'])
-        return work_items_commits_resolved
+        pass

@@ -110,6 +110,14 @@ services:
       - auth-service
       - polaris-db
 
+  migrator:
+    image: ${PACKAGE_DEPLOYABLE_IMAGE}
+    environment:
+      POLARIS_DB_URL: postgres://polaris:polaris@polaris-db
+    working_dir: /package_migrations
+
+    entrypoint:
+      - alembic
 
   repos-db-migrator:
     image: polaris-repos-db-migrator:latest

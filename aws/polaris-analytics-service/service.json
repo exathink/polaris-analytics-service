@@ -1,0 +1,31 @@
+{
+  "cluster": "polaris",
+  "taskDefinition": "polaris-analytics-service",
+  "launchType": "EC2",
+  "schedulingStrategy": "REPLICA",
+  "desiredCount": 1,
+  "role": "arn:aws:iam::369272391409:role/ecsServiceRole",
+  "placementStrategy": [
+    {
+      "field": "attribute:ecs.availability-zone",
+      "type": "spread"
+    },
+    {
+      "field": "instanceId",
+      "type": "spread"
+    }
+  ],
+  "placementConstraints": [
+    {
+      "type": "memberOf",
+      "expression": "attribute:polaris.service.auto-scaling-group == polaris-analytics-service"
+    }
+  ],
+  "loadBalancers": [
+    {
+      "containerName": "polaris-analytics-service",
+      "targetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:369272391409:targetgroup/polaris-analytics-service/f955a657286972f4",
+      "containerPort": 8200
+    }
+  ]
+}

@@ -94,7 +94,7 @@ MBAIR/
 
 
 #Data files
-*.json
+
 
 #network drawing files
 *.cys

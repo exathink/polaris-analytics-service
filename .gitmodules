@@ -18,7 +18,7 @@
 	url = ../../polaris-common/polaris-graphql
 [submodule "polaris-messaging"]
 	path = polaris-messaging
-	url = git@gitlab.com:polaris-common/polaris-messaging.git
+	url = ../../polaris-common/polaris-messaging.git
 [submodule "polaris-aws-utils"]
 	path = polaris-aws-utils
 	url = ../../polaris-aws/polaris-aws-utils.git

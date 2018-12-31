@@ -22,3 +22,6 @@
 [submodule "polaris-aws-utils"]
 	path = polaris-aws-utils
 	url = ../../polaris-aws/polaris-aws-utils.git
+[submodule "polaris-aws-deploy"]
+	path = polaris-aws-deploy
+	url = ../../polaris-aws/polaris-aws-deploy

@@ -58,12 +58,21 @@ $$
 LANGUAGE SQL;
 
 
-ALTER TABLE analytics.commits ALTER committer_contributor_id DROP NOT NULL;
-ALTER TABLE analytics.commits ALTER author_contributor_id DROP NOT NULL;
+ALTER TABLE analytics.commits ALTER committer_contributor_alias_id DROP NOT NULL;
+ALTER TABLE analytics.commits ALTER author_contributor_alias_id DROP NOT NULL;
+ALTER TABLE analytics.contributor_aliases ALTER contributor_id SET NOT NULL;
+
+delete from analytics.contributors;
+
+insert into analytics.contributors (name, key)
+select display_name, key from repos.contributor_aliases;
 
 
-insert into analytics.contributors (name, key, source_alias, source)
-select contributor_name as name, contributor_key as key, alias as source_alias, 'vcs' as source from repos.contributor_aliases;
+insert into analytics.contributor_aliases (name, key, source_alias, source, contributor_id)
+SELECT display_name as name, contributor_aliases.key as key, alias as source_alias, 'vcs' as source, contributors.id as contributor_id from
+                                    repos.contributor_aliases inner join analytics.contributors on contributors.key = contributor_aliases.key;
+
+delete from analytics.contributor_aliases;
 
 
 with repo_keys(key) as (select key from repos.repositories)

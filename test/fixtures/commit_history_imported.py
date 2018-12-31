@@ -54,4 +54,5 @@ def cleanup(setup_schema):
     yield
 
     db.connection().execute("delete from analytics.commits")
+    db.connection().execute("delete from analytics.contributor_aliases")
     db.connection().execute("delete from analytics.contributors")

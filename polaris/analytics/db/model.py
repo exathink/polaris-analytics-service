@@ -22,17 +22,28 @@ class Contributor(Base):
     __tablename__ = 'contributors'
 
     id = Column(Integer, primary_key=True)
-    key=Column(UUID(as_uuid=True), unique=True, nullable=False)
-    name=Column(String, nullable=False)
-    source=Column(String, nullable=False)
-    source_alias=Column(String, nullable=False)
-    alias_for=Column(UUID(as_uuid=True), ForeignKey('contributors.key'), nullable=True)
+    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
+    name = Column(String, nullable=False)
 
-
-
+    aliases = relationship('ContributorAlias', back_populates='contributor')
 
 contributors = Contributor.__table__
-Index('ix_analytics_contributors_key_alias_for', contributors.c.key, contributors.c.alias_for),
+
+
+
+class ContributorAlias(Base):
+    __tablename__ = 'contributor_aliases'
+    id = Column(Integer, primary_key=True)
+    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
+    name = Column(String, nullable=False)
+    source = Column(String, nullable=False)
+    source_alias = Column(String, nullable=False)
+
+    contributor_id = Column(Integer, ForeignKey('contributors.id'), index=True, nullable=False)
+    contributor = relationship('Contributor', back_populates='aliases')
+
+contributor_aliases = ContributorAlias.__table__
+
 
 class Commit(Base):
     __tablename__ = 'commits'
@@ -51,14 +62,14 @@ class Commit(Base):
     committer_contributor_key = Column(UUID(as_uuid=True), nullable=True)
     commit_date = Column(DateTime, index=True, nullable=False)
     commit_date_tz_offset = Column(Integer, default=0)
-    committer_contributor_id = Column(Integer, ForeignKey('contributors.id'), nullable=False, index=True)
+    committer_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
 
 
     author_contributor_name = Column(String, nullable=True)
     author_contributor_key = Column(UUID(as_uuid=True), nullable=True)
     author_date = Column(DateTime, nullable=True)
     author_date_tz_offset = Column(Integer, default=0)
-    author_contributor_id = Column(Integer, ForeignKey('contributors.id'), nullable=False, index=True)
+    author_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
 
 
 
@@ -73,14 +84,14 @@ class Commit(Base):
     stats  = Column(JSONB, nullable=True)
 
     # relationships
-    committer = relationship('Contributor', foreign_keys=['committer_contributor_id'])
-    author = relationship('Contributor', foreign_keys=['author_contributor_id'])
+    committer_alias = relationship('ContributorAlias', foreign_keys=[committer_contributor_alias_id])
+    author_alias = relationship('ContributorAlias', foreign_keys=[author_contributor_alias_id])
 
 
 commits = Commit.__table__
 
 UniqueConstraint(commits.c.repository_key, commits.c.source_commit_id)
-Index('ix_analytics_commits_author_contributor_key', commits.c.author_contributor_key, commits.c.committer_contributor_key)
+Index('ix_analytics_commits_author_committer_contributor_key', commits.c.author_contributor_key, commits.c.committer_contributor_key)
 
 
 

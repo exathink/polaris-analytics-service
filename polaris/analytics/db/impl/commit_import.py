@@ -11,38 +11,77 @@
 import uuid
 from polaris.common import db
 from polaris.utils.collections import dict_select
-from polaris.analytics.db.model import commits, contributors
+from polaris.analytics.db.model import commits, contributors, contributor_aliases
 from sqlalchemy import Column, select, BigInteger, Integer, and_
 
 from sqlalchemy.dialects.postgresql import insert
 
-def import_new_contributors(session, new_contributors):
-    if len(new_contributors) > 0:
+def import_new_contributor_aliases(session, new_contributor_aliases):
+    if len(new_contributor_aliases) > 0:
+        ca_temp = db.temp_table_from(
+            contributor_aliases,
+            table_name='ca_temp',
+            exclude_columns=[contributor_aliases.c.id, contributor_aliases.c.contributor_id]
+        )
+        ca_temp.create(session.connection, checkfirst=True)
+
+        session.connection.execute(
+            insert(ca_temp).values([
+                dict(
+                    key=contributor_alias['contributor_key'],
+                    name=contributor_alias['name'],
+                    source='vcs',
+                    source_alias=contributor_alias['alias']
+                )
+                for contributor_alias in new_contributor_aliases
+            ])
+        )
+        # Now insert a new contributor record for the new alias with same key and contributor alias
+        # Ignore if duplicate.
         session.connection.execute(
             insert(contributors).values([
                 dict(
-                    key=contributor['contributor_key'],
-                    name=contributor['name'],
-                    source='vcs',
-                    source_alias=contributor['alias']
+                    key=contributor_alias['contributor_key'],
+                    name=contributor_alias['name'],
                 )
-                for contributor in new_contributors
+                for contributor_alias in new_contributor_aliases
             ]).on_conflict_do_nothing(
                 index_elements=['key']
             )
         )
+        # Now insert contributor_alias records with contributor_id resolved.
+        session.connection.execute(
+            insert(contributor_aliases).from_select(
+                [
+                    'key', 'name', 'source', 'source_alias', 'contributor_id'
+                ],
+                select([
+                    ca_temp.c.key,
+                    ca_temp.c.name,
+                    ca_temp.c.source,
+                    ca_temp.c.source_alias,
+                    contributors.c.id.label('contributor_id')
+                ]).select_from(
+                    ca_temp.join(contributors, contributors.c.key == ca_temp.c.key)
+                )
+            ).on_conflict_do_nothing(
+                index_elements=['key']
+            )
+        )
+
+
 
 def import_new_commits(session, organization_key, repository_key, new_commits, new_contributors):
 
-    import_new_contributors(session, new_contributors)
+    import_new_contributor_aliases(session, new_contributors)
 
     commits_temp = db.temp_table_from(
         commits,
         table_name='commits_temp',
-        exclude_columns=[commits.c.id, commits.c.committer_contributor_id, commits.c.author_contributor_id],
+        exclude_columns=[commits.c.id, commits.c.committer_contributor_alias_id, commits.c.author_contributor_alias_id],
         extra_columns=[
-            Column('committer_contributor_id', Integer, nullable=True),
-            Column('author_contributor_id', Integer, nullable=True)
+            Column('committer_contributor_alias_id', Integer, nullable=True),
+            Column('author_contributor_alias_id', Integer, nullable=True)
         ]
     )
     commits_temp.create(session.connection, checkfirst=True)
@@ -77,22 +116,32 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
     # resolve committer_keys
     session.connection.execute(
         commits_temp.update().values(
-            committer_contributor_id=select([
-                contributors.c.id.label('committer_contributor_id')
-            ]).where(
-                contributors.c.key == commits_temp.c.committer_contributor_key
-            ).limit(1)
+            dict(
+                committer_contributor_alias_id=contributor_aliases.c.id,
+                committer_contributor_key=contributors.c.key,
+                committer_contributor_name=contributors.c.name,
+            )
+        ).where(
+            and_(
+                contributor_aliases.c.key == commits_temp.c.committer_contributor_key,
+                contributors.c.id == contributor_aliases.c.contributor_id
+            )
         )
     )
 
     # resolve author_keys
     session.connection.execute(
         commits_temp.update().values(
-            author_contributor_id=select([
-                contributors.c.id.label('author_contributor_id')
-            ]).where(
-                contributors.c.key == commits_temp.c.author_contributor_key
-            ).limit(1)
+            dict(
+                author_contributor_alias_id=contributor_aliases.c.id,
+                author_contributor_key=contributors.c.key,
+                author_contributor_name=contributors.c.name,
+            )
+        ).where(
+            and_(
+                contributor_aliases.c.key == commits_temp.c.author_contributor_key,
+                contributors.c.id == contributor_aliases.c.contributor_id
+            )
         )
     )
 

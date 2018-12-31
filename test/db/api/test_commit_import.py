@@ -12,6 +12,23 @@ from test.fixtures.commit_history_imported import *
 
 from polaris.analytics.db import api, model
 
+def init_contributors(contributor_aliases):
+    with db.orm_session() as session:
+        for ca in contributor_aliases:
+            contributor = model.Contributor(
+                name=ca['name'],
+                key=ca['contributor_key']
+            )
+            contributor.aliases.append(
+                model.ContributorAlias(
+                    name=ca['name'],
+                    key=ca['contributor_key'],
+                    source_alias=ca['source_alias'],
+                    source=ca['source']
+                )
+            )
+            session.add(contributor)
+
 class TestCommitImport:
 
     def it_imports_a_single_new_commit_with_new_committer_and_author(self, cleanup):
@@ -46,7 +63,43 @@ class TestCommitImport:
         # it assigns keys to new commits
         assert all(map(lambda commit: commit.get('key'), result['new_commits']))
         assert db.connection().execute("select count(id) from analytics.commits").scalar() == 1
+
+
+    def it_maps_contributors_and_aliases_correctly(self, cleanup):
+
+        result = api.import_new_commits(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            new_commits= [
+                dict(
+                    source_commit_id='XXXX',
+                    **commit_common_fields
+                )
+            ],
+            new_contributors= [
+                dict(
+                    name='Joe Blow',
+                    contributor_key=joe_contributor_key,
+                    alias='joe@blow.com'
+                ),
+                dict(
+                    name='Billy Bob',
+                    contributor_key=billy_contributor_key,
+                    alias='billy@bob.com'
+                )
+            ]
+        )
+
+        assert result['success']
+        assert len(result['new_commits']) == 1
+        assert len(result['new_contributors']) == 2
+
         assert db.connection().execute("select count(id) from analytics.contributors").scalar() == 2
+        assert db.connection().execute("select count(id) from analytics.contributor_aliases").scalar() == 2
+
+        assert db.connection().execute(f"select count(id) from analytics.commits where committer_contributor_key='{joe_contributor_key}'").scalar() == 1
+        assert db.connection().execute(f"select count(id) from analytics.commits where author_contributor_key='{billy_contributor_key}'").scalar() == 1
+
 
     def it_returns_a_valid_result_object(self, cleanup):
         result = api.import_new_commits(
@@ -80,24 +133,20 @@ class TestCommitImport:
 
     def it_imports_a_single_new_commit_with_existing_contributors(self, cleanup):
 
-        db.connection().execute(
-            model.contributors.insert(
-                [
-                    dict(
-                        name='Joe Blow',
-                        key=joe_contributor_key,
-                        source_alias='joe@blow.com',
-                        source='vcs'
-                    ),
-                    dict(
-                        name='Billy Bob',
-                        key=billy_contributor_key,
-                        source_alias='billy@bob.com',
-                        source='vcs'
-                    )
-                ]
-            )
-        )
+        init_contributors([
+            dict(
+                name='Joe Blow',
+                contributor_key=joe_contributor_key,
+                source_alias='joe@blow.com',
+                source='vcs'
+            ),
+            dict(
+                name='Billy Bob',
+                contributor_key=billy_contributor_key,
+                source_alias='billy@bob.com',
+                source='vcs'
+            )])
+
         result = api.import_new_commits(
             organization_key=rails_organization_key,
             repository_key=rails_repository_key,
@@ -113,21 +162,18 @@ class TestCommitImport:
         assert result['success']
         assert db.connection().execute("select count(id) from analytics.commits").scalar() == 1
         assert db.connection().execute("select count(id) from analytics.contributors").scalar() == 2
+        assert db.connection().execute("select count(id) from analytics.contributor_aliases").scalar() == 2
+
 
     def it_imports_a_single_new_commit_with_existing_and_new_contributors(self, cleanup):
-
-        db.connection().execute(
-            model.contributors.insert(
-                [
-                    dict(
-                        name='Joe Blow',
-                        key=joe_contributor_key,
-                        source_alias='joe@blow.com',
-                        source='vcs'
-                    )
-                ]
+        init_contributors([
+            dict(
+                name='Joe Blow',
+                contributor_key=joe_contributor_key,
+                source_alias='joe@blow.com',
+                source='vcs'
             )
-        )
+        ])
         result = api.import_new_commits(
             organization_key=rails_organization_key,
             repository_key=rails_repository_key,
@@ -149,21 +195,17 @@ class TestCommitImport:
         assert result['success']
         assert db.connection().execute("select count(id) from analytics.commits").scalar() == 1
         assert db.connection().execute("select count(id) from analytics.contributors").scalar() == 2
+        assert db.connection().execute("select count(id) from analytics.contributor_aliases").scalar() == 2
 
     def it_imports_multiple_commit_with_existing_and_new_contributors(self, cleanup):
-
-        db.connection().execute(
-            model.contributors.insert(
-                [
-                    dict(
-                        name='Joe Blow',
-                        key=joe_contributor_key,
-                        source_alias='joe@blow.com',
-                        source='vcs'
-                    )
-                ]
+        init_contributors([
+            dict(
+                name='Joe Blow',
+                contributor_key=joe_contributor_key,
+                source_alias='joe@blow.com',
+                source='vcs'
             )
-        )
+        ])
         result = api.import_new_commits(
             organization_key=rails_organization_key,
             repository_key=rails_repository_key,
@@ -186,21 +228,17 @@ class TestCommitImport:
         assert result['success']
         assert db.connection().execute("select count(id) from analytics.commits").scalar() == 9
         assert db.connection().execute("select count(id) from analytics.contributors").scalar() == 2
+        assert db.connection().execute("select count(id) from analytics.contributor_aliases").scalar() == 2
 
     def it_is_idempotent(self, cleanup):
-
-        db.connection().execute(
-            model.contributors.insert(
-                [
-                    dict(
-                        name='Joe Blow',
-                        key=joe_contributor_key,
-                        source_alias='joe@blow.com',
-                        source='vcs'
-                    )
-                ]
+        init_contributors([
+            dict(
+                name='Joe Blow',
+                contributor_key=joe_contributor_key,
+                source_alias='joe@blow.com',
+                source='vcs'
             )
-        )
+        ])
         args=dict(
             organization_key=rails_organization_key,
             repository_key=rails_repository_key,
@@ -227,6 +265,7 @@ class TestCommitImport:
         assert result['success']
         assert db.connection().execute("select count(id) from analytics.commits").scalar() == 9
         assert db.connection().execute("select count(id) from analytics.contributors").scalar() == 2
+        assert db.connection().execute("select count(id) from analytics.contributor_aliases").scalar() == 2
 
 
 @pytest.fixture()
@@ -236,9 +275,19 @@ def import_commit_details_fixture(cleanup):
             model.contributors.insert(
                 dict(
                     name='Joe Blow',
+                    key=joe_contributor_key
+                )
+            )
+        ).inserted_primary_key[0]
+
+        contributor_alias_id = session.connection.execute(
+            model.contributor_aliases.insert(
+                dict(
+                    name='Joe Blow',
                     key=joe_contributor_key,
+                    source='vcs',
                     source_alias='joe@blow.com',
-                    source='vcs'
+                    contributor_id=contributor_id
                 )
             )
         ).inserted_primary_key[0]
@@ -250,8 +299,8 @@ def import_commit_details_fixture(cleanup):
                     organization_key=rails_organization_key,
                     source_commit_id=f'{key}',
                     key=uuid.uuid4().hex,
-                    committer_contributor_id=contributor_id,
-                    author_contributor_id=contributor_id,
+                    committer_contributor_alias_id=contributor_alias_id,
+                    author_contributor_alias_id=contributor_alias_id,
                     **commit_common_fields
                 )
                 for key in range(1000, 1010)

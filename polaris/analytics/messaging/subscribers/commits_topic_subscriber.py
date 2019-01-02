@@ -11,7 +11,7 @@
 import logging
 
 from polaris.messaging.utils import raise_on_failure
-from polaris.messaging.messages import CommitHistoryImported, CommitsCreated, CommitDetailsImported
+from polaris.messaging.messages import CommitHistoryImported, CommitsCreated, CommitDetailsImported, CommitDetailsCreated
 from polaris.messaging.topics import TopicSubscriber, CommitsTopic, AnalyticsTopic, CommandsTopic
 from polaris.analytics.db import api
 from polaris.analytics.messaging.commands import ResolveCommitsWorkItems
@@ -61,7 +61,12 @@ class CommitsTopicSubscriber(TopicSubscriber):
         elif CommitDetailsImported.message_type == message.message_type:
             result = self.process_commit_details_imported(message)
             if result:
-                pass
+                commit_details_created_message = CommitDetailsCreated(
+                    send=message.dict,
+                    in_response_to=message
+                )
+                AnalyticsTopic(channel).publish(commit_details_created_message)
+                return commit_details_created_message
 
 
 
@@ -93,7 +98,6 @@ class CommitsTopicSubscriber(TopicSubscriber):
     def process_commit_details_imported(message):
         organization_key = message['organization_key']
         repository_name = message['repository_name']
-        repository_key = message['repository_key']
         commit_details = message['commit_details']
         logger.info(
             f'Processing {message.message_type} for organization {organization_key} repository {repository_name}')
@@ -103,7 +107,6 @@ class CommitsTopicSubscriber(TopicSubscriber):
                 message,
                 api.import_commit_details(
                     organization_key=organization_key,
-                    repository_key=repository_key,
                     commit_details=commit_details
                 )
             )

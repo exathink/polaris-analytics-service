@@ -27,11 +27,11 @@ def import_new_commits(organization_key, repository_key, new_commits, new_contri
         return db.failure_message('Import new_commits failed', e)
 
 
-def import_commit_details(organization_key, repository_key, commit_details):
+def import_commit_details(organization_key, commit_details):
     try:
         with db.create_session() as session:
             return success(
-                impl.import_commit_details(session, repository_key, commit_details)
+                impl.import_commit_details(session, commit_details)
             )
     except SQLAlchemyError as exc:
         return db.process_exception("Import commit details failed", exc)

@@ -197,10 +197,9 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
 
 
 
-def import_commit_details(session, repository_key, commit_details):
+def import_commit_details(session, commit_details):
     commits_temp = db.create_temp_table('commits_temp', [
-        commits.c.repository_key,
-        commits.c.source_commit_id,
+        commits.c.key,
         commits.c.stats,
         commits.c.parents,
         commits.c.num_parents
@@ -210,8 +209,7 @@ def import_commit_details(session, repository_key, commit_details):
     session.connection.execute(
         commits_temp.insert().values([
             dict(
-                repository_key=repository_key,
-                source_commit_id=commit_detail['source_commit_id'],
+                key=commit_detail['key'],
                 parents=commit_detail['parents'],
                 stats=commit_detail['stats'],
                 num_parents=len(commit_detail['parents'])
@@ -220,12 +218,9 @@ def import_commit_details(session, repository_key, commit_details):
         ])
     )
 
-    commits_updated = session.connection.execute(
+    update_count = session.connection.execute(
         commits.update().where(
-            and_(
-                commits.c.repository_key==commits_temp.c.repository_key,
-                commits.c.source_commit_id==commits_temp.c.source_commit_id
-            )
+            commits.c.key == commits_temp.c.key
         ).values(
             parents=commits_temp.c.parents,
             stats=commits_temp.c.stats,
@@ -234,7 +229,7 @@ def import_commit_details(session, repository_key, commit_details):
     ).rowcount
 
     return dict(
-        commits_updated=commits_updated
+        update_count=update_count
     )
 
 

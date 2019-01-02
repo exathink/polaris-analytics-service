@@ -66,3 +66,6 @@ class TestDispatchCommitHistoryImported:
                                                                                                                message)
                 analytics_publish.assert_called_with(commits_created_message)
                 commands_publish.assert_called_with(resolve_work_items_command)
+
+
+

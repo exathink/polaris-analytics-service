@@ -29,7 +29,7 @@ class CommitNode:
         ).where(
             and_(
                 repositories.c.key == bindparam('repository_key'),
-                commits.c.key == bindparam('commit_key')
+                commits.c.source_commit_id == bindparam('commit_key')
             )
         )
 
@@ -59,7 +59,7 @@ class CommitFileTypesSummary:
         ).where(
             and_(
                 repositories.c.key == bindparam('repository_key'),
-                commits.c.key == bindparam('commit_key')
+                commits.c.source_commit_id == bindparam('commit_key')
             )
         ).group_by(
             source_files.c.file_type

@@ -12,11 +12,11 @@ from sqlalchemy import cast, Text, func, and_
 from datetime import datetime, timedelta
 
 def commit_key_column(repositories, commits):
-    return (cast(repositories.c.key, Text) + ':' + cast(commits.c.key, Text)).label('key')
+    return (cast(repositories.c.key, Text) + ':' + cast(commits.c.source_commit_id, Text)).label('key')
 
 
 def commit_name_column(commits):
-    return func.substr(commits.c.key, 1, 8).label('name')
+    return func.substr(commits.c.source_commit_id, 1, 8).label('name')
 
 
 def commit_info_columns(repositories, commits):
@@ -24,7 +24,7 @@ def commit_info_columns(repositories, commits):
         commits.c.id,
         commit_key_column(repositories, commits),
         commit_name_column(commits),
-        commits.c.key.label('commit_hash'),
+        commits.c.source_commit_id.label('commit_hash'),
         repositories.c.name.label('repository'),
         repositories.c.url.label('repository_url'),
         repositories.c.key.label('repository_key'),

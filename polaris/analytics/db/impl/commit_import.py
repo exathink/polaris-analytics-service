@@ -108,10 +108,10 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
             dict(
                 organization_key=organization_key,
                 repository_key=repository_key,
-                key = uuid.uuid4().hex,
                 source_commit_id=commit['source_commit_id'],
                 **dict_select(
                     commit, [
+                        'key',
                         'commit_date',
                         'commit_date_tz_offset',
                         'committer_alias_key',
@@ -174,10 +174,9 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
         )
     )
 
-    new_commits_with_keys = session.connection.execute(
+    new_commits  = session.connection.execute(
         select(
             [
-                commits.c.key.label('commit_key'),
                 *commits.columns
             ]
         ).select_from(
@@ -192,7 +191,7 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
     ).fetchall()
 
     return dict(
-        new_commits = db.row_proxies_to_dict(new_commits_with_keys),
+        new_commits = db.row_proxies_to_dict(new_commits),
         new_contributors = new_contributors
     )
 

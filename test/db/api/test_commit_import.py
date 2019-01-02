@@ -39,6 +39,7 @@ class TestCommitImport:
             new_commits= [
                 dict(
                     source_commit_id='XXXX',
+                    key=uuid.uuid4().hex,
                     **commit_common_fields
                 )
             ],
@@ -73,6 +74,7 @@ class TestCommitImport:
             new_commits= [
                 dict(
                     source_commit_id='XXXX',
+                    key=uuid.uuid4().hex,
                     **commit_common_fields
                 )
             ],
@@ -108,6 +110,7 @@ class TestCommitImport:
             new_commits=[
                 dict(
                     source_commit_id='XXXX',
+                    key=uuid.uuid4().hex,
                     **commit_common_fields
                 )
             ],
@@ -153,6 +156,7 @@ class TestCommitImport:
             new_commits= [
                 dict(
                     source_commit_id='XXXX',
+                    key=uuid.uuid4().hex,
                     **commit_common_fields
                 )
             ],
@@ -180,6 +184,7 @@ class TestCommitImport:
             new_commits= [
                 dict(
                     source_commit_id='XXXX',
+                    key=uuid.uuid4().hex,
                     **commit_common_fields
                 )
             ],
@@ -212,6 +217,7 @@ class TestCommitImport:
             new_commits= [
                 dict(
                     source_commit_id=f'XXXX-{i}',
+                    key=uuid.uuid4().hex,
                     **commit_common_fields
                 )
                 for i in range(0,9)
@@ -245,6 +251,7 @@ class TestCommitImport:
             new_commits=[
                 dict(
                     source_commit_id=f'XXXX-{i}',
+                    key=uuid.uuid4().hex,
                     **commit_common_fields
                 )
                 for i in range(0, 9)

@@ -27,6 +27,7 @@ def commit_history_imported_payload():
             new_commits=[
                 dict(
                     source_commit_id='XXXX',
+                    key=uuid.uuid4().hex,
                     **commit_common_fields
                 )
             ],

@@ -12,9 +12,9 @@ import uuid
 from polaris.common import db
 from polaris.utils.collections import dict_select
 from polaris.analytics.db.model import commits, contributors, contributor_aliases
-from sqlalchemy import Column, select, BigInteger, Integer, and_
+from sqlalchemy import Column, String, select, BigInteger, Integer, and_
 
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import insert, UUID
 
 def import_new_contributor_aliases(session, new_contributor_aliases):
     if len(new_contributor_aliases) > 0:
@@ -78,10 +78,27 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
     commits_temp = db.temp_table_from(
         commits,
         table_name='commits_temp',
-        exclude_columns=[commits.c.id, commits.c.committer_contributor_alias_id, commits.c.author_contributor_alias_id],
+        exclude_columns=[
+            commits.c.id,
+            commits.c.committer_contributor_alias_id,
+            commits.c.committer_contributor_name,
+            commits.c.committer_contributor_key,
+
+            commits.c.author_contributor_alias_id,
+            commits.c.author_contributor_name,
+            commits.c.author_contributor_key,
+        ],
         extra_columns=[
+            Column('committer_alias_key', UUID, nullable=False),
             Column('committer_contributor_alias_id', Integer, nullable=True),
-            Column('author_contributor_alias_id', Integer, nullable=True)
+            Column('committer_contributor_name', String, nullable=True),
+            Column('committer_contributor_key', UUID, nullable=True),
+
+            Column('author_alias_key', UUID, nullable=False),
+            Column('author_contributor_alias_id', Integer, nullable=True),
+            Column('author_contributor_name', String, nullable=True),
+            Column('author_contributor_key', UUID, nullable=True),
+
         ]
     )
     commits_temp.create(session.connection, checkfirst=True)
@@ -97,12 +114,10 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
                     commit, [
                         'commit_date',
                         'commit_date_tz_offset',
-                        'committer_contributor_key',
-                        'committer_contributor_name',
+                        'committer_alias_key',
                         'author_date',
                         'author_date_tz_offset',
-                        'author_contributor_key',
-                        'author_contributor_name',
+                        'author_alias_key',
                         'commit_message',
                         'created_at',
                         'created_on_branch'
@@ -123,7 +138,7 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
             )
         ).where(
             and_(
-                contributor_aliases.c.key == commits_temp.c.committer_contributor_key,
+                contributor_aliases.c.key == commits_temp.c.committer_alias_key,
                 contributors.c.id == contributor_aliases.c.contributor_id
             )
         )
@@ -139,17 +154,21 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
             )
         ).where(
             and_(
-                contributor_aliases.c.key == commits_temp.c.author_contributor_key,
+                contributor_aliases.c.key == commits_temp.c.author_alias_key,
                 contributors.c.id == contributor_aliases.c.contributor_id
             )
         )
     )
 
-
+    commit_columns = [
+        column
+        for column in commits_temp.columns
+        if column.name not in ['committer_alias_key', 'author_alias_key']
+    ]
     session.connection.execute(
         insert(commits).from_select(
-            [column.name for column in commits_temp.columns],
-            select([commits_temp])
+            [column.name for column in commit_columns],
+            select(commit_columns)
         ).on_conflict_do_nothing(
             index_elements=['repository_key', 'source_commit_id']
         )

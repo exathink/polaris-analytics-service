@@ -23,12 +23,10 @@ billy_contributor_key = uuid.uuid4().hex
 commit_common_fields = dict(
     commit_date=datetime.utcnow(),
     commit_date_tz_offset=0,
-    committer_contributor_key=joe_contributor_key,
-    committer_contributor_name='Joe Blow',
+    committer_alias_key=joe_contributor_key,
     author_date=datetime.utcnow(),
     author_date_tz_offset=0,
-    author_contributor_key=billy_contributor_key,
-    author_contributor_name='Billy Bob',
+    author_alias_key=billy_contributor_key,
     created_at=datetime.utcnow(),
     commit_message='a change'
 

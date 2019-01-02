@@ -301,7 +301,16 @@ def import_commit_details_fixture(cleanup):
                     key=uuid.uuid4().hex,
                     committer_contributor_alias_id=contributor_alias_id,
                     author_contributor_alias_id=contributor_alias_id,
-                    **commit_common_fields
+                    commit_date=datetime.utcnow(),
+                    commit_date_tz_offset=0,
+                    committer_contributor_key=joe_contributor_key,
+                    committer_contributor_name="joe@blow.com",
+                    author_date=datetime.utcnow(),
+                    author_date_tz_offset=0,
+                    author_contributor_key=billy_contributor_key,
+                    author_contributor_name="billy",
+                    created_at=datetime.utcnow(),
+                    commit_message='a change'
                 )
                 for key in range(1000, 1010)
             ])

@@ -38,8 +38,8 @@ class CommitsTopicSubscriber(TopicSubscriber):
                     send=dict(
                         organization_key=message['organization_key'],
                         repository_key=message['repository_key'],
-                        branch=message['branch_info']['name'],
-                        new_commits=result['new_commits']
+                        new_commits=result['new_commits'],
+                        branch=message['branch_info']['name'] if message['branch_info'] else None
                     ),
                     in_response_to=message
                 )

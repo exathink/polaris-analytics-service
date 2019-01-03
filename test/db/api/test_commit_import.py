@@ -31,7 +31,7 @@ def init_contributors(contributor_aliases):
 
 class TestCommitImport:
 
-    def it_imports_a_single_new_commit_with_new_committer_and_author(self, cleanup):
+    def it_imports_a_single_new_commit_with_new_committer_and_author(self, setup_repo_org):
 
         result = api.import_new_commits(
             organization_key=rails_organization_key,
@@ -66,7 +66,7 @@ class TestCommitImport:
         assert db.connection().execute("select count(id) from analytics.commits").scalar() == 1
 
 
-    def it_maps_contributors_and_aliases_correctly(self, cleanup):
+    def it_maps_contributors_and_aliases_correctly(self, setup_repo_org):
 
         result = api.import_new_commits(
             organization_key=rails_organization_key,
@@ -103,7 +103,7 @@ class TestCommitImport:
         assert db.connection().execute(f"select count(id) from analytics.commits where author_contributor_key='{billy_contributor_key}'").scalar() == 1
 
 
-    def it_returns_a_valid_result_object(self, cleanup):
+    def it_returns_a_valid_result_object(self, setup_repo_org):
         result = api.import_new_commits(
             organization_key=rails_organization_key,
             repository_key=rails_repository_key,
@@ -134,7 +134,7 @@ class TestCommitImport:
         assert all(map(lambda commit: commit.get('key'), result['new_commits']))
 
 
-    def it_imports_a_single_new_commit_with_existing_contributors(self, cleanup):
+    def it_imports_a_single_new_commit_with_existing_contributors(self, setup_repo_org):
 
         init_contributors([
             dict(
@@ -169,7 +169,7 @@ class TestCommitImport:
         assert db.connection().execute("select count(id) from analytics.contributor_aliases").scalar() == 2
 
 
-    def it_imports_a_single_new_commit_with_existing_and_new_contributors(self, cleanup):
+    def it_imports_a_single_new_commit_with_existing_and_new_contributors(self, setup_repo_org):
         init_contributors([
             dict(
                 name='Joe Blow',
@@ -202,7 +202,7 @@ class TestCommitImport:
         assert db.connection().execute("select count(id) from analytics.contributors").scalar() == 2
         assert db.connection().execute("select count(id) from analytics.contributor_aliases").scalar() == 2
 
-    def it_imports_multiple_commit_with_existing_and_new_contributors(self, cleanup):
+    def it_imports_multiple_commit_with_existing_and_new_contributors(self, setup_repo_org):
         init_contributors([
             dict(
                 name='Joe Blow',
@@ -236,7 +236,7 @@ class TestCommitImport:
         assert db.connection().execute("select count(id) from analytics.contributors").scalar() == 2
         assert db.connection().execute("select count(id) from analytics.contributor_aliases").scalar() == 2
 
-    def it_is_idempotent(self, cleanup):
+    def it_is_idempotent(self, setup_repo_org):
         init_contributors([
             dict(
                 name='Joe Blow',

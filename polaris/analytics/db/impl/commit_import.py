@@ -11,8 +11,8 @@
 import uuid
 from polaris.common import db
 from polaris.utils.collections import dict_select
-from polaris.analytics.db.model import commits, contributors, contributor_aliases
-from sqlalchemy import Column, String, select, BigInteger, Integer, and_
+from polaris.analytics.db.model import commits, contributors, contributor_aliases, repositories
+from sqlalchemy import Column, String, select, BigInteger, Integer, and_, bindparam
 
 from sqlalchemy.dialects.postgresql import insert, UUID
 
@@ -80,6 +80,7 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
         table_name='commits_temp',
         exclude_columns=[
             commits.c.id,
+
             commits.c.committer_contributor_alias_id,
             commits.c.committer_contributor_name,
             commits.c.committer_contributor_key,
@@ -89,6 +90,7 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
             commits.c.author_contributor_key,
         ],
         extra_columns=[
+
             Column('committer_alias_key', UUID, nullable=False),
             Column('committer_contributor_alias_id', Integer, nullable=True),
             Column('committer_contributor_name', String, nullable=True),
@@ -103,11 +105,18 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
     )
     commits_temp.create(session.connection, checkfirst=True)
 
+    repository_id = session.connection.execute(
+        select([repositories.c.id]).where(
+            repositories.c.key == bindparam('repository_key')
+        ),
+        dict(repository_key=repository_key)
+    ).scalar()
+
+
     session.connection.execute(
         commits_temp.insert([
             dict(
-                organization_key=organization_key,
-                repository_key=repository_key,
+                repository_id=repository_id,
                 source_commit_id=commit['source_commit_id'],
                 **dict_select(
                     commit, [
@@ -170,7 +179,7 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
             [column.name for column in commit_columns],
             select(commit_columns)
         ).on_conflict_do_nothing(
-            index_elements=['repository_key', 'source_commit_id']
+            index_elements=['repository_id', 'source_commit_id']
         )
     )
 
@@ -183,7 +192,7 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
             commits_temp.join(
                 commits,
                 and_(
-                    commits_temp.c.repository_key == commits.c.repository_key,
+                    commits_temp.c.repository_id == commits.c.repository_id,
                     commits_temp.c.source_commit_id == commits.c.source_commit_id
                 )
             )

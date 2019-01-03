@@ -55,11 +55,41 @@ def cleanup(setup_schema):
     db.connection().execute("delete from analytics.commits")
     db.connection().execute("delete from analytics.contributor_aliases")
     db.connection().execute("delete from analytics.contributors")
+    db.connection().execute("delete from analytics.repositories")
+    db.connection().execute("delete from analytics.organizations")
 
+
+@pytest.yield_fixture
+def setup_repo_org(cleanup):
+    with db.create_session() as session:
+        organization_id = session.connection.execute(
+            model.organizations.insert(
+                dict(
+                    name='rails',
+                    key=rails_organization_key
+                )
+            )
+        ).inserted_primary_key[0]
+
+        repository_id = session.connection.execute(
+            model.repositories.insert(
+                dict(
+                    name='rails',
+                    key=rails_repository_key,
+                    url='foo',
+                    organization_id=organization_id
+                )
+            )
+        ).inserted_primary_key[0]
+
+    yield repository_id, organization_id
 
 @pytest.yield_fixture()
-def import_commit_details_fixture(cleanup):
+def import_commit_details_fixture(setup_repo_org):
+    repository_id, organization_id = setup_repo_org
+
     with db.create_session() as session:
+
         contributor_id = session.connection.execute(
             model.contributors.insert(
                 dict(
@@ -84,8 +114,7 @@ def import_commit_details_fixture(cleanup):
         session.connection.execute(
             model.commits.insert([
                 dict(
-                    repository_key=rails_repository_key,
-                    organization_key=rails_organization_key,
+                    repository_id=repository_id,
                     source_commit_id=f'{key}',
                     key=keys[1000-key],
                     committer_contributor_alias_id=contributor_alias_id,

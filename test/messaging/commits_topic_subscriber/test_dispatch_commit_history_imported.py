@@ -47,7 +47,7 @@ def commit_history_imported_payload():
 
 class TestDispatchCommitHistoryImported:
 
-    def it_returns_a_valid_response(self, commit_history_imported_payload, cleanup):
+    def it_returns_a_valid_response(self, setup_repo_org, commit_history_imported_payload, cleanup):
         payload = commit_history_imported_payload
         message = fake_send(CommitHistoryImported(send=payload))
         channel = mock_channel()
@@ -56,7 +56,7 @@ class TestDispatchCommitHistoryImported:
         assert_is_valid_message(ResolveCommitsWorkItems, resolve_work_items_command)
 
 
-    def it_publishes_the_responses_correctly(self, commit_history_imported_payload, cleanup):
+    def it_publishes_the_responses_correctly(self, setup_repo_org, commit_history_imported_payload, cleanup):
         payload = commit_history_imported_payload
         message = fake_send(CommitHistoryImported(send=payload))
         channel = mock_channel()

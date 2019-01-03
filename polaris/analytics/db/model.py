@@ -8,14 +8,243 @@
 
 # Author: Krishna Kumar
 
+import uuid
+from logging import getLogger
 
-from sqlalchemy import Column, BigInteger, Integer, Boolean, Text, String, UniqueConstraint, ForeignKey, Index, DateTime
+from sqlalchemy import Table, Column, BigInteger, Integer, Boolean, text, Text, String, UniqueConstraint, ForeignKey, Index, DateTime, and_
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, object_session
 
 from polaris.common import db
+from polaris.utils.collections import find
 
+logger = getLogger('polaris.analytics.db.model')
 Base = db.polaris_declarative_base(schema='analytics')
+
+
+# many-many relationship table
+organizations_contributors = Table(
+    'organizations_contributors', Base.metadata,
+    Column('organization_id', ForeignKey('organizations.id'), primary_key=True),
+    Column('contributor_id', ForeignKey('contributors.id'), primary_key=True)
+)
+
+projects_repositories = Table(
+    'projects_repositories', Base.metadata,
+    Column('project_id', ForeignKey('projects.id'), primary_key=True),
+    Column('repository_id', ForeignKey('repositories.id'), primary_key=True)
+)
+
+accounts_organizations = Table(
+    'accounts_organizations', Base.metadata,
+    Column('account_id', ForeignKey('accounts.id'), primary_key=True, index=True),
+    Column('organization_id', ForeignKey('organizations.id'), primary_key=True, index=True)
+)
+
+class Account(Base):
+    __tablename__ = 'accounts'
+
+    id = Column(Integer, primary_key=True)
+    key = Column(UUID(as_uuid=True), nullable=False, unique=True)
+    name = Column(String, nullable=False)
+    organizations = relationship("Organization",
+                                 secondary=accounts_organizations,
+                                 back_populates="accounts")
+
+
+
+    @classmethod
+    def find_by_account_key(cls, session, account_key):
+        return session.query(cls).filter(cls.key == account_key).first()
+
+accounts = Account.__table__
+
+
+class Organization(Base):
+    __tablename__ = 'organizations'
+
+    id = Column(Integer, primary_key=True)
+    key = Column(UUID(as_uuid=True), nullable=False, unique=True)
+    name = Column(String(256))
+    public = Column(Boolean, default=False, nullable=True)
+
+
+    accounts = relationship('Account',
+                            secondary=accounts_organizations,
+                            back_populates="organizations")
+
+    projects = relationship('Project')
+    contributors = relationship('Contributor', secondary=organizations_contributors, back_populates='organizations')
+    repositories = relationship('Repository')
+
+
+
+    @classmethod
+    def find_all(cls, session):
+        return session.query(cls).all()
+
+    @classmethod
+    def find_by_name(cls, session, organization_name):
+        return session.query(cls).filter(cls.name == organization_name).first()
+
+    @classmethod
+    def find_by_organization_key(cls, session, organization_key):
+        return session.query(cls).filter(cls.key == organization_key).first()
+
+    @classmethod
+    def find_by_organization_keys(cls, session, organization_keys):
+        return session.query(cls).filter(cls.key.in_(organization_keys)).all()
+
+    @classmethod
+    def create(cls, session, name):
+            organization=Organization(name=name, organization_key=uuid.uuid4())
+            session.add(organization)
+            session.flush()
+
+            return organization
+
+
+    def add_or_update_project(self, name,  project_key=None,  properties=None, repositories=None):
+        existing = find(self.projects, lambda project: project.name == name)
+        if not existing:
+            project = Project.create(
+                name,
+                project_key=project_key,
+                properties=properties
+            )
+            self.projects.append(project)
+            object_session(self).flush()
+            if repositories is not None:
+                project.update_repositories(repositories)
+
+        else:
+            if properties is not None:
+                existing.properties = properties
+            if repositories is not None:
+                existing.update_repositories(repositories)
+
+        return not existing
+
+
+organizations = Organization.__table__
+
+# many-many relationship table
+class Project(Base):
+    __tablename__ = 'projects'
+
+    id = Column(Integer, primary_key=True)
+    key = Column(UUID(as_uuid=True), unique=True)
+    name = Column(String(256), nullable=False)
+    public = Column(Boolean, default=False, nullable=True)
+    properties = Column(JSONB, default={})
+    organization_id = Column(Integer, ForeignKey('organizations.id'))
+    organization = relationship('Organization', back_populates='projects')
+    repositories = relationship('Repository', secondary=projects_repositories, back_populates='projects')
+
+    @classmethod
+    def find_by_project_key(cls, session, project_key):
+        return session.query(cls).filter(cls.key == project_key).first()
+
+    @classmethod
+    def create(cls, name, project_key=None, properties=None):
+        project = Project(
+            name=name,
+            project_key=uuid.uuid4() if project_key is None else project_key,
+            properties={} if properties is None else properties
+        )
+        return project
+
+    def update_repositories(self, repo_names):
+        repo_instances = Repository.find_repositories_by_name(object_session(self), self.organization.organization_key, repo_names)
+        if len(repo_instances) < len(repo_names):
+            logger.warning("One or more repositories in the list of provided repo_names were not found when adding"
+                           " repositories to project {} by name".format(self.name))
+
+        for repo in repo_instances:
+            if repo not in self.repositories:
+                logger.info("Adding repo {} to project  {}".format(repo.name, self.name))
+                self.repositories.append(repo)
+
+
+projects = Project.__table__
+
+class Repository(Base):
+    __tablename__ = 'repositories'
+
+    id = Column(Integer, primary_key=True)
+    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
+    name = Column(String(256), nullable=False)
+    url = Column(String(256),  nullable=True)
+    public = Column(Boolean, nullable=True, default=False)
+    vendor = Column(String(5)) # {git, svn, tfs, cvs, hg} etc
+    properties = Column(JSONB, default={}, nullable=True)
+    earliest_commit = Column(DateTime, nullable=True)
+    latest_commit = Column( DateTime, nullable=True)
+    commit_count = Column(BigInteger, nullable=True)
+
+    # parent
+    organization_id = Column(Integer, ForeignKey('organizations.id'), index=True, nullable=False)
+    organization = relationship('Organization', back_populates='repositories')
+
+    # relationships
+    commits = relationship('Commit', back_populates='repository')
+    projects = relationship('Project', secondary=projects_repositories, back_populates='repositories')
+
+    @classmethod
+    def find_by_repository_key(cls, session, repository_key):
+        return session.query(cls).filter(cls.repository_key == repository_key).first()
+
+    @classmethod
+    def find_repositories_by_name(cls, session,  organization_key, repo_names):
+        repos = cls.__table__
+        return session.query(cls).filter(
+            and_(
+                repos.c.organization_key == db.uuid_hex(organization_key),
+                repos.c.name.in_(repo_names)
+            )
+        ).all()
+
+    @classmethod
+    def find_repository_by_name(cls, session, organization_key, repo_name):
+        repos = cls.__table__
+        return session.query(cls).filter(
+            and_(
+                repos.c.organization_key == db.uuid_hex(organization_key),
+                repos.c.name == repo_name
+            )
+        ).first()
+
+    @classmethod
+    def create(cls, session, organization_key, repository, url, **kwargs):
+        organization = Organization.find_by_organization_key(session, organization_key)
+        if organization:
+            repository = Repository(
+                organization=organization,
+                organization_key=db.uuid_hex(organization_key),
+                key=db.uuid_hex(uuid.uuid4()),
+                name=repository,
+                url=url,
+                public=kwargs.get('visibility', 'private') == 'public'
+            )
+            session.add(repository)
+            session.flush()
+            return repository
+
+    @classmethod
+    def update(cls, instance, **kwargs):
+        if kwargs.get('repository'):
+            instance.name = kwargs['repository']
+        if kwargs.get('url'):
+            instance.url = kwargs['url']
+        if kwargs.get('vendor'):
+            instance.vendor = kwargs['vendor']
+
+        if kwargs.get('properties'):
+           instance.properties = {*instance.properties, *kwargs['properties']}
+
+
+repositories = Repository.__table__
+UniqueConstraint(repositories.c.organization_id, repositories.c.name)
 
 
 class Contributor(Base):
@@ -26,6 +255,8 @@ class Contributor(Base):
     name = Column(String, nullable=False)
 
     aliases = relationship('ContributorAlias', back_populates='contributor')
+    organizations = relationship('Organization', secondary=organizations_contributors, back_populates='contributors')
+
 
 contributors = Contributor.__table__
 
@@ -38,6 +269,7 @@ class ContributorAlias(Base):
     name = Column(String, nullable=False)
     source = Column(String, nullable=False)
     source_alias = Column(String, nullable=False)
+    robot = Column(Boolean, nullable=False, default=False, server_default=text('FALSE'))
 
     contributor_id = Column(Integer, ForeignKey('contributors.id'), index=True, nullable=False)
     contributor = relationship('Contributor', back_populates='aliases')
@@ -49,9 +281,8 @@ class Commit(Base):
     __tablename__ = 'commits'
 
     id = Column(BigInteger, primary_key=True)
-    key = Column(UUID(as_uuid=True), unique=True, index=True, nullable=False)
-    organization_key = Column(UUID(as_uuid=True), index=True, nullable=False)
-    repository_key = Column(UUID(as_uuid=True), index=True, nullable=False)
+    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
+    repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False)
 
     # This is the id of the commit within the repository. For git it is the commit hash.
     source_commit_id = Column(String, nullable=False)
@@ -71,10 +302,6 @@ class Commit(Base):
     author_date_tz_offset = Column(Integer, default=0)
     author_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
 
-
-
-
-
     is_orphan = Column(Boolean, default=False)
     created_at = Column(DateTime, nullable=True)
     created_on_branch = Column(String, nullable=True)
@@ -84,18 +311,15 @@ class Commit(Base):
     stats  = Column(JSONB, nullable=True)
 
     # relationships
+    repository  = relationship('Repository', back_populates='commits')
     committer_alias = relationship('ContributorAlias', foreign_keys=[committer_contributor_alias_id])
     author_alias = relationship('ContributorAlias', foreign_keys=[author_contributor_alias_id])
 
 
 commits = Commit.__table__
 
-UniqueConstraint(commits.c.repository_key, commits.c.source_commit_id)
+UniqueConstraint(commits.c.repository_id, commits.c.source_commit_id)
 Index('ix_analytics_commits_author_committer_contributor_key', commits.c.author_contributor_key, commits.c.committer_contributor_key)
-
-
-
-
 
 def recreate_all(engine):
     Base.metadata.drop_all(engine)

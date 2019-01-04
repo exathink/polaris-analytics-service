@@ -3,6 +3,7 @@ insert into analytics.accounts (key, name) select account_key, name from repos.a
 
 insert into analytics.organizations (key, name, public) select organization_key, name, public from repos.organizations;
 
+
 insert into analytics.accounts_organizations (account_id, organization_id)
 select aa.id, ao.id from repos.accounts_organizations
     inner join repos.organizations ro on accounts_organizations.organization_id = ro.id

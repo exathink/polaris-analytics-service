@@ -17,12 +17,12 @@ def init_contributors(contributor_aliases):
         for ca in contributor_aliases:
             contributor = model.Contributor(
                 name=ca['name'],
-                key=ca['contributor_key']
+                key=ca['key']
             )
             contributor.aliases.append(
                 model.ContributorAlias(
                     name=ca['name'],
-                    key=ca['contributor_key'],
+                    key=ca['key'],
                     source_alias=ca['source_alias'],
                     source=ca['source']
                 )
@@ -36,7 +36,7 @@ class TestCommitImport:
         result = api.import_new_commits(
             organization_key=rails_organization_key,
             repository_key=rails_repository_key,
-            new_commits= [
+            new_commits=[
                 dict(
                     source_commit_id='XXXX',
                     key=uuid.uuid4().hex,
@@ -46,12 +46,12 @@ class TestCommitImport:
             new_contributors= [
                 dict(
                     name='Joe Blow',
-                    contributor_key=joe_contributor_key,
+                    key=joe_contributor_key,
                     alias='joe@blow.com'
                 ),
                 dict(
                     name='Billy Bob',
-                    contributor_key=billy_contributor_key,
+                    key=billy_contributor_key,
                     alias='billy@bob.com'
                 )
             ]
@@ -81,12 +81,12 @@ class TestCommitImport:
             new_contributors= [
                 dict(
                     name='Joe Blow',
-                    contributor_key=joe_contributor_key,
+                    key=joe_contributor_key,
                     alias='joe@blow.com'
                 ),
                 dict(
                     name='Billy Bob',
-                    contributor_key=billy_contributor_key,
+                    key=billy_contributor_key,
                     alias='billy@bob.com'
                 )
             ]
@@ -117,12 +117,12 @@ class TestCommitImport:
             new_contributors=[
                 dict(
                     name='Joe Blow',
-                    contributor_key=joe_contributor_key,
+                    key=joe_contributor_key,
                     alias='joe@blow.com'
                 ),
                 dict(
                     name='Billy Bob',
-                    contributor_key=billy_contributor_key,
+                    key=billy_contributor_key,
                     alias='billy@bob.com'
                 )
             ]
@@ -139,13 +139,13 @@ class TestCommitImport:
         init_contributors([
             dict(
                 name='Joe Blow',
-                contributor_key=joe_contributor_key,
+                key=joe_contributor_key,
                 source_alias='joe@blow.com',
                 source='vcs'
             ),
             dict(
                 name='Billy Bob',
-                contributor_key=billy_contributor_key,
+                key=billy_contributor_key,
                 source_alias='billy@bob.com',
                 source='vcs'
             )])
@@ -173,7 +173,7 @@ class TestCommitImport:
         init_contributors([
             dict(
                 name='Joe Blow',
-                contributor_key=joe_contributor_key,
+                key=joe_contributor_key,
                 source_alias='joe@blow.com',
                 source='vcs'
             )
@@ -191,7 +191,7 @@ class TestCommitImport:
             new_contributors= [
                 dict(
                     name='Billy Bob',
-                    contributor_key=billy_contributor_key,
+                    key=billy_contributor_key,
                     alias='billy@bob.com'
                 )
             ]
@@ -206,7 +206,7 @@ class TestCommitImport:
         init_contributors([
             dict(
                 name='Joe Blow',
-                contributor_key=joe_contributor_key,
+                key=joe_contributor_key,
                 source_alias='joe@blow.com',
                 source='vcs'
             )
@@ -225,7 +225,7 @@ class TestCommitImport:
             new_contributors= [
                 dict(
                     name='Billy Bob',
-                    contributor_key=billy_contributor_key,
+                    key=billy_contributor_key,
                     alias='billy@bob.com'
                 )
             ]
@@ -240,7 +240,7 @@ class TestCommitImport:
         init_contributors([
             dict(
                 name='Joe Blow',
-                contributor_key=joe_contributor_key,
+                key=joe_contributor_key,
                 source_alias='joe@blow.com',
                 source='vcs'
             )
@@ -259,7 +259,7 @@ class TestCommitImport:
             new_contributors=[
                 dict(
                     name='Billy Bob',
-                    contributor_key=billy_contributor_key,
+                    key=billy_contributor_key,
                     alias='billy@bob.com'
                 )
             ]

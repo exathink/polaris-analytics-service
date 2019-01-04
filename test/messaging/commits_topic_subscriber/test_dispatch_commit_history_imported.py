@@ -34,13 +34,13 @@ def commit_history_imported_payload():
             new_contributors=[
                 dict(
                     name='Joe Blow',
-                    contributor_key=joe_contributor_key,
+                    key=joe_contributor_key,
                     alias='joe@blow.com'
                 ),
                 dict(
                     name='Billy Bob',
-                    contributor_key=billy_contributor_key,
-                    alias='billy@bob.com'
+                    key=billy_contributor_key,
+                    alias='Billy Bob'
                 )
             ]
         )

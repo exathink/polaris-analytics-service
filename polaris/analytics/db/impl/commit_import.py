@@ -28,7 +28,7 @@ def import_new_contributor_aliases(session, new_contributor_aliases):
         session.connection.execute(
             insert(ca_temp).values([
                 dict(
-                    key=contributor_alias['contributor_key'],
+                    key=contributor_alias['key'],
                     name=contributor_alias['name'],
                     source='vcs',
                     source_alias=contributor_alias['alias']
@@ -41,7 +41,7 @@ def import_new_contributor_aliases(session, new_contributor_aliases):
         session.connection.execute(
             insert(contributors).values([
                 dict(
-                    key=contributor_alias['contributor_key'],
+                    key=contributor_alias['key'],
                     name=contributor_alias['name'],
                 )
                 for contributor_alias in new_contributor_aliases

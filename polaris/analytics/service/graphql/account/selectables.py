@@ -22,8 +22,7 @@ from sqlalchemy import select, func, bindparam, and_, distinct, between, cast, T
 
 from polaris.utils.datetime_utils import time_window
 from polaris.graphql.interfaces import NamedNode
-from polaris.repos.db.model import organizations, accounts_organizations, accounts, projects, repositories, projects_repositories
-from polaris.repos.db.schema import repositories, contributors, commits, repositories_contributor_aliases
+from polaris.analytics.db.model import organizations, accounts_organizations, accounts, projects, repositories, projects_repositories, contributors, commits, repositories_contributor_aliases
 from ..interfaces import CommitSummary, ContributorCount, CommitCount
 
 

@@ -11,8 +11,9 @@
 import uuid
 from polaris.common import db
 from polaris.utils.collections import dict_select
-from polaris.analytics.db.model import commits, contributors, contributor_aliases, repositories
-from sqlalchemy import Column, String, select, BigInteger, Integer, and_, bindparam
+from polaris.analytics.db.model import commits, contributors, contributor_aliases, repositories, repositories_contributor_aliases
+
+from sqlalchemy import Column, String, select, BigInteger, Integer, and_, bindparam, func, distinct, or_, case
 
 from sqlalchemy.dialects.postgresql import insert, UUID
 
@@ -90,6 +91,7 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
             commits.c.author_contributor_key,
         ],
         extra_columns=[
+            Column('commit_id', Integer, nullable=True),
 
             Column('committer_alias_key', UUID, nullable=False),
             Column('committer_contributor_alias_id', Integer, nullable=True),
@@ -105,18 +107,18 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
     )
     commits_temp.create(session.connection, checkfirst=True)
 
-    repository_id = session.connection.execute(
-        select([repositories.c.id]).where(
+    repository = session.connection.execute(
+        select([repositories.c.id, repositories.c.commit_count, repositories.c.earliest_commit, repositories.c.latest_commit]).where(
             repositories.c.key == bindparam('repository_key')
         ),
         dict(repository_key=repository_key)
-    ).scalar()
+    ).fetchone()
 
 
     session.connection.execute(
         commits_temp.insert([
             dict(
-                repository_id=repository_id,
+                repository_id=repository.id,
                 source_commit_id=commit['source_commit_id'],
                 **dict_select(
                     commit, [
@@ -169,33 +171,44 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
         )
     )
 
+    # mark existing_commits
+    session.connection.execute(
+        commits_temp.update().values(
+            commit_id=select(
+                [commits.c.id.label('commit_id')]
+            ).where(
+                and_(
+                    commits_temp.c.key == commits.c.key
+                )
+            )
+        )
+    )
+    # insert new commits
     commit_columns = [
         column
         for column in commits_temp.columns
-        if column.name not in ['committer_alias_key', 'author_alias_key']
+        if column.name not in ['commit_id', 'committer_alias_key', 'author_alias_key']
     ]
+
     session.connection.execute(
         insert(commits).from_select(
             [column.name for column in commit_columns],
-            select(commit_columns)
-        ).on_conflict_do_nothing(
-            index_elements=['repository_id', 'source_commit_id']
+            select(commit_columns).where(
+                commits_temp.c.commit_id == None
+            )
         )
     )
 
+    # update repository stats
+    update_repository_stats(session, repository, commits_temp)
+    # update contributor_alias_stats
+
+    update_repositories_contributor_aliases(session, repository, commits_temp)
+
+
     new_commits  = session.connection.execute(
-        select(
-            [
-                *commits.columns
-            ]
-        ).select_from(
-            commits_temp.join(
-                commits,
-                and_(
-                    commits_temp.c.repository_id == commits.c.repository_id,
-                    commits_temp.c.source_commit_id == commits.c.source_commit_id
-                )
-            )
+        select(commit_columns).where(
+            commits_temp.c.commit_id == None
         )
     ).fetchall()
 
@@ -203,6 +216,102 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
         new_commits = db.row_proxies_to_dict(new_commits),
         new_contributors = new_contributors
     )
+
+
+def update_repositories_contributor_aliases(session, repository, commits_temp, ):
+    # we have marked all existing commit id in an earlier stage and stored in
+    # in commit summary temp. Now we use this table to group the new commits
+    # by contributor alias and insert contributor_aliases with their stats
+    # into the repository_contributor_aliases table. Note we are denormalzing
+    # serveral fields from contributor_aliases and contributors onto this
+    # relationship table so that we can speed up aggregates for contributors.
+
+    to_upsert = select([
+        bindparam('repository_id').label('repository_id'),
+        contributor_aliases.c.id.label('contributor_alias_id'),
+        contributor_aliases.c.contributor_id.label('contributor_id'),
+        contributor_aliases.c.robot.label('robot'),
+        func.count(distinct(commits_temp.c.source_commit_id)).label('commit_count'),
+        func.min(commits_temp.c.commit_date).label('earliest_commit'),
+        func.max(commits_temp.c.commit_date).label('latest_commit')
+    ]).select_from(
+        commits_temp.join(
+            contributor_aliases,
+            or_(
+                commits_temp.c.author_contributor_alias_id == contributor_aliases.c.id,
+                commits_temp.c.committer_contributor_alias_id == contributor_aliases.c.id
+            )
+        )
+    ).where(
+        commits_temp.c.commit_id == None
+    ).group_by(contributor_aliases.c.id)
+
+    # We can limit this to only new commits under the inductive assumption
+    # that existing commits and their stats are reflected in the current state
+    # of the table. Only new commits can give rise to new contributor aliases for the repo.
+    # If an new commit from a new alias is seen it is inserted, and if a new commit from
+    # and existing alias is seen it is updated via the upsert statement.
+    upsert = insert(repositories_contributor_aliases).from_select(
+            [
+                to_upsert.c.repository_id,
+                to_upsert.c.contributor_alias_id,
+                to_upsert.c.contributor_id,
+                to_upsert.c.robot,
+                to_upsert.c.commit_count,
+                to_upsert.c.earliest_commit,
+                to_upsert.c.latest_commit
+            ],
+            to_upsert
+        )
+
+    session.connection.execute(
+        upsert.on_conflict_do_update(
+            index_elements=['repository_id', 'contributor_alias_id'],
+            set_= dict(
+                contributor_id=upsert.excluded.contributor_id,
+                robot=upsert.excluded.robot,
+                commit_count=upsert.excluded.commit_count + repositories_contributor_aliases.c.commit_count,
+                earliest_commit=case(
+                    [(upsert.excluded.earliest_commit < repositories_contributor_aliases.c.earliest_commit , upsert.excluded.earliest_commit)],
+                    else_=repositories_contributor_aliases.c.earliest_commit
+                ),
+                latest_commit=case(
+                    [(upsert.excluded.latest_commit > repositories_contributor_aliases.c.latest_commit, upsert.excluded.latest_commit)],
+                    else_=repositories_contributor_aliases.c.latest_commit
+                )
+            )
+        ), dict(repository_id=repository.id)
+    )
+
+def update_repository_stats(session, repository, commits_temp):
+    new_commits_stats = session.connection.execute(
+        select(
+            [
+                func.min(commits_temp.c.commit_date).label('earliest_commit'),
+                func.max(commits_temp.c.commit_date).label('latest_commit'),
+                func.count(commits_temp.c.key).label('commit_count')
+            ]
+        ).where(
+            commits_temp.c.commit_id == None
+        )
+    ).fetchone()
+
+    if new_commits_stats.commit_count > 0:
+        updated_columns = {}
+        if repository['earliest_commit'] is None or new_commits_stats.earliest_commit < repository['earliest_commit']:
+            updated_columns['earliest_commit'] = new_commits_stats.earliest_commit
+        if repository['latest_commit'] is None or new_commits_stats.latest_commit > repository['latest_commit']:
+            updated_columns['latest_commit'] = new_commits_stats.latest_commit
+
+        current_commits = repository['commit_count'] if repository['commit_count'] is not None else 0
+        updated_columns['commit_count'] = current_commits + new_commits_stats.commit_count
+
+        if len(updated_columns) > 0:
+            session.connection.execute(
+                repositories.update().where(
+                    repositories.c.id == repository.id
+                ).values(updated_columns)
+            )
 
 
 

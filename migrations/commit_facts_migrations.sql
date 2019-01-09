@@ -40,3 +40,33 @@ inner join analytics.contributors on contributors.key = contributor_aliases.key;
 
 
 
+insert into analytics.repositories_contributor_aliases
+    (repository_id, contributor_alias_id, contributor_id, earliest_commit, latest_commit, commit_count, robot)
+SELECT ar.id as repository_id, aca.id as contributor_alias_id, aca.contributor_id as contributor_id,
+rrca.earliest_commit, rrca.latest_commit, rrca.commit_count, rca.robot
+from repos.repositories_contributor_aliases rrca
+inner join repos.repositories rr on rrca.repository_id = rr.id
+inner join analytics.repositories ar on rr.key = ar.key
+inner join repos.contributor_aliases rca on rrca.contributor_alias_id = rca.id
+inner join analytics.contributor_aliases aca on rca.key=aca.key
+
+select repos.repositories.id, repos.repositories.name from repos.repositories left join analytics.repositories on repos.repositories.key=analytics.repositories.key
+where analytics.repositories.id is NULL
+
+update analytics.repositories
+set
+    earliest_commit = t.earliest_commit,
+    latest_commit = t.latest_commit,
+    commit_count = t.commit_count
+FROM (SELECT min(repositories.key::text) as key,
+             min(commit_date) as earliest_commit,
+             max(commit_date) as latest_commit,
+             count(commits.id)        as commit_count
+      from repos.commits
+      inner join repos.repositories on commits.repository_id = repositories.id
+      group by repositories.id) as t
+WHERE t.key = analytics.repositories.key::text
+
+
+
+

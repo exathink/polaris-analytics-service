@@ -41,6 +41,20 @@ accounts_organizations = Table(
     Column('organization_id', ForeignKey('organizations.id'), primary_key=True, index=True)
 )
 
+
+repositories_contributor_aliases = Table(
+    'repositories_contributor_aliases', Base.metadata,
+    Column('repository_id', Integer, ForeignKey('repositories.id', ondelete='CASCADE'), primary_key=True),
+    Column('contributor_alias_id', Integer, ForeignKey('contributor_aliases.id', ondelete='CASCADE'),  primary_key=True),
+    Column('earliest_commit', DateTime, nullable=True),
+    Column('latest_commit', DateTime, nullable=True),
+    Column('commit_count', Integer, nullable=True),
+    # De-normalized columns to generate quicker aggregates of contributors for repositories on up.
+    Column('contributor_id', Integer, ForeignKey('contributors.id', ondelete='CASCADE'), nullable=True),
+    Column('robot', Boolean, nullable=True),
+    Index('ix_repositories_contributor_aliasesrepositoryidcontributorid', 'repository_id', 'contributor_id')
+)
+
 class Account(Base):
     __tablename__ = 'accounts'
 

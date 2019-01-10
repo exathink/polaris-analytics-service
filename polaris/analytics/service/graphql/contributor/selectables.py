@@ -20,11 +20,11 @@
 
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract
 from polaris.graphql.interfaces import NamedNode
-from polaris.repos.db.model import repositories
+
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
 
-from polaris.repos.db.schema import repositories, repositories_contributor_aliases, contributors, \
+from polaris.analytics.db.model import repositories, repositories_contributor_aliases, contributors, \
     contributor_aliases, commits
 
 from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount

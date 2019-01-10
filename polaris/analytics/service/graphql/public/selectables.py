@@ -21,8 +21,8 @@
 from sqlalchemy import select
 
 from polaris.graphql.interfaces import NamedNode
-from polaris.repos.db.model import organizations, projects, repositories
-from polaris.repos.db.schema import repositories
+from polaris.analytics.db.model import organizations, projects, repositories
+
 
 
 class PublicOrganizationsNodes:
@@ -32,7 +32,7 @@ class PublicOrganizationsNodes:
     def selectable(**kwargs):
         return select([
             organizations.c.id,
-            organizations.c.organization_key.label('key'),
+            organizations.c.key.label('key'),
             organizations.c.name
         ]).select_from(
             organizations
@@ -46,7 +46,7 @@ class PublicProjectsNodes:
     def selectable(**kwargs):
         return select([
             projects.c.id,
-            projects.c.project_key.label('key'),
+            projects.c.key.label('key'),
             projects.c.name
         ]).select_from(
             projects

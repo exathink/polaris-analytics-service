@@ -13,8 +13,8 @@ from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
 
 from polaris.graphql.interfaces import NamedNode
-from polaris.repos.db.model import projects, projects_repositories, organizations
-from polaris.repos.db.schema import repositories, contributors, \
+from polaris.analytics.db.model import projects, projects_repositories, organizations, \
+    repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits
 
 from ..interfaces import \
@@ -31,11 +31,11 @@ class ProjectNode:
     def selectable(**kwargs):
         return select([
             projects.c.id,
-            projects.c.project_key.label('key'),
+            projects.c.key.label('key'),
             projects.c.name
         ]).select_from(
             projects
-        ).where(projects.c.project_key == bindparam('key'))
+        ).where(projects.c.key == bindparam('key'))
 
 
 class ProjectRepositoriesNodes:
@@ -53,7 +53,7 @@ class ProjectRepositoriesNodes:
             ).join(
                 repositories
             )
-        ).where(projects.c.project_key == bindparam('key'))
+        ).where(projects.c.key == bindparam('key'))
 
 
 class ProjectRecentlyActiveRepositoriesNodes:
@@ -79,7 +79,7 @@ class ProjectRecentlyActiveRepositoriesNodes:
             )
         ).where(
             and_(
-                projects.c.project_key == bindparam('key'),
+                projects.c.key == bindparam('key'),
                 between(commits.c.commit_date, window.begin, window.end)
             )
         ).group_by(
@@ -105,7 +105,7 @@ class ProjectCommitNodes:
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             ).join(commits)
         ).where(
-            projects.c.project_key == bindparam('key')
+            projects.c.key == bindparam('key')
         )
         return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
 
@@ -137,7 +137,7 @@ class ProjectContributorNodes:
             )
         ).where(
             and_(
-                projects.c.project_key == bindparam('key'),
+                projects.c.key == bindparam('key'),
                 repositories_contributor_aliases.c.robot == False
             )
         ).distinct()
@@ -164,11 +164,11 @@ class ProjectRecentlyActiveContributorNodes:
             ).join(
                 commits
             ).join(
-                contributor_aliases, commits.c.author_alias_id == contributor_aliases.c.id
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(
-                projects.c.project_key == bindparam('key'),
+                projects.c.key == bindparam('key'),
                 between(commits.c.commit_date, window.begin, window.end),
                 contributor_aliases.c.robot == False
             )
@@ -200,7 +200,7 @@ class ProjectCumulativeCommitCount:
                 commits, commits.c.repository_id == repositories.c.id
             )
         ).where(
-            projects.c.project_key == bindparam('key')
+            projects.c.key == bindparam('key')
         ).group_by(
             extract('year', commits.c.commit_date),
             extract('week', commits.c.commit_date)
@@ -235,7 +235,7 @@ class ProjectWeeklyContributorCount:
                 commits, commits.c.repository_id == repositories.c.id
             )
         ).where(
-            projects.c.project_key == bindparam('key')
+            projects.c.key == bindparam('key')
         ).group_by(
             extract('year', commits.c.commit_date),
             extract('week', commits.c.commit_date)
@@ -312,7 +312,7 @@ class ProjectsOrganizationRef:
     def selectable(project_nodes, **kwargs):
         return select([
             project_nodes.c.id,
-            organizations.c.organization_key.label('organization_key'),
+            organizations.c.key.label('organization_key'),
             organizations.c.name.label('organization_name')
 
         ]).select_from(

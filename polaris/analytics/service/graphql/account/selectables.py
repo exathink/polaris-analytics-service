@@ -33,11 +33,11 @@ class AccountNode:
     def selectable(**kwargs):
         return select([
             accounts.c.id,
-            accounts.c.account_key.label('key'),
+            accounts.c.key.label('key'),
             accounts.c.name
         ]).select_from(
             accounts
-        ).where(accounts.c.account_key == bindparam('key'))
+        ).where(accounts.c.key == bindparam('key'))
 
 
 class AccountOrganizationsNodes:
@@ -47,7 +47,7 @@ class AccountOrganizationsNodes:
     def selectable(**kwargs):
         return select([
             organizations.c.id,
-            organizations.c.organization_key.label('key'),
+            organizations.c.key.label('key'),
             organizations.c.name
         ]).select_from(
             organizations.join(
@@ -55,7 +55,7 @@ class AccountOrganizationsNodes:
             ).join(
                 accounts
             )
-        ).where(accounts.c.account_key == bindparam('key'))
+        ).where(accounts.c.key == bindparam('key'))
 
 
 class AccountRecentlyActiveOrganizationsNodes:
@@ -68,7 +68,7 @@ class AccountRecentlyActiveOrganizationsNodes:
 
         return select([
             organizations.c.id,
-            func.min(cast(organizations.c.organization_key, Text)).label('key'),
+            func.min(cast(organizations.c.key, Text)).label('key'),
             func.min(organizations.c.name).label('name'),
             func.count(commits.c.id).label('commit_count')
         ]).select_from(
@@ -83,7 +83,7 @@ class AccountRecentlyActiveOrganizationsNodes:
             )
         ).where(
             and_(
-                accounts.c.account_key == bindparam('key'),
+                accounts.c.key == bindparam('key'),
                 between(commits.c.commit_date, window.begin, window.end)
             )
         ).group_by(
@@ -102,7 +102,7 @@ class AccountProjectsNodes:
     def selectable(**kwargs):
         return select([
             projects.c.id,
-            projects.c.project_key.label('key'),
+            projects.c.key.label('key'),
             projects.c.name
         ]).select_from(
             projects.join(
@@ -112,7 +112,7 @@ class AccountProjectsNodes:
             ).join(
                 accounts
             )
-        ).where(accounts.c.account_key == bindparam('key'))
+        ).where(accounts.c.key == bindparam('key'))
 
 
 class AccountRecentlyActiveProjectsNodes:
@@ -125,7 +125,7 @@ class AccountRecentlyActiveProjectsNodes:
 
         return select([
             projects.c.id,
-            func.min(cast(projects.c.project_key, Text)).label('key'),
+            func.min(cast(projects.c.key, Text)).label('key'),
             func.min(projects.c.name).label('name'),
             func.count(commits.c.id).label('commit_count')
         ]).select_from(
@@ -144,7 +144,7 @@ class AccountRecentlyActiveProjectsNodes:
             )
         ).where(
             and_(
-                accounts.c.account_key == bindparam('key'),
+                accounts.c.key == bindparam('key'),
                 between(commits.c.commit_date, window.begin, window.end)
             )
         ).group_by(
@@ -174,7 +174,7 @@ class AccountRepositoriesNodes:
             ).join(
                 accounts
             )
-        ).where(accounts.c.account_key == bindparam('key'))
+        ).where(accounts.c.key == bindparam('key'))
 
 
 class AccountRecentlyActiveRepositoriesNodes:
@@ -202,7 +202,7 @@ class AccountRecentlyActiveRepositoriesNodes:
             )
         ).where(
             and_(
-                accounts.c.account_key == bindparam('key'),
+                accounts.c.key == bindparam('key'),
                 between(commits.c.commit_date, window.begin, window.end)
             )
         ).group_by(
@@ -239,7 +239,7 @@ class AccountContributorNodes:
             )
         ).where(
             and_(
-                accounts.c.account_key == bindparam('key'),
+                accounts.c.key == bindparam('key'),
                 repositories_contributor_aliases.c.robot == False
             )
         ).distinct()

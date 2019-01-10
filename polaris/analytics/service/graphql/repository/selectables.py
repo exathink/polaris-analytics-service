@@ -10,8 +10,7 @@
 from sqlalchemy import select, func, bindparam, and_, distinct, extract, between
 from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
-from polaris.repos.db.model import repositories, organizations
-from polaris.repos.db.schema import contributors, commits, repositories_contributor_aliases, contributor_aliases
+from polaris.analytics.db.model import repositories, organizations, contributors, commits, repositories_contributor_aliases, contributor_aliases
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, \
     CommitCount, WeeklyContributorCount
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
@@ -93,7 +92,7 @@ class RepositoryRecentlyActiveContributorNodes:
         ]).select_from(
             repositories.join(
                 commits.join(
-                    contributor_aliases, commits.c.author_alias_id == contributor_aliases.c.id
+                    contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
                 )
             )
         ).where(
@@ -209,7 +208,7 @@ class RepositoriesOrganizationRef:
     def selectable(repositories_nodes, **kwargs):
         return select([
             repositories_nodes.c.id,
-            organizations.c.organization_key,
+            organizations.c.key,
             organizations.c.name.label('organization_name')
 
         ]).select_from(

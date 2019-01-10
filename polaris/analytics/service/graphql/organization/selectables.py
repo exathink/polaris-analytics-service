@@ -16,9 +16,11 @@ from sqlalchemy import select, func, bindparam, distinct, and_, between, cast, T
 from polaris.graphql.utils import nulls_to_zero
 from polaris.graphql.interfaces import NamedNode
 
-from polaris.repos.db.model import organizations, projects, repositories, projects_repositories
-from polaris.repos.db.schema import repositories, contributors, commits, \
+from polaris.analytics.db.model import \
+    organizations, projects, projects_repositories, \
+    repositories, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases
+ 
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
     ProjectCount, RepositoryCount, WeeklyContributorCount, CommitInfo
 
@@ -33,12 +35,12 @@ class OrganizationNode:
     def selectable(**kwargs):
         return select([
             organizations.c.id,
-            organizations.c.organization_key.label('key'),
+            organizations.c.key.label('key'),
             organizations.c.name,
 
         ]).select_from(
             organizations
-        ).where(organizations.c.organization_key == bindparam('key'))
+        ).where(organizations.c.key == bindparam('key'))
 
 
 class OrganizationProjectsNodes:
@@ -48,13 +50,13 @@ class OrganizationProjectsNodes:
     def selectable(**kwargs):
         return select([
             projects.c.id,
-            projects.c.project_key.label('key'),
+            projects.c.key.label('key'),
             projects.c.name
         ]).select_from(
             projects.join(
                 organizations
             )
-        ).where(organizations.c.organization_key == bindparam('key'))
+        ).where(organizations.c.key == bindparam('key'))
 
 
 class OrganizationRecentlyActiveProjectsNodes:
@@ -67,7 +69,7 @@ class OrganizationRecentlyActiveProjectsNodes:
 
         return select([
             projects.c.id,
-            func.min(cast(projects.c.project_key, Text)).label('key'),
+            func.min(cast(projects.c.key, Text)).label('key'),
             func.min(projects.c.name).label('name'),
             func.count(commits.c.id).label('commit_count')
         ]).select_from(
@@ -82,7 +84,7 @@ class OrganizationRecentlyActiveProjectsNodes:
             )
         ).where(
             and_(
-                organizations.c.organization_key == bindparam('key'),
+                organizations.c.key == bindparam('key'),
                 between(commits.c.commit_date, window.begin, window.end)
             )
         ).group_by(
@@ -107,7 +109,7 @@ class OrganizationRepositoriesNodes:
             repositories.join(
                 organizations
             )
-        ).where(organizations.c.organization_key == bindparam('key'))
+        ).where(organizations.c.key == bindparam('key'))
 
 
 class OrganizationRecentlyActiveRepositoriesNodes:
@@ -131,7 +133,7 @@ class OrganizationRecentlyActiveRepositoriesNodes:
             )
         ).where(
             and_(
-                organizations.c.organization_key == bindparam('key'),
+                organizations.c.key == bindparam('key'),
                 between(commits.c.commit_date, window.begin, window.end)
             )
         ).group_by(
@@ -163,7 +165,7 @@ class OrganizationContributorNodes:
             )
         ).where(
             and_(
-                organizations.c.organization_key == bindparam('key'),
+                organizations.c.key == bindparam('key'),
                 repositories_contributor_aliases.c.robot == False
             )
         ).distinct()
@@ -183,7 +185,7 @@ class OrganizationCommitNodes:
                 commits
             )
         ).where(
-            organizations.c.organization_key == bindparam('key')
+            organizations.c.key == bindparam('key')
         )
         return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
 
@@ -209,12 +211,12 @@ class OrganizationRecentlyActiveContributorNodes:
                 repositories
             ).join(
                 commits.join(
-                    contributor_aliases, commits.c.author_alias_id == contributor_aliases.c.id
+                    contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
                 )
             )
         ).where(
             and_(
-                organizations.c.organization_key == bindparam('key'),
+                organizations.c.key == bindparam('key'),
                 between(commits.c.commit_date, window.begin, window.end),
                 contributor_aliases.c.robot == False
             )
@@ -264,7 +266,7 @@ class OrganizationWeeklyContributorCount:
                 commits, commits.c.repository_id == repositories.c.id
             )
         ).where(
-            organizations.c.organization_key == bindparam('key')
+            organizations.c.key == bindparam('key')
         ).group_by(
             extract('year', commits.c.commit_date),
             extract('week', commits.c.commit_date)

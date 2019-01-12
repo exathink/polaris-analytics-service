@@ -107,6 +107,7 @@ class CommitsTopicSubscriber(TopicSubscriber):
                 message,
                 api.import_commit_details(
                     organization_key=organization_key,
+                    repository_key=message['repository_key'],
                     commit_details=commit_details
                 )
             )

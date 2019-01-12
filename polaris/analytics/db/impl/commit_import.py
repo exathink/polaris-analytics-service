@@ -8,14 +8,19 @@
 
 # Author: Krishna Kumar
 
-import uuid
+
+import functools
+
 from polaris.common import db
-from polaris.utils.collections import dict_select
-from polaris.analytics.db.model import commits, contributors, contributor_aliases, repositories, repositories_contributor_aliases
+from polaris.utils.collections import dict_select, dict_summarize_totals
+from polaris.analytics.db.model import commits, contributors, contributor_aliases, Repository, repositories, \
+    repositories_contributor_aliases, \
+    source_files
 
 from sqlalchemy import Column, String, select, BigInteger, Integer, and_, bindparam, func, distinct, or_, case
 
 from sqlalchemy.dialects.postgresql import insert, UUID
+
 
 def import_new_contributor_aliases(session, new_contributor_aliases):
     if len(new_contributor_aliases) > 0:
@@ -71,9 +76,7 @@ def import_new_contributor_aliases(session, new_contributor_aliases):
         )
 
 
-
 def import_new_commits(session, organization_key, repository_key, new_commits, new_contributors):
-
     import_new_contributor_aliases(session, new_contributors)
 
     commits_temp = db.temp_table_from(
@@ -108,12 +111,12 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
     commits_temp.create(session.connection, checkfirst=True)
 
     repository = session.connection.execute(
-        select([repositories.c.id, repositories.c.commit_count, repositories.c.earliest_commit, repositories.c.latest_commit]).where(
+        select([repositories.c.id, repositories.c.commit_count, repositories.c.earliest_commit,
+                repositories.c.latest_commit]).where(
             repositories.c.key == bindparam('repository_key')
         ),
         dict(repository_key=repository_key)
     ).fetchone()
-
 
     session.connection.execute(
         commits_temp.insert([
@@ -205,16 +208,15 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
 
     update_repositories_contributor_aliases(session, repository, commits_temp)
 
-
-    new_commits  = session.connection.execute(
+    new_commits = session.connection.execute(
         select(commit_columns).where(
             commits_temp.c.commit_id == None
         )
     ).fetchall()
 
     return dict(
-        new_commits = db.row_proxies_to_dict(new_commits),
-        new_contributors = new_contributors
+        new_commits=db.row_proxies_to_dict(new_commits),
+        new_contributors=new_contributors
     )
 
 
@@ -252,36 +254,39 @@ def update_repositories_contributor_aliases(session, repository, commits_temp, )
     # If an new commit from a new alias is seen it is inserted, and if a new commit from
     # and existing alias is seen it is updated via the upsert statement.
     upsert = insert(repositories_contributor_aliases).from_select(
-            [
-                to_upsert.c.repository_id,
-                to_upsert.c.contributor_alias_id,
-                to_upsert.c.contributor_id,
-                to_upsert.c.robot,
-                to_upsert.c.commit_count,
-                to_upsert.c.earliest_commit,
-                to_upsert.c.latest_commit
-            ],
-            to_upsert
-        )
+        [
+            to_upsert.c.repository_id,
+            to_upsert.c.contributor_alias_id,
+            to_upsert.c.contributor_id,
+            to_upsert.c.robot,
+            to_upsert.c.commit_count,
+            to_upsert.c.earliest_commit,
+            to_upsert.c.latest_commit
+        ],
+        to_upsert
+    )
 
     session.connection.execute(
         upsert.on_conflict_do_update(
             index_elements=['repository_id', 'contributor_alias_id'],
-            set_= dict(
+            set_=dict(
                 contributor_id=upsert.excluded.contributor_id,
                 robot=upsert.excluded.robot,
                 commit_count=upsert.excluded.commit_count + repositories_contributor_aliases.c.commit_count,
                 earliest_commit=case(
-                    [(upsert.excluded.earliest_commit < repositories_contributor_aliases.c.earliest_commit , upsert.excluded.earliest_commit)],
+                    [(upsert.excluded.earliest_commit < repositories_contributor_aliases.c.earliest_commit,
+                      upsert.excluded.earliest_commit)],
                     else_=repositories_contributor_aliases.c.earliest_commit
                 ),
                 latest_commit=case(
-                    [(upsert.excluded.latest_commit > repositories_contributor_aliases.c.latest_commit, upsert.excluded.latest_commit)],
+                    [(upsert.excluded.latest_commit > repositories_contributor_aliases.c.latest_commit,
+                      upsert.excluded.latest_commit)],
                     else_=repositories_contributor_aliases.c.latest_commit
                 )
             )
         ), dict(repository_id=repository.id)
     )
+
 
 def update_repository_stats(session, repository, commits_temp):
     new_commits_stats = session.connection.execute(
@@ -314,45 +319,111 @@ def update_repository_stats(session, repository, commits_temp):
             )
 
 
-
-def import_commit_details(session, commit_details):
-    commits_temp = db.create_temp_table('commits_temp', [
-        commits.c.key,
-        commits.c.stats,
-        commits.c.parents,
-        commits.c.num_parents
-    ])
-    commits_temp.create(session.connection, checkfirst=True)
-
-    session.connection.execute(
-        commits_temp.insert().values([
+def create_source_files(session, repository, commit_details):
+    source_files_temp = db.temp_table_from(
+        source_files,
+        table_name='source_files_temp',
+        exclude_columns=[
+            source_files.c.id
+        ]
+    )
+    source_files_temp.create(session.connection(), checkfirst=True)
+    session.connection().execute(
+        insert(source_files_temp).values([
             dict(
-                key=commit_detail['key'],
-                parents=commit_detail['parents'],
-                stats=commit_detail['stats'],
-                num_parents=len(commit_detail['parents'])
+                repository_id=repository.id,
+                key=source_file['key'],
+                name=source_file['name'],
+                path=source_file['path'],
+                file_type=source_file['file_type'],
+                version_count=source_file['version_count']
             )
             for commit_detail in commit_details
+            for source_file in commit_detail['source_files']
         ])
     )
+    source_file_cols = [column.name for column in source_files_temp.columns]
+    # We need to do this rigmarole because the same file may be present in multiple commits, but with different
+    # version counts. We cannot upsert with update on the same row twice in the same transaction. So we group
+    # by source_file_key picking the maximum among all the version numbers seen in this batch.
 
-    update_count = session.connection.execute(
-        commits.update().where(
-            commits.c.key == commits_temp.c.key
-        ).values(
-            parents=commits_temp.c.parents,
-            stats=commits_temp.c.stats,
-            num_parents=commits_temp.c.num_parents
+
+
+    upsert = insert(source_files).from_select(
+        ['key', 'repository_id', 'name', 'path', 'file_type', 'version_count'],
+        select([
+            source_files_temp.c.key,
+            func.min(source_files_temp.c.repository_id).label('repository_id'),
+            func.min(source_files_temp.c.name).label('name'),
+            func.min(source_files_temp.c.path).label('path'),
+            func.min(source_files_temp.c.file_type).label('file_type'),
+            func.max(source_files_temp.c.version_count).label('version_count')
+        ]).select_from(
+            source_files_temp
+        ).group_by(
+            source_files_temp.c.key
         )
-    ).rowcount
-
-    return dict(
-        update_count=update_count
+    )
+    session.connection().execute(
+        upsert.on_conflict_do_update(
+            index_elements=['key'],
+            set_=dict(
+                # we do a max of the proposed insertion value and the current value to ensure
+                # that the version count in monotonically increasing under updates in arbitrary order.
+                version_count=func.greatest(
+                    source_files.c.version_count,
+                    upsert.excluded.version_count
+                )
+            )
+        )
     )
 
 
+def import_commit_details(session, repository_key, commit_details):
+    repository = Repository.find_by_repository_key(session, repository_key)
 
+    create_source_files(session, repository, commit_details)
 
+    if repository:
+        commits_temp = db.create_temp_table('commits_temp', [
+            commits.c.key,
+            commits.c.stats,
+            commits.c.parents,
+            commits.c.num_parents,
+            commits.c.source_files,
+            commits.c.source_file_types_summary,
+            commits.c.source_file_actions_summary,
+        ])
+        commits_temp.create(session.connection(), checkfirst=True)
 
+        session.connection().execute(
+            commits_temp.insert().values([
+                dict(
+                    key=commit_detail['key'],
+                    parents=commit_detail['parents'],
+                    stats=commit_detail['stats'],
+                    num_parents=len(commit_detail['parents']),
+                    source_files=commit_detail['source_files'],
+                    source_file_types_summary=dict_summarize_totals(commit_detail['source_files'], field='file_type'),
+                    source_file_actions_summary=dict_summarize_totals(commit_detail['source_files'], field='action')
+                )
+                for commit_detail in commit_details
+            ])
+        )
 
+        update_count = session.connection().execute(
+            commits.update().where(
+                commits.c.key == commits_temp.c.key
+            ).values(
+                parents=commits_temp.c.parents,
+                stats=commits_temp.c.stats,
+                num_parents=commits_temp.c.num_parents,
+                source_files=commits_temp.c.source_files,
+                source_file_types_summary=commits_temp.c.source_file_types_summary,
+                source_file_actions_summary=commits_temp.c.source_file_actions_summary
+            )
+        ).rowcount
 
+        return dict(
+            update_count=update_count
+        )

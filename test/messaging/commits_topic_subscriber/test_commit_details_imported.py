@@ -33,14 +33,36 @@ def commit_details_imported_payload(import_commit_details_fixture):
                     lines=10,
                     insertions=8,
                     deletions=2
-                )
+                ),
+                source_files=[
+                    dict(
+                        key=uuid.uuid4().hex,
+                        path='test/',
+                        name='files1.txt',
+                        file_type='txt',
+                        version_count=1,
+                        is_deleted=False,
+                        action='A',
+                        stats={"lines": 2, "insertions": 2, "deletions": 0}
+                    ),
+                    dict(
+                        key=uuid.uuid4().hex,
+                        path='test/',
+                        name='files2.py',
+                        file_type='py',
+                        version_count=1,
+                        is_deleted=False,
+                        action='A',
+                        stats={"lines": 2, "insertions": 2, "deletions": 0}
+                    )
+                ]
             )
             for key in range(1000, 1010)
         ]
     )
     yield payload
 
-class TestDispatchCommitHistoryImported:
+class TestDispatchCommtDetailsImported:
 
     def it_returns_a_valid_response(self, commit_details_imported_payload, cleanup):
         payload = commit_details_imported_payload

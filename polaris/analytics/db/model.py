@@ -203,10 +203,11 @@ class Repository(Base):
     # relationships
     commits = relationship('Commit', back_populates='repository')
     projects = relationship('Project', secondary=projects_repositories, back_populates='repositories')
+    source_files = relationship('SourceFile', back_populates='repository')
 
     @classmethod
     def find_by_repository_key(cls, session, repository_key):
-        return session.query(cls).filter(cls.repository_key == repository_key).first()
+        return session.query(cls).filter(cls.key == repository_key).first()
 
     @classmethod
     def find_repositories_by_name(cls, session,  organization_key, repo_names):
@@ -322,7 +323,11 @@ class Commit(Base):
 
     num_parents = Column(Integer, default=1)
     parents = Column(ARRAY(String), nullable=True)
-    stats  = Column(JSONB, nullable=True)
+    stats = Column(JSONB, nullable=True)
+
+    source_files = Column(JSONB, nullable=True)
+    source_file_types_summary = Column(JSONB, nullable=True)
+    source_file_actions_summary = Column(JSONB, nullable=True)
 
     # relationships
     repository  = relationship('Repository', back_populates='commits')
@@ -334,6 +339,23 @@ commits = Commit.__table__
 
 UniqueConstraint(commits.c.repository_id, commits.c.source_commit_id)
 Index('ix_analytics_commits_author_committer_contributor_key', commits.c.author_contributor_key, commits.c.committer_contributor_key)
+
+
+class SourceFile(Base):
+    __tablename__ = 'source_files'
+
+    id = Column(BigInteger, primary_key=True)
+    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
+    name = Column(String, nullable=False, default='')
+    path = Column(String, nullable=False, default='')
+    file_type = Column(String, nullable=False, default='')
+    version_count = Column(Integer, nullable=False, default=1)
+
+    repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False)
+    repository = relationship('Repository', back_populates='source_files')
+
+
+source_files = SourceFile.__table__
 
 def recreate_all(engine):
     Base.metadata.drop_all(engine)

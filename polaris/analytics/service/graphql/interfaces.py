@@ -12,6 +12,9 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 
 
+class FileTypesSummary(graphene.ObjectType):
+    file_type = graphene.String(required=True)
+    count = graphene.Int(required=True)
 
 
 class CommitChangeStats(graphene.ObjectType):
@@ -36,6 +39,7 @@ class CommitInfo(NamedNode):
     num_parents = graphene.Int(required=True)
     branch = graphene.String(required=False)
     stats = graphene.Field(CommitChangeStats, required=False)
+    file_types_summary = graphene.Field(graphene.List(FileTypesSummary, required=False))
 
 
 class CumulativeCommitCount(graphene.Interface):
@@ -77,6 +81,4 @@ class OrganizationRef(graphene.Interface):
     organization_key = graphene.String(required=True)
 
 
-class FileTypesSummary(graphene.Interface):
-    file_type = graphene.String(required=True)
-    count = graphene.Int(required=True)
+

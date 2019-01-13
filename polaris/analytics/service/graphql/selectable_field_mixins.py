@@ -11,7 +11,7 @@
 import graphene
 
 from polaris.graphql.selectable import SimpleSelectableResolverMixin
-from .selectable_fields import CumulativeCommitCountField, WeeklyContributorCountsField, FileTypesSummaryField
+from .selectable_fields import CumulativeCommitCountField, WeeklyContributorCountsField
 from .interface_mixins import KeyIdResolverMixin
 
 
@@ -38,9 +38,3 @@ class WeeklyContributorCountsResolverMixin(SelectablePropertyResolverMixin):
         return self.resolve_selectable_field('weekly_contributor_counts')
 
 
-class FileTypesSummaryResolverMixin(SelectablePropertyResolverMixin):
-
-    file_types_summary = graphene.Field(graphene.List(FileTypesSummaryField))
-
-    def resolve_file_types_summary(self, info, **kwargs):
-        return self.resolve_selectable_field('file_types_summary')

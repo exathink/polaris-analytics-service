@@ -22,8 +22,6 @@ class WeeklyContributorCountsField(graphene.ObjectType):
         interfaces = (CumulativeCommitCount, WeeklyContributorCount)
 
 
-class FileTypesSummaryField(graphene.ObjectType):
-    class Meta:
-        interfaces = (FileTypesSummary,)
+
 
 

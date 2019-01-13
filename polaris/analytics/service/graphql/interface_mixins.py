@@ -19,7 +19,8 @@ from .interfaces import \
     ProjectCount, \
     RepositoryCount, \
     OrganizationRef, \
-    CommitChangeStats
+    CommitChangeStats, \
+    FileTypesSummary
 
 
 class CommitSummaryResolverMixin(KeyIdResolverMixin):
@@ -110,6 +111,10 @@ class CommitInfoResolverMixin(KeyIdResolverMixin):
 
     def resolve_stats(self, info, **kwargs):
         return init_tuple(self.stats_tuple, **(self.get_commit(info, **kwargs).stats or self.no_stats))
+
+    def resolve_file_types_summary(self, info, **kwargs):
+        file_types_summary = self.get_commit(info, **kwargs).file_types_summary or []
+        return [FileTypesSummary(**summary) for summary in file_types_summary]
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):

@@ -11,6 +11,7 @@
 from test.fixtures.commit_history_imported import *
 
 from polaris.analytics.db import api, model
+from polaris.utils.collections import find
 
 
 def init_contributors(contributor_aliases):
@@ -337,8 +338,134 @@ class TestImportCommitDetails:
         assert updated.stats
         assert updated.num_parents == 2
         assert updated.source_files == source_files
-        assert updated.source_file_types_summary == dict(py=1, txt=2)
-        assert updated.source_file_actions_summary == {'A': 2, 'U': 1}
+
+    def it_computes_source_file_type_summary_for_the_commit(self, import_commit_details_fixture):
+        keys = import_commit_details_fixture
+        source_files = [
+            dict(
+                key=uuid.uuid4().hex,
+                path='test/',
+                name='files1.txt',
+                file_type='txt',
+                version_count=1,
+                is_deleted=False,
+                action='A',
+                stats={"lines": 2, "insertions": 2, "deletions": 0}
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                path='test/',
+                name='files2.txt',
+                file_type='txt',
+                version_count=1,
+                is_deleted=False,
+                action='A',
+                stats={"lines": 2, "insertions": 2, "deletions": 0}
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                path='test/',
+                name='files2.py',
+                file_type='py',
+                version_count=1,
+                is_deleted=False,
+                action='U',
+                stats={"lines": 2, "insertions": 2, "deletions": 0}
+            )
+        ]
+
+        payload = dict(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            commit_details=[
+                dict(
+                    source_commit_id='1000',
+                    key=keys[0],
+                    parents=['99', '100'],
+                    stats=dict(
+                        files=1,
+                        lines=10,
+                        insertions=8,
+                        deletions=2
+                    ),
+                    source_files=source_files
+                )
+            ]
+        )
+        result = api.import_commit_details(**payload)
+        assert result['success']
+
+        updated = db.connection().execute(
+            "select source_file_types_summary from analytics.commits where source_commit_id='1000'").first()
+
+        # we expect an array of the form [{file_type:<name>, count:<count>}, ...]  but we dont the order so we test each
+        # expected type separately.
+        assert find(updated.source_file_types_summary, lambda s: s['file_type'] == 'py')['count'] == 1
+        assert find(updated.source_file_types_summary, lambda s: s['file_type'] == 'txt')['count'] == 2
+
+    def it_computes_source_file_action_summary_for_the_commit(self, import_commit_details_fixture):
+        keys = import_commit_details_fixture
+        source_files = [
+            dict(
+                key=uuid.uuid4().hex,
+                path='test/',
+                name='files1.txt',
+                file_type='txt',
+                version_count=1,
+                is_deleted=False,
+                action='A',
+                stats={"lines": 2, "insertions": 2, "deletions": 0}
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                path='test/',
+                name='files2.txt',
+                file_type='txt',
+                version_count=1,
+                is_deleted=False,
+                action='A',
+                stats={"lines": 2, "insertions": 2, "deletions": 0}
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                path='test/',
+                name='files2.py',
+                file_type='py',
+                version_count=1,
+                is_deleted=False,
+                action='U',
+                stats={"lines": 2, "insertions": 2, "deletions": 0}
+            )
+        ]
+
+        payload = dict(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            commit_details=[
+                dict(
+                    source_commit_id='1000',
+                    key=keys[0],
+                    parents=['99', '100'],
+                    stats=dict(
+                        files=1,
+                        lines=10,
+                        insertions=8,
+                        deletions=2
+                    ),
+                    source_files=source_files
+                )
+            ]
+        )
+        result = api.import_commit_details(**payload)
+        assert result['success']
+
+        updated = db.connection().execute(
+            "select source_file_actions_summary from analytics.commits where source_commit_id='1000'").first()
+
+        # we expect an array of the form [{action:<name>, count:<count>}, ...]  but we dont the order so we test each
+        # expected type separately.
+        assert find(updated.source_file_actions_summary, lambda s: s['action'] == 'A')['count'] == 2
+        assert find(updated.source_file_actions_summary, lambda s: s['action'] == 'U')['count'] == 1
 
     def it_registers_source_files(self, import_commit_details_fixture):
         keys = import_commit_details_fixture

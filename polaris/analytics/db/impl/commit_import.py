@@ -347,8 +347,6 @@ def create_source_files(session, repository, commit_details):
     # version counts. We cannot upsert with update on the same row twice in the same transaction. So we group
     # by source_file_key picking the maximum among all the version numbers seen in this batch.
 
-
-
     upsert = insert(source_files).from_select(
         ['key', 'repository_id', 'name', 'path', 'file_type', 'version_count'],
         select([

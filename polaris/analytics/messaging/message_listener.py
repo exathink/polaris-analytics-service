@@ -10,7 +10,10 @@
 
 import logging
 
-from polaris.analytics.messaging.subscribers import CommitsTopicSubscriber, CommandsTopicSubscriber, WorkItemsTopicSubscriber
+from polaris.analytics.messaging.subscribers import CommitsTopicSubscriber, \
+    AnalyticsTopicSubscriber, \
+    CommandsTopicSubscriber, \
+    WorkItemsTopicSubscriber
 
 from polaris.common import db
 from polaris.messaging.message_consumer import MessageConsumer
@@ -37,6 +40,7 @@ if __name__ == "__main__":
         name='polaris.analytics.message_listener',
         topic_subscriber_classes=[
             CommitsTopicSubscriber,
+            AnalyticsTopicSubscriber,
             WorkItemsTopicSubscriber,
             CommandsTopicSubscriber
         ],

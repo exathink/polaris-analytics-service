@@ -16,7 +16,7 @@ from polaris.messaging.topics import TopicSubscriber, CommitsTopic, AnalyticsTop
 from polaris.analytics.db import api
 from polaris.analytics.messaging.commands import ResolveCommitsWorkItems
 
-logger = logging.getLogger('polaris.analytics.messaging.commits_topic_subscriber')
+logger = logging.getLogger('polaris.analytics.commits_topic_subscriber')
 
 class CommitsTopicSubscriber(TopicSubscriber):
     def __init__(self, channel):

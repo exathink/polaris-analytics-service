@@ -8,59 +8,12 @@
 
 # Author: Krishna Kumar
 
-from test.fixtures.commit_history_imported import *
 from unittest.mock import patch
 from polaris.messaging.messages import CommitDetailsImported, CommitDetailsCreated
-from polaris.analytics.messaging.commands import ResolveCommitsWorkItems
 
 from polaris.messaging.test_utils import mock_channel, fake_send, assert_is_valid_message
 from polaris.analytics.messaging.subscribers import CommitsTopicSubscriber
-
-@pytest.yield_fixture()
-def commit_details_imported_payload(import_commit_details_fixture):
-    keys = import_commit_details_fixture
-    payload = dict(
-        organization_key=rails_organization_key,
-        repository_key=rails_repository_key,
-        repository_name='rails',
-        commit_details=[
-            dict(
-                source_commit_id=f"{key}",
-                key=keys[1000 - key].hex,
-                parents=['99', '100'],
-                stats=dict(
-                    files=1,
-                    lines=10,
-                    insertions=8,
-                    deletions=2
-                ),
-                source_files=[
-                    dict(
-                        key=uuid.uuid4().hex,
-                        path='test/',
-                        name='files1.txt',
-                        file_type='txt',
-                        version_count=1,
-                        is_deleted=False,
-                        action='A',
-                        stats={"lines": 2, "insertions": 2, "deletions": 0}
-                    ),
-                    dict(
-                        key=uuid.uuid4().hex,
-                        path='test/',
-                        name='files2.py',
-                        file_type='py',
-                        version_count=1,
-                        is_deleted=False,
-                        action='A',
-                        stats={"lines": 2, "insertions": 2, "deletions": 0}
-                    )
-                ]
-            )
-            for key in range(1000, 1010)
-        ]
-    )
-    yield payload
+from test.fixtures.commit_details import *
 
 class TestDispatchCommtDetailsImported:
 

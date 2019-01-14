@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 
-from test.fixtures.commit_history_imported import *
+from test.fixtures.commit_history import *
 from unittest.mock import patch
 from polaris.messaging.messages import CommitHistoryImported, CommitsCreated
 from polaris.analytics.messaging.commands import ResolveCommitsWorkItems

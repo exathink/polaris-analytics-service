@@ -9,15 +9,12 @@
 # Author: Krishna Kumar
 
 
-import functools
-
 from polaris.common import db
 from polaris.utils.collections import dict_select, dict_summarize_totals
 from polaris.analytics.db.model import commits, contributors, contributor_aliases, Repository, repositories, \
-    repositories_contributor_aliases, \
-    source_files
+    repositories_contributor_aliases
 
-from sqlalchemy import Column, String, select, BigInteger, Integer, and_, bindparam, func, distinct, or_, case
+from sqlalchemy import Column, String, select, Integer, and_, bindparam, func, distinct, or_, case
 
 from sqlalchemy.dialects.postgresql import insert, UUID
 
@@ -319,69 +316,8 @@ def update_repository_stats(session, repository, commits_temp):
             )
 
 
-def create_source_files(session, repository, commit_details):
-    source_files_temp = db.temp_table_from(
-        source_files,
-        table_name='source_files_temp',
-        exclude_columns=[
-            source_files.c.id
-        ]
-    )
-    source_files_temp.create(session.connection(), checkfirst=True)
-    session.connection().execute(
-        insert(source_files_temp).values([
-            dict(
-                repository_id=repository.id,
-                key=source_file['key'],
-                name=source_file['name'],
-                path=source_file['path'],
-                file_type=source_file['file_type'],
-                version_count=source_file['version_count']
-            )
-            for commit_detail in commit_details
-            for source_file in commit_detail['source_files']
-        ])
-    )
-    source_file_cols = [column.name for column in source_files_temp.columns]
-    # We need to do this rigmarole because the same file may be present in multiple commits, but with different
-    # version counts. We cannot upsert with update on the same row twice in the same transaction. So we group
-    # by source_file_key picking the maximum among all the version numbers seen in this batch.
-
-    upsert = insert(source_files).from_select(
-        ['key', 'repository_id', 'name', 'path', 'file_type', 'version_count'],
-        select([
-            source_files_temp.c.key,
-            func.min(source_files_temp.c.repository_id).label('repository_id'),
-            func.min(source_files_temp.c.name).label('name'),
-            func.min(source_files_temp.c.path).label('path'),
-            func.min(source_files_temp.c.file_type).label('file_type'),
-            func.max(source_files_temp.c.version_count).label('version_count')
-        ]).select_from(
-            source_files_temp
-        ).group_by(
-            source_files_temp.c.key
-        )
-    )
-    session.connection().execute(
-        upsert.on_conflict_do_update(
-            index_elements=['key'],
-            set_=dict(
-                # we do a max of the proposed insertion value and the current value to ensure
-                # that the version count in monotonically increasing under updates in arbitrary order.
-                version_count=func.greatest(
-                    source_files.c.version_count,
-                    upsert.excluded.version_count
-                )
-            )
-        )
-    )
-
-
 def import_commit_details(session, repository_key, commit_details):
     repository = Repository.find_by_repository_key(session, repository_key)
-
-    create_source_files(session, repository, commit_details)
-
     if repository:
         commits_temp = db.create_temp_table('commits_temp', [
             commits.c.key,
@@ -425,3 +361,5 @@ def import_commit_details(session, repository_key, commit_details):
         return dict(
             update_count=update_count
         )
+
+

@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
-
+import polaris.analytics.db.impl.source_file_import
 from polaris.common import db
 from polaris.analytics.db import impl
 from sqlalchemy.exc import SQLAlchemyError
@@ -37,3 +37,15 @@ def import_commit_details(organization_key, repository_key, commit_details):
         return db.process_exception("Import commit details failed", exc)
     except Exception as e:
         return db.failure_message('Import commit details failed', e)
+
+
+def register_source_file_versions(organization_key, repository_key, commit_details):
+    try:
+        with db.orm_session() as session:
+            return success(
+                polaris.analytics.db.impl.source_file_import.register_source_file_versions(session, repository_key, commit_details)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Register source file versions failed", exc)
+    except Exception as e:
+        return db.failure_message('Register source file versions failed', e)

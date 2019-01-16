@@ -77,7 +77,7 @@ class CommitsTopicSubscriber(TopicSubscriber):
         repository_name = message['repository_name']
         repository_key = message['repository_key']
         logger.info(
-            f'Processing {message.message_type} for organization {organization_key} repository {repository_name}')
+            f'Organization {organization_key} repository {repository_name}')
 
         if len(message['new_commits']) > 0:
             return raise_on_failure(
@@ -89,8 +89,6 @@ class CommitsTopicSubscriber(TopicSubscriber):
                     new_contributors=message.dict['new_contributors']
                 )
             )
-
-
         else:
             logger.info(f" {message['total_commits']} total commits. No new commits")
 
@@ -100,7 +98,7 @@ class CommitsTopicSubscriber(TopicSubscriber):
         repository_name = message['repository_name']
         commit_details = message['commit_details']
         logger.info(
-            f'Processing {message.message_type} for organization {organization_key} repository {repository_name}')
+            f'Organization {organization_key} repository {repository_name}')
 
         if len(commit_details) > 0:
             return raise_on_failure(

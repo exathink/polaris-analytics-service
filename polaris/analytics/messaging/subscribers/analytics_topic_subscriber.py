@@ -39,7 +39,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         repository_name = message['repository_name']
         commit_details = message['commit_details']
         logger.info(
-            f'Processing {message.message_type} for organization {organization_key} repository {repository_name}')
+            f'Organization {organization_key} repository {repository_name}')
 
         if len(commit_details) > 0:
             return raise_on_failure(

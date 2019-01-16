@@ -15,6 +15,7 @@ from polaris.common import db
 
 
 def create_source_files(session, repository, commit_details):
+
     source_files_temp = db.temp_table_from(
         source_files,
         table_name='source_files_temp',
@@ -22,6 +23,7 @@ def create_source_files(session, repository, commit_details):
             source_files.c.id
         ]
     )
+
     source_files_temp.create(session.connection(), checkfirst=True)
     session.connection().execute(
         insert(source_files_temp).values([
@@ -52,6 +54,8 @@ def create_source_files(session, repository, commit_details):
             func.max(source_files_temp.c.version_count).label('version_count')
         ]).select_from(
             source_files_temp
+        ).where(
+            source_files_temp.c.key != None
         ).group_by(
             source_files_temp.c.key
         )

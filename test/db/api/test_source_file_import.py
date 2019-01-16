@@ -60,6 +60,31 @@ class TestSourceFileImport:
         assert db.connection().execute(
             "select count(id) from analytics.source_files").scalar() == 2
 
+    def it_allows_commits_with_empty_source_file_lists(self, import_commit_details_fixture):
+        keys = import_commit_details_fixture
+        payload = dict(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            commit_details=[
+                dict(
+                    source_commit_id='1000',
+                    key=keys[0],
+                    parents=['99', '100'],
+                    stats=dict(
+                        files=1,
+                        lines=10,
+                        insertions=8,
+                        deletions=2
+                    ),
+                    source_files=[]
+                )
+            ]
+        )
+        result = api.register_source_file_versions(**payload)
+        assert result['success']
+        assert db.connection().execute(
+            "select count(id) from analytics.source_files").scalar() == 0
+
     def it_inserts_source_files_correctly_with_multiple_commits(self, import_commit_details_fixture):
         keys = import_commit_details_fixture
         payload = dict(

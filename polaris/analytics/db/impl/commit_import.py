@@ -337,7 +337,6 @@ def import_commit_details(session, repository_key, commit_details):
                     parents=commit_detail['parents'],
                     stats=commit_detail['stats'],
                     num_parents=len(commit_detail['parents']),
-                    source_files=commit_detail['source_files'],
                     source_file_types_summary=dict_summarize_totals(commit_detail['source_files'], field='file_type'),
                     source_file_actions_summary=dict_summarize_totals(commit_detail['source_files'], field='action')
                 )

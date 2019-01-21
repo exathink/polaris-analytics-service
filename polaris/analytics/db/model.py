@@ -390,7 +390,7 @@ class WorkItemsSource(Base):
     commit_mapping_scope = Column(String, nullable=False, default='organization', server_default="'organization'")
     commit_mapping_scope_key = Column(UUID(as_uuid=True), nullable=False)
 
-    work_items = relationship('WorkItems')
+    work_items = relationship('WorkItem')
 
 
 work_items_sources = WorkItemsSource.__table__

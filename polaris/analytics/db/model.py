@@ -41,6 +41,11 @@ accounts_organizations = Table(
     Column('organization_id', ForeignKey('organizations.id'), primary_key=True, index=True)
 )
 
+work_items_commits = Table(
+    'work_items_commits', Base.metadata,
+    Column('work_item_id', ForeignKey('work_items.id'), primary_key=True, index=True),
+    Column('commit_id', ForeignKey('commits.id'), primary_key=True, index=True)
+)
 
 repositories_contributor_aliases = Table(
     'repositories_contributor_aliases', Base.metadata,
@@ -334,6 +339,10 @@ class Commit(Base):
     committer_alias = relationship('ContributorAlias', foreign_keys=[committer_contributor_alias_id])
     author_alias = relationship('ContributorAlias', foreign_keys=[author_contributor_alias_id])
 
+    work_items = relationship('WorkItem',
+                              secondary=work_items_commits,
+                              back_populates="commits")
+
 
 commits = Commit.__table__
 
@@ -356,6 +365,59 @@ class SourceFile(Base):
 
 
 source_files = SourceFile.__table__
+
+# -------------------------------------
+# Work Tracking
+# --------------------------------------
+
+
+class WorkItemsSource(Base):
+    __tablename__ = 'work_items_sources'
+
+    id = Column(Integer, primary_key=True)
+    key = Column(UUID(as_uuid=True), nullable=False, unique=True)
+    # User facing display name for the instance.
+    name = Column(String, nullable=False)
+    organization_key = Column(UUID(as_uuid=True), nullable=False)
+    # type of integration: github, github_enterprise, jira, pivotal_tracker etc..
+    integration_type = Column(String, nullable=False)
+
+    # Commit mapping scope specifies the repositories that are mapped to this
+    # work item source. The valid values are ('organization', 'project', 'repository')
+    # Given the commit mapping scope key, commits originating from all repositories
+    # within that specific scope (instance of org, project or repository) will be evaluated to
+    # see if they can be mapped to a given work item originating from this work items source.
+    commit_mapping_scope = Column(String, nullable=False, default='organization', server_default="'organization'")
+    commit_mapping_scope_key = Column(UUID(as_uuid=True), nullable=False)
+
+    work_items = relationship('WorkItems')
+
+
+work_items_sources = WorkItemsSource.__table__
+
+
+class WorkItem(Base):
+    __tablename__ = 'work_items'
+
+    id = Column(BigInteger, primary_key=True)
+    key = Column(UUID(as_uuid=True), nullable=False, unique=True)
+    name = Column(String(256), nullable=False)
+    description = Column(Text, nullable=True)
+    is_bug = Column(Boolean, nullable=False, default=False, server_default='FALSE')
+    tags = Column(ARRAY(String), nullable=False, default=[], server_default='{}')
+    url = Column(String, nullable=True)
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
+
+    # Work Items Source relationship
+    work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'))
+    work_items_source = relationship('WorkItemsSource', back_populates='work_items')
+    commits = relationship("Commit",
+                                 secondary=work_items_commits,
+                                 back_populates="work_items")
+
+
+work_items = WorkItem.__table__
 
 def recreate_all(engine):
     Base.metadata.drop_all(engine)

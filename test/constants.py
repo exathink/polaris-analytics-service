@@ -20,12 +20,7 @@ exathink_organization_key = uuid.uuid4()
 # Repositories
 rails_repository_key = uuid.uuid4()
 
-
-# work_item_sources
-rails_work_items_source_key = uuid.uuid4()
-polaris_work_items_source_key = uuid.uuid4()
-empty_work_items_source_key = uuid.uuid4()
-
 # contributor keys
 joe_contributor_key = uuid.uuid4().hex
 billy_contributor_key = uuid.uuid4().hex
+

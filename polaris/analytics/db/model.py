@@ -95,6 +95,7 @@ class Organization(Base):
     projects = relationship('Project')
     contributors = relationship('Contributor', secondary=organizations_contributors, back_populates='organizations')
     repositories = relationship('Repository')
+    work_items_sources = relationship('WorkItemsSource')
 
 
 
@@ -390,7 +391,18 @@ class WorkItemsSource(Base):
     commit_mapping_scope = Column(String, nullable=False, default='organization', server_default="'organization'")
     commit_mapping_scope_key = Column(UUID(as_uuid=True), nullable=False)
 
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    organization = relationship('Organization', back_populates='work_items_sources')
+
     work_items = relationship('WorkItem')
+
+    @classmethod
+    def find_by_organization_key(cls, session, organization_key):
+        return session.query(cls).filter(cls.organization_key == organization_key).all()
+
+    @classmethod
+    def find_by_work_items_source_key(cls, session, work_items_source_key):
+        return session.query(cls).filter(cls.key == work_items_source_key).first()
 
 
 work_items_sources = WorkItemsSource.__table__
@@ -402,9 +414,11 @@ class WorkItem(Base):
     id = Column(BigInteger, primary_key=True)
     key = Column(UUID(as_uuid=True), nullable=False, unique=True)
     name = Column(String(256), nullable=False)
+    display_id = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     is_bug = Column(Boolean, nullable=False, default=False, server_default='FALSE')
     tags = Column(ARRAY(String), nullable=False, default=[], server_default='{}')
+    state = Column(String, nullable=True)
     url = Column(String, nullable=True)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
@@ -418,6 +432,7 @@ class WorkItem(Base):
 
 
 work_items = WorkItem.__table__
+
 
 def recreate_all(engine):
     Base.metadata.drop_all(engine)

@@ -51,9 +51,9 @@ class TestDispatchCommitHistoryImported:
         payload = commit_history_imported_payload
         message = fake_send(CommitHistoryImported(send=payload))
         channel = mock_channel()
-        commits_created_message, resolve_work_items_command = CommitsTopicSubscriber(channel).dispatch(channel, message)
+        commits_created_message = CommitsTopicSubscriber(channel).dispatch(channel, message)
         assert_is_valid_message(CommitsCreated, commits_created_message)
-        assert_is_valid_message(ResolveCommitsWorkItems, resolve_work_items_command)
+
 
 
     def it_publishes_the_responses_correctly(self, setup_repo_org, commit_history_imported_payload, cleanup):
@@ -61,11 +61,9 @@ class TestDispatchCommitHistoryImported:
         message = fake_send(CommitHistoryImported(send=payload))
         channel = mock_channel()
         with patch('polaris.messaging.topics.AnalyticsTopic.publish') as analytics_publish:
-            with patch('polaris.messaging.topics.CommandsTopic.publish') as commands_publish:
-                commits_created_message, resolve_work_items_command = CommitsTopicSubscriber(channel).dispatch(channel,
-                                                                                                               message)
+                commits_created_message = CommitsTopicSubscriber(channel).dispatch(channel, message)
                 analytics_publish.assert_called_with(commits_created_message)
-                commands_publish.assert_called_with(resolve_work_items_command)
+
 
 
 

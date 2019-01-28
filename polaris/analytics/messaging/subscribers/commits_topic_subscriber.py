@@ -44,19 +44,7 @@ class CommitsTopicSubscriber(TopicSubscriber):
                     in_response_to=message
                 )
                 AnalyticsTopic(channel).publish(commits_created_message)
-
-                resolve_work_items_command = ResolveCommitsWorkItems(
-                    send=dict(
-                        organization_key=message['organization_key'],
-                        repository_key=message['repository_key'],
-                        new_commits=result['new_commits']
-                    ),
-                    in_response_to=message
-                )
-                CommandsTopic(channel).publish(
-                    resolve_work_items_command
-                )
-                return commits_created_message, resolve_work_items_command
+                return commits_created_message
 
         elif CommitDetailsImported.message_type == message.message_type:
             result = self.process_commit_details_imported(message)

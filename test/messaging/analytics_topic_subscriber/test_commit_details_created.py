@@ -22,9 +22,5 @@ class TestDispatchCommtDetailsCreated:
         message = fake_send(CommitDetailsCreated(send=payload))
         channel = mock_channel()
         result = AnalyticsTopicSubscriber(channel).dispatch(channel, message)
-        assert result['success']
+        assert result
 
-
-    @pytest.skip
-    def it_publishes_responses_correctly(self, commit_details_imported_payload, cleanup):
-        pass

@@ -24,7 +24,8 @@ logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
 
 def register_work_items_source(session, organization_key, work_items_source_summmary):
-    work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_summmary['work_items_source_key'])
+    work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_summmary[
+        'work_items_source_key'])
     if work_items_source is None:
         organization = Organization.find_by_organization_key(session, organization_key)
         work_items_source = WorkItemsSource(
@@ -80,21 +81,9 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
 
 def get_commits_query(mapping_scope):
     output_cols = [
-        repositories.c.name.label('repository_name'),
-        commits.c.source_commit_id,
-        commits.c.commit_date,
-        commits.c.commit_date_tz_offset,
-        commits.c.committer_contributor_name,
-        commits.c.committer_contributor_key,
-        commits.c.author_date,
-        commits.c.author_date_tz_offset,
-        commits.c.author_contributor_name,
-        commits.c.author_contributor_key,
-        commits.c.commit_message,
-        commits.c.created_on_branch,
-        commits.c.stats,
-        commits.c.parents,
-        commits.c.created_at
+        commits.c.id,
+        commits.c.key,
+        commits.c.commit_message
     ]
     if mapping_scope == 'organization':
         return select(
@@ -107,7 +96,7 @@ def get_commits_query(mapping_scope):
             )
         ).where(
             and_(
-                organizations.c.organization_key == bindparam('commit_mapping_scope_key'),
+                organizations.c.key == bindparam('commit_mapping_scope_key'),
                 commits.c.author_date >= bindparam('earliest_created')
             )
         )
@@ -125,7 +114,7 @@ def get_commits_query(mapping_scope):
             )
         ).where(
             and_(
-                projects.c.project_key == bindparam('commit_mapping_scope_key'),
+                projects.c.key == bindparam('commit_mapping_scope_key'),
                 commits.c.author_date >= bindparam('earliest_created')
             )
         )
@@ -144,138 +133,118 @@ def get_commits_query(mapping_scope):
         )
 
 
-def resolve_display_id_commits_by_repo(commits_batch, integration_type, input_display_ids,
-                                       resolved_display_id_commits_by_repo):
+def resolve_display_id_commits(commits_batch, integration_type, input_display_ids):
     resolver = WorkItemResolver.get_resolver(integration_type)
     assert resolver, f"No work item resolver registered for integration type {integration_type}"
-
+    resolved = []
     for commit in commits_batch:
         display_ids = resolver.resolve(commit.commit_message)
         if len(display_ids) > 0:
             for display_id in display_ids:
-
                 if display_id in input_display_ids:
-                    repo = commit['repository_name']
-                    repo_display_id_commits = resolved_display_id_commits_by_repo.get(repo, {})
-                    display_id_commits = repo_display_id_commits.get(display_id, [])
-                    display_id_commits.append(
-                        dict(
-                            source_commit_id=commit.source_commit_id,
-                            commit_date=commit.commit_date,
-                            commit_date_tz_offset=commit.commit_date_tz_offset,
-                            committer_contributor_name=commit.committer_contributor_name,
-                            committer_contributor_key=commit.committer_contributor_key,
-                            author_date=commit.author_date,
-                            author_date_tz_offset=commit.author_date_tz_offset,
-                            author_contributor_name=commit.author_contributor_name,
-                            author_contributor_key=commit.author_contributor_key,
-                            commit_message=commit.commit_message,
-                            created_on_branch=commit.created_on_branch,
-                            parents=commit.parents,
-                            stats=commit.stats,
-                            created_at=commit.created_at
-                        )
-                    )
-                    repo_display_id_commits[display_id] = display_id_commits
-                    resolved_display_id_commits_by_repo[repo] = repo_display_id_commits
+                    resolved.append(dict(
+                        commit_id=commit.id,
+                        commit_key=commit.key,
+                        work_item_key=input_display_ids[display_id]
+                    ))
+
+    return resolved
 
 
 map_display_ids_to_commits_page_size = 1000
 
 
-def map_display_ids_to_commits(session, work_item_summaries, work_items_source_summary):
-    commit_query = get_commits_query(work_items_source_summary['commit_mapping_scope'])
+def map_display_ids_to_commits(session, work_item_summaries, work_items_source):
+    commit_query = get_commits_query(work_items_source.commit_mapping_scope)
     earliest_created = reduce(
         lambda earliest, work_item: min(earliest, work_item['created_at']),
         work_item_summaries,
         work_item_summaries[0]['created_at']
     )
     # first get a total so we can paginate through commits
-    total = session.connection.execute(
+    total = session.connection().execute(
         select([func.count()]).select_from(
             commit_query.alias('T')
         ), dict(
-            commit_mapping_scope_key=work_items_source_summary['commit_mapping_scope_key'],
+            commit_mapping_scope_key=work_items_source.commit_mapping_scope_key,
             earliest_created=earliest_created
         )
     ).scalar()
 
-    input_display_ids = {work_item['display_id'] for work_item in work_item_summaries}
-    resolved_display_id_commits_by_repo = {}
+    input_display_ids = {work_item['display_id']: work_item['key'] for work_item in work_item_summaries}
+    resolved = []
 
     fetched = 0
     batch_size = map_display_ids_to_commits_page_size
     offset = 0
     while fetched < total:
-        commits__batch = session.connection.execute(
+        commits_batch = session.connection().execute(
             commit_query.limit(batch_size).offset(offset),
             dict(
-                commit_mapping_scope_key=work_items_source_summary['commit_mapping_scope_key'],
+                commit_mapping_scope_key=work_items_source.commit_mapping_scope_key,
                 earliest_created=earliest_created
             )
         ).fetchall()
 
-        resolve_display_id_commits_by_repo(
-            commits__batch,
-            work_items_source_summary['integration_type'],
+        resolved.extend(resolve_display_id_commits(
+            commits_batch,
+            work_items_source.integration_type,
             input_display_ids,
-            resolved_display_id_commits_by_repo
-        )
+        ))
         offset = offset + batch_size
-        fetched = fetched + len(commits__batch)
+        fetched = fetched + len(commits_batch)
 
-    return resolved_display_id_commits_by_repo
+    return resolved
 
 
-def resolve_commits_for_work_items(session, organization_key, work_items_source_summary, work_item_summaries):
-    logger.info(
-        f"Resolve commits_work_items for {organization_key} and work items source {work_items_source_summary.get('name')}")
-
-    result = []
+def resolve_commits_for_work_items(session, organization_key, work_items_source_key, work_item_summaries):
+    resolved = []
     if len(work_item_summaries) > 0:
+        work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+        if work_items_source is not None:
+            resolved = map_display_ids_to_commits(session, work_item_summaries, work_items_source)
+            if len(resolved) > 0:
+                wc_temp = db.create_temp_table('work_items_commits_temp', [
+                    Column('commit_id', BigInteger),
+                    Column('work_item_key', UUID)
+                ])
+                wc_temp.create(session.connection(), checkfirst=True)
+                session.connection().execute(
+                    wc_temp.insert().values([
+                        dict_select(
+                            rel, [
+                                'commit_id',
+                                'work_item_key'
+                            ]
+                        )
+                        for rel in resolved
+                    ])
+                )
 
-        display_id_commits_by_repo = map_display_ids_to_commits(session, work_item_summaries, work_items_source_summary)
-        # now map the display_id_commits mapping back out in terms of work_item_keys and commits keys
-        for repo, display_id_commits in display_id_commits_by_repo.items():
-            work_item_commits = []
-            commits_work_items_map = {}
-            for work_item in work_item_summaries:
-                display_id = work_item['display_id']
-                if display_id in display_id_commits:
-                    resolved_commits = display_id_commits[display_id]
-                    if len(resolved_commits) > 0:
-                        # we found some commits referencing this work_item
-                        work_item_commits.append(
-                            dict(
-                                work_item_key=work_item['work_item_key'],
-                                commit_headers=resolved_commits
+                session.connection().execute(
+                    insert(work_items_commits_table).from_select(
+                        ['work_item_id', 'commit_id'],
+                        select([
+                            work_items.c.id.label('work_item_id'),
+                            wc_temp.c.commit_id
+                        ]).select_from(
+                            wc_temp.join(
+                                work_items, wc_temp.c.work_item_key == work_items.c.key
                             )
                         )
-                        for commit in resolved_commits:
-                            commit_key = commit['source_commit_id']
-                            current_work_items = commits_work_items_map.get(commit_key, [])
-                            current_work_items.append(work_item)
-                            commits_work_items_map[commit_key] = current_work_items
-
-            commits_work_items = [
-                dict(
-                    commit_key=commit_key,
-                    work_items=work_item_summaries
+                    ).on_conflict_do_nothing(
+                        index_elements=['work_item_id', 'commit_id']
+                    )
                 )
-                for commit_key, work_item_summaries in commits_work_items_map.items()
-            ]
-            result.append(
-                dict(
-                    organization_key=organization_key,
-                    repository_name=repo,
-                    work_items_commits=work_item_commits,
-                    commits_work_items=commits_work_items
-                )
-            )
 
         return dict(
-            success=True,
-            resolved=result
+            resolved=[
+                dict(
+                    work_item_key=wic['work_item_key'],
+                    commit_key=wic['commit_key'].hex
+                )
+                for wic in resolved
+            ]
         )
 
 

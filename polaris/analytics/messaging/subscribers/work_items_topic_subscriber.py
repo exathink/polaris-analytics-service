@@ -10,7 +10,7 @@
 import logging
 
 from polaris.messaging.messages import WorkItemsCreated, WorkItemsCommitsResolved
-from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic, CommitsTopic
+from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic, AnalyticsTopic
 from polaris.utils.collections import dict_select
 from polaris.messaging.utils import raise_on_failure
 from polaris.analytics.db import api
@@ -34,9 +34,9 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
         if WorkItemsCreated.message_type == message.message_type:
             resolved = self.process_work_items_created(message)
             if resolved:
-                responses = []
-                logger.info(f"New work_item commits mappings found for {len(resolved)} repositories")
-                return responses
+                work_items_created = WorkItemsCreated(send=message.dict, in_response_to=message)
+                AnalyticsTopic(channel).publish(work_items_created)
+                return work_items_created
 
     @staticmethod
     def process_work_items_created(message):

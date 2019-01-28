@@ -72,3 +72,14 @@ def import_new_work_items(organization_key, work_item_source_key, work_item_summ
         return db.process_exception("Import new_work_items failed", exc)
     except Exception as e:
         return db.failure_message('Import new_work_items failed', e)
+
+def resolve_commits_for_new_work_items(organization_key, work_item_source_key, work_item_summaries):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.resolve_commits_for_work_items(session, organization_key, work_item_source_key, work_item_summaries)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Import new_work_items failed", exc)
+    except Exception as e:
+        return db.failure_message('Import new_work_items failed', e)

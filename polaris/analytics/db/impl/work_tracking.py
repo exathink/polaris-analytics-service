@@ -13,12 +13,12 @@ from polaris.common import db
 from polaris.utils.collections import dict_select
 from polaris.utils.exceptions import ProcessingException
 
-from sqlalchemy import Column, BigInteger, select, and_, bindparam, func
+from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func
 from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.utils.work_tracking import WorkItemResolver
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
-    repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization
+    repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository
 
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
@@ -373,3 +373,157 @@ def update_work_items_commits(organization_key, repository_name, work_items_comm
                 )
             )
             return updated_count
+
+
+def resolve_display_ids(session, display_id_commits):
+    dic_temp = db.create_temp_table(
+        'display_id_commits_temp', [
+            Column('display_id', String),
+            Column('commit_key', UUID),
+            Column('commit_id', BigInteger),
+            Column('work_item_id', BigInteger),
+            Column('work_item_key', UUID)
+        ]
+    )
+    dic_temp.create(session.connection(), checkfirst=True)
+    session.connection().execute(
+        dic_temp.insert().values(display_id_commits)
+    )
+    session.connection().execute(
+        dic_temp.update(dict(
+
+        ))
+    )
+
+
+def find_work_items_sources(session, organization_key, repository_key):
+    """
+    Work Item Sources are searched for from the most specific to the most general until the first one is found.
+    If there is a work item source mapped to the repository only that is searched. Else if there are work items sources
+    mapped to a project that repository belongs to they are returned. Else any work items sources mapped to the organization
+    are returned.
+
+    :param session:
+    :param organization_key:
+    :param repository_key:
+    :return:
+    """
+    work_item_sources = WorkItemsSource.find_by_commit_mapping_scope(
+        session,
+        organization_key,
+        commit_mapping_scope='repository',
+        commit_mapping_scope_keys=[repository_key]
+    )
+    if len(work_item_sources) == 0:
+        repository = Repository.find_by_repository_key(session, repository_key)
+        if len(repository.projects) > 0:
+            work_item_sources = WorkItemsSource.find_by_commit_mapping_scope(
+                session,
+                organization_key,
+                commit_mapping_scope='project',
+                commit_mapping_scope_keys=[project.key for project in repository.projects]
+            )
+
+        if len(work_item_sources) == 0:
+            work_item_sources = WorkItemsSource.find_by_commit_mapping_scope(
+                session,
+                organization_key,
+                commit_mapping_scope='organization',
+                commit_mapping_scope_keys=[organization_key]
+            )
+
+    return work_item_sources
+
+
+def update_commits_work_items(session, repository_key, commits_display_id):
+    cdi_temp = db.create_temp_table(
+        'commits_display_ids_temp', [
+            Column('work_items_source_id', Integer),
+            Column('repository_id', Integer),
+            Column('source_commit_id', String),
+            Column('commit_key', UUID),
+            Column('display_id', String),
+            Column('commit_id', BigInteger),
+            Column('work_item_id', BigInteger),
+            Column('work_item_key', UUID)
+        ]
+    )
+    cdi_temp.create(session.connection(), checkfirst=True)
+
+    session.connection().execute(
+        cdi_temp.insert().values(commits_display_id)
+    )
+
+    session.connection().execute(
+        cdi_temp.update().where(
+            and_(
+                commits.c.repository_id == cdi_temp.c.repository_id,
+                commits.c.source_commit_id == cdi_temp.c.source_commit_id
+            )
+        ).values(
+            commit_id=commits.c.id
+        )
+    )
+
+    session.connection().execute(
+        cdi_temp.update().where(
+            and_(
+                work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
+                work_items.c.display_id == cdi_temp.c.display_id
+            )
+        ).values(
+            work_item_key=work_items.c.key,
+            work_item_id=work_items.c.id
+        )
+    )
+
+    session.connection().execute(
+        insert(work_items_commits_table).from_select(
+            ['work_item_id', 'commit_id'],
+            select([cdi_temp.c.work_item_id, cdi_temp.c.commit_id]).where(
+                cdi_temp.c.work_item_id != None
+            )
+        ).on_conflict_do_nothing(
+            index_elements=['work_item_id', 'commit_id']
+        )
+    )
+    return [
+        dict(
+            commit_key=row.commit_key,
+            work_item_key=row.work_item_key
+        )
+        for row in session.connection().execute(
+            select([cdi_temp.c.work_item_key, cdi_temp.c.commit_key]).where(
+                cdi_temp.c.work_item_id != None
+            ).distinct()
+        ).fetchall()
+    ]
+
+
+def resolve_work_items_for_commits(session, organization_key, repository_key, commit_summaries):
+    resolved = []
+    repository = Repository.find_by_repository_key(session, repository_key)
+    if repository is not None:
+        work_items_sources = find_work_items_sources(session, organization_key, repository_key)
+        if len(work_items_sources) > 0:
+            commits_display_ids = []
+            for work_items_source in work_items_sources:
+                work_item_resolver = WorkItemResolver.get_resolver(work_items_source.integration_type)
+                for commit in commit_summaries:
+                    for display_id in work_item_resolver.resolve(commit['commit_message']):
+                        commits_display_ids.append(
+                            dict(
+                                repository_id=repository.id,
+                                source_commit_id=commit['source_commit_id'],
+                                commit_key=commit['key'],
+                                work_items_source_id=work_items_source.id,
+                                display_id=display_id
+                            )
+                        )
+
+            resolved = update_commits_work_items(session, repository_key, commits_display_ids)
+
+    return dict(
+        resolved=resolved
+    )
+

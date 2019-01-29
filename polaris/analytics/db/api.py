@@ -12,8 +12,10 @@ from polaris.common import db
 from polaris.analytics.db import impl
 from sqlalchemy.exc import SQLAlchemyError
 
+
 def success(result):
     return dict(success=True, **result)
+
 
 def import_new_commits(organization_key, repository_key, new_commits, new_contributors):
     try:
@@ -62,6 +64,7 @@ def register_work_items_source(organization_key, work_items_source_summary):
     except Exception as e:
         return db.failure_message('Import new_work_items failed', e)
 
+
 def import_new_work_items(organization_key, work_item_source_key, work_item_summaries):
     try:
         with db.orm_session() as session:
@@ -73,13 +76,27 @@ def import_new_work_items(organization_key, work_item_source_key, work_item_summ
     except Exception as e:
         return db.failure_message('Import new_work_items failed', e)
 
+
 def resolve_commits_for_new_work_items(organization_key, work_item_source_key, work_item_summaries):
     try:
         with db.orm_session() as session:
             return success(
-                impl.resolve_commits_for_work_items(session, organization_key, work_item_source_key, work_item_summaries)
+                impl.resolve_commits_for_work_items(session, organization_key, work_item_source_key,
+                                                    work_item_summaries)
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Import new_work_items failed", exc)
+        return db.process_exception("Resolve commits for new work_items", exc)
     except Exception as e:
-        return db.failure_message('Import new_work_items failed', e)
+        return db.failure_message('Resolve commits for new work_items', e)
+
+
+def resolve_work_items_for_commits(organization_key, repository_key, commit_summaries):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.resolve_work_items_for_commits(session, organization_key, repository_key, commit_summaries)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Resolve work items for commits", exc)
+    except Exception as e:
+        return db.failure_message('Resolve work items for commits', e)

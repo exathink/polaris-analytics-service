@@ -64,7 +64,7 @@ def org_repo_fixture(setup_schema):
         ])
 
         projects['venus'].repositories.extend([
-            repositories['gamma']
+            repositories['alpha'], repositories['gamma']
         ])
 
         session.add(organization)

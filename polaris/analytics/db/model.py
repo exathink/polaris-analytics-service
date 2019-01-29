@@ -404,9 +404,23 @@ class WorkItemsSource(Base):
     def find_by_work_items_source_key(cls, session, work_items_source_key):
         return session.query(cls).filter(cls.key == work_items_source_key).first()
 
+    @classmethod
+    def find_by_commit_mapping_scope(cls, session, organization_key, commit_mapping_scope, commit_mapping_scope_keys):
+        return session.query(cls).filter(
+            and_(
+                cls.organization_key == organization_key,
+                cls.commit_mapping_scope == commit_mapping_scope,
+                cls.commit_mapping_scope_key.in_(commit_mapping_scope_keys)
+            )
+        ).all()
+
 
 work_items_sources = WorkItemsSource.__table__
-
+Index('ix_analytics_work_items_sources_commit_mapping_scope',
+      work_items_sources.c.organization_key,
+      work_items_sources.c.commit_mapping_scope,
+      work_items_sources.c.commit_mapping_scope_key
+)
 
 class WorkItem(Base):
     __tablename__ = 'work_items'

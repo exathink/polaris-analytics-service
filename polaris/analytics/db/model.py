@@ -446,7 +446,10 @@ class WorkItem(Base):
 
 
 work_items = WorkItem.__table__
-
+Index('ix_analytics_work_items_work_items_source_id_display_id',
+      work_items.c.work_items_source_id,
+      work_items.c.display_id
+)
 
 def recreate_all(engine):
     Base.metadata.drop_all(engine)

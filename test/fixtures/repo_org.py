@@ -17,13 +17,26 @@ from test.constants import rails_organization_key, rails_repository_key
 @pytest.yield_fixture
 def cleanup(setup_schema):
     yield
-
+    db.connection().execute("delete from analytics.work_items")
+    db.connection().execute("delete from analytics.work_items_sources")
     db.connection().execute("delete from analytics.commits")
     db.connection().execute("delete from analytics.source_files")
     db.connection().execute("delete from analytics.contributor_aliases")
     db.connection().execute("delete from analytics.contributors")
     db.connection().execute("delete from analytics.repositories")
     db.connection().execute("delete from analytics.organizations")
+
+@pytest.yield_fixture()
+def setup_org(cleanup):
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        organization = model.Organization(
+            name='rails',
+            key=rails_organization_key
+        )
+        session.add(organization)
+
+    yield organization
 
 
 @pytest.yield_fixture

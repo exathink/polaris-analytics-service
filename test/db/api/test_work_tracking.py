@@ -9,10 +9,58 @@
 # Author: Krishna Kumar
 
 
-
+import uuid
 from test.fixtures.work_items import *
 from polaris.analytics.db import api
+from polaris.common import db
 
+class TestRegisterWorkItemsSource:
+
+    def it_registers_a_work_item_source(self, setup_org):
+        organization = setup_org
+        source_key = uuid.uuid4()
+        result = api.register_work_items_source(
+            organization.key,
+            dict(
+                key=source_key,
+                name='rails',
+                integration_type='github',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=organization.key
+        ))
+
+        assert result['created']
+        assert db.connection().execute(
+            f"select count(id) from analytics.work_items_sources where key='{source_key}'"
+        ).scalar() == 1
+
+    def it_is_idempotent(self, setup_org):
+        organization = setup_org
+        source_key = uuid.uuid4()
+        # call once
+        api.register_work_items_source(
+            organization.key,
+            dict(
+                key=source_key,
+                name='rails',
+                integration_type='github',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=organization.key
+            ))
+        # call again
+        result = api.register_work_items_source(
+            organization.key,
+            dict(
+                key=source_key,
+                name='rails',
+                integration_type='github',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=organization.key
+            ))
+        assert not result['created']
+        assert db.connection().execute(
+            f"select count(id) from analytics.work_items_sources where key='{source_key}'"
+        ).scalar() == 1
 
 class TestImportWorkItems:
 

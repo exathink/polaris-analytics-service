@@ -25,19 +25,30 @@ logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
 def register_work_items_source(session, organization_key, work_items_source_summmary):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_summmary[
-        'work_items_source_key'])
+        'key'])
+
+    created = False
     if work_items_source is None:
         organization = Organization.find_by_organization_key(session, organization_key)
-        work_items_source = WorkItemsSource(
-            key=work_items_source_summmary['work_items_source_key'],
-            name=work_items_source_summmary['name'],
-            integration_type=work_items_source_summmary['integration_type'],
-            commit_mapping_scope=work_items_source_summmary['commit_mapping_scope'],
-            commit_mapping_scope_key=work_items_source_summmary['commit_mapping_scope_key']
-        )
-        organization.work_items_sources.append(work_items_source)
+        if organization is not None:
+            work_items_source = WorkItemsSource(
+                key=work_items_source_summmary['key'],
+                name=work_items_source_summmary['name'],
+                organization_key=organization.key,
+                integration_type=work_items_source_summmary['integration_type'],
+                commit_mapping_scope=work_items_source_summmary['commit_mapping_scope'],
+                commit_mapping_scope_key=work_items_source_summmary['commit_mapping_scope_key']
+            )
+            organization.work_items_sources.append(work_items_source)
+            created = True
+        else:
+            raise ProcessingException(f'No organization found for organization key {organization_key}')
 
-    return work_items_source
+    return dict(
+        created=created,
+        organization_key=organization_key,
+        work_items_source=work_items_source_summmary
+    )
 
 
 def import_new_work_items(session, work_items_source_key, work_item_summaries):

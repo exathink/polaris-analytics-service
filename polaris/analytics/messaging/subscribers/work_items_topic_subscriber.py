@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 import logging
 
-from polaris.messaging.messages import WorkItemsCreated, WorkItemsCommitsResolved
+from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated
 from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic, AnalyticsTopic
 from polaris.utils.collections import dict_select
 from polaris.messaging.utils import raise_on_failure
@@ -19,24 +19,35 @@ logger = logging.getLogger('polaris.analytics.work_items_topic_subscriber')
 
 
 class WorkItemsTopicSubscriber(TopicSubscriber):
-    def __init__(self, channel):
+    def __init__(self, channel, publisher=None):
         super().__init__(
             topic = WorkItemsTopic(channel, create=True),
             subscriber_queue='work_items_analytics',
             message_classes=[
                 #Events
+                WorkItemsSourceCreated,
                 WorkItemsCreated
             ],
+            publisher=publisher,
             exclusive=False
         )
+
 
     def dispatch(self, channel, message):
         if WorkItemsCreated.message_type == message.message_type:
             resolved = self.process_work_items_created(message)
             if resolved:
                 work_items_created = WorkItemsCreated(send=message.dict, in_response_to=message)
-                AnalyticsTopic(channel).publish(work_items_created)
+                self.publish(AnalyticsTopic, work_items_created, channel=channel)
                 return work_items_created
+
+        elif WorkItemsSourceCreated.message_type == message.message_type:
+            result = self.process_work_items_source_created(message)
+            if result is not None and result['created']:
+                work_items_source_created = WorkItemsSourceCreated(send=message.dict, in_response_to=message)
+                self.publish(AnalyticsTopic, work_items_source_created, channel=channel)
+                return work_items_source_created
+
 
     @staticmethod
     def process_work_items_created(message):
@@ -50,5 +61,16 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
         return raise_on_failure(
             message,
             api.import_new_work_items(organization_key, work_items_source_key, new_work_items)
+        )
+
+    @staticmethod
+    def process_work_items_source_created(message):
+        work_items_created = message.dict
+        organization_key = work_items_created['organization_key']
+        work_items_source = work_items_created['work_items_source']
+
+        return raise_on_failure(
+            message,
+            api.register_work_items_source(organization_key, work_items_source)
         )
 

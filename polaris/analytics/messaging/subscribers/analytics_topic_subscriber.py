@@ -13,12 +13,12 @@ from polaris.messaging.topics import TopicSubscriber, AnalyticsTopic
 from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, WorkItemsCreated, WorkItemsCommitsResolved
 from polaris.messaging.utils import raise_on_failure
 
-from polaris.analytics.db import api
+from polaris.analytics.db import api, aggregations
 
 logger = logging.getLogger('polaris.analytics.analytics_topic_subscriber')
 
 class AnalyticsTopicSubscriber(TopicSubscriber):
-    def __init__(self, channel):
+    def __init__(self, channel, publisher=None):
         super().__init__(
             topic = AnalyticsTopic(channel, create=True),
             subscriber_queue='analytics_analytics',
@@ -26,7 +26,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 CommitsCreated,
                 CommitDetailsCreated,
                 WorkItemsCreated,
+                WorkItemsCommitsResolved
             ],
+            publisher=publisher,
             exclusive=False
         )
 
@@ -42,7 +44,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                     ),
                     in_response_to=message
                 )
-                AnalyticsTopic(channel).publish(response)
+                self.publish(AnalyticsTopic, response)
                 return response
 
         elif WorkItemsCreated.message_type == message.message_type:
@@ -55,11 +57,14 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                     ),
                     in_response_to=message
                 )
-                AnalyticsTopic(channel).publish(response)
+                self.publish(AnalyticsTopic, response)
                 return response
 
         elif CommitDetailsCreated.message_type == message.message_type:
             return self.process_resolve_commit_details_created(channel, message)
+
+        elif WorkItemsCommitsResolved.message_type == message.message_type:
+            return self.process_work_items_commits_resolved(channel, message)
 
     @staticmethod
     def process_resolve_commit_details_created(channel, message):
@@ -114,3 +119,13 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 )
             )
 
+    @staticmethod
+    def process_work_items_commits_resolved(channel, message):
+        organization_key = message['organization_key']
+        work_items_commits = message['work_items_commits']
+
+        if len(work_items_commits) > 0:
+            return raise_on_failure(
+                message,
+                aggregations.update_commit_work_item_summaries(organization_key, work_items_commits)
+            )

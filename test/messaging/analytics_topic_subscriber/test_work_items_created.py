@@ -10,7 +10,8 @@
 from unittest.mock import patch
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
 from polaris.messaging.messages import WorkItemsCreated, WorkItemsCommitsResolved
-from polaris.messaging.test_utils import mock_channel, fake_send, assert_is_valid_message
+from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
+from polaris.messaging.topics import AnalyticsTopic
 
 from test.fixtures.work_item_commit_resolution import *
 
@@ -55,20 +56,6 @@ def work_items_commits_fixture(commits_fixture):
 
 class TestWorkItemsCreated:
 
-    def it_returns_a_valid_response(self, work_items_commits_fixture):
-        work_items_source, new_work_items = work_items_commits_fixture
-        message = fake_send(
-            WorkItemsCreated(
-                send=dict(
-                    organization_key=test_organization_key,
-                    work_items_source_key=work_items_source.key,
-                    new_work_items=new_work_items
-                )
-            )
-        )
-        channel = mock_channel()
-        response = AnalyticsTopicSubscriber(channel).dispatch(channel, message)
-        assert_is_valid_message(WorkItemsCommitsResolved, response)
 
     def it_publishes_responses_correctly(self, work_items_commits_fixture):
         work_items_source, new_work_items = work_items_commits_fixture
@@ -81,8 +68,9 @@ class TestWorkItemsCreated:
                 )
             )
         )
+        publisher = mock_publisher()
         channel = mock_channel()
-        with patch('polaris.messaging.topics.AnalyticsTopic.publish') as analytics_publish:
-            work_items_commits_resolved_message = AnalyticsTopicSubscriber(channel).dispatch(channel, message)
-            analytics_publish.assert_called_with(work_items_commits_resolved_message)
+
+        AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsCommitsResolved)
 

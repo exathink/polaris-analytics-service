@@ -10,13 +10,14 @@
 from unittest.mock import patch
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
 from polaris.messaging.messages import CommitsCreated, WorkItemsCommitsResolved
-from polaris.messaging.test_utils import mock_channel, fake_send, assert_is_valid_message
+from polaris.messaging.test_utils import mock_channel, fake_send, assert_is_valid_message, mock_publisher
+from polaris.messaging.topics import AnalyticsTopic
 
 from test.fixtures.work_item_commit_resolution import *
 
 
 @pytest.yield_fixture
-def work_items_commits_fixture(commits_fixture):
+def commits_work_items_fixture(commits_fixture):
     organization, _, repositories, _ = commits_fixture
     test_repo = repositories['alpha']
     new_key = uuid.uuid4()
@@ -56,8 +57,8 @@ def work_items_commits_fixture(commits_fixture):
 
 class TestCommitsCreated:
 
-    def it_returns_a_valid_response(self, work_items_commits_fixture):
-        repository, test_commits = work_items_commits_fixture
+    def it_publishes_responses_correctly(self, commits_work_items_fixture):
+        repository, test_commits = commits_work_items_fixture
         message = fake_send(
             CommitsCreated(
                 send=dict(
@@ -68,22 +69,8 @@ class TestCommitsCreated:
             )
         )
         channel = mock_channel()
-        response = AnalyticsTopicSubscriber(channel).dispatch(channel, message)
-        assert_is_valid_message(WorkItemsCommitsResolved, response)
+        publisher = mock_publisher()
 
-    def it_publishes_responses_correctly(self, work_items_commits_fixture):
-        repository, test_commits = work_items_commits_fixture
-        message = fake_send(
-            CommitsCreated(
-                send=dict(
-                    organization_key=test_organization_key,
-                    repository_key=repository.key,
-                    new_commits=test_commits
-                )
-            )
-        )
-        channel = mock_channel()
-        with patch('polaris.messaging.topics.AnalyticsTopic.publish') as analytics_publish:
-            work_items_commits_resolved_message = AnalyticsTopicSubscriber(channel).dispatch(channel, message)
-            analytics_publish.assert_called_with(work_items_commits_resolved_message)
+        AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsCommitsResolved)
 

@@ -22,5 +22,5 @@ class TestDispatchCommtDetailsCreated:
         message = fake_send(CommitDetailsCreated(send=payload))
         channel = mock_channel()
         result = AnalyticsTopicSubscriber(channel).dispatch(channel, message)
-        assert result
+        assert result['success']
 

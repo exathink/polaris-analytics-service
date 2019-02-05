@@ -20,7 +20,8 @@ from .interfaces import \
     RepositoryCount, \
     OrganizationRef, \
     CommitChangeStats, \
-    FileTypesSummary
+    FileTypesSummary, \
+    WorkItemsSummary
 
 
 class CommitSummaryResolverMixin(KeyIdResolverMixin):
@@ -116,6 +117,9 @@ class CommitInfoResolverMixin(KeyIdResolverMixin):
         file_types_summary = self.get_commit(info, **kwargs).file_types_summary or []
         return [FileTypesSummary(**summary) for summary in file_types_summary]
 
+    def resolve_work_items_summaries(self, info, **kwargs):
+        work_items_summaries = self.get_commit(info, **kwargs).work_items_summaries or []
+        return [WorkItemsSummary(**summary) for summary in work_items_summaries]
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
     contributor_count_tuple_type = create_tuple(ContributorCount)

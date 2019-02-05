@@ -38,7 +38,8 @@ def commit_info_columns(repositories, commits):
         commits.c.num_parents,
         commits.c.created_on_branch.label('branch'),
         commits.c.stats,
-        commits.c.source_file_types_summary.label('file_types_summary')
+        commits.c.source_file_types_summary.label('file_types_summary'),
+        commits.c.work_items_summaries
     ]
 
 

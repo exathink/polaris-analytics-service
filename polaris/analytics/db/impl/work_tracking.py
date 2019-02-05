@@ -18,7 +18,9 @@ from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.utils.work_tracking import WorkItemResolver
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
-    repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository
+    repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository,\
+    Commit, WorkItem
+
 
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
@@ -538,3 +540,24 @@ def resolve_work_items_for_commits(session, organization_key, repository_key, co
         resolved=resolved
     )
 
+
+def update_commit_work_item_summaries(session, organization_key, work_item_commits):
+    updated_commits = {}
+    work_items_to_add = {}
+
+    for entry in work_item_commits:
+        commit_key = entry['commit_key']
+        commit = updated_commits.get(commit_key)
+        if commit is None:
+            commit = Commit.find_by_commit_key(session, commit_key)
+            updated_commits[commit_key] = commit
+
+        work_item_key = entry['work_item_key']
+        work_item = work_items_to_add.get(work_item_key)
+        if work_item is None:
+            work_item = WorkItem.find_by_work_item_key(session, work_item_key)
+            work_items_to_add[work_item_key] = work_item
+
+        commit.add_work_item_summary(work_item.get_summary())
+
+    return dict()

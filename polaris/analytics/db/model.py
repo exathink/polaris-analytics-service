@@ -335,6 +335,8 @@ class Commit(Base):
     source_file_types_summary = Column(JSONB, nullable=True)
     source_file_actions_summary = Column(JSONB, nullable=True)
 
+    work_items_summaries = Column(JSONB, nullable=True, server_default='[]')
+
     # relationships
     repository  = relationship('Repository', back_populates='commits')
     committer_alias = relationship('ContributorAlias', foreign_keys=[committer_contributor_alias_id])
@@ -343,6 +345,17 @@ class Commit(Base):
     work_items = relationship('WorkItem',
                               secondary=work_items_commits,
                               back_populates="commits")
+
+    @classmethod
+    def find_by_commit_key(cls, session, commit_key):
+        return session.query(cls).filter(cls.key == commit_key).first()
+
+    def add_work_item_summary(self, work_item_summary):
+        if self.work_items_summaries is None:
+            self.work_items_summaries = [work_item_summary]
+        else:
+            if not find(self.work_items_summaries, lambda work_item: work_item['key'] == work_item_summary['key']):
+                self.work_items_summaries = [*self.work_items_summaries, work_item_summary]
 
 
 commits = Commit.__table__
@@ -443,6 +456,18 @@ class WorkItem(Base):
     commits = relationship("Commit",
                                  secondary=work_items_commits,
                                  back_populates="work_items")
+
+    @classmethod
+    def find_by_work_item_key(cls, session, work_item_key):
+        return session.query(cls).filter(cls.key == work_item_key).first()
+
+    def get_summary(self):
+        return dict(
+            key=self.key.hex,
+            name=self.name,
+            display_id=self.display_id,
+            url=self.url
+        )
 
 
 work_items = WorkItem.__table__

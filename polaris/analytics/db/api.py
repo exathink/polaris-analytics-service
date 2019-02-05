@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
-import polaris.analytics.db.impl.source_file_import
+
 from polaris.common import db
 from polaris.analytics.db import impl
 from sqlalchemy.exc import SQLAlchemyError

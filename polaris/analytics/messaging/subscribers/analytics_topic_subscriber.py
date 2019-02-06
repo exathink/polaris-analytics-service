@@ -36,7 +36,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
         if CommitsCreated.message_type == message.message_type:
             result = self.process_resolve_work_items_for_commits(channel, message)
-            if len(result['resolved']) > 0:
+            if result is not None and len(result['resolved']) > 0:
                 response = WorkItemsCommitsResolved(
                     send=dict(
                         organization_key=message['organization_key'],
@@ -49,7 +49,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
         elif WorkItemsCreated.message_type == message.message_type:
             result = self.process_resolve_commits_for_work_items(channel, message)
-            if len(result['resolved']) > 0:
+            if result is not None and len(result['resolved']) > 0:
                 response = WorkItemsCommitsResolved(
                     send=dict(
                         organization_key=message['organization_key'],

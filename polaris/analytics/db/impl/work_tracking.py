@@ -18,9 +18,8 @@ from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.utils.work_tracking import WorkItemResolver
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
-    repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository,\
+    repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
     Commit, WorkItem
-
 
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
@@ -561,3 +560,57 @@ def update_commit_work_item_summaries(session, organization_key, work_item_commi
         commit.add_work_item_summary(work_item.get_summary())
 
     return dict()
+
+
+def update_work_items(session, work_items_source_key, work_item_summaries):
+    updated = 0
+    if len(work_item_summaries) > 0:
+        work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+        if work_items_source is not None:
+            work_items_temp = db.temp_table_from(
+                work_items,
+                table_name='work_items_temp',
+                exclude_columns=[
+                    work_items.c.id,
+                    work_items.c.work_items_source_id
+                ]
+            )
+            work_items_temp.create(session.connection(), checkfirst=True)
+
+            session.connection().execute(
+                insert(work_items_temp).values([
+                    dict_select(
+                        work_item, [
+                            'key',
+                            'name',
+                            'url',
+                            'description',
+                            'is_bug',
+                            'tags',
+                            'state',
+                            'updated_at'
+                        ]
+                    )
+                    for work_item in work_item_summaries
+                ]
+            ))
+            updated = session.connection().execute(
+                work_items.update().values(
+                    url=work_items_temp.c.url,
+                    name=work_items_temp.c.name,
+                    description=work_items_temp.c.description,
+                    is_bug=work_items_temp.c.is_bug,
+                    tags=work_items_temp.c.tags,
+                    state=work_items_temp.c.state,
+                    updated_at=work_items_temp.c.updated_at
+                ).where(
+                    work_items_temp.c.key == work_items.c.key
+                )
+            ).rowcount
+
+        else:
+            raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")
+
+    return dict(
+        update_count=updated
+    )

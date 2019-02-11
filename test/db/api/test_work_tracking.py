@@ -11,9 +11,9 @@
 
 import uuid
 from test.fixtures.work_items import *
-from polaris.analytics.db import api
+from polaris.analytics.db import api, model
 from polaris.common import db
-
+from polaris.utils.collections import dict_merge
 class TestRegisterWorkItemsSource:
 
     def it_registers_a_work_item_source(self, setup_org):
@@ -96,3 +96,74 @@ class TestImportWorkItems:
 
         assert result['success']
         assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 10
+
+
+
+
+
+class TestUpdateWorkItems:
+
+    def it_updates_name(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(name='foo')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(id) from analytics.work_items where name='foo'").scalar() == 2
+
+    def it_updates_description(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(description='foo')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(id) from analytics.work_items where description='foo'").scalar() == 2
+
+    def it_updates_url(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(url='foo')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(id) from analytics.work_items where url='foo'").scalar() == 2
+
+    def it_updates_state(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(state='foo')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(id) from analytics.work_items where state='foo'").scalar() == 2
+
+    def it_updates_tags(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(tags=['foo'])
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(id) from analytics.work_items where tags='{\"foo\"}'").scalar() == 2

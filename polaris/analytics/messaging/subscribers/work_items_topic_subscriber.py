@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 import logging
 
-from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated
+from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated
 from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic, AnalyticsTopic
 from polaris.utils.collections import dict_select
 from polaris.messaging.utils import raise_on_failure
@@ -26,12 +26,12 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
             message_classes=[
                 #Events
                 WorkItemsSourceCreated,
-                WorkItemsCreated
+                WorkItemsCreated,
+                WorkItemsUpdated,
             ],
             publisher=publisher,
             exclusive=False
         )
-
 
     def dispatch(self, channel, message):
         if WorkItemsCreated.message_type == message.message_type:
@@ -40,6 +40,13 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                 work_items_created = WorkItemsCreated(send=message.dict, in_response_to=message)
                 self.publish(AnalyticsTopic, work_items_created, channel=channel)
                 return work_items_created
+
+        if WorkItemsUpdated.message_type == message.message_type:
+            resolved = self.process_work_items_updated(message)
+            if resolved:
+                work_items_updated = WorkItemsUpdated(send=message.dict, in_response_to=message)
+                self.publish(AnalyticsTopic, work_items_updated, channel=channel)
+                return work_items_updated
 
         elif WorkItemsSourceCreated.message_type == message.message_type:
             result = self.process_work_items_source_created(message)
@@ -61,6 +68,20 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
         return raise_on_failure(
             message,
             api.import_new_work_items(organization_key, work_items_source_key, new_work_items)
+        )
+
+    @staticmethod
+    def process_work_items_updated(message):
+        work_items_updated = message.dict
+        organization_key = work_items_updated['organization_key']
+        work_items_source_key = work_items_updated['work_items_source_key']
+        updated_work_items = work_items_updated['updated_work_items']
+        logger.info(f"Processing  {message.message_type}: "
+                    f" Organization: {organization_key}")
+
+        return raise_on_failure(
+            message,
+            api.update_work_items(organization_key, work_items_source_key, updated_work_items)
         )
 
     @staticmethod

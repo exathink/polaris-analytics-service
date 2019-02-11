@@ -100,3 +100,15 @@ def resolve_work_items_for_commits(organization_key, repository_key, commit_summ
         return db.process_exception("Resolve work items for commits", exc)
     except Exception as e:
         return db.failure_message('Resolve work items for commits', e)
+
+
+def update_work_items(organization_key, work_item_source_key, work_item_summaries):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.update_work_items(session, work_item_source_key, work_item_summaries)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Update new_work_items failed", exc)
+    except Exception as e:
+        return db.failure_message('Update new_work_items failed', e)

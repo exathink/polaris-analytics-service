@@ -11,7 +11,7 @@
 import uuid
 from polaris.messaging.topics import AnalyticsTopic
 from polaris.analytics.messaging.subscribers import WorkItemsTopicSubscriber
-from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated
+from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated
 from polaris.messaging.test_utils import mock_channel, fake_send, assert_topic_and_message, mock_publisher
 
 from test.fixtures.work_items import *
@@ -52,7 +52,6 @@ class TestWorkItemsCreated:
                     name='foo',
                     key=uuid.uuid4(),
                     display_id='1000',
-                    description='foo',
                     **work_items_common()
                 )
             ]
@@ -63,3 +62,19 @@ class TestWorkItemsCreated:
 
         WorkItemsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
         publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsCreated)
+
+class TestWorkItemsUpdated:
+
+    def it_returns_a_valid_response(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        payload = dict(
+            organization_key=organization_key,
+            work_items_source_key=work_items_source_key,
+            updated_work_items=work_items
+        )
+        message = fake_send(WorkItemsUpdated(send=payload))
+        channel = mock_channel()
+        publisher = mock_publisher()
+
+        WorkItemsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsUpdated)

@@ -27,7 +27,7 @@ def work_items_common():
         is_bug=True,
         url='http://foo.com',
         tags=['ares2'],
-        integration_type='github',
+        description='An issue here',
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
         state='open'
@@ -60,3 +60,26 @@ def work_items_setup(setup_repo_org):
 
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")
+
+
+@pytest.yield_fixture
+def update_work_items_setup(work_items_setup):
+    organization_key, work_items_source_key = work_items_setup
+    work_items = [
+        dict(
+            key=uuid.uuid4().hex,
+            name=str(i),
+            display_id=str(i),
+            **work_items_common()
+        )
+        for i in range(0, 2)
+
+    ]
+    with db.orm_session() as session:
+        work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+        work_items_source.work_items.extend([
+            model.WorkItem(**work_item)
+            for work_item in work_items
+        ])
+
+    yield organization_key, work_items_source_key, work_items

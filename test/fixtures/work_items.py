@@ -58,6 +58,7 @@ def work_items_setup(setup_repo_org):
 
     yield rails_organization_key, rails_work_items_source_key
 
+    db.connection().execute("delete from analytics.work_item_state_transitions")
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")
 

@@ -142,6 +142,19 @@ class TestUpdateWorkItems:
         assert result['success']
         assert db.connection().execute("select count(id) from analytics.work_items where url='foo'").scalar() == 2
 
+    def it_updates_tags(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(tags=['foo'])
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(id) from analytics.work_items where tags='{\"foo\"}'").scalar() == 2
+
     def it_updates_state(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
 
@@ -155,15 +168,50 @@ class TestUpdateWorkItems:
         assert result['success']
         assert db.connection().execute("select count(id) from analytics.work_items where state='foo'").scalar() == 2
 
-    def it_updates_tags(self, update_work_items_setup):
+
+    def it_updates_next_state_seq_no_when_there_are_state_changes(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
 
         result = api.update_work_items(organization_key, work_items_source_key, [
             dict_merge(
                 work_item,
-                dict(tags=['foo'])
+                dict(state='foo')
             )
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute("select count(id) from analytics.work_items where tags='{\"foo\"}'").scalar() == 2
+        assert db.connection().execute("select distinct next_state_seq_no from analytics.work_items").scalar() == 1
+
+    def it_saves_the_state_change_histories(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(state='foo')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(*) from analytics.work_item_state_transitions").scalar() == 2
+
+
+    def it_returns_state_changes(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(state='foo')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert result['state_changes']
+        assert len(result['state_changes']) == 2
+        assert all(
+            map(
+                lambda change: change['previous_state'] == 'open' and change['state'] == 'foo',
+                result['state_changes']
+            )
+        )

@@ -11,8 +11,9 @@
 import uuid
 from polaris.messaging.topics import AnalyticsTopic
 from polaris.analytics.messaging.subscribers import WorkItemsTopicSubscriber
-from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated
+from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated, WorkItemsStatesChanged
 from polaris.messaging.test_utils import mock_channel, fake_send, assert_topic_and_message, mock_publisher
+from polaris.utils.collections import dict_merge
 
 from test.fixtures.work_items import *
 
@@ -40,6 +41,7 @@ class TestWorkItemsSourceCreated:
         publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsSourceCreated)
 
 
+
 class TestWorkItemsCreated:
 
     def it_returns_a_valid_response(self, work_items_setup):
@@ -65,7 +67,7 @@ class TestWorkItemsCreated:
 
 class TestWorkItemsUpdated:
 
-    def it_returns_a_valid_response(self, update_work_items_setup):
+    def it_publishes_work_items_updated_response(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
         payload = dict(
             organization_key=organization_key,
@@ -78,3 +80,24 @@ class TestWorkItemsUpdated:
 
         WorkItemsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
         publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsUpdated)
+
+    def it_publishes_work_item_state_change_message_when_there_are_state_changes(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        payload = dict(
+            organization_key=organization_key,
+            work_items_source_key=work_items_source_key,
+            updated_work_items=[
+                dict_merge(
+                    work_item,
+                    dict(state='foo')
+                )
+                for work_item in work_items
+            ]
+        )
+        message = fake_send(WorkItemsUpdated(send=payload))
+        channel = mock_channel()
+        publisher = mock_publisher()
+
+        WorkItemsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsUpdated, call=0)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsStatesChanged, call=1)

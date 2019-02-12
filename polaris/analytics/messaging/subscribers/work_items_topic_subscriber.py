@@ -9,7 +9,8 @@
 # Author: Krishna Kumar
 import logging
 
-from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated
+from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated, \
+    WorkItemsStatesChanged
 from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic, AnalyticsTopic
 from polaris.utils.collections import dict_select
 from polaris.messaging.utils import raise_on_failure
@@ -46,6 +47,17 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
             if resolved:
                 work_items_updated = WorkItemsUpdated(send=message.dict, in_response_to=message)
                 self.publish(AnalyticsTopic, work_items_updated, channel=channel)
+
+                if 'state_changes' in resolved and len(resolved['state_changes']) > 0:
+                    work_items_states_changed = WorkItemsStatesChanged(
+                        send=dict(
+                            organization_key=message['organization_key'],
+                            work_items_source_key=message['work_items_source_key'],
+                            state_changes = resolved['state_changes']
+                        )
+                    )
+                    self.publish(AnalyticsTopic, work_items_states_changed, channel=channel)
+
                 return work_items_updated
 
         elif WorkItemsSourceCreated.message_type == message.message_type:

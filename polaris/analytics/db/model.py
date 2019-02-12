@@ -449,6 +449,7 @@ class WorkItem(Base):
     url = Column(String, nullable=True)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
+    next_state_seq_no = Column(Integer, nullable=False, server_default='0')
 
     # Work Items Source relationship
     work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'))
@@ -456,6 +457,8 @@ class WorkItem(Base):
     commits = relationship("Commit",
                                  secondary=work_items_commits,
                                  back_populates="work_items")
+
+    state_transitions = relationship("WorkItemStateTransition")
 
     @classmethod
     def find_by_work_item_key(cls, session, work_item_key):
@@ -475,6 +478,22 @@ Index('ix_analytics_work_items_work_items_source_id_display_id',
       work_items.c.work_items_source_id,
       work_items.c.display_id
 )
+
+
+class WorkItemStateTransition(Base):
+    __tablename__ = 'work_item_state_transitions'
+
+    work_item_id = Column(BigInteger,  ForeignKey('work_items.id'), primary_key=True)
+    seq_no = Column(Integer, primary_key=True,  server_default='0')
+    created_at = Column(DateTime, nullable=False)
+    previous_state = Column(String, nullable=True)
+    state = Column(String, nullable=False)
+
+    work_item = relationship("WorkItem", back_populates='state_transitions')
+
+
+work_item_state_transitions = WorkItemStateTransition.__table__
+
 
 def recreate_all(engine):
     Base.metadata.drop_all(engine)

@@ -19,7 +19,7 @@ from polaris.utils.work_tracking import WorkItemResolver
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
-    Commit, WorkItem
+    Commit, WorkItem, work_item_state_transitions
 
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
@@ -594,6 +594,40 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     for work_item in work_item_summaries
                 ]
             ))
+            state_changes = db.row_proxies_to_dict(
+                    session.connection().execute(
+                    select([
+                        work_items.c.key,
+                        work_items.c.id.label('work_item_id'),
+                        work_items.c.state.label('previous_state'),
+                        work_items.c.next_state_seq_no.label('seq_no'),
+                        work_items_temp.c.state.label('state'),
+                        # update timestamp is the create timestamp for state change
+                        work_items_temp.c.updated_at.label('created_at'),
+                    ]).where(
+                        and_(
+                            work_items.c.key == work_items_temp.c.key,
+                            work_items.c.state != work_items_temp.c.state
+                        )
+                    )
+                ).fetchall()
+            )
+
+            if len(state_changes) > 0:
+                session.connection().execute(
+                    work_item_state_transitions.insert().values([
+                            dict_select(change, [
+                                'work_item_id',
+                                'seq_no',
+                                'previous_state',
+                                'state',
+                                'created_at'
+                            ])
+                            for change in state_changes
+                        ]
+                    )
+                )
+
             updated = session.connection().execute(
                 work_items.update().values(
                     url=work_items_temp.c.url,
@@ -602,7 +636,8 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     is_bug=work_items_temp.c.is_bug,
                     tags=work_items_temp.c.tags,
                     state=work_items_temp.c.state,
-                    updated_at=work_items_temp.c.updated_at
+                    updated_at=work_items_temp.c.updated_at,
+                    next_state_seq_no=work_items.c.next_state_seq_no + 1 if len(state_changes) > 0 else work_items.c.next_state_seq_no
                 ).where(
                     work_items_temp.c.key == work_items.c.key
                 )
@@ -611,6 +646,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")
 
-    return dict(
-        update_count=updated
-    )
+        return dict(
+            update_count=updated,
+            state_changes=state_changes
+        )

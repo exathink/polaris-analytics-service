@@ -146,7 +146,12 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                         work_items.c.id,
                         literal('0').label('seq_no'),
                         work_items.c.state,
-                        work_items.c.created_at
+                        # we will record the last updated date of the work_item as the state
+                        # transition date since this is the closest best guess of when the actual
+                        # state transition was recorded. we still have the created date on the work_item and the
+                        # last updated date on the work_item might continue to get updated, so we can freeze this date
+                        # as the state transition date for the state that the item was in at the moment it was imported.
+                        work_items.c.updated_at
                     ]).where(
                         and_(
                             work_items.c.key == work_items_temp.c.key,

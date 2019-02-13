@@ -252,7 +252,7 @@ class TestStateTransitionSequence:
             seq_no=0,
             previous_state=None,
             state=work_item['state'],
-            created_at=work_item['created_at']
+            created_at=work_item['updated_at']
         )
 
 
@@ -303,7 +303,7 @@ class TestStateTransitionSequence:
                 seq_no=0,
                 previous_state=None,
                 state=work_item['state'],
-                created_at=work_item['created_at']
+                created_at=work_item['updated_at']
             ),
             dict(
                 seq_no=1,
@@ -381,7 +381,7 @@ class TestStateTransitionSequence:
                 seq_no=0,
                 previous_state=None,
                 state=work_item['state'],
-                created_at=work_item['created_at']
+                created_at=work_item['updated_at']
             ),
             dict(
                 seq_no=1,
@@ -422,7 +422,7 @@ class TestStateTransitionSequence:
                 seq_no=0,
                 previous_state=None,
                 state=work_item['state'],
-                created_at=work_item['created_at']
+                created_at=work_item['updated_at']
             )
         ]
 

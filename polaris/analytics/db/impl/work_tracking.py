@@ -73,7 +73,6 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                 insert(work_items_temp).values([
                     dict(
                         work_items_source_id=work_items_source.id,
-                        next_state_seq_no=1,
                         **dict_select(work_item, [
                             'key',
                             'display_id',
@@ -118,18 +117,22 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     ],
                     select(
                         [
-                            'key',
-                            'display_id',
-                            'url',
-                            'name',
-                            'description',
-                            'is_bug',
-                            'tags',
-                            'state',
-                            'created_at',
-                            'updated_at',
-                            'work_items_source_id',
-                            'next_state_seq_no'
+                            work_items_temp.c.key,
+                            work_items_temp.c.display_id,
+                            work_items_temp.c.url,
+                            work_items_temp.c.name,
+                            work_items_temp.c.description,
+                            work_items_temp.c.is_bug,
+                            work_items_temp.c.tags,
+                            work_items_temp.c.state,
+                            work_items_temp.c.created_at,
+                            work_items_temp.c.updated_at,
+                            work_items_temp.c.work_items_source_id,
+                            # We initialize the next state seq no as 1 since
+                            # the seq_no will be taken up by the initial state which
+                            # we create below. Subsequent state changes will use
+                            # the current value of the next_state_seq_no to set its sequence number.
+                            literal('1').label('next_state_sequence_no')
                         ]
                     ).where(
                         work_items_temp.c.work_item_id == None

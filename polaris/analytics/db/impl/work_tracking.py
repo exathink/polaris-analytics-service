@@ -13,7 +13,7 @@ from polaris.common import db
 from polaris.utils.collections import dict_select
 from polaris.utils.exceptions import ProcessingException
 
-from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func
+from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal
 from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.utils.work_tracking import WorkItemResolver
 from polaris.analytics.db.model import \
@@ -57,10 +57,23 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
     if len(work_item_summaries) > 0:
         work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
         if work_items_source is not None:
-            inserted = session.connection().execute(
-                insert(work_items).values([
+            work_items_temp = db.temp_table_from(
+                work_items,
+                table_name='work_items_temp',
+                exclude_columns=[
+                    work_items.c.id
+                ],
+                extra_columns=[
+                    Column('work_item_id', Integer)
+                ]
+            )
+            work_items_temp.create(session.connection(), checkfirst=True)
+
+            session.connection().execute(
+                insert(work_items_temp).values([
                     dict(
                         work_items_source_id=work_items_source.id,
+                        next_state_seq_no=1,
                         **dict_select(work_item, [
                             'key',
                             'display_id',
@@ -75,10 +88,74 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                         ])
                     )
                     for work_item in work_item_summaries
-                ]).on_conflict_do_nothing(
-                    index_elements=['key']
+                ])
+            )
+            # mark existing rows by copying over current work_item_id from
+            # work items matching by key
+            session.connection().execute(
+                work_items_temp.update().values(
+                    dict(work_item_id=work_items.c.id)
+                ).where(
+                    work_items.c.key == work_items_temp.c.key
+                )
+            )
+            # insert missing work_items.
+            inserted = session.connection().execute(
+                work_items.insert().from_select(
+                    [
+                        'key',
+                        'display_id',
+                        'url',
+                        'name',
+                        'description',
+                        'is_bug',
+                        'tags',
+                        'state',
+                        'created_at',
+                        'updated_at',
+                        'work_items_source_id',
+                        'next_state_seq_no'
+                    ],
+                    select(
+                        [
+                            'key',
+                            'display_id',
+                            'url',
+                            'name',
+                            'description',
+                            'is_bug',
+                            'tags',
+                            'state',
+                            'created_at',
+                            'updated_at',
+                            'work_items_source_id',
+                            'next_state_seq_no'
+                        ]
+                    ).where(
+                        work_items_temp.c.work_item_id == None
+                    )
                 )
             ).rowcount
+            # add the initial state to the state transitions
+            # for the newly inserted entries.
+
+            session.connection().execute(
+                work_item_state_transitions.insert().from_select(
+                    ['work_item_id', 'seq_no', 'state', 'created_at'],
+                    select([
+                        work_items.c.id,
+                        literal('0').label('seq_no'),
+                        work_items.c.state,
+                        work_items.c.created_at
+                    ]).where(
+                        and_(
+                            work_items.c.key == work_items_temp.c.key,
+                            work_items_temp.c.work_item_id == None
+                        )
+                    )
+                )
+            )
+
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")
 
@@ -593,9 +670,9 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     )
                     for work_item in work_item_summaries
                 ]
-            ))
+                ))
             state_changes = db.row_proxies_to_dict(
-                    session.connection().execute(
+                session.connection().execute(
                     select([
                         work_items.c.key,
                         work_items.c.id.label('work_item_id'),
@@ -614,20 +691,33 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
             )
 
             if len(state_changes) > 0:
+                # Insert the new state transition row for the change
                 session.connection().execute(
                     work_item_state_transitions.insert().values([
-                            dict_select(change, [
-                                'work_item_id',
-                                'seq_no',
-                                'previous_state',
-                                'state',
-                                'created_at'
-                            ])
-                            for change in state_changes
-                        ]
+                        dict_select(change, [
+                            'work_item_id',
+                            'seq_no',
+                            'previous_state',
+                            'state',
+                            'created_at'
+                        ])
+                        for change in state_changes
+                    ]
+                    )
+                )
+                # Update the next_state_seq_no counter for all rows that have state changes.
+                session.connection().execute(
+                    work_items.update().values(
+                        next_state_seq_no=work_items.c.next_state_seq_no + 1
+                    ).where(
+                        and_(
+                            work_items_temp.c.key == work_items.c.key,
+                            work_items.c.state != work_items_temp.c.state
+                        )
                     )
                 )
 
+            # finally do the update of the changed rows.
             updated = session.connection().execute(
                 work_items.update().values(
                     url=work_items_temp.c.url,
@@ -636,12 +726,13 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     is_bug=work_items_temp.c.is_bug,
                     tags=work_items_temp.c.tags,
                     state=work_items_temp.c.state,
-                    updated_at=work_items_temp.c.updated_at,
-                    next_state_seq_no=work_items.c.next_state_seq_no + 1 if len(state_changes) > 0 else work_items.c.next_state_seq_no
+                    updated_at=work_items_temp.c.updated_at
                 ).where(
                     work_items_temp.c.key == work_items.c.key
                 )
             ).rowcount
+
+
 
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")

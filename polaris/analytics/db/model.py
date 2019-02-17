@@ -469,6 +469,7 @@ class WorkItem(Base):
         return dict(
             key=self.key.hex,
             name=self.name,
+            work_item_type=self.work_item_type,
             display_id=self.display_id,
             url=self.url
         )

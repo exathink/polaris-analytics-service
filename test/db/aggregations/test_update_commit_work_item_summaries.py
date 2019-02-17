@@ -63,11 +63,11 @@ class TestUpdateCommitWorkItemSummaries:
         saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
         assert saved.work_items_summaries == [
             dict(
-            key=work_item_key.hex,
-            name=work_items_common['name'],
-            display_id='1000',
-            url=work_items_common['url']
-
+                key=work_item_key.hex,
+                name=work_items_common['name'],
+                display_id='1000',
+                url=work_items_common['url'],
+                work_item_type='issue'
             )
         ]
 
@@ -132,13 +132,15 @@ class TestUpdateCommitWorkItemSummaries:
                 key=work_item_key1.hex,
                 name=work_items_common['name'],
                 display_id='1000',
-                url=work_items_common['url']
+                url=work_items_common['url'],
+                work_item_type='issue'
             ),
             dict(
                 key=work_item_key2.hex,
                 name=work_items_common['name'],
                 display_id='1001',
-                url=work_items_common['url']
+                url=work_items_common['url'],
+                work_item_type='issue'
             )
         ]
 
@@ -204,11 +206,11 @@ class TestUpdateCommitWorkItemSummaries:
         saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key in ('{test_commit_key1}', '{test_commit_key2}')").fetchall()
         assert saved[0].work_items_summaries == [
             dict(
-            key=work_item_key.hex,
-            name=work_items_common['name'],
-            display_id='1000',
-            url=work_items_common['url']
-
+                key=work_item_key.hex,
+                name=work_items_common['name'],
+                display_id='1000',
+                url=work_items_common['url'],
+                work_item_type='issue'
             )
         ]
         assert saved[1].work_items_summaries == [
@@ -216,8 +218,8 @@ class TestUpdateCommitWorkItemSummaries:
                 key=work_item_key.hex,
                 name=work_items_common['name'],
                 display_id='1000',
-                url=work_items_common['url']
-
+                url=work_items_common['url'],
+                work_item_type='issue'
             )
         ]
 
@@ -271,10 +273,10 @@ class TestUpdateCommitWorkItemSummaries:
         saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
         assert saved.work_items_summaries == [
             dict(
-            key=work_item_key.hex,
-            name=work_items_common['name'],
-            display_id='1000',
-            url=work_items_common['url']
-
+                key=work_item_key.hex,
+                name=work_items_common['name'],
+                display_id='1000',
+                url=work_items_common['url'],
+                work_item_type='issue'
             )
         ]

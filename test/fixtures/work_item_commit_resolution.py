@@ -24,6 +24,7 @@ test_contributor_name = 'Joe Blow'
 work_items_common = dict(
     name='Issue',
     is_bug=True,
+    work_item_type='issue',
     url='http://foo.com',
     tags=['ares2'],
     updated_at=datetime.utcnow(),

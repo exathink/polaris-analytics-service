@@ -76,6 +76,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                         **dict_select(work_item, [
                             'key',
                             'display_id',
+                            'work_item_type',
                             'url',
                             'name',
                             'description',
@@ -104,6 +105,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     [
                         'key',
                         'display_id',
+                        'work_item_type',
                         'url',
                         'name',
                         'description',
@@ -119,6 +121,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                         [
                             work_items_temp.c.key,
                             work_items_temp.c.display_id,
+                            work_items_temp.c.work_item_type,
                             work_items_temp.c.url,
                             work_items_temp.c.name,
                             work_items_temp.c.description,

@@ -441,6 +441,7 @@ class WorkItem(Base):
     id = Column(BigInteger, primary_key=True)
     key = Column(UUID(as_uuid=True), nullable=False, unique=True)
     name = Column(String(256), nullable=False)
+    work_item_type = Column(String, nullable=False)
     display_id = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     is_bug = Column(Boolean, nullable=False, default=False, server_default='FALSE')

@@ -24,6 +24,7 @@ from datetime import datetime
 
 def work_items_common():
     return dict(
+        work_item_type='issue',
         is_bug=True,
         url='http://foo.com',
         tags=['ares2'],

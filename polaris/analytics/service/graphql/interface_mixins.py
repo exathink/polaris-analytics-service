@@ -18,6 +18,7 @@ from .interfaces import \
     ContributorCount, \
     ProjectCount, \
     RepositoryCount, \
+    WorkItemsSourceCount, \
     OrganizationRef, \
     CommitChangeStats, \
     FileTypesSummary, \
@@ -161,7 +162,7 @@ class ProjectCountResolverMixin(KeyIdResolverMixin):
         )
 
     def get_project_count(self, info, **kwargs):
-        if self.project_count is None:
+        if self.project_count.project_count is None:
             self.project_count = self.resolve_interface_project_count(info, **kwargs)
 
         return self.project_count
@@ -185,13 +186,37 @@ class RepositoryCountResolverMixin(KeyIdResolverMixin):
         )
 
     def get_repository_count(self, info, **kwargs):
-        if self.repository_count is None:
+        if self.repository_count.repository_count is None:
             self.repository_count = self.resolve_interface_repository_count(info, **kwargs)
 
         return self.repository_count
 
     def resolve_repository_count(self, info, **kwargs):
         return self.get_repository_count(info, **kwargs).repository_count
+
+
+class WorkItemsSourceCountResolverMixin(KeyIdResolverMixin):
+    work_items_source_count_tuple_type = create_tuple(WorkItemsSourceCount)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.work_items_source_count = init_tuple(self.work_items_source_count_tuple_type, **kwargs)
+
+    def resolve_interface_work_items_source_count(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['WorkItemsSourceCount'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_work_items_source_count(self, info, **kwargs):
+        if self.work_items_source_count.work_items_source_count is None:
+            self.work_items_source_count = self.resolve_interface_work_items_source_count(info, **kwargs)
+
+        return self.work_items_source_count
+
+    def resolve_work_items_source_count(self, info, **kwargs):
+        return self.get_work_items_source_count(info, **kwargs).work_items_source_count
 
 
 class OrganizationRefResolverMixin(KeyIdResolverMixin):

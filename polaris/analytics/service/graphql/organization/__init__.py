@@ -17,7 +17,7 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from .selectables import \
     OrganizationNode, OrganizationsCommitSummary, OrganizationsProjectCount, OrganizationsRepositoryCount, \
-    OrganizationsContributorCount, OrganizationProjectsNodes, \
+    OrganizationsContributorCount, OrganizationsWorkItemsSourceCount,  OrganizationProjectsNodes, \
     OrganizationRepositoriesNodes, OrganizationRecentlyActiveRepositoriesNodes, \
     OrganizationContributorNodes, OrganizationRecentlyActiveProjectsNodes, \
     OrganizationRecentlyActiveContributorNodes, OrganizationWeeklyContributorCount, \
@@ -27,9 +27,9 @@ from .selectables import \
 from ..interface_mixins import \
     KeyIdResolverMixin, \
     NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, \
-    ProjectCountResolverMixin, RepositoryCountResolverMixin, CommitInfoResolverMixin
+    ProjectCountResolverMixin, RepositoryCountResolverMixin, WorkItemsSourceCountResolverMixin
 
-from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount
+from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount, WorkItemsSourceCount
 
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
@@ -45,6 +45,7 @@ class Organization(
     ContributorCountResolverMixin,
     ProjectCountResolverMixin,
     RepositoryCountResolverMixin,
+    WorkItemsSourceCountResolverMixin,
     # Connection Mixins
     ProjectsConnectionMixin,
     ContributorsConnectionMixin,
@@ -59,13 +60,14 @@ class Organization(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, ContributorCount, ProjectCount, RepositoryCount)
+        interfaces = (NamedNode, CommitSummary, ContributorCount, ProjectCount, RepositoryCount, WorkItemsSourceCount)
         named_node_resolver = OrganizationNode
         interface_resolvers = {
             'CommitSummary': OrganizationsCommitSummary,
             'ContributorCount': OrganizationsContributorCount,
             'ProjectCount': OrganizationsProjectCount,
-            'RepositoryCount': OrganizationsRepositoryCount
+            'RepositoryCount': OrganizationsRepositoryCount,
+            'WorkItemsSourceCount': OrganizationsWorkItemsSourceCount,
         }
         connection_node_resolvers = {
             'projects': OrganizationProjectsNodes,

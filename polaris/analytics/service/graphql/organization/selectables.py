@@ -19,10 +19,11 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.db.model import \
     organizations, projects, projects_repositories, \
     repositories, contributors, commits, \
-    repositories_contributor_aliases, contributor_aliases
+    repositories_contributor_aliases, contributor_aliases, \
+    work_items_sources
  
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
-    ProjectCount, RepositoryCount, WeeklyContributorCount, CommitInfo
+    ProjectCount, RepositoryCount, WorkItemsSourceCount,  WeeklyContributorCount, CommitInfo
 
 from ..commit.selectables import commit_info_columns
 from ..commit.sql_expressions import commits_connection_apply_time_window_filters
@@ -318,5 +319,20 @@ class OrganizationsRepositoryCount:
         ]).select_from(
             organization_nodes.outerjoin(
                 repositories, repositories.c.organization_id == organization_nodes.c.id
+            )
+        ).group_by(organization_nodes.c.id)
+
+
+class OrganizationsWorkItemsSourceCount:
+    interface = WorkItemsSourceCount
+
+    @staticmethod
+    def selectable(organization_nodes, **kwargs):
+        return select([
+            organization_nodes.c.id,
+            func.count(work_items_sources.c.id).label('work_items_source_count')
+        ]).select_from(
+            organization_nodes.outerjoin(
+                work_items_sources, work_items_sources.c.organization_id == organization_nodes.c.id
             )
         ).group_by(organization_nodes.c.id)

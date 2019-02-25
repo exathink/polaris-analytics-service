@@ -40,13 +40,14 @@ setup(
         'polaris.analytics.datasources.activities',
         'polaris.analytics.service.graphql',
         'polaris.analytics.service.graphql.account',
-	    'polaris.analytics.service.graphql.commit',
+        'polaris.analytics.service.graphql.commit',
         'polaris.analytics.service.graphql.organization',
         'polaris.analytics.service.graphql.project',
         'polaris.analytics.service.graphql.repository',
-	    'polaris.analytics.service.graphql.public',
-	    'polaris.analytics.service.graphql.contributor',
-        'polaris.analytics.service.graphql.summarizers'
+        'polaris.analytics.service.graphql.public',
+        'polaris.analytics.service.graphql.contributor',
+        'polaris.analytics.service.graphql.summarizers',
+        'polaris.analytics.service.graphql.work_items',
     ],
 
     url='',

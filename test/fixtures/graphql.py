@@ -13,7 +13,7 @@ from datetime import datetime
 import pytest
 
 from polaris.analytics.db.model import Organization, Repository, Project, contributors, contributor_aliases, commits, \
-    WorkItemsSource, WorkItem
+    WorkItemsSource, WorkItem, WorkItemStateTransition
 from polaris.common import db
 
 test_organization_key = uuid.uuid4().hex
@@ -160,3 +160,18 @@ def create_work_items(organization, source_data, items_data):
         ])
         session.add(source)
         return source
+
+
+def create_transitions(work_item_key, transitions):
+    with db.orm_session() as session:
+        work_item = WorkItem.find_by_work_item_key(session, work_item_key)
+        if work_item:
+            work_item.state_transitions.extend([
+                    WorkItemStateTransition(
+                        **transition
+                    )
+                    for transition in transitions
+                ]
+            )
+        else:
+            assert None,  f"Failed to find work item with key {work_item_key}"

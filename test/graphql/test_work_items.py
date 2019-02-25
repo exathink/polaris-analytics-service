@@ -74,6 +74,46 @@ def work_items_fixture(commits_fixture):
     yield new_key, test_commit_key, new_work_items
 
 
+@pytest.yield_fixture
+def setup_work_item_transitions(work_items_fixture):
+    new_key, test_commit_key, new_work_items = work_items_fixture
+    key = new_work_items[0]['key']
+    create_transitions(key, [
+        dict(
+            seq_no=0,
+            previous_state=None,
+            state='open',
+            created_at=new_work_items[0]['created_at']
+        ),
+        dict(
+            seq_no=1,
+            previous_state='open',
+            state='closed',
+            created_at=new_work_items[0]['updated_at']
+        ),
+
+    ])
+    key = new_work_items[1]['key']
+    create_transitions(key, [
+        dict(
+            seq_no=0,
+            previous_state=None,
+            state='open',
+            created_at=new_work_items[1]['created_at']
+        ),
+        dict(
+            seq_no=1,
+            previous_state='open',
+            state='closed',
+            created_at=new_work_items[1]['updated_at']
+        ),
+    ])
+
+    yield new_work_items
+
+    db.connection().execute("delete from analytics.work_item_state_transitions")
+
+
 class TestWorkItemQueries:
 
     def it_implements_named_node_interface(self, work_items_fixture):
@@ -122,6 +162,29 @@ class TestWorkItemQueries:
         assert work_item['updatedAt'] == get_date("2018-12-03").isoformat()
         assert work_item['url'] == work_items_common['url']
         assert work_item['tags'] == work_items_common['tags']
+
+    def it_returns_work_items_state_transitions(self, setup_work_item_transitions):
+        new_work_items = setup_work_item_transitions
+        work_item_key = new_work_items[0]['key']
+
+        client = Client(schema)
+        query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key){
+                            workItemStateTransitions {
+                                seqNo
+                                eventDate
+                                previousState
+                                newState
+                            }
+                        }
+                    } 
+                """
+        result = client.execute(query, variable_values=dict(key=work_item_key))
+        assert 'data' in result
+        work_item = result['data']['workItem']
+        assert len(work_item['workItemStateTransitions']) == 2
+
 
 
 

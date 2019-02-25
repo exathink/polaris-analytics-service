@@ -109,3 +109,10 @@ class WorkItemInfo(NamedNode):
     tags = graphene.Field(graphene.List(graphene.String, required=True))
     created_at = graphene.DateTime(required=True)
     updated_at = graphene.DateTime(required=True)
+
+
+class WorkItemStateTransitions(graphene.Interface):
+    event_date = graphene.DateTime(required=True)
+    seq_no = graphene.Int(required=True)
+    previous_state = graphene.String(required=False)
+    new_state = graphene.String(required=True)

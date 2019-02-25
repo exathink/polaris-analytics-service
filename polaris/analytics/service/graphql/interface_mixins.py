@@ -11,6 +11,7 @@
 from polaris.graphql.mixins import *
 
 from polaris.graphql.utils import init_tuple, create_tuple
+from polaris.common.db import row_proxy_to_dict
 
 from .interfaces import \
     CommitInfo, \
@@ -23,7 +24,8 @@ from .interfaces import \
     CommitChangeStats, \
     FileTypesSummary, \
     CommitWorkItemsSummary, \
-    WorkItemInfo
+    WorkItemInfo, \
+    WorkItemStateTransitions
 
 
 class CommitSummaryResolverMixin(KeyIdResolverMixin):
@@ -284,3 +286,30 @@ class WorkItemInfoResolverMixin(NamedNodeResolverMixin):
 
     def resolve_tags(self, info, **kwargs):
         return self.get_work_item_info(info, **kwargs).tags
+
+
+class WorkItemStateTransitionsResolverMixin(NamedNodeResolverMixin):
+    work_item_state_transition_tuple_type = create_tuple(WorkItemStateTransitions)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.work_item_state_transitions = None
+
+    def resolve_interface_work_item_state_transitions(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['WorkItemStateTransitions'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_work_item_state_transitions(self, info, **kwargs):
+        if self.work_item_state_transitions is None:
+            self.work_item_state_transitions = [
+                init_tuple(self.work_item_state_transitions, **row_proxy_to_dict(transition))
+                for transition in self.resolve_interface_work_item_state_transitions(info, **kwargs)
+            ]
+
+        return self.work_item_state_transitions
+
+    def resolve_work_item_state_transitions(self, info, **kwargs):
+        return self.get_work_item_state_transitions(info, **kwargs)

@@ -8,9 +8,10 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam
-from polaris.analytics.service.graphql.interfaces import WorkItemInfo
-from polaris.analytics.db.model import work_items
+from sqlalchemy import select, bindparam, and_
+from polaris.graphql.interfaces import NamedNode
+from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemStateTransitions
+from polaris.analytics.db.model import work_items, work_item_state_transitions
 from .sql_expressions import work_item_info_columns
 
 class WorkItemNode:
@@ -22,4 +23,25 @@ class WorkItemNode:
             *work_item_info_columns(work_items)
         ]).where(
             work_items.c.key == bindparam('key')
+        )
+
+
+class WorkItemStateTransitionNodes:
+    interfaces = (NamedNode, WorkItemStateTransitions)
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            work_items.c.id,
+            work_items.c.name,
+            work_items.c.key,
+            work_item_state_transitions.c.created_at.label('event_date'),
+            work_item_state_transitions.c.seq_no,
+            work_item_state_transitions.c.previous_state,
+            work_item_state_transitions.c.state.label('new_state'),
+        ]).where(
+            and_(
+                work_items.c.key == bindparam('key'),
+                work_items.c.id == work_item_state_transitions.c.work_item_id
+            )
         )

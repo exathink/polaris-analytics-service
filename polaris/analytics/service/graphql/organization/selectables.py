@@ -20,13 +20,13 @@ from polaris.analytics.db.model import \
     organizations, projects, projects_repositories, \
     repositories, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases, \
-    work_items_sources
+    work_items_sources, work_items
  
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
-    ProjectCount, RepositoryCount, WorkItemsSourceCount,  WeeklyContributorCount, CommitInfo
+    ProjectCount, RepositoryCount, WorkItemsSourceCount,  WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef
 
-from ..commit.selectables import commit_info_columns
-from ..commit.sql_expressions import commits_connection_apply_time_window_filters
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
+from ..work_item.sql_expressions import work_item_info_columns
 
 
 class OrganizationNode:
@@ -193,6 +193,32 @@ class OrganizationCommitNodes:
     @staticmethod
     def sort_order(repository_commit_nodes, **kwargs):
         return [repository_commit_nodes.c.commit_date.desc()]
+
+
+class OrganizationWorkItemNodes:
+    interfaces = (WorkItemInfo, WorkItemsSourceRef)
+
+    @staticmethod
+    def selectable(**kwargs):
+        select_stmt = select([
+            work_items_sources.c.key.label('work_items_source_key'),
+            work_items_sources.c.name.label('work_items_source_name'),
+            *work_item_info_columns(work_items)
+        ]).select_from(
+            organizations.join(
+                work_items_sources, work_items_sources.c.organization_id == organizations.c.id
+            ).join(
+                work_items
+            )
+        ).where(
+            organizations.c.key == bindparam('key')
+        )
+        return select_stmt
+
+    @staticmethod
+    def sort_order(organization_work_items_nodes, **kwargs):
+        return [organization_work_items_nodes.c.updated_at.desc()]
+
 
 class OrganizationRecentlyActiveContributorNodes:
     interfaces = (NamedNode, CommitCount)

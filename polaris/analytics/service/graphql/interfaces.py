@@ -17,10 +17,10 @@ class FileTypesSummary(graphene.ObjectType):
     count = graphene.Int(required=True)
 
 
-class WorkItemsSummary(graphene.ObjectType):
-    label = graphene.String(required=True)
+class CommitWorkItemsSummary(graphene.ObjectType):
     key = graphene.String(required=True)
     name = graphene.String(required=True)
+    label = graphene.String(required=True)
     work_item_type = graphene.String(required=True)
     display_id = graphene.String(required=True)
     url = graphene.String(required=True)
@@ -49,7 +49,7 @@ class CommitInfo(NamedNode):
     branch = graphene.String(required=False)
     stats = graphene.Field(CommitChangeStats, required=False)
     file_types_summary = graphene.Field(graphene.List(FileTypesSummary, required=False))
-    work_items_summaries = graphene.Field(graphene.List(WorkItemsSummary, required=False))
+    work_items_summaries = graphene.Field(graphene.List(CommitWorkItemsSummary, required=False))
 
 
 class CumulativeCommitCount(graphene.Interface):
@@ -95,4 +95,17 @@ class OrganizationRef(graphene.Interface):
     organization_key = graphene.String(required=True)
 
 
+class WorkItemsSourceRef(graphene.Interface):
+    work_items_source_name = graphene.String(required=True)
+    work_items_source_key = graphene.String(required=True)
 
+
+class WorkItemInfo(NamedNode):
+    work_item_type = graphene.String(required=True)
+    display_id = graphene.String(required=True)
+    url = graphene.String(required=True)
+    description = graphene.String(required=False)
+    state = graphene.String(required=True)
+    tags = graphene.Field(graphene.List(graphene.String, required=True))
+    created_at = graphene.DateTime(required=True)
+    updated_at = graphene.DateTime(required=True)

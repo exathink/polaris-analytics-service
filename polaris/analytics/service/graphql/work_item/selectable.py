@@ -9,19 +9,17 @@
 # Author: Krishna Kumar
 
 from sqlalchemy import select, bindparam
-from polaris.graphql.interfaces import NamedNode
+from polaris.analytics.service.graphql.interfaces import WorkItemInfo
 from polaris.analytics.db.model import work_items
-
+from .sql_expressions import work_item_info_columns
 
 class WorkItemNode:
-    interface = NamedNode
+    interface = WorkItemInfo
 
     @staticmethod
     def selectable(**kwargs):
         return select([
-            work_items.c.id,
-            work_items.c.key,
-            work_items.c.name
+            *work_item_info_columns(work_items)
         ]).where(
             work_items.c.key == bindparam('key')
         )

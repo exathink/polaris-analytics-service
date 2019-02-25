@@ -22,7 +22,8 @@ from .interfaces import \
     OrganizationRef, \
     CommitChangeStats, \
     FileTypesSummary, \
-    WorkItemsSummary
+    CommitWorkItemsSummary, \
+    WorkItemInfo
 
 
 class CommitSummaryResolverMixin(KeyIdResolverMixin):
@@ -120,7 +121,7 @@ class CommitInfoResolverMixin(KeyIdResolverMixin):
 
     def resolve_work_items_summaries(self, info, **kwargs):
         work_items_summaries = self.get_commit(info, **kwargs).work_items_summaries or []
-        return [WorkItemsSummary(**summary) for summary in work_items_summaries]
+        return [CommitWorkItemsSummary(**summary) for summary in work_items_summaries]
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
     contributor_count_tuple_type = create_tuple(ContributorCount)
@@ -244,3 +245,42 @@ class OrganizationRefResolverMixin(KeyIdResolverMixin):
 
     def resolve_organization_key(self, info, **kwargs):
         return self.get_organization_ref(info, **kwargs).organization_key
+
+
+class WorkItemInfoResolverMixin(NamedNodeResolverMixin):
+    work_item_info_tuple_type = create_tuple(WorkItemInfo)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.work_item_info = init_tuple(self.work_item_info_tuple_type, **kwargs)
+
+    def resolve_interface_work_item_info(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['WorkItemInfo'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_work_item_info(self, info, **kwargs):
+        if self.work_item_info is None:
+            self.work_item_info = self.resolve_interface_work_item_info(info, **kwargs)
+
+        return self.work_item_info
+
+    def resolve_description(self, info, **kwargs):
+        return self.get_work_item_info(info, **kwargs).description
+
+    def resolve_work_item_type(self, info, **kwargs):
+        return self.get_work_item_info(info, **kwargs).work_item_type
+    
+    def resolve_display_id(self, info, **kwargs):
+        return self.get_work_item_info(info, **kwargs).display_id
+
+    def resolve_url(self, info, **kwargs):
+        return self.get_work_item_info(info, **kwargs).url
+
+    def resolve_state(self, info, **kwargs):
+        return self.get_work_item_info(info, **kwargs).state
+
+    def resolve_tags(self, info, **kwargs):
+        return self.get_work_item_info(info, **kwargs).tags

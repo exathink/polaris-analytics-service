@@ -46,8 +46,9 @@ setup(
         'polaris.analytics.service.graphql.repository',
         'polaris.analytics.service.graphql.public',
         'polaris.analytics.service.graphql.contributor',
+        'polaris.analytics.service.graphql.work_item',
         'polaris.analytics.service.graphql.summarizers',
-        'polaris.analytics.service.graphql.work_items',
+
     ],
 
     url='',

@@ -88,7 +88,7 @@ class TestWorkItemQueries:
                 }
             } 
         """
-        result = client.execute(query, variables=dict(key=work_item_key))
+        result = client.execute(query, variable_values=dict(key=work_item_key))
         assert 'data' in result
         workItem = result['data']['workItem']
         assert workItem['id']
@@ -112,7 +112,7 @@ class TestWorkItemQueries:
                 }
             } 
         """
-        result = client.execute(query, variables=dict(key=work_item_key))
+        result = client.execute(query, variable_values=dict(key=work_item_key))
         assert 'data' in result
         work_item = result['data']['workItem']
         assert work_item['displayId'] == '1000'
@@ -147,7 +147,7 @@ class TestOrganizationWorkItems:
                 }
             }
         """
-        result = client.execute(query, variables=dict(organization_key=test_organization_key))
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
         assert 'data' in result
         edges = result['data']['organization']['workItems']['edges']
         assert len(edges) == 2
@@ -180,7 +180,7 @@ class TestOrganizationWorkItems:
                 }
             }
         """
-        result = client.execute(query, variables=dict(organization_key=test_organization_key))
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
         assert 'data' in result
         edges = result['data']['organization']['workItems']['edges']
         assert len(edges) == 2
@@ -217,7 +217,7 @@ class TestOrganizationWorkItems:
                 }
             }
         """
-        result = client.execute(query, variables=dict(organization_key=test_organization_key))
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
         assert 'data' in result
         edges = result['data']['organization']['workItems']['edges']
         assert len(edges) == 1
@@ -239,7 +239,7 @@ class TestOrganizationWorkItems:
                 }
             }
         """
-        result = client.execute(query, variables=dict(organization_key=test_organization_key))
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
         assert 'data' in result
         edges = result['data']['organization']['workItems']['edges']
         assert len(edges) == 1

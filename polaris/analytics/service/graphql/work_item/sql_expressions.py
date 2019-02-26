@@ -25,3 +25,10 @@ def work_item_info_columns(work_items):
     ]
 
 
+def work_item_event_columns(work_item_state_transitions):
+    return [
+        work_item_state_transitions.c.seq_no,
+        work_item_state_transitions.c.created_at.label('event_date'),
+        work_item_state_transitions.c.previous_state,
+        work_item_state_transitions.c.state.label('new_state')
+    ]

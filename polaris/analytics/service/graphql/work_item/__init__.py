@@ -8,28 +8,20 @@
 
 # Author: Krishna Kumar
 
-import graphene
 
-
-from polaris.graphql.selectable import Selectable
-from polaris.graphql.selectable import CountableConnection
-from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemsSourceRef, WorkItemStateTransitions
+from polaris.analytics.service.graphql.interface_mixins import KeyIdResolverMixin, WorkItemInfoResolverMixin
+from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemsSourceRef
+from polaris.analytics.service.graphql.work_item.selectable import WorkItemNode, WorkItemEventNodes
 from polaris.graphql.selectable import ConnectionResolverMixin
-from polaris.analytics.service.graphql.interface_mixins import KeyIdResolverMixin, WorkItemInfoResolverMixin, WorkItemStateTransitionsResolverMixin
-from polaris.analytics.service.graphql.work_item.selectable import WorkItemNode, WorkItemStateTransitionNodes
-from polaris.analytics.service.graphql.selectable_field_mixins import SelectablePropertyResolverMixin
-
-
-class WorkItemStateTransitionsField(graphene.ObjectType):
-    class Meta:
-        interfaces = (WorkItemStateTransitions,)
-
+from polaris.graphql.selectable import CountableConnection
+from polaris.graphql.selectable import Selectable
+from ..work_item_event import WorkItemEventsConnectionMixin
 
 
 class WorkItem(
     # interface resolver mixins
     WorkItemInfoResolverMixin,
-    SelectablePropertyResolverMixin,
+    WorkItemEventsConnectionMixin,
     # selectable
     Selectable
 ):
@@ -37,8 +29,8 @@ class WorkItem(
         interfaces = (WorkItemInfo, WorkItemsSourceRef)
         named_node_resolver = WorkItemNode
         interface_resolvers = {}
-        selectable_field_resolvers = {
-            'work_item_state_transitions': WorkItemStateTransitionNodes
+        connection_node_resolvers = {
+            'work_item_events': WorkItemEventNodes
         }
         connection_class = lambda: WorkItems
 
@@ -48,11 +40,6 @@ class WorkItem(
     def resolve_field(cls, parent, info, key, **kwargs):
         return cls.resolve_instance(key=key, **kwargs)
 
-    # local properties
-    work_item_state_transitions = graphene.Field(graphene.List(WorkItemStateTransitionsField))
-
-    def resolve_work_item_state_transitions(self, info, **kwargs):
-        return self.resolve_selectable_field('work_item_state_transitions')
 
 class WorkItems(
     CountableConnection
@@ -72,3 +59,5 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             self.get_instance_query_params(),
             **kwargs
         )
+
+

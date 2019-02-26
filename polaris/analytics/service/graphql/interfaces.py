@@ -111,7 +111,7 @@ class WorkItemInfo(NamedNode):
     updated_at = graphene.DateTime(required=True)
 
 
-class WorkItemStateTransitions(graphene.Interface):
+class WorkItemStateTransition(graphene.Interface):
     event_date = graphene.DateTime(required=True)
     seq_no = graphene.Int(required=True)
     previous_state = graphene.String(required=False)

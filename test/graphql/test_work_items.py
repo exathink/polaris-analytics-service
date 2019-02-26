@@ -163,7 +163,7 @@ class TestWorkItemQueries:
         assert work_item['url'] == work_items_common['url']
         assert work_item['tags'] == work_items_common['tags']
 
-    def it_returns_work_items_state_transitions(self, setup_work_item_transitions):
+    def it_returns_work_item_events(self, setup_work_item_transitions):
         new_work_items = setup_work_item_transitions
         work_item_key = new_work_items[0]['key']
 
@@ -171,19 +171,23 @@ class TestWorkItemQueries:
         query = """
                     query getWorkItem($key:String!) {
                         workItem(key: $key){
-                            workItemStateTransitions {
-                                seqNo
-                                eventDate
-                                previousState
-                                newState
+                            workItemEvents {
+                                edges {
+                                    node {
+                                        seqNo
+                                        eventDate
+                                        previousState
+                                        newState
+                                    }
+                                }
                             }
                         }
                     } 
                 """
         result = client.execute(query, variable_values=dict(key=work_item_key))
         assert 'data' in result
-        work_item = result['data']['workItem']
-        assert len(work_item['workItemStateTransitions']) == 2
+        work_item_events = result['data']['workItem']['workItemEvents']
+        assert len(work_item_events['edges']) == 2
 
 
 

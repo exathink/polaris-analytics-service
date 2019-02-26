@@ -11,10 +11,13 @@
 
 from polaris.analytics.service.graphql.interface_mixins import KeyIdResolverMixin, WorkItemInfoResolverMixin
 from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemsSourceRef
-from polaris.analytics.service.graphql.work_item.selectable import WorkItemNode, WorkItemEventNodes
+from polaris.analytics.service.graphql.work_item.selectable import \
+    WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes
+
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
 from polaris.graphql.selectable import Selectable
+from ..commit import CommitsConnectionMixin
 from ..work_item_event import WorkItemEventsConnectionMixin
 
 
@@ -22,6 +25,7 @@ class WorkItem(
     # interface resolver mixins
     WorkItemInfoResolverMixin,
     WorkItemEventsConnectionMixin,
+    CommitsConnectionMixin,
     # selectable
     Selectable
 ):
@@ -30,7 +34,8 @@ class WorkItem(
         named_node_resolver = WorkItemNode
         interface_resolvers = {}
         connection_node_resolvers = {
-            'work_item_events': WorkItemEventNodes
+            'work_item_events': WorkItemEventNodes,
+            'commits': WorkItemCommitNodes
         }
         connection_class = lambda: WorkItems
 

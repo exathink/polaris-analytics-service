@@ -10,10 +10,15 @@
 
 from sqlalchemy import select, bindparam, and_
 
-from polaris.analytics.db.model import work_items, work_item_state_transitions
-from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemStateTransition
+from polaris.analytics.db.model import \
+    work_items, work_item_state_transitions, \
+    work_items_commits, repositories, commits
+
+from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemStateTransition, CommitInfo
+
 from .sql_expressions import work_item_info_columns, work_item_event_columns
 
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 
 class WorkItemNode:
     interface = WorkItemInfo
@@ -41,5 +46,30 @@ class WorkItemEventNodes:
                 work_items.c.key == bindparam('key')
             )
         )
+
+
+class WorkItemCommitNodes:
+    interface = CommitInfo
+
+    @staticmethod
+    def selectable(**kwargs):
+        select_stmt = select([
+            *commit_info_columns(repositories, commits)
+        ]).select_from(
+            work_items.join(
+                work_items_commits
+            ).join(
+                commits
+            ).join(
+                repositories
+            )
+        ).where(
+            work_items.c.key == bindparam('key')
+        )
+        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+
+    @staticmethod
+    def sort_order(repository_commit_nodes, **kwargs):
+        return [repository_commit_nodes.c.commit_date.desc()]
 
 

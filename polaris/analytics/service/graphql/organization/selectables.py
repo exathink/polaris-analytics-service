@@ -20,13 +20,19 @@ from polaris.analytics.db.model import \
     organizations, projects, projects_repositories, \
     repositories, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases, \
-    work_items_sources, work_items
+    work_items_sources, work_items, work_item_state_transitions
  
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
-    ProjectCount, RepositoryCount, WorkItemsSourceCount,  WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef
+    ProjectCount, RepositoryCount, WorkItemsSourceCount,  \
+    WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef, \
+    WorkItemStateTransition
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
-from ..work_item.sql_expressions import work_item_info_columns
+from ..work_item.sql_expressions import \
+    work_item_info_columns, \
+    work_item_event_columns, \
+    work_items_connection_apply_time_window_filters, \
+    work_item_events_connection_apply_time_window_filters
 
 
 class OrganizationNode:
@@ -213,11 +219,39 @@ class OrganizationWorkItemNodes:
         ).where(
             organizations.c.key == bindparam('key')
         )
-        return select_stmt
+        return work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
 
     @staticmethod
     def sort_order(organization_work_items_nodes, **kwargs):
         return [organization_work_items_nodes.c.updated_at.desc()]
+
+
+class OrganizationWorkItemEventNodes:
+    interfaces = (WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
+
+    @staticmethod
+    def selectable(**kwargs):
+        select_stmt = select([
+            work_items_sources.c.key.label('work_items_source_key'),
+            work_items_sources.c.name.label('work_items_source_name'),
+            *work_item_info_columns(work_items),
+            *work_item_event_columns(work_item_state_transitions)
+        ]).select_from(
+            organizations.join(
+                work_items_sources, work_items_sources.c.organization_id == organizations.c.id
+            ).join(
+                work_items
+            ).join(
+                work_item_state_transitions
+            )
+        ).where(
+            organizations.c.key == bindparam('key')
+        )
+        return work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions, **kwargs)
+
+    @staticmethod
+    def sort_order(organization_work_item_event_nodes, **kwargs):
+        return [organization_work_item_event_nodes.c.event_date.desc()]
 
 
 class OrganizationRecentlyActiveContributorNodes:

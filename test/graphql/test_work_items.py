@@ -190,10 +190,6 @@ class TestWorkItemQueries:
         assert len(work_item_events['edges']) == 2
 
 
-
-
-
-
 class TestOrganizationWorkItems:
 
     def it_implements_the_named_node_interface(self, work_items_fixture):
@@ -311,4 +307,155 @@ class TestOrganizationWorkItems:
         edges = result['data']['organization']['workItems']['edges']
         assert len(edges) == 1
         assert uuid.UUID(edges[0]['node']['key']) == uuid.UUID(new_work_items[1]['key'])
+
+
+class TestOrganizationWorkItemEvents:
+
+    def it_implements_the_named_node_interface(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemEvents {
+                        edges {
+                            node {
+                                id
+                                name
+                                key
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemEvents']['edges']
+        assert len(edges) == 4
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['id']
+            assert node['name']
+            assert node['key']
+
+    def it_implements_the_work_item_info_interface(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemEvents {
+                        edges {
+                            node {
+                                description
+                                displayId
+                                state
+                                workItemType
+                                createdAt
+                                updatedAt
+                                url
+                                tags  
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemEvents']['edges']
+        assert len(edges) == 4
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['description']
+            assert node['displayId']
+            assert node['state']
+            assert node['workItemType']
+            assert node['tags']
+            assert node['url']
+            assert node['updatedAt']
+            assert node['createdAt']
+
+
+    def it_implements_the_work_item_source_ref_interface(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemEvents {
+                        edges {
+                            node {
+                                workItemsSourceName
+                                workItemsSourceKey
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemEvents']['edges']
+        assert len(edges) == 4
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['workItemsSourceName']
+            assert node['workItemsSourceKey']
+
+
+    def it_supports_filtering_events_by_days(self, setup_work_item_transitions):
+        work_items = setup_work_item_transitions
+
+        key = work_items[0]['key']
+        create_transitions(key, [
+            dict(seq_no=3, created_at=datetime.utcnow(), previous_state=None, state='accepted')
+        ])
+
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemEvents(days:1) {
+                        edges {
+                            node {
+                                key
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemEvents']['edges']
+        assert len(edges) == 1
+        for node in map(lambda edge: edge['node'], edges):
+            assert uuid.UUID(node['key']).hex == key
+
+
+    def it_supports_filtering_events_by_before(self, setup_work_item_transitions):
+        work_items = setup_work_item_transitions
+
+        keys = [work_item['key'] for work_item in work_items]
+
+        create_transitions(keys[0], [
+            dict(seq_no=3, created_at=datetime.utcnow(), previous_state=None, state='accepted')
+        ])
+
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!, $before: DateTime) {
+                organization(key: $organization_key) {
+                    workItemEvents(before: $before) {
+                        edges {
+                            node {
+                                key
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key, before=get_date("2018-12-03").isoformat()))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemEvents']['edges']
+        assert len(edges) == 3
+        for node in map(lambda edge: edge['node'], edges):
+            assert uuid.UUID(node['key']).hex in keys
 

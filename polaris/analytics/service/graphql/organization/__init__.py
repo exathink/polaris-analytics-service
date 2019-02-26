@@ -21,7 +21,7 @@ from .selectables import \
     OrganizationRepositoriesNodes, OrganizationRecentlyActiveRepositoriesNodes, \
     OrganizationContributorNodes, OrganizationRecentlyActiveProjectsNodes, \
     OrganizationRecentlyActiveContributorNodes, OrganizationWeeklyContributorCount, \
-    OrganizationCommitNodes, OrganizationWorkItemNodes
+    OrganizationCommitNodes, OrganizationWorkItemNodes, OrganizationWorkItemEventNodes
 
 
 from ..interface_mixins import \
@@ -37,7 +37,7 @@ from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributor
 
 from ..selectable_field_mixins import WeeklyContributorCountsResolverMixin
 from ..commit import CommitsConnectionMixin
-from ..work_item import WorkItemsConnectionMixin
+from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin
 
 
 class Organization(
@@ -57,6 +57,7 @@ class Organization(
     RecentlyActiveProjectsConnectionMixin,
     CommitsConnectionMixin,
     WorkItemsConnectionMixin,
+    WorkItemEventsConnectionMixin,
     # field mixins
     WeeklyContributorCountsResolverMixin,
     #
@@ -78,6 +79,7 @@ class Organization(
             'commits': OrganizationCommitNodes,
             'repositories': OrganizationRepositoriesNodes,
             'work_items': OrganizationWorkItemNodes,
+            'work_item_events': OrganizationWorkItemEventNodes,
             'recently_active_projects': OrganizationRecentlyActiveProjectsNodes,
             'recently_active_repositories': OrganizationRecentlyActiveRepositoriesNodes,
             'recently_active_contributors': OrganizationRecentlyActiveContributorNodes

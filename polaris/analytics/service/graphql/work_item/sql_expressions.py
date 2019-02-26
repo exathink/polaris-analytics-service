@@ -8,6 +8,8 @@
 
 # Author: Krishna Kumar
 
+from datetime import datetime, timedelta
+from sqlalchemy import and_
 
 def work_item_info_columns(work_items):
     return [
@@ -32,3 +34,57 @@ def work_item_event_columns(work_item_state_transitions):
         work_item_state_transitions.c.previous_state,
         work_item_state_transitions.c.state.label('new_state')
     ]
+
+
+def work_items_connection_apply_time_window_filters(select_stmt, work_items,  **kwargs):
+    before = None
+    if 'before' in kwargs:
+        before = kwargs['before']
+
+    if 'days' in kwargs and kwargs['days'] > 0:
+        if before:
+            window_start = before - timedelta(days=kwargs['days'])
+            return select_stmt.where(
+                and_(
+                    work_items.c.updated_at >= window_start,
+                    work_items.c.updated_at <= before
+                )
+            )
+        else:
+            window_start = datetime.utcnow() - timedelta(days=kwargs['days'])
+            return select_stmt.where(
+                    work_items.c.updated_at >= window_start
+                )
+    elif before:
+        return select_stmt.where(
+            work_items.c.updated_at <= before
+        )
+    else:
+        return select_stmt
+
+
+def work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions,  **kwargs):
+    before = None
+    if 'before' in kwargs:
+        before = kwargs['before']
+
+    if 'days' in kwargs and kwargs['days'] > 0:
+        if before:
+            window_start = before - timedelta(days=kwargs['days'])
+            return select_stmt.where(
+                and_(
+                    work_item_state_transitions.c.created_at >= window_start,
+                    work_item_state_transitions.c.created_at <= before
+                )
+            )
+        else:
+            window_start = datetime.utcnow() - timedelta(days=kwargs['days'])
+            return select_stmt.where(
+                    work_item_state_transitions.c.created_at >= window_start
+                )
+    elif before:
+        return select_stmt.where(
+            work_item_state_transitions.c.created_at <= before
+        )
+    else:
+        return select_stmt

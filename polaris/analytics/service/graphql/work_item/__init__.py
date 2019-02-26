@@ -8,6 +8,7 @@
 
 # Author: Krishna Kumar
 
+import graphene
 
 from polaris.analytics.service.graphql.interface_mixins import KeyIdResolverMixin, WorkItemInfoResolverMixin
 from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemsSourceRef
@@ -55,7 +56,22 @@ class WorkItems(
 
 class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
-    work_items = WorkItem.ConnectionField()
+    work_items = WorkItem.ConnectionField(
+        before=graphene.Argument(
+            graphene.DateTime, required=False,
+            description='show work_items whose latest update is strictly before this timestamp. '
+        ),
+        days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="Return work items last updated within the specified number of days. "
+                        "If before is specified, it returns work items with commit dates"
+                        "between (before - days) and before"
+                        "If before is not specified the it returns work items for the"
+                        "previous n days starting from utc now"
+        )
+
+    )
 
     def resolve_work_items(self, info, **kwargs):
         return WorkItem.resolve_connection(

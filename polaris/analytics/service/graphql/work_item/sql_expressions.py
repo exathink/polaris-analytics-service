@@ -36,6 +36,29 @@ def work_item_event_columns(work_item_state_transitions):
     ]
 
 
+def work_item_commit_info_columns(repositories, commits):
+    return [
+        commits.c.key.label('commit_key'),
+        commits.c.source_commit_id.label('commit_hash'),
+        repositories.c.name.label('repository'),
+        repositories.c.url.label('repository_url'),
+        repositories.c.key.label('repository_key'),
+        commits.c.commit_date,
+        commits.c.committer_contributor_name.label('committer'),
+        commits.c.committer_contributor_key.label('committer_key'),
+        commits.c.author_date,
+        commits.c.author_contributor_name.label('author'),
+        commits.c.author_contributor_key.label('author_key'),
+        commits.c.commit_message,
+        commits.c.num_parents,
+        commits.c.created_on_branch.label('branch'),
+        commits.c.stats,
+        commits.c.source_file_types_summary.label('file_types_summary'),
+        commits.c.work_items_summaries
+    ]
+
+
+
 def work_items_connection_apply_time_window_filters(select_stmt, work_items,  **kwargs):
     before = None
     if 'before' in kwargs:

@@ -11,7 +11,10 @@
 import graphene
 
 from polaris.analytics.service.graphql.interface_mixins import KeyIdResolverMixin, WorkItemInfoResolverMixin
-from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemsSourceRef
+from polaris.analytics.service.graphql.interfaces import WorkItemInfo, \
+    WorkItemsSourceRef, WorkItemStateTransition,\
+    WorkItemCommitInfo
+
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes
 
@@ -19,7 +22,94 @@ from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
 from polaris.graphql.selectable import Selectable
 from ..commit import CommitsConnectionMixin
-from ..work_item_event import WorkItemEventsConnectionMixin
+
+
+class WorkItemEvent(
+    Selectable
+):
+    class Meta:
+        interfaces = (WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
+        named_node_resolver = None
+        interface_resolvers = {}
+        connection_class = lambda: WorkItemEvents
+
+
+class WorkItemEvents(
+    CountableConnection
+):
+    class Meta:
+        node = WorkItemEvent
+
+
+class WorkItemEventsConnectionMixin(ConnectionResolverMixin):
+
+    work_item_events = WorkItemEvent.ConnectionField(
+        before=graphene.Argument(
+            graphene.DateTime, required=False,
+            description='show events whose eventDate is strictly before this timestamp. '
+        ),
+        days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="Return events with eventDate within the specified number of days. "
+                        "If before is specified, it returns events with eventDate"
+                        "between (before - days) and before"
+                        "If before is not specified the it returns events for the"
+                        "previous n days starting from utc now"
+        )
+    )
+
+    def resolve_work_item_events(self, info, **kwargs):
+        return WorkItemEvent.resolve_connection(
+            self.get_connection_resolver_context('work_item_events'),
+            self.get_connection_node_resolver('work_item_events'),
+            self.get_instance_query_params(),
+            **kwargs
+        )
+
+
+class WorkItemCommit(
+    Selectable
+):
+    class Meta:
+        interfaces = (WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
+        named_node_resolver = None
+        interface_resolvers = {}
+        connection_class = lambda: WorkItemCommits
+
+
+class WorkItemCommits(
+    CountableConnection
+):
+    class Meta:
+        node = WorkItemCommit
+
+
+class WorkItemCommitsConnectionMixin(ConnectionResolverMixin):
+
+    work_item_commits = WorkItemCommit.ConnectionField(
+        before=graphene.Argument(
+            graphene.DateTime, required=False,
+            description='show commit whose eventDate is strictly before this timestamp. '
+        ),
+        days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="Return events with eventDate within the specified number of days. "
+                        "If before is specified, it returns events with eventDate"
+                        "between (before - days) and before"
+                        "If before is not specified the it returns events for the"
+                        "previous n days starting from utc now"
+        )
+    )
+
+    def resolve_work_item_commits(self, info, **kwargs):
+        return WorkItemCommit.resolve_connection(
+            self.get_connection_resolver_context('work_item_commits'),
+            self.get_connection_node_resolver('work_item_commits'),
+            self.get_instance_query_params(),
+            **kwargs
+        )
 
 
 class WorkItem(

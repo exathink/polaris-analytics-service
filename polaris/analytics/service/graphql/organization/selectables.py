@@ -20,17 +20,18 @@ from polaris.analytics.db.model import \
     organizations, projects, projects_repositories, \
     repositories, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases, \
-    work_items_sources, work_items, work_item_state_transitions
+    work_items_sources, work_items, work_item_state_transitions, work_items_commits
  
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
     ProjectCount, RepositoryCount, WorkItemsSourceCount,  \
     WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef, \
-    WorkItemStateTransition
+    WorkItemStateTransition, WorkItemCommitInfo
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 from ..work_item.sql_expressions import \
     work_item_info_columns, \
     work_item_event_columns, \
+    work_item_commit_info_columns, \
     work_items_connection_apply_time_window_filters, \
     work_item_events_connection_apply_time_window_filters
 
@@ -252,6 +253,39 @@ class OrganizationWorkItemEventNodes:
     @staticmethod
     def sort_order(organization_work_item_event_nodes, **kwargs):
         return [organization_work_item_event_nodes.c.event_date.desc()]
+
+
+class OrganizationWorkItemCommitNodes:
+    interfaces = (WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
+
+    @staticmethod
+    def selectable(**kwargs):
+        select_stmt = select([
+            work_items_sources.c.key.label('work_items_source_key'),
+            work_items_sources.c.name.label('work_items_source_name'),
+            *work_item_info_columns(work_items),
+            *work_item_commit_info_columns(repositories, commits)
+        ]).select_from(
+            organizations.join(
+                work_items_sources, work_items_sources.c.organization_id == organizations.c.id
+            ).join(
+                work_items
+            ).join(
+                work_items_commits
+            ).join(
+                commits
+            ).join(
+                repositories
+            )
+        ).where(
+            organizations.c.key == bindparam('key')
+        )
+        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+
+    @staticmethod
+    def sort_order(organization_work_item_commits_nodes, **kwargs):
+        return [organization_work_item_commits_nodes.c.commit_date.desc()]
+
 
 
 class OrganizationRecentlyActiveContributorNodes:

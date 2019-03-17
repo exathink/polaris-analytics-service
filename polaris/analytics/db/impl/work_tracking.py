@@ -131,26 +131,43 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             work_items_temp.c.created_at,
                             work_items_temp.c.updated_at,
                             work_items_temp.c.work_items_source_id,
-                            # We initialize the next state seq no as 1 since
-                            # the seq_no will be taken up by the initial state which
+                            # We initialize the next state seq no as 2 since
+                            # the seq_no 0 and 1 will be taken up by the initial states which
                             # we create below. Subsequent state changes will use
                             # the current value of the next_state_seq_no to set its sequence number.
-                            literal('1').label('next_state_sequence_no')
+                            literal('2').label('next_state_sequence_no')
                         ]
                     ).where(
                         work_items_temp.c.work_item_id == None
                     )
                 )
             ).rowcount
-            # add the initial state to the state transitions
+            # add the created state to the state transitions
             # for the newly inserted entries.
-
             session.connection().execute(
                 work_item_state_transitions.insert().from_select(
                     ['work_item_id', 'seq_no', 'state', 'created_at'],
                     select([
                         work_items.c.id,
                         literal('0').label('seq_no'),
+                        literal('created').label('state'),
+                        work_items.c.created_at
+                    ]).where(
+                        and_(
+                            work_items.c.key == work_items_temp.c.key,
+                            work_items_temp.c.work_item_id == None
+                        )
+                    )
+                )
+            )
+
+            session.connection().execute(
+                work_item_state_transitions.insert().from_select(
+                    ['work_item_id', 'seq_no', 'previous_state', 'state',  'created_at'],
+                    select([
+                        work_items.c.id,
+                        literal('1').label('seq_no'),
+                        literal('created').label('previous_state'),
                         work_items.c.state,
                         # we will record the last updated date of the work_item as the state
                         # transition date since this is the closest best guess of when the actual

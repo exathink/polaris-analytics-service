@@ -246,14 +246,22 @@ class TestStateTransitionSequence:
             work_item
         ])
         assert result['success']
-        assert db.row_proxy_to_dict(
-            db.connection().execute("select seq_no, previous_state, state, created_at from analytics.work_item_state_transitions").fetchone()
-        ) == dict(
-            seq_no=0,
-            previous_state=None,
-            state=work_item['state'],
-            created_at=work_item['updated_at']
-        )
+        assert db.row_proxies_to_dict(
+            db.connection().execute("select seq_no, previous_state, state, created_at from analytics.work_item_state_transitions").fetchall()
+        ) == [
+            dict(
+                seq_no=0,
+                previous_state=None,
+                state='created',
+                created_at=work_item['created_at']
+            ),
+            dict(
+                seq_no=1,
+                previous_state='created',
+                state=work_item['state'],
+                created_at=work_item['updated_at']
+            )
+        ]
 
 
     def it_initializes_the_next_state_seq_no_for_the_new_item(self, work_items_setup):
@@ -269,7 +277,7 @@ class TestStateTransitionSequence:
             work_item
         ])
         assert result['success']
-        assert db.connection().execute(f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 1
+        assert db.connection().execute(f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
 
 
 
@@ -302,11 +310,17 @@ class TestStateTransitionSequence:
             dict(
                 seq_no=0,
                 previous_state=None,
+                state='created',
+                created_at=work_item['created_at']
+            ),
+            dict(
+                seq_no=1,
+                previous_state='created',
                 state=work_item['state'],
                 created_at=work_item['updated_at']
             ),
             dict(
-                seq_no=1,
+                seq_no=2,
                 previous_state=work_item['state'],
                 state='closed',
                 created_at=work_item['updated_at']
@@ -337,7 +351,7 @@ class TestStateTransitionSequence:
         ])
         assert result['success']
         assert db.connection().execute(
-            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
+            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 3
 
 
     def it_saves_the_next_state_correctly_after_a_subsequent_update(self, work_items_setup):
@@ -380,17 +394,23 @@ class TestStateTransitionSequence:
             dict(
                 seq_no=0,
                 previous_state=None,
-                state=work_item['state'],
-                created_at=work_item['updated_at']
+                state='created',
+                created_at=work_item['created_at']
             ),
             dict(
                 seq_no=1,
+                previous_state='created',
+                state='open',
+                created_at=work_item['updated_at']
+            ),
+            dict(
+                seq_no=2,
                 previous_state=work_item['state'],
                 state='closed',
                 created_at=work_item['updated_at']
             ),
             dict(
-                seq_no=2,
+                seq_no=3,
                 previous_state='closed',
                 state='delivered',
                 created_at=work_item['updated_at']
@@ -421,6 +441,12 @@ class TestStateTransitionSequence:
             dict(
                 seq_no=0,
                 previous_state=None,
+                state='created',
+                created_at=work_item['created_at']
+            ),
+            dict(
+                seq_no=1,
+                previous_state='created',
                 state=work_item['state'],
                 created_at=work_item['updated_at']
             )
@@ -444,5 +470,5 @@ class TestStateTransitionSequence:
         ])
 
         assert result['success']
-        assert db.connection().execute(f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 1
+        assert db.connection().execute(f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
 

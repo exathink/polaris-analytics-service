@@ -337,6 +337,51 @@ class TestOrganizationWorkItemEvents:
             assert node['name']
             assert node['key']
 
+    def it_returns_composite_event_keys(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemEvents {
+                        edges {
+                            node {
+                                key
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemEvents']['edges']
+        assert len(edges) == 4
+        for node in map(lambda edge: edge['node'], edges):
+            composite_key = node['key'].split(':')
+            assert len(composite_key) == 2
+
+    def it_returns_unique_event_ids_using_the_composite_keys(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemEvents {
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemEvents']['edges']
+        assert len(edges) == 4
+        ids = set(map(lambda edge: edge['node']['id'], edges))
+        assert len(ids) == 4
+
     def it_implements_the_work_item_info_interface(self, setup_work_item_transitions):
         client = Client(schema)
         query = """
@@ -402,8 +447,8 @@ class TestOrganizationWorkItemEvents:
     def it_supports_filtering_events_by_days(self, setup_work_item_transitions):
         work_items = setup_work_item_transitions
 
-        key = work_items[0]['key']
-        create_transitions(key, [
+        work_item_key = work_items[0]['key']
+        create_transitions(work_item_key, [
             dict(seq_no=3, created_at=datetime.utcnow(), previous_state=None, state='accepted')
         ])
 
@@ -414,6 +459,7 @@ class TestOrganizationWorkItemEvents:
                     workItemEvents(days:1) {
                         edges {
                             node {
+                                id
                                 key
                             }
                         }
@@ -426,7 +472,8 @@ class TestOrganizationWorkItemEvents:
         edges = result['data']['organization']['workItemEvents']['edges']
         assert len(edges) == 1
         for node in map(lambda edge: edge['node'], edges):
-            assert uuid.UUID(node['key']).hex == key
+            key, seq_no = node['key'].split(':')
+            assert uuid.UUID(key).hex == work_item_key
 
 
     def it_supports_filtering_events_by_before(self, setup_work_item_transitions):
@@ -457,5 +504,6 @@ class TestOrganizationWorkItemEvents:
         edges = result['data']['organization']['workItemEvents']['edges']
         assert len(edges) == 3
         for node in map(lambda edge: edge['node'], edges):
-            assert uuid.UUID(node['key']).hex in keys
+            key, seq_no = node['key'].split(':')
+            assert uuid.UUID(key).hex in keys
 

@@ -16,22 +16,36 @@ from polaris.analytics.service.graphql.interfaces import WorkItemInfo, \
     WorkItemCommitInfo
 
 from polaris.analytics.service.graphql.work_item.selectable import \
-    WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes
+    WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
 from polaris.graphql.selectable import Selectable
+from ..interface_mixins import KeyIdResolverMixin
 from ..commit import CommitsConnectionMixin
 
 
 class WorkItemEvent(
+    # interface mixins
+    KeyIdResolverMixin,
+
     Selectable
 ):
     class Meta:
         interfaces = (WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
-        named_node_resolver = None
+        named_node_resolver = WorkItemEventNode
         interface_resolvers = {}
         connection_class = lambda: WorkItemEvents
+
+    @classmethod
+    def key_to_instance_resolver_params(cls, key):
+        key_parts = key.split(':')
+        assert len(key_parts) == 2
+        return dict(work_item_key=key_parts[0], seq_no=key_parts[1])
+
+    @classmethod
+    def resolve_field(cls, info, work_item_event_key, **kwargs):
+        return cls.resolve_instance(work_item_event_key, **kwargs)
 
 
 class WorkItemEvents(

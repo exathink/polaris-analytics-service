@@ -24,7 +24,7 @@ from polaris.analytics.db.model import \
  
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
     ProjectCount, RepositoryCount, WorkItemsSourceCount,  \
-    WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef, \
+    WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef,\
     WorkItemStateTransition, WorkItemCommitInfo, WorkItemEventSpan
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters

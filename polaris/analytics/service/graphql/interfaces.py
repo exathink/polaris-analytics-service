@@ -54,6 +54,9 @@ class CommitInfo(NamedNode):
 
 class WorkItemCommitInfo(CommitInfo):
     commit_key = graphene.String(required=True)
+    work_item_name = graphene.String(required=True)
+    work_item_key = graphene.String(required=True)
+
 
 class CumulativeCommitCount(graphene.Interface):
     year = graphene.Int(required=True)

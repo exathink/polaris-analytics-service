@@ -15,7 +15,9 @@ from polaris.analytics.db.model import \
     work_items_commits, repositories, commits, \
     work_items_sources
 
-from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef, WorkItemStateTransition, CommitInfo
+from polaris.analytics.service.graphql.interfaces import \
+    NamedNode, WorkItemInfo, WorkItemCommitInfo, \
+    WorkItemsSourceRef, WorkItemStateTransition, CommitInfo
 
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, work_item_events_connection_apply_time_window_filters
 

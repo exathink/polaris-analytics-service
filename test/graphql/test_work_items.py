@@ -755,7 +755,7 @@ class TestOrganizationWorkItemCommits:
             assert node['updatedAt']
             assert node['createdAt']
 
-    def it_implements_the_commit_info_interface(self, setup_work_item_transitions):
+    def it_implements_the_work_item_commit_info_interface(self, setup_work_item_transitions):
         client = Client(schema)
         query = """
             query getOrganizationWorkItems($organization_key:String!) {
@@ -763,6 +763,8 @@ class TestOrganizationWorkItemCommits:
                     workItemCommits {
                         edges {
                             node {
+                                workItemName
+                                workItemKey
                                 commitKey
                                 commitHash
                                 repository
@@ -799,6 +801,8 @@ class TestOrganizationWorkItemCommits:
             assert node['author']
             assert node['authorKey']
             assert node['commitMessage']
+            assert node['workItemName']
+            assert node['workItemKey']
 
 class TestOrganizationWorkItemEventSpan:
 

@@ -25,7 +25,7 @@ from polaris.analytics.db.model import \
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
     ProjectCount, RepositoryCount, WorkItemsSourceCount,  \
     WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef, \
-    WorkItemStateTransition, WorkItemCommitInfo
+    WorkItemStateTransition, WorkItemCommitInfo, WorkItemEventSpan
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 from ..work_item.sql_expressions import \
@@ -288,7 +288,6 @@ class OrganizationWorkItemCommitNodes:
         return [organization_work_item_commits_nodes.c.commit_date.desc()]
 
 
-
 class OrganizationRecentlyActiveContributorNodes:
     interfaces = (NamedNode, CommitCount)
 
@@ -429,5 +428,23 @@ class OrganizationsWorkItemsSourceCount:
         ]).select_from(
             organization_nodes.outerjoin(
                 work_items_sources, work_items_sources.c.organization_id == organization_nodes.c.id
+            )
+        ).group_by(organization_nodes.c.id)
+
+
+class OrganizationWorkItemEventSpan:
+    interface = WorkItemEventSpan
+
+    @staticmethod
+    def selectable(organization_nodes, **kwargs):
+        return select([
+            organization_nodes.c.id,
+            func.min(work_items.c.created_at).label('earliest_work_item_event'),
+            func.max(work_items.c.updated_at).label('latest_work_item_event')
+        ]).select_from(
+            organization_nodes.outerjoin(
+                work_items_sources, work_items_sources.c.organization_id == organization_nodes.c.id
+            ).outerjoin(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             )
         ).group_by(organization_nodes.c.id)

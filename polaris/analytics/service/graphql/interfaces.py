@@ -119,3 +119,9 @@ class WorkItemStateTransition(graphene.Interface):
     seq_no = graphene.Int(required=True)
     previous_state = graphene.String(required=False)
     new_state = graphene.String(required=True)
+
+
+class WorkItemEventSpan(graphene.Interface):
+    earliest_work_item_event = graphene.DateTime(required=True)
+    latest_work_item_event = graphene.DateTime(required=True)
+

@@ -21,15 +21,17 @@ from .selectables import \
     OrganizationRepositoriesNodes, OrganizationRecentlyActiveRepositoriesNodes, \
     OrganizationContributorNodes, OrganizationRecentlyActiveProjectsNodes, \
     OrganizationRecentlyActiveContributorNodes, OrganizationWeeklyContributorCount, \
-    OrganizationCommitNodes, OrganizationWorkItemNodes, OrganizationWorkItemEventNodes, OrganizationWorkItemCommitNodes
+    OrganizationCommitNodes, OrganizationWorkItemNodes, OrganizationWorkItemEventNodes, OrganizationWorkItemCommitNodes,\
+    OrganizationWorkItemEventSpan
+
 
 
 from ..interface_mixins import \
     KeyIdResolverMixin, \
     NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, \
-    ProjectCountResolverMixin, RepositoryCountResolverMixin, WorkItemsSourceCountResolverMixin
+    ProjectCountResolverMixin, RepositoryCountResolverMixin, WorkItemsSourceCountResolverMixin, WorkItemEventSpanResolverMixin
 
-from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount, WorkItemsSourceCount
+from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount, WorkItemsSourceCount, WorkItemEventSpan
 
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
@@ -48,6 +50,7 @@ class Organization(
     ProjectCountResolverMixin,
     RepositoryCountResolverMixin,
     WorkItemsSourceCountResolverMixin,
+    WorkItemEventSpanResolverMixin,
     # Connection Mixins
     ProjectsConnectionMixin,
     ContributorsConnectionMixin,
@@ -65,7 +68,7 @@ class Organization(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, ContributorCount, ProjectCount, RepositoryCount, WorkItemsSourceCount)
+        interfaces = (NamedNode, CommitSummary, ContributorCount, ProjectCount, RepositoryCount, WorkItemsSourceCount, WorkItemEventSpan)
         named_node_resolver = OrganizationNode
         interface_resolvers = {
             'CommitSummary': OrganizationsCommitSummary,
@@ -73,6 +76,7 @@ class Organization(
             'ProjectCount': OrganizationsProjectCount,
             'RepositoryCount': OrganizationsRepositoryCount,
             'WorkItemsSourceCount': OrganizationsWorkItemsSourceCount,
+            'WorkItemEventSpan': OrganizationWorkItemEventSpan,
         }
         connection_node_resolvers = {
             'projects': OrganizationProjectsNodes,

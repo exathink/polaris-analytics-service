@@ -799,3 +799,21 @@ class TestOrganizationWorkItemCommits:
             assert node['author']
             assert node['authorKey']
             assert node['commitMessage']
+
+class TestOrganizationWorkItemEventSpan:
+
+    def it_implements_the_work_item_event_span_interface(self, work_items_fixture):
+        work_item_key, _, _ = work_items_fixture
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key, interfaces: [WorkItemEventSpan]) {
+                    earliestWorkItemEvent
+                    latestWorkItemEvent
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        assert result['data']['organization']['earliestWorkItemEvent']
+        assert result['data']['organization']['latestWorkItemEvent']

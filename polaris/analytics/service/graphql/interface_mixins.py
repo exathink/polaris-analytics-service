@@ -24,7 +24,8 @@ from .interfaces import \
     CommitChangeStats, \
     FileTypesSummary, \
     CommitWorkItemsSummary, \
-    WorkItemInfo
+    WorkItemInfo, \
+    WorkItemEventSpan
 
 
 class CommitSummaryResolverMixin(KeyIdResolverMixin):
@@ -286,3 +287,29 @@ class WorkItemInfoResolverMixin(KeyIdResolverMixin):
     def resolve_tags(self, info, **kwargs):
         return self.get_work_item_info(info, **kwargs).tags
 
+
+class WorkItemEventSpanResolverMixin(KeyIdResolverMixin):
+    work_item_event_span_tuple_type = create_tuple(WorkItemEventSpan)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.work_item_event_span = init_tuple(self.work_item_event_span_tuple_type, **kwargs)
+
+    def resolve_interface_work_item_event_span(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['WorkItemEventSpan'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_work_item_event_span(self, info, **kwargs):
+        if self.work_item_event_span is None:
+            self.work_item_event_span = self.resolve_interface_work_item_event_span(info, **kwargs)
+
+        return self.work_item_event_span
+
+    def resolve_earliest_work_item_event(self, info, **kwargs):
+        return self.get_work_item_event_span(info, **kwargs).earliest_work_item_event
+
+    def resolve_latest_work_item_event(self, info, **kwargs):
+        return self.get_work_item_event_span(info, **kwargs).latest_work_item_event

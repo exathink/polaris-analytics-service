@@ -15,7 +15,6 @@ from polaris.analytics.service.graphql import schema
 
 
 work_items_common = dict(
-    name='Issue',
     is_bug=True,
     work_item_type='issue',
     url='http://foo.com',
@@ -34,6 +33,7 @@ def work_items_fixture(commits_fixture):
     new_work_items = [
         dict(
             key=new_key.hex,
+            name='Issue 1',
             display_id='1000',
             created_at=get_date("2018-12-02"),
             updated_at=get_date("2018-12-03"),
@@ -41,6 +41,7 @@ def work_items_fixture(commits_fixture):
         ),
         dict(
             key=uuid.uuid4().hex,
+            name='Issue 2',
             display_id='2000',
             created_at=get_date("2018-12-03"),
             updated_at=get_date("2018-12-04"),
@@ -58,7 +59,7 @@ def work_items_fixture(commits_fixture):
         ),
         items_data=new_work_items
     )
-    test_commit_source_id = '00001'
+    test_commit_source_id = 'XXXXXX'
     test_commit_key = uuid.uuid4()
     test_commits = [
         dict(
@@ -68,9 +69,18 @@ def work_items_fixture(commits_fixture):
             commit_message="Another change. Fixes issue #1000",
             author_date=get_date("2018-12-03"),
             **commits_common_fields(commits_fixture)
+        ),
+        dict(
+            repository_id=test_repo.id,
+            key=uuid.uuid4().hex,
+            source_commit_id='YYYYYY',
+            commit_message="Another change. Fixes issue #2000",
+            author_date=get_date("2018-12-03"),
+            **commits_common_fields(commits_fixture)
         )
     ]
     create_test_commits(test_commits)
+    create_work_item_commits(new_key, map(lambda commit: commit['key'], test_commits))
     yield new_key, test_commit_key, new_work_items
 
 
@@ -114,7 +124,10 @@ def setup_work_item_transitions(work_items_fixture):
     db.connection().execute("delete from analytics.work_item_state_transitions")
 
 
-class TestWorkItemQueries:
+
+
+
+class TestWorkItemInstance:
 
     def it_implements_named_node_interface(self, work_items_fixture):
         work_item_key, _, _ = work_items_fixture
@@ -132,7 +145,7 @@ class TestWorkItemQueries:
         assert 'data' in result
         workItem = result['data']['workItem']
         assert workItem['id']
-        assert workItem['name'] == 'Issue'
+        assert workItem['name'] == 'Issue 1'
         assert workItem['key'] == str(work_item_key)
 
 
@@ -163,32 +176,132 @@ class TestWorkItemQueries:
         assert work_item['url'] == work_items_common['url']
         assert work_item['tags'] == work_items_common['tags']
 
-    def it_returns_work_item_events(self, setup_work_item_transitions):
-        new_work_items = setup_work_item_transitions
-        work_item_key = new_work_items[0]['key']
+    class TestWorkItemInstanceEvents:
 
-        client = Client(schema)
-        query = """
-                    query getWorkItem($key:String!) {
-                        workItem(key: $key){
-                            workItemEvents {
-                                edges {
-                                    node {
-                                        seqNo
-                                        eventDate
-                                        previousState
-                                        newState
+        def it_returns_work_item_event_named_nodes(self, setup_work_item_transitions):
+            new_work_items = setup_work_item_transitions
+            work_item_key = new_work_items[0]['key']
+
+            client = Client(schema)
+            query = """
+                        query getWorkItem($key:String!) {
+                            workItem(key: $key){
+                                workItemEvents {
+                                    edges {
+                                        node {
+                                            id
+                                            name
+                                            key
+                                        }
                                     }
                                 }
                             }
-                        }
-                    } 
-                """
-        result = client.execute(query, variable_values=dict(key=work_item_key))
-        assert 'data' in result
-        work_item_events = result['data']['workItem']['workItemEvents']
-        assert len(work_item_events['edges']) == 2
+                        } 
+                    """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            edges = result['data']['workItem']['workItemEvents']['edges']
+            assert len(edges) == 2
+            # unique event id test
+            assert len(set(map(lambda edge: edge['node']['id'], edges))) == 2
+            # all events have the same name as the work item
+            assert set(map(lambda edge: edge['node']['name'], edges)) == {'Issue 1'}
+            # all events have compound keys
 
+            assert set(map(lambda edge: edge['node']['key'], edges)) == {f'{uuid.UUID(work_item_key)}:0', f'{uuid.UUID(work_item_key)}:1'}
+
+        def it_returns_work_item_events_state_transitions(self, setup_work_item_transitions):
+            new_work_items = setup_work_item_transitions
+            work_item_key = new_work_items[0]['key']
+
+            client = Client(schema)
+            query = """
+                        query getWorkItem($key:String!) {
+                            workItem(key: $key){
+                                workItemEvents {
+                                    edges {
+                                        node {
+                                            seqNo
+                                            eventDate
+                                            previousState
+                                            newState
+                                        }
+                                    }
+                                }
+                            }
+                        } 
+                    """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            edges = result['data']['workItem']['workItemEvents']['edges']
+            assert len(edges) == 2
+            for node in map(lambda edge: edge['node'], edges):
+                assert node['seqNo'] is not None
+                assert node['eventDate']
+                assert node['newState']
+
+
+        def it_returns_work_item_events_source_refs(self, setup_work_item_transitions):
+            new_work_items = setup_work_item_transitions
+            work_item_key = new_work_items[0]['key']
+
+            client = Client(schema)
+            query = """
+                        query getWorkItem($key:String!) {
+                            workItem(key: $key){
+                                workItemEvents {
+                                    edges {
+                                        node {
+                                            workItemsSourceName
+                                            workItemsSourceKey
+                                        }
+                                    }
+                                }
+                            }
+                        } 
+                    """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            edges = result['data']['workItem']['workItemEvents']['edges']
+            assert len(edges) == 2
+            for node in map(lambda edge: edge['node'], edges):
+                assert node['workItemsSourceName']
+                assert node['workItemsSourceKey']
+
+
+    class TestWorkItemInstanceCommits:
+
+        def it_returns_work_item_commits_named_nodes(self, work_items_fixture):
+            work_item_key, _, _ = work_items_fixture
+            test_repo = getRepository('alpha')
+
+            client = Client(schema)
+            query = """
+                        query getWorkItem($key:String!) {
+                            workItem(key: $key){
+                                commits {
+                                    edges {
+                                        node {
+                                            id
+                                            name
+                                            key
+                                        }
+                                    }
+                                }
+                            }
+                        } 
+                    """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            edges = result['data']['workItem']['commits']['edges']
+            assert len(edges) == 2
+            # unique commit id test
+            assert len(set(map(lambda edge: edge['node']['id'], edges))) == 2
+            # all commits are named by the source_commit_id
+            assert set(map(lambda edge: edge['node']['name'], edges)) == {'XXXXXX', 'YYYYYY'}
+            # all commits have the key of form repository_key:source_commit_id
+
+            assert set(map(lambda edge: edge['node']['key'], edges)) == {f'{test_repo.key}:XXXXXX', f'{test_repo.key}:YYYYYY'}
 
 class TestOrganizationWorkItems:
 
@@ -507,3 +620,182 @@ class TestOrganizationWorkItemEvents:
             key, seq_no = node['key'].split(':')
             assert uuid.UUID(key).hex in keys
 
+
+
+class TestOrganizationWorkItemCommits:
+
+    def it_implements_the_named_node_interface(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemCommits {
+                        edges {
+                            node {
+                                id
+                                name
+                                key
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemCommits']['edges']
+        assert len(edges) == 2
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['id']
+            assert node['name']
+            assert node['key']
+
+    def it_returns_composite_event_keys(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemCommits {
+                        edges {
+                            node {
+                                key
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemCommits']['edges']
+        assert len(edges) == 2
+        for node in map(lambda edge: edge['node'], edges):
+            composite_key = node['key'].split(':')
+            assert len(composite_key) == 2
+
+    def it_returns_unique_event_ids_using_the_composite_keys(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemCommits {
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemCommits']['edges']
+        assert len(edges) == 2
+        ids = set(map(lambda edge: edge['node']['id'], edges))
+        assert len(ids) == 2
+
+    def it_implements_the_work_item_source_ref_interface(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemCommits {
+                        edges {
+                            node {
+                                workItemsSourceName
+                                workItemsSourceKey
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemCommits']['edges']
+        assert len(edges) == 2
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['workItemsSourceName']
+            assert node['workItemsSourceKey']
+
+    def it_implements_the_work_item_info_interface(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemCommits {
+                        edges {
+                            node {
+                                description
+                                displayId
+                                state
+                                workItemType
+                                createdAt
+                                updatedAt
+                                url
+                                tags  
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemCommits']['edges']
+        assert len(edges) == 2
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['description']
+            assert node['displayId']
+            assert node['state']
+            assert node['workItemType']
+            assert node['tags']
+            assert node['url']
+            assert node['updatedAt']
+            assert node['createdAt']
+
+    def it_implements_the_commit_info_interface(self, setup_work_item_transitions):
+        client = Client(schema)
+        query = """
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItemCommits {
+                        edges {
+                            node {
+                                commitKey
+                                commitHash
+                                repository
+                                repositoryKey
+                                repositoryUrl
+                                commitDate
+                                committer
+                                committerKey
+                                authorDate
+                                author
+                                authorKey
+                                commitMessage
+                                
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
+        assert 'data' in result
+        edges = result['data']['organization']['workItemCommits']['edges']
+        assert len(edges) == 2
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['commitKey']
+            assert node['commitHash']
+            assert node['repository']
+            assert node['repositoryKey']
+            assert node['repositoryUrl']
+            assert node['commitDate']
+            assert node['committer']
+            assert node['committerKey']
+            assert node['authorDate']
+            assert node['author']
+            assert node['authorKey']
+            assert node['commitMessage']

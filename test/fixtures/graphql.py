@@ -13,8 +13,9 @@ from datetime import datetime
 import pytest
 
 from polaris.analytics.db.model import Organization, Repository, Project, contributors, contributor_aliases, commits, \
-    WorkItemsSource, WorkItem, WorkItemStateTransition
+    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit
 from polaris.common import db
+from polaris.utils.collections import find
 
 test_organization_key = uuid.uuid4().hex
 test_contributor_key = uuid.uuid4().hex
@@ -23,6 +24,10 @@ test_projects = ['mercury', 'venus']
 test_contributor_name = 'Joe Blow'
 
 
+def getRepository(name):
+    with db.orm_session() as session:
+        organization = Organization.find_by_organization_key(session, test_organization_key)
+        return find(organization.repositories, lambda repository: repository.name == name)
 
 @pytest.yield_fixture()
 def org_repo_fixture(setup_schema):
@@ -39,7 +44,8 @@ def org_repo_fixture(setup_schema):
         for repo_name in test_repositories:
             repositories[repo_name] = Repository(
                 key=uuid.uuid4().hex,
-                name=repo_name
+                name=repo_name,
+                url=f'git@github.com/{repo_name}'
             )
             organization.repositories.append(repositories[repo_name])
 
@@ -175,3 +181,17 @@ def create_transitions(work_item_key, transitions):
             )
         else:
             assert None,  f"Failed to find work item with key {work_item_key}"
+
+
+def create_work_item_commits(work_item_key, commit_keys):
+    with db.orm_session() as session:
+        work_item = WorkItem.find_by_work_item_key(session, work_item_key)
+        if work_item:
+            for commit_key in commit_keys:
+                if commit_key:
+                    commit = Commit.find_by_commit_key(session, commit_key)
+                    work_item.commits.append(commit)
+                else:
+                    assert None, f"Failed to find commit with key {commit_key}"
+        else:
+            assert None, f"Failed to find work item with key {work_item_key}"

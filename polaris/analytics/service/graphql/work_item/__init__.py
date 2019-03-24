@@ -10,13 +10,13 @@
 
 import graphene
 
-from polaris.analytics.service.graphql.interface_mixins import KeyIdResolverMixin, WorkItemInfoResolverMixin
-from polaris.analytics.service.graphql.interfaces import WorkItemInfo, \
+from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin, WorkItemInfoResolverMixin
+from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition,\
     WorkItemCommitInfo
 
 from polaris.analytics.service.graphql.work_item.selectable import \
-    WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode
+    WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -27,12 +27,12 @@ from ..commit import CommitsConnectionMixin
 
 class WorkItemEvent(
     # interface mixins
-    KeyIdResolverMixin,
+    NamedNodeResolverMixin,
 
     Selectable
 ):
     class Meta:
-        interfaces = (WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
+        interfaces = (NamedNode, WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
         named_node_resolver = WorkItemEventNode
         interface_resolvers = {}
         connection_class = lambda: WorkItemEvents
@@ -83,14 +83,23 @@ class WorkItemEventsConnectionMixin(ConnectionResolverMixin):
 
 
 class WorkItemCommit(
+    # interface mixins
+    KeyIdResolverMixin,
+    # selectable
     Selectable
 ):
     class Meta:
-        interfaces = (WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
-        named_node_resolver = None
+        interfaces = (NamedNode, WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
+        named_node_resolver = WorkItemCommitNode
         interface_resolvers = {}
         connection_class = lambda: WorkItemCommits
 
+
+    @classmethod
+    def key_to_instance_resolver_params(cls, key):
+        key_parts = key.split(':')
+        assert len(key_parts) == 2
+        return dict(work_item_key=key_parts[0], commit_key=key_parts[1])
 
 class WorkItemCommits(
     CountableConnection
@@ -128,6 +137,7 @@ class WorkItemCommitsConnectionMixin(ConnectionResolverMixin):
 
 class WorkItem(
     # interface resolver mixins
+    NamedNodeResolverMixin,
     WorkItemInfoResolverMixin,
     WorkItemEventsConnectionMixin,
     CommitsConnectionMixin,
@@ -135,7 +145,7 @@ class WorkItem(
     Selectable
 ):
     class Meta:
-        interfaces = (WorkItemInfo, WorkItemsSourceRef)
+        interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
         named_node_resolver = WorkItemNode
         interface_resolvers = {}
         connection_node_resolvers = {

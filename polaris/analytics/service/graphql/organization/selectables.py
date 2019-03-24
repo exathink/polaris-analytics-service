@@ -203,13 +203,15 @@ class OrganizationCommitNodes:
 
 
 class OrganizationWorkItemNodes:
-    interfaces = (WorkItemInfo, WorkItemsSourceRef)
+    interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
 
     @staticmethod
     def selectable(**kwargs):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
+            work_items.c.name,
+            work_items.c.key,
             *work_item_info_columns(work_items)
         ]).select_from(
             organizations.join(
@@ -228,7 +230,7 @@ class OrganizationWorkItemNodes:
 
 
 class OrganizationWorkItemEventNodes:
-    interfaces = (WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
+    interfaces = (NamedNode, WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
 
     @staticmethod
     def selectable(**kwargs):
@@ -255,7 +257,7 @@ class OrganizationWorkItemEventNodes:
 
 
 class OrganizationWorkItemCommitNodes:
-    interfaces = (WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
+    interfaces = (NamedNode, WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
 
     @staticmethod
     def selectable(**kwargs):
@@ -263,7 +265,7 @@ class OrganizationWorkItemCommitNodes:
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
             *work_item_info_columns(work_items),
-            *work_item_commit_info_columns(repositories, commits)
+            *work_item_commit_info_columns(work_items, repositories, commits)
         ]).select_from(
             organizations.join(
                 work_items_sources, work_items_sources.c.organization_id == organizations.c.id

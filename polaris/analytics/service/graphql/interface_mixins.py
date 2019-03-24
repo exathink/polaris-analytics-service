@@ -248,7 +248,7 @@ class OrganizationRefResolverMixin(KeyIdResolverMixin):
         return self.get_organization_ref(info, **kwargs).organization_key
 
 
-class WorkItemInfoResolverMixin(NamedNodeResolverMixin):
+class WorkItemInfoResolverMixin(KeyIdResolverMixin):
     work_item_info_tuple_type = create_tuple(WorkItemInfo)
 
     def __init__(self, *args, **kwargs):

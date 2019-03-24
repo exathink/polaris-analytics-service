@@ -9,18 +9,22 @@
 # Author: Krishna Kumar
 
 from datetime import datetime, timedelta
-from sqlalchemy import and_, cast, Text
+from sqlalchemy import and_, cast, Text, func
 
 
 def work_item_event_key_column(work_items, work_item_state_transitions):
     return (cast(work_items.c.key, Text) + ':' + cast(work_item_state_transitions.c.seq_no, Text)).label('key')
 
 
+def work_item_commit_key_column(work_items, commits):
+    return (cast(work_items.c.key, Text) + ':' + cast(commits.c.key, Text)).label('key')
+
+
+def work_item_commit_name_column(work_items, commits):
+    return (cast(work_items.c.display_id, Text) + ':' + cast(func.substr(commits.c.source_commit_id, 1, 8), Text)).label('name')
+
 def work_item_info_columns(work_items):
     return [
-        work_items.c.id,
-        work_items.c.key,
-        work_items.c.name,
         work_items.c.display_id,
         work_items.c.description,
         work_items.c.work_item_type,
@@ -34,7 +38,6 @@ def work_item_info_columns(work_items):
 
 def work_item_event_columns(work_items, work_item_state_transitions):
     return [
-        work_items.c.id,
         work_item_event_key_column(work_items, work_item_state_transitions),
         work_items.c.name,
         work_items.c.display_id,
@@ -52,8 +55,10 @@ def work_item_event_columns(work_items, work_item_state_transitions):
     ]
 
 
-def work_item_commit_info_columns(repositories, commits):
+def work_item_commit_info_columns(work_items, repositories, commits):
     return [
+        work_item_commit_key_column(work_items, commits),
+        work_item_commit_name_column(work_items, commits),
         commits.c.key.label('commit_key'),
         commits.c.source_commit_id.label('commit_hash'),
         repositories.c.name.label('repository'),

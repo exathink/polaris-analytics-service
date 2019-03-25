@@ -125,6 +125,6 @@ class WorkItemStateTransition(graphene.Interface):
 
 
 class WorkItemEventSpan(graphene.Interface):
-    earliest_work_item_event = graphene.DateTime(required=True)
-    latest_work_item_event = graphene.DateTime(required=True)
+    earliest_work_item_event = graphene.DateTime(required=False)
+    latest_work_item_event = graphene.DateTime(required=False)
 

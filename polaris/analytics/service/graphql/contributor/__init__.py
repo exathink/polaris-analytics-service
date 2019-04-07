@@ -33,6 +33,13 @@ from .selectable_fields import \
 
 from ..selectable_field_mixins import CumulativeCommitCountResolverMixin
 
+from .mutations import UpdateContributorForContributorAliases
+
+
+# Mutations
+class ContributorMutationsMixin:
+    update_contributor_for_contributor_aliases = UpdateContributorForContributorAliases.Field()
+
 
 class Contributor(
     NamedNodeResolverMixin,
@@ -69,8 +76,6 @@ class Contributor(
     @classmethod
     def resolve_field(cls, parent, info, key, **kwargs):
         return cls.resolve_instance(key, **kwargs)
-
-
 
 
 class Contributors(

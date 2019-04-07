@@ -29,6 +29,7 @@ setup(
     packages=[
         'polaris',
         'polaris.analytics',
+        'polaris.analytics.api',
         'polaris.analytics.cli',
         'polaris.analytics.messaging',
         'polaris.analytics.messaging.commands',

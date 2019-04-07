@@ -17,7 +17,7 @@ from .commit import Commit
 from .organization import Organization
 from .project import Project
 from .repository import Repository
-from .contributor import Contributor
+from .contributor import Contributor, ContributorMutationsMixin
 from .public import Public
 from .work_item import WorkItem
 from .summarizers import *
@@ -60,4 +60,11 @@ class Query(graphene.ObjectType):
         return Public.resolve_field(info, **kwargs)
 
 
-schema = graphene.Schema(query=Query)
+class Mutations(
+    graphene.ObjectType,
+    ContributorMutationsMixin
+):
+    pass
+
+
+schema = graphene.Schema(query=Query, mutation=Mutations)

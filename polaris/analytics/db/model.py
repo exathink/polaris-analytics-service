@@ -278,6 +278,9 @@ class Contributor(Base):
     aliases = relationship('ContributorAlias', back_populates='contributor')
     organizations = relationship('Organization', secondary=organizations_contributors, back_populates='contributors')
 
+    @classmethod
+    def find_by_contributor_key(cls, session, contributor_key):
+        return session.query(cls).filter(cls.key == contributor_key).first()
 
 contributors = Contributor.__table__
 
@@ -294,6 +297,10 @@ class ContributorAlias(Base):
 
     contributor_id = Column(Integer, ForeignKey('contributors.id'), index=True, nullable=False)
     contributor = relationship('Contributor', back_populates='aliases')
+
+    @classmethod
+    def find_by_contributor_alias_key(cls, session, contributor_alias_key):
+        return session.query(cls).filter(cls.key == contributor_alias_key).first()
 
 contributor_aliases = ContributorAlias.__table__
 

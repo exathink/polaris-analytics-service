@@ -14,9 +14,8 @@ from polaris.graphql.exceptions import AccessDeniedException
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 from .selectables import AccountNode, AccountCommitSummary, AccountContributorCount, AccountOrganizationsNodes, \
-    AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes, AccountRecentlyActiveRepositoriesNodes,\
+    AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes, AccountRecentlyActiveRepositoriesNodes, \
     AccountRecentlyActiveProjectsNodes, AccountRecentlyActiveOrganizationsNodes
-
 from ..contributor import ContributorsConnectionMixin
 from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
 from ..interfaces import CommitSummary, ContributorCount
@@ -59,7 +58,14 @@ class Account(
         }
 
     @classmethod
-    def resolve_field(cls, info, key, **kwargs):
+    def Field(cls, **kwargs):
+        return super().Field(key_is_required=False, **kwargs)
+
+    @classmethod
+    def resolve_field(cls, info,  key=None, **kwargs):
+        if key is None:
+            key = str(current_user.account_key)
+
         if key == str(current_user.account_key):
             return cls.resolve_instance(key, **kwargs)
         else:

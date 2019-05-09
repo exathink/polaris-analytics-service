@@ -12,6 +12,7 @@ __version__ = '0.0.1'
 import graphene
 
 from polaris.graphql.interfaces import NamedNode
+from .viewer import Viewer
 from .account import Account
 from .commit import Commit
 from .organization import Organization
@@ -26,6 +27,7 @@ from .summarizers import *
 class Query(graphene.ObjectType):
     node = NamedNode.Field()
 
+    viewer = Viewer.Field()
     account = Account.Field()
     commit = Commit.Field()
     organization = Organization.Field()
@@ -35,8 +37,11 @@ class Query(graphene.ObjectType):
     public = Public.Field()
     work_item = WorkItem.Field()
 
-    def resolve_account(self, info, key,  **kwargs):
-        return Account.resolve_field(info, key, **kwargs)
+    def resolve_viewer(self, info, **kwargs):
+        return Viewer.resolve_field(info, **kwargs)
+
+    def resolve_account(self, info,  **kwargs):
+        return Account.resolve_field(info, **kwargs)
 
     def resolve_commit(self, info, key, **kwargs):
         return Commit.resolve_field(info, key, **kwargs)
@@ -58,6 +63,8 @@ class Query(graphene.ObjectType):
 
     def resolve_public(self, info, **kwargs):
         return Public.resolve_field(info, **kwargs)
+
+
 
 
 class Mutations(

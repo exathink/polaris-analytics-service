@@ -13,6 +13,8 @@ import graphene
 
 from polaris.graphql.interfaces import NamedNode
 from .viewer import Viewer
+from .viewer.mutations import ViewerMutationsMixin
+
 from .account import Account
 from .commit import Commit
 from .organization import Organization
@@ -69,7 +71,8 @@ class Query(graphene.ObjectType):
 
 class Mutations(
     graphene.ObjectType,
-    ContributorMutationsMixin
+    ContributorMutationsMixin,
+    ViewerMutationsMixin
 ):
     pass
 

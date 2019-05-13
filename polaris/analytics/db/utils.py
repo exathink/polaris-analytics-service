@@ -1,0 +1,34 @@
+# -*- coding: utf-8 -*-
+
+# Copyright: © Exathink, LLC (2011-2018) All Rights Reserved
+
+# Unauthorized use or copying of this file and its contents, via any medium
+# is strictly prohibited. The work product in this file is proprietary and
+# confidential.
+
+# Author: Krishna Kumar
+
+import uuid
+from polaris.common import db
+from polaris.analytics.db.model import Account, Organization
+
+
+def find_account(account_key, join_this=None):
+    with db.orm_session(join_this) as session:
+        return Account.find_by_account_key(session, account_key)
+
+
+def find_or_create_account_for_user(user, account_name, organization_name, session_to_join=None):
+    with db.orm_session(session_to_join) as session:
+        account = find_account(user.account_key, session)
+        if account is None:
+            name = account_name or user.company or f'{user.first_name} {user.last_name}'
+            account = Account(
+                name=name,
+                key=user.account_key,
+            )
+            organization = Organization(name=organization_name or account.name, key=uuid.uuid4())
+            account.organizations.append(organization)
+            session.add(account)
+
+        return account

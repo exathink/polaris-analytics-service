@@ -22,6 +22,7 @@ class Viewer (
     email = graphene.String()
     first_name = graphene.String()
     last_name = graphene.String()
+    company = graphene.String()
 
     roles = graphene.Field(graphene.List(graphene.String))
 
@@ -47,6 +48,9 @@ class Viewer (
 
     def resolve_email(self, info, **kwargs):
         return self.current_user.email
+
+    def resolve_company(self, info, **kwargs):
+        return self.current_user.company
 
     def resolve_first_name(self, info, **kwargs):
         return self.current_user.first_name

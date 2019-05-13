@@ -6,21 +6,16 @@
 # is strictly prohibited. The work product in this file is proprietary and
 # confidential.
 
+import logging
 # Author: Krishna Kumar
 import sys
+
 from flask_compress import Compress
-import logging
-
 from polaris.utils.config import get_config_provider
-from polaris.flask.common import PolarisSecuredService
-
-from polaris.analytics.service.viz_api import viz_api
-from polaris.analytics.service.activity_summary_api import activity_summary_api
-from polaris.analytics.service.activity_level_api import activity_level_api
+from polaris.utils.logging import config_logging
 
 from polaris.analytics.service.gql import graphql
-
-from polaris.utils.logging import config_logging
+from polaris.flask.common import PolarisSecuredService
 
 config_logging()
 
@@ -48,9 +43,6 @@ if config_provider.get('DEBUG_SQL') == 'true':
 # Register endpoints
 app.register_blueprint(graphql, url_prefix='/graphql')
 
-app.register_blueprint(viz_api, url_prefix='/data')
-app.register_blueprint(activity_summary_api, url_prefix='/data/activity-summary')
-app.register_blueprint(activity_level_api, url_prefix='/data/activity-level')
 
 if app.env == 'production':
     app.config['COMPRESS_MIMETYPES'] = ['application/json', 'application/javascript']

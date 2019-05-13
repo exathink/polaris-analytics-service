@@ -6,10 +6,6 @@
         path = polaris-utils
         url = ../../polaris-common/polaris-utils
 
-[submodule "polaris-repos-db"]
-	path = polaris-repos-db
-	url = ../../polaris-dbapi/polaris-repos-db.git
-
 [submodule "polaris-flask"]
 	path = polaris-flask
 	url = ../../polaris-common/polaris-flask

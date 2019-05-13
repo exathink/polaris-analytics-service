@@ -10,7 +10,7 @@ package aws deploy-task-definition polaris-analytics-listener
 package aws deploy-task-definition polaris-analytics-db-migrator
 
 echo "Running migrations"
-package aws run-task polaris-analytics-db-migrator upgrade head
+package aws run-task polaris-analytics-db-migrator
 
 echo "Deploying Services.."
 package aws deploy-services polaris-analytics-service polaris.service.auto-scaling-group polaris-analytics-service polaris-analytics-listener

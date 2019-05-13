@@ -2,10 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/../polaris-admin-service/.idea/polaris-admin-service.iml" filepath="$PROJECT_DIR$/../polaris-admin-service/.idea/polaris-admin-service.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/polaris-analytics-service.iml" filepath="$PROJECT_DIR$/.idea/polaris-analytics-service.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../aws/polaris-analytics-service-aws/.idea/polaris-analytics-service-aws.iml" filepath="$PROJECT_DIR$/../aws/polaris-analytics-service-aws/.idea/polaris-analytics-service-aws.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../polaris-analytics-web/.idea/polaris-analytics-web.iml" filepath="$PROJECT_DIR$/../polaris-analytics-web/.idea/polaris-analytics-web.iml" />
     </modules>
   </component>
 </project>

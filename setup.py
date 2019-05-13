@@ -40,6 +40,7 @@ setup(
         'polaris.analytics.datasources',
         'polaris.analytics.datasources.activities',
         'polaris.analytics.service.graphql',
+        'polaris.analytics.service.graphql.viewer',
         'polaris.analytics.service.graphql.account',
         'polaris.analytics.service.graphql.commit',
         'polaris.analytics.service.graphql.organization',

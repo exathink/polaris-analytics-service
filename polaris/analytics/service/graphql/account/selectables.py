@@ -22,7 +22,11 @@ from sqlalchemy import select, func, bindparam, and_, distinct, between, cast, T
 
 from polaris.utils.datetime_utils import time_window
 from polaris.graphql.interfaces import NamedNode
-from polaris.analytics.db.model import organizations, accounts_organizations, accounts, projects, repositories, projects_repositories, contributors, commits, repositories_contributor_aliases
+from polaris.analytics.db.model import organizations, accounts_organizations, accounts, \
+    projects, repositories, projects_repositories, contributors, commits, \
+    repositories_contributor_aliases, \
+    work_items_sources
+
 from ..interfaces import CommitSummary, ContributorCount, CommitCount
 
 
@@ -114,6 +118,29 @@ class AccountProjectsNodes:
             )
         ).where(accounts.c.key == bindparam('key'))
 
+
+class AccountWorkItemsSourcesNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(integration_type=None, **kwargs):
+        query = select([
+            work_items_sources.c.id,
+            work_items_sources.c.key,
+            work_items_sources.c.name
+        ]).select_from(
+            work_items_sources.join(
+                organizations
+            ).join(
+                accounts_organizations
+            ).join(
+                accounts
+            )
+        ).where(accounts.c.key == bindparam('key'))
+        if integration_type:
+            query = query.where(work_items_sources.c.integration_type == integration_type)
+
+        return query
 
 class AccountRecentlyActiveProjectsNodes:
     interfaces = (NamedNode, CommitCount)

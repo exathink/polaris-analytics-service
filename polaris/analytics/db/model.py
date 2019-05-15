@@ -66,6 +66,8 @@ class Account(Base):
     id = Column(Integer, primary_key=True)
     key = Column(UUID(as_uuid=True), nullable=False, unique=True)
     name = Column(String, nullable=False)
+    profile = Column(JSONB, nullable=False, server_default='{}')
+
     organizations = relationship("Organization",
                                  secondary=accounts_organizations,
                                  back_populates="accounts")

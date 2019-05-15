@@ -11,6 +11,10 @@
 import graphene
 from polaris.graphql.interfaces import NamedNode
 
+from polaris.common.enums import WorkTrackingIntegrationType as _WorkTrackingIntegrationType
+
+WorkTrackingIntegrationType = graphene.Enum.from_enum(_WorkTrackingIntegrationType)
+
 
 class FileTypesSummary(graphene.ObjectType):
     file_type = graphene.String(required=True)
@@ -127,4 +131,6 @@ class WorkItemStateTransition(graphene.Interface):
 class WorkItemEventSpan(graphene.Interface):
     earliest_work_item_event = graphene.DateTime(required=False)
     latest_work_item_event = graphene.DateTime(required=False)
+
+
 

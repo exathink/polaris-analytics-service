@@ -67,10 +67,14 @@ class Account(Base):
     key = Column(UUID(as_uuid=True), nullable=False, unique=True)
     name = Column(String, nullable=False)
     profile = Column(JSONB, nullable=False, server_default='{}')
+    created = Column(DateTime, nullable=False, server_default='now()')
+    updated = Column(DateTime, nullable=False, server_default='now()')
 
     organizations = relationship("Organization",
                                  secondary=accounts_organizations,
                                  back_populates="accounts")
+
+
 
 
 
@@ -89,6 +93,8 @@ class Organization(Base):
     name = Column(String(256))
     public = Column(Boolean, default=False, nullable=True)
 
+    created = Column(DateTime, nullable=False, server_default='now()')
+    updated = Column(DateTime, nullable=False, server_default='now()')
 
     accounts = relationship('Account',
                             secondary=accounts_organizations,

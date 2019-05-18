@@ -14,6 +14,7 @@ from polaris.graphql.utils import init_tuple, create_tuple
 from polaris.common.db import row_proxy_to_dict
 
 from .interfaces import \
+    AccountInfo, \
     CommitInfo, \
     CommitSummary, \
     ContributorCount, \
@@ -313,3 +314,31 @@ class WorkItemEventSpanResolverMixin(KeyIdResolverMixin):
 
     def resolve_latest_work_item_event(self, info, **kwargs):
         return self.get_work_item_event_span(info, **kwargs).latest_work_item_event
+
+
+class AccountInfoResolverMixin(KeyIdResolverMixin):
+    account_info_tuple = create_tuple(AccountInfo)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.account_info = init_tuple(self.account_info_tuple, **kwargs)
+
+    def resolve_account_info(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['AccountInfo'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_account_info(self, info, **kwargs):
+        if self.account_info is None:
+            self.account_info = self.resolve_account_info(info, **kwargs)
+        return self.account_info
+
+    def resolve_created(self, info, **kwargs):
+        return self.get_account_info(info, **kwargs).created
+
+    def resolve_updated(self, info, **kwargs):
+        return self.get_account_info(info, **kwargs).updated
+
+

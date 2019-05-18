@@ -133,4 +133,6 @@ class WorkItemEventSpan(graphene.Interface):
     latest_work_item_event = graphene.DateTime(required=False)
 
 
-
+class AccountInfo(graphene.Interface):
+    created = graphene.DateTime(required=True)
+    updated = graphene.DateTime(required=True)

@@ -20,8 +20,8 @@ from .selectables import AccountNode, AccountCommitSummary, AccountContributorCo
     AllAccountNodes
 
 from ..contributor import ContributorsConnectionMixin
-from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
-from ..interfaces import CommitSummary, ContributorCount
+from ..interface_mixins import AccountInfoResolverMixin, NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
+from ..interfaces import AccountInfo, CommitSummary, ContributorCount
 from ..organization import OrganizationsConnectionMixin, RecentlyActiveOrganizationsConnectionMixin
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
@@ -30,6 +30,7 @@ from ..work_items_source import WorkItemsSourcesConnectionMixin
 class Account(
     # Interface Mixins
     NamedNodeResolverMixin,
+    AccountInfoResolverMixin,
     CommitSummaryResolverMixin,
     ContributorCountResolverMixin,
     # ConnectionMixins
@@ -45,7 +46,7 @@ class Account(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, ContributorCount)
+        interfaces = (NamedNode, AccountInfo, CommitSummary, ContributorCount)
         named_node_resolver = AccountNode
         connection_class = lambda: Accounts
 
@@ -83,7 +84,9 @@ class Account(
         if 'admin' in current_user.role_names:
             return cls.resolve_connection(
                 'all_accounts',
-                AllAccountNodes
+                AllAccountNodes,
+                params=None,
+                **kwargs
             )
         else:
             raise AccessDeniedException('Access denied')

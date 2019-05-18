@@ -27,7 +27,7 @@ from polaris.analytics.db.model import organizations, accounts_organizations, ac
     repositories_contributor_aliases, \
     work_items_sources
 
-from ..interfaces import CommitSummary, ContributorCount, CommitCount
+from ..interfaces import CommitSummary, ContributorCount, CommitCount, AccountInfo
 
 
 class AccountNode:
@@ -45,15 +45,21 @@ class AccountNode:
 
 
 class AllAccountNodes:
-    interface = NamedNode
+    interfaces = (NamedNode, AccountInfo)
 
     @staticmethod
     def selectable(**kwargs):
         return select([
             accounts.c.id,
             accounts.c.key,
-            accounts.c.name
+            accounts.c.name,
+            accounts.c.created,
+            accounts.c.updated
         ])
+
+    @staticmethod
+    def sort_order(all_accounts_nodes, **kwargs):
+        return [all_accounts_nodes.c.created.desc()]
 
 
 class AccountOrganizationsNodes:

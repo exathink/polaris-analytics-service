@@ -44,6 +44,18 @@ class AccountNode:
         ).where(accounts.c.key == bindparam('key'))
 
 
+class AllAccountNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            accounts.c.id,
+            accounts.c.key,
+            accounts.c.name
+        ])
+
+
 class AccountOrganizationsNodes:
     interface = NamedNode
 

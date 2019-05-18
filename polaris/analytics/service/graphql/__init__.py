@@ -39,6 +39,8 @@ class Query(graphene.ObjectType):
     public = Public.Field()
     work_item = WorkItem.Field()
 
+    all_accounts = Account.ConnectionField()
+
     def resolve_viewer(self, info, **kwargs):
         return Viewer.resolve_field(info, **kwargs)
 
@@ -65,6 +67,9 @@ class Query(graphene.ObjectType):
 
     def resolve_public(self, info, **kwargs):
         return Public.resolve_field(info, **kwargs)
+
+    def resolve_all_accounts(self, info, **kwargs):
+        return Account.resolve_all_accounts(info, **kwargs)
 
 
 

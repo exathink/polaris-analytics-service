@@ -13,10 +13,11 @@ import graphene
 
 from polaris.graphql.exceptions import AccessDeniedException
 from polaris.graphql.interfaces import NamedNode
-from polaris.graphql.selectable import Selectable
+from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from .selectables import AccountNode, AccountCommitSummary, AccountContributorCount, AccountOrganizationsNodes, \
     AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes, AccountRecentlyActiveRepositoriesNodes,\
-    AccountRecentlyActiveProjectsNodes, AccountRecentlyActiveOrganizationsNodes, AccountWorkItemsSourcesNodes
+    AccountRecentlyActiveProjectsNodes, AccountRecentlyActiveOrganizationsNodes, AccountWorkItemsSourcesNodes, \
+    AllAccountNodes
 
 from ..contributor import ContributorsConnectionMixin
 from ..interface_mixins import NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
@@ -46,6 +47,8 @@ class Account(
     class Meta:
         interfaces = (NamedNode, CommitSummary, ContributorCount)
         named_node_resolver = AccountNode
+        connection_class = lambda: Accounts
+
         interface_resolvers = {
             'CommitSummary': AccountCommitSummary,
             'ContributorCount': AccountContributorCount
@@ -58,7 +61,7 @@ class Account(
             'recently_active_repositories': AccountRecentlyActiveRepositoriesNodes,
             'recently_active_projects': AccountRecentlyActiveProjectsNodes,
             'recently_active_organizations': AccountRecentlyActiveOrganizationsNodes,
-            'contributors': AccountContributorNodes
+            'contributors': AccountContributorNodes,
         }
 
     @classmethod
@@ -74,3 +77,33 @@ class Account(
             return cls.resolve_instance(key, **kwargs)
         else:
             raise AccessDeniedException('Access denied for specified account')
+
+    @classmethod
+    def resolve_all_accounts(cls, info, **kwargs):
+        if 'admin' in current_user.role_names:
+            return cls.resolve_connection(
+                'all_accounts',
+                AllAccountNodes
+            )
+        else:
+            raise AccessDeniedException('Access denied')
+
+
+class Accounts(
+    CountableConnection
+):
+    class Meta:
+        node = Account
+
+
+class AccountsConnectionMixin(ConnectionResolverMixin):
+
+    accounts = Account.ConnectionField()
+
+    def resolve_accounts(self, info, **kwargs):
+        return Account.resolve_connection(
+            self.get_connection_resolver_context('accounts'),
+            self.get_connection_node_resolver('accounts'),
+            self.get_instance_query_params(),
+            **kwargs
+        )

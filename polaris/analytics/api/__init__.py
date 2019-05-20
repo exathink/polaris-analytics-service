@@ -10,3 +10,4 @@
 
 from .contributor import *
 from .viewer import *
+from .account import *

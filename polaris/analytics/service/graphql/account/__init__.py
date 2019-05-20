@@ -74,7 +74,7 @@ class Account(
         if key is None:
             key = str(current_user.account_key)
 
-        if key == str(current_user.account_key):
+        if key == str(current_user.account_key) or 'admin' in current_user.role_names:
             return cls.resolve_instance(key, **kwargs)
         else:
             raise AccessDeniedException('Access denied for specified account')

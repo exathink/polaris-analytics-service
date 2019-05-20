@@ -16,6 +16,8 @@ from .viewer import Viewer
 from .viewer.mutations import ViewerMutationsMixin
 
 from .account import Account
+from .account.mutations import AccountMutationsMixin
+
 from .commit import Commit
 from .organization import Organization
 from .project import Project
@@ -72,10 +74,9 @@ class Query(graphene.ObjectType):
         return Account.resolve_all_accounts(info, **kwargs)
 
 
-
-
 class Mutations(
     graphene.ObjectType,
+    AccountMutationsMixin,
     ContributorMutationsMixin,
     ViewerMutationsMixin
 ):

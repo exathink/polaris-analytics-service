@@ -1,0 +1,61 @@
+# -*- coding: utf-8 -*-
+
+# Copyright: © Exathink, LLC (2011-2018) All Rights Reserved
+
+# Unauthorized use or copying of this file and its contents, via any medium
+# is strictly prohibited. The work product in this file is proprietary and
+# confidential.
+
+# Author: Krishna Kumar
+
+import logging
+import graphene
+
+from polaris.analytics import api
+from polaris.utils.exceptions import ProcessingException
+from ..account.interfaces import AccountProfile
+from flask import abort
+from flask_login import current_user
+from .. import Account
+
+logger = logging.getLogger('polaris.analytics.graphql')
+
+
+class UserInfoInput(graphene.InputObjectType):
+    first_name = graphene.String(required=True)
+    last_name = graphene.String(required=True)
+    email = graphene.String(required=True)
+
+
+class CreateAccountInput(graphene.InputObjectType):
+    company = graphene.String(required=True)
+    account_owner_info = graphene.Field(UserInfoInput, required=False)
+    account_profile = graphene.Field(AccountProfile, required=False)
+
+
+class CreateAccount(graphene.Mutation):
+    class Arguments:
+        create_account_input = CreateAccountInput(required=True)
+
+    account = Account.Field()
+
+    def mutate(self, info, create_account_input):
+
+        if 'admin' in current_user.role_names:
+            logger.info('Creat Account called')
+            account = api.create_account(
+                create_account_input
+            )
+            if account is not None:
+                return CreateAccount(
+                    account=Account.resolve_field(info, key=account.key)
+                )
+
+            else:
+                raise ProcessingException("Account was not created")
+        else:
+            abort(403)
+
+
+class AccountMutationsMixin:
+    create_account = CreateAccount.Field()

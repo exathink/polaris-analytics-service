@@ -93,8 +93,8 @@ class Organization(Base):
     name = Column(String(256))
     public = Column(Boolean, default=False, nullable=True)
 
-    created = Column(DateTime, nullable=False, server_default='now()')
-    updated = Column(DateTime, nullable=False, server_default='now()')
+    created = Column(DateTime, nullable=True)
+    updated = Column(DateTime, nullable=True)
 
     accounts = relationship('Account',
                             secondary=accounts_organizations,

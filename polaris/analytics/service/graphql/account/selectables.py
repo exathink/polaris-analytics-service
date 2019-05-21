@@ -59,7 +59,7 @@ class AllAccountNodes:
 
     @staticmethod
     def sort_order(all_accounts_nodes, **kwargs):
-        return [all_accounts_nodes.c.created.desc()]
+        return [all_accounts_nodes.c.created.desc().nullslast()]
 
 
 class AccountOrganizationsNodes:

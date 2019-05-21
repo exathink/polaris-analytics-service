@@ -134,5 +134,5 @@ class WorkItemEventSpan(graphene.Interface):
 
 
 class AccountInfo(graphene.Interface):
-    created = graphene.DateTime(required=True)
-    updated = graphene.DateTime(required=True)
+    created = graphene.DateTime(required=False)
+    updated = graphene.DateTime(required=False)

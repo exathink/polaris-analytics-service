@@ -17,16 +17,17 @@ import uuid
 from datetime import datetime
 
 
-def create_account(create_account_input):
-    with db.orm_session() as session:
+def create_account(company, owner_key=None       , join_this=None):
+    with db.orm_session(join_this) as session:
         organization = Organization(
             key=uuid.uuid4(),
-            name=create_account_input.company,
+            name=company,
             created=datetime.utcnow()
         )
         account = Account(
             key=uuid.uuid4(),
-            name=create_account_input.company,
+            name=company,
+            owner_key=owner_key,
             created=datetime.utcnow()
         )
         account.organizations.append(organization)

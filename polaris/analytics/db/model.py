@@ -67,8 +67,10 @@ class Account(Base):
     key = Column(UUID(as_uuid=True), nullable=False, unique=True)
     name = Column(String, nullable=False)
     profile = Column(JSONB, nullable=False, server_default='{}')
-    created = Column(DateTime, nullable=False, server_default='now()')
-    updated = Column(DateTime, nullable=False, server_default='now()')
+    created = Column(DateTime, nullable=True)
+    updated = Column(DateTime, nullable=True)
+    # need to update this to non null
+    owner_key = Column(UUID(as_uuid=True), nullable=True)
 
     organizations = relationship("Organization",
                                  secondary=accounts_organizations,

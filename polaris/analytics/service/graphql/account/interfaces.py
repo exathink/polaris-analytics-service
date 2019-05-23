@@ -12,11 +12,8 @@ import graphene
 from ..interfaces import WorkTrackingIntegrationType
 
 
-class WorkTrackingSettings(graphene.InputObjectType):
-    enabled = graphene.Boolean(required=True, default_value=False)
-    providers = graphene.List(WorkTrackingIntegrationType, required=True, default_value=[])
 
 
-class AccountProfile(graphene.InputObjectType):
-    work_tracking = graphene.Field(WorkTrackingSettings, required=True)
+
+
 

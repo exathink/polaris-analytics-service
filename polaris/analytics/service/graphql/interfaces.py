@@ -136,3 +136,19 @@ class WorkItemEventSpan(graphene.Interface):
 class AccountInfo(graphene.Interface):
     created = graphene.DateTime(required=False)
     updated = graphene.DateTime(required=False)
+
+
+class WorkTrackingSettings(graphene.Interface, graphene.InputObjectType):
+    enabled = graphene.Boolean(required=True, default_value=False)
+    providers = graphene.List(WorkTrackingIntegrationType, required=True, default_value=[])
+
+
+class AccountProfile(graphene.Interface, graphene.InputObjectType):
+    work_tracking = graphene.Field(WorkTrackingSettings, required=True)
+
+
+class UserInfo(graphene.Interface, graphene.InputObjectType):
+    first_name = graphene.String(required=True)
+    last_name = graphene.String(required=True)
+    email = graphene.String(required=True)
+

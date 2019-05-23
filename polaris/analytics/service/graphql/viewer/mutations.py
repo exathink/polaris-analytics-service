@@ -13,7 +13,8 @@ import graphene
 
 from polaris.analytics import api
 from polaris.utils.exceptions import ProcessingException
-from ..account.interfaces import AccountProfile
+
+from ..interfaces import AccountProfile
 
 from ..viewer import Viewer
 

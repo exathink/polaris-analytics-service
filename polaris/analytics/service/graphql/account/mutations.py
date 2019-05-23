@@ -14,23 +14,19 @@ import graphene
 from polaris.analytics import api
 
 from polaris.utils.exceptions import ProcessingException
-from ..account.interfaces import AccountProfile
+
 from flask import abort
 from flask_login import current_user
 from .. import Account
 
+from ..interfaces import UserInfo, AccountProfile
+
 logger = logging.getLogger('polaris.analytics.graphql')
-
-
-class UserInfoInput(graphene.InputObjectType):
-    first_name = graphene.String(required=True)
-    last_name = graphene.String(required=True)
-    email = graphene.String(required=True)
 
 
 class CreateAccountInput(graphene.InputObjectType):
     company = graphene.String(required=True)
-    account_owner_info = graphene.Field(UserInfoInput, required=False)
+    account_owner_info = graphene.Field(UserInfo, required=False)
     account_profile = graphene.Field(AccountProfile, required=False)
 
 

@@ -12,9 +12,6 @@ import logging
 import graphene
 
 from polaris.analytics import api
-from polaris.auth.db.model import User
-from polaris.auth.db import api as auth_db_api
-from polaris.common import db
 
 from polaris.utils.exceptions import ProcessingException
 from ..account.interfaces import AccountProfile
@@ -46,31 +43,12 @@ class CreateAccount(graphene.Mutation):
     def mutate(self, info, create_account_input):
 
         if 'admin' in current_user.role_names:
-            logger.info('Creat Account called')
-            with db.orm_session() as session:
-                user = User.find_by_email(session, create_account_input.account_owner_info.email)
-                if user and 'account-owner' in user.role_names:
-                    raise ProcessingException(
-                        'User exists and is already an account owner on a different account.'
-                        'Cannot create a new account with this same owner'
-                    )
+            logger.info('Create Account called')
 
-                account = api.create_account(
-                    create_account_input.company,
-                    owner_key=user.key if user else None,
-                    join_this=session
-                )
-
-                if not user:
-                    user = auth_db_api.create_user(
-                        **create_account_input.account_owner_info,
-                        account_key=account.key,
-                        role_name='account-owner',
-                        join_this=session
-                    )
-                    user.account_key = account.key
-                    account.owner_key = user.key
-                    session.add(user)
+            account = api.create_account_with_owner(
+                create_account_input.company,
+                create_account_input.account_owner_info
+            )
 
             if account is not None:
                 return CreateAccount(

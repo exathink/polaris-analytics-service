@@ -14,14 +14,14 @@ import graphene
 from polaris.graphql.exceptions import AccessDeniedException
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
-from .selectables import AccountNode, AccountCommitSummary, AccountContributorCount, AccountOrganizationsNodes, \
+from .selectables import AccountNode, AccountCommitSummary, AccountUserInfo, AccountContributorCount, AccountOrganizationsNodes, \
     AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes, AccountRecentlyActiveRepositoriesNodes,\
     AccountRecentlyActiveProjectsNodes, AccountRecentlyActiveOrganizationsNodes, AccountWorkItemsSourcesNodes, \
     AllAccountNodes
 
 from ..contributor import ContributorsConnectionMixin
-from ..interface_mixins import AccountInfoResolverMixin, NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
-from ..interfaces import AccountInfo, CommitSummary, ContributorCount
+from ..interface_mixins import AccountInfoResolverMixin, OwnerInfoResolverMixin, UserInfoResolverMixin, NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
+from ..interfaces import AccountInfo, CommitSummary, ContributorCount, UserInfo, OwnerInfo
 from ..organization import OrganizationsConnectionMixin, RecentlyActiveOrganizationsConnectionMixin
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
@@ -31,8 +31,10 @@ class Account(
     # Interface Mixins
     NamedNodeResolverMixin,
     AccountInfoResolverMixin,
+    UserInfoResolverMixin,
     CommitSummaryResolverMixin,
     ContributorCountResolverMixin,
+    OwnerInfoResolverMixin,
     # ConnectionMixins
     OrganizationsConnectionMixin,
     ProjectsConnectionMixin,
@@ -46,13 +48,14 @@ class Account(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, AccountInfo, CommitSummary, ContributorCount)
+        interfaces = (NamedNode, OwnerInfo,  UserInfo, AccountInfo, CommitSummary, ContributorCount)
         named_node_resolver = AccountNode
         connection_class = lambda: Accounts
 
         interface_resolvers = {
             'CommitSummary': AccountCommitSummary,
-            'ContributorCount': AccountContributorCount
+            'ContributorCount': AccountContributorCount,
+            'UserInfo': AccountUserInfo
         }
         connection_node_resolvers = {
             'organizations': AccountOrganizationsNodes,

@@ -76,13 +76,14 @@ class Account(Base):
                                  secondary=accounts_organizations,
                                  back_populates="accounts")
 
-
-
-
-
     @classmethod
     def find_by_account_key(cls, session, account_key):
         return session.query(cls).filter(cls.key == account_key).first()
+
+    @classmethod
+    def find_by_name(cls, session, name):
+        return session.query(cls).filter(cls.name == name).first()
+
 
 accounts = Account.__table__
 

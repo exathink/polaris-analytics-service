@@ -27,25 +27,29 @@ from polaris.analytics.db.model import organizations, accounts_organizations, ac
     repositories_contributor_aliases, \
     work_items_sources
 
-from ..interfaces import CommitSummary, ContributorCount, CommitCount, AccountInfo
+from polaris.auth.db.model import users
+
+from ..interfaces import CommitSummary, UserInfo, ContributorCount, CommitCount, AccountInfo, OwnerInfo
+
 
 
 class AccountNode:
-    interface = NamedNode
+    interfaces = (NamedNode, OwnerInfo)
 
     @staticmethod
     def selectable(**kwargs):
         return select([
             accounts.c.id,
             accounts.c.key.label('key'),
-            accounts.c.name
+            accounts.c.name,
+            accounts.c.owner_key
         ]).select_from(
             accounts
         ).where(accounts.c.key == bindparam('key'))
 
 
 class AllAccountNodes:
-    interfaces = (NamedNode, AccountInfo)
+    interfaces = (NamedNode, OwnerInfo, AccountInfo)
 
     @staticmethod
     def selectable(**kwargs):
@@ -53,6 +57,7 @@ class AllAccountNodes:
             accounts.c.id,
             accounts.c.key,
             accounts.c.name,
+            accounts.c.owner_key,
             accounts.c.created,
             accounts.c.updated
         ])
@@ -334,3 +339,22 @@ class AccountContributorCount:
         ).where(
             repositories_contributor_aliases.c.robot == False
         ).group_by(account_node.c.id)
+
+
+class AccountUserInfo:
+    interface = UserInfo
+
+    @staticmethod
+    def selectable(account_node, **kwargs):
+        return select([
+            account_node.c.id,
+            users.c.key.label('user_key'),
+            users.c.email,
+            users.c.first_name,
+            users.c.last_name
+
+        ]).select_from(
+            users
+        ).where(
+            users.c.key == account_node.c.owner_key
+        )

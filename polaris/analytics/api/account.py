@@ -39,28 +39,31 @@ def create_account(company, owner_key=None, join_this=None):
 
 def create_account_with_owner(company, account_owner_info):
     with db.orm_session() as session:
-        user = User.find_by_email(session, account_owner_info.email)
-        if user and 'account-owner' in user.role_names:
-            raise ProcessingException(
-                'User exists and is already an account owner on a different account.'
-                'Cannot create a new account with this same owner'
-            )
+        if Account.find_by_name(session, company) is None:
+            user = User.find_by_email(session, account_owner_info.email)
+            if user and 'account-owner' in user.role_names:
+                raise ProcessingException(
+                    'User exists and is already an account owner on a different account.'
+                    'Cannot create a new account with this same owner'
+                )
 
-        account = create_account(
-            company,
-            owner_key=user.key if user else None,
-            join_this=session
-        )
-
-        if not user:
-            user = auth_db_api.create_user(
-                **account_owner_info,
-                account_key=account.key,
-                role_name='account-owner',
+            account = create_account(
+                company,
+                owner_key=user.key if user else None,
                 join_this=session
             )
-            user.account_key = account.key
-            account.owner_key = user.key
-            session.add(user)
 
-    return account
+            if not user:
+                user = auth_db_api.create_user(
+                    account_key=account.key,
+                    **account_owner_info,
+                    role_name='account-owner',
+                    join_this=session
+                )
+                user.account_key = account.key
+                account.owner_key = user.key
+                session.add(user)
+
+            return account
+        else:
+            raise ProcessingException('An account with this name already exists')

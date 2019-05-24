@@ -132,23 +132,17 @@ class WorkItemEventSpan(graphene.Interface):
     earliest_work_item_event = graphene.DateTime(required=False)
     latest_work_item_event = graphene.DateTime(required=False)
 
-
 class AccountInfo(graphene.Interface):
     created = graphene.DateTime(required=False)
     updated = graphene.DateTime(required=False)
 
 
-class WorkTrackingSettings(graphene.Interface, graphene.InputObjectType):
-    enabled = graphene.Boolean(required=True, default_value=False)
-    providers = graphene.List(WorkTrackingIntegrationType, required=True, default_value=[])
-
-
-class AccountProfile(graphene.Interface, graphene.InputObjectType):
-    work_tracking = graphene.Field(WorkTrackingSettings, required=True)
-
-
-class UserInfo(graphene.Interface, graphene.InputObjectType):
+class UserInfo(graphene.Interface):
+    user_key = graphene.String(required=True)
     first_name = graphene.String(required=True)
     last_name = graphene.String(required=True)
     email = graphene.String(required=True)
 
+
+class OwnerInfo(graphene.Interface):
+    owner_key = graphene.String(required=True)

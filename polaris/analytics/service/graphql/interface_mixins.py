@@ -26,7 +26,10 @@ from .interfaces import \
     FileTypesSummary, \
     CommitWorkItemsSummary, \
     WorkItemInfo, \
-    WorkItemEventSpan
+    WorkItemEventSpan, \
+    UserInfo, \
+    OwnerInfo
+
 
 
 class CommitSummaryResolverMixin(KeyIdResolverMixin):
@@ -342,3 +345,56 @@ class AccountInfoResolverMixin(KeyIdResolverMixin):
         return self.get_account_info(info, **kwargs).updated
 
 
+class UserInfoResolverMixin(KeyIdResolverMixin):
+    user_info_tuple = create_tuple(UserInfo)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user_info = init_tuple(self.user_info_tuple, **kwargs)
+
+    def resolve_user_info(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['UserInfo'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_user_info(self, info, **kwargs):
+        if self.user_info is None:
+            self.user_info = self.resolve_user_info(info, **kwargs)
+        return self.user_info
+
+    def resolve_user_key(self, info, **kwargs):
+        return self.get_user_info(info, **kwargs).user_key
+
+    def resolve_email(self, info, **kwargs):
+        return self.get_user_info(info, **kwargs).email
+
+    def resolve_first_name(self, info, **kwargs):
+        return self.get_user_info(info, **kwargs).first_name or ""
+
+    def resolve_last_name(self, info, **kwargs):
+        return self.get_user_info(info, **kwargs).last_name or ""
+
+
+class OwnerInfoResolverMixin(KeyIdResolverMixin):
+    owner_info_tuple = create_tuple(OwnerInfo)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.owner_info = init_tuple(self.owner_info_tuple, **kwargs)
+
+    def resolve_owner_info(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['OwnerInfo'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_owner_info(self, info, **kwargs):
+        if self.owner_info is None:
+            self.owner_info = self.resolve_owner_info(info, **kwargs)
+        return self.owner_info
+
+    def resolve_owner_key(self, info, **kwargs):
+        return self.get_owner_info(info, **kwargs).owner_key

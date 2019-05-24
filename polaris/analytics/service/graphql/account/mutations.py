@@ -19,15 +19,15 @@ from flask import abort
 from flask_login import current_user
 from .. import Account
 
-from ..interfaces import UserInfo, AccountProfile
+from polaris.analytics.service.graphql.input_types import AccountProfileInput, UserInfoInput
 
 logger = logging.getLogger('polaris.analytics.graphql')
 
 
 class CreateAccountInput(graphene.InputObjectType):
     company = graphene.String(required=True)
-    account_owner_info = graphene.Field(UserInfo, required=False)
-    account_profile = graphene.Field(AccountProfile, required=False)
+    account_owner_info = graphene.Field(UserInfoInput, required=False)
+    account_profile = graphene.Field(AccountProfileInput, required=False)
 
 
 class CreateAccount(graphene.Mutation):

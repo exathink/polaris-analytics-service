@@ -37,8 +37,8 @@ def create_account(company, owner_key=None, join_this=None):
         return account
 
 
-def create_account_with_owner(company, account_owner_info):
-    with db.orm_session() as session:
+def create_account_with_owner(company, account_owner_info, join_this=None):
+    with db.orm_session(join_this) as session:
         if Account.find_by_name(session, company) is None:
             user = User.find_by_email(session, account_owner_info.email)
             if user and 'account-owner' in user.role_names:
@@ -64,6 +64,6 @@ def create_account_with_owner(company, account_owner_info):
                 account.owner_key = user.key
                 session.add(user)
 
-            return account
+            return account, user
         else:
             raise ProcessingException('An account with this name already exists')

@@ -37,7 +37,7 @@ class InitViewerAccount(graphene.Mutation):
 
     def mutate(self, info, init_viewer_account_input):
         logger.info('InitViewer Account called')
-        account = api.create_account_with_owner(
+        account, owner = api.create_account_with_owner(
             company=init_viewer_account_input.organization_name,
             account_owner_info=dict(
                 email=current_user.email

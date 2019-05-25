@@ -12,11 +12,13 @@ import logging
 import graphene
 
 from polaris.analytics import api
-
 from polaris.utils.exceptions import ProcessingException
+from polaris.common import db
 
 from flask import abort
 from flask_login import current_user
+from polaris.analytics.service.invite import send_reset_password_instructions
+
 from .. import Account
 
 from polaris.analytics.service.graphql.input_types import AccountProfileInput, UserInfoInput
@@ -41,18 +43,21 @@ class CreateAccount(graphene.Mutation):
         if 'admin' in current_user.role_names:
             logger.info('Create Account called')
 
-            account = api.create_account_with_owner(
-                create_account_input.company,
-                create_account_input.account_owner_info
-            )
-
-            if account is not None:
-                return CreateAccount(
-                    account=Account.resolve_field(info, key=account.key)
+            with db.orm_session() as session:
+                account, owner = api.create_account_with_owner(
+                    create_account_input.company,
+                    create_account_input.account_owner_info,
+                    join_this=session
                 )
 
-            else:
-                raise ProcessingException("Account was not created")
+                send_reset_password_instructions(owner, invitation=dict(subject='Welcome to Urjuna'))
+                if account is not None:
+                    return CreateAccount(
+                        account=Account.resolve_field(info, key=account.key)
+                    )
+
+                else:
+                    raise ProcessingException("Account was not created")
         else:
             abort(403)
 

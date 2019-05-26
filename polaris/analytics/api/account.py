@@ -12,7 +12,7 @@
 from polaris.auth.db import api as auth_db_api
 from polaris.auth.db.model import User
 from polaris.common import db
-from polaris.analytics.db.model import Account, Organization
+from polaris.analytics.db.model import Account, Organization, AccountMember
 import uuid
 from datetime import datetime
 
@@ -63,6 +63,12 @@ def create_account_with_owner(company, account_owner_info, join_this=None):
                 user.account_key = account.key
                 account.owner_key = user.key
                 session.add(user)
+
+            account.members.append(
+                AccountMember(
+                    user_key=user.key
+                )
+            )
 
             return account, user
         else:

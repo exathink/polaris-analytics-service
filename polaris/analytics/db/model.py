@@ -76,6 +76,8 @@ class Account(Base):
                                  secondary=accounts_organizations,
                                  back_populates="accounts")
 
+    members = relationship("AccountMember", back_populates="account")
+
     @classmethod
     def find_by_account_key(cls, session, account_key):
         return session.query(cls).filter(cls.key == account_key).first()
@@ -86,6 +88,16 @@ class Account(Base):
 
 
 accounts = Account.__table__
+
+
+class AccountMember(Base):
+    __tablename__ = 'account_members'
+
+    account_id = Column(Integer, ForeignKey('accounts.id'), primary_key=True)
+    user_key = Column(UUID(as_uuid=True), primary_key=True)
+
+    account = relationship('Account', back_populates='members')
+
 
 
 class Organization(Base):

@@ -10,12 +10,34 @@
 import graphene
 from flask_login import current_user
 
+from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.selectable import Selectable
+
 from ..account import Account
+from ..interfaces import ScopedRole
+from .selectables import ViewerAccountRoles, ViewerOrganizationRoles
+
+from ..selectable_field_mixins import SelectablePropertyResolverMixin
+
+
+class ScopedRoleField(graphene.ObjectType):
+    class Meta:
+        interfaces = (ScopedRole, )
 
 
 class Viewer (
+    SelectablePropertyResolverMixin,
+    Selectable,
     graphene.ObjectType
 ):
+
+    class Meta:
+        interfaces = (NamedNode, )
+        selectable_field_resolvers = {
+            'account_roles': ViewerAccountRoles,
+            'organization_roles': ViewerOrganizationRoles
+        }
+
 
     # field definitions
     user_name = graphene.String()
@@ -25,13 +47,16 @@ class Viewer (
     company = graphene.String()
 
     system_roles = graphene.Field(graphene.List(graphene.String))
+    account_roles = graphene.Field(graphene.List(ScopedRoleField))
+    organization_roles = graphene.Field(graphene.List(ScopedRoleField))
 
     account_key = graphene.String()
     account = Account.Field()
 
     def __init__(self, user):
         super().__init__(self)
-
+        self.key = user.key
+        self.name = f'{user.first_name} {user.last_name}'
         self.current_user = user
 
 
@@ -60,6 +85,12 @@ class Viewer (
 
     def resolve_system_roles(self, info, **kwargs):
         return [role.name for role in self.current_user.roles]
+
+    def resolve_account_roles(self, info, **kwargs):
+        return self.resolve_selectable_field('account_roles')
+
+    def resolve_organization_roles(self, info, **kwargs):
+        return self.resolve_selectable_field('organization_roles')
 
     def resolve_account_key(self, info, **kwargs):
         return self.current_user.account_key

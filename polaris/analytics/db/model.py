@@ -101,6 +101,8 @@ class AccountMember(Base):
     account = relationship('Account', back_populates='members')
 
 
+account_members = AccountMember.__table__
+
 
 class Organization(Base):
     __tablename__ = 'organizations'
@@ -183,7 +185,10 @@ class OrganizationMember(Base):
 
     organization = relationship('Organization', back_populates='members')
 
-# many-many relationship table
+
+organization_members = OrganizationMember.__table__
+
+
 class Project(Base):
     __tablename__ = 'projects'
 

@@ -17,6 +17,7 @@ from sqlalchemy.orm import relationship, object_session
 
 from polaris.common import db
 from polaris.utils.collections import find
+from polaris.common.enums import AccountRoles
 
 logger = getLogger('polaris.analytics.db.model')
 Base = db.polaris_declarative_base(schema='analytics')
@@ -95,6 +96,7 @@ class AccountMember(Base):
 
     account_id = Column(Integer, ForeignKey('accounts.id'), primary_key=True)
     user_key = Column(UUID(as_uuid=True), primary_key=True)
+    role = Column(String, nullable=False, server_default=AccountRoles.member.value)
 
     account = relationship('Account', back_populates='members')
 

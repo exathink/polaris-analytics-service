@@ -8,12 +8,12 @@
 
 # Author: Krishna Kumar
 
-
+import uuid
 from polaris.auth.db import api as auth_db_api
 from polaris.auth.db.model import User
 from polaris.common import db
 from polaris.analytics.db.model import Account, Organization, AccountMember
-import uuid
+from polaris.common.enums import AccountRoles
 from datetime import datetime
 
 from polaris.utils.exceptions import ProcessingException
@@ -57,7 +57,6 @@ def create_account_with_owner(company, account_owner_info, join_this=None):
                 user = auth_db_api.create_user(
                     account_key=account.key,
                     **account_owner_info,
-                    role_name='account-owner',
                     join_this=session
                 )
                 user.account_key = account.key
@@ -66,7 +65,8 @@ def create_account_with_owner(company, account_owner_info, join_this=None):
 
             account.members.append(
                 AccountMember(
-                    user_key=user.key
+                    user_key=user.key,
+                    role=AccountRoles.owner.value
                 )
             )
 

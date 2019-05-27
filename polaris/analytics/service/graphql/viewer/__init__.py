@@ -24,7 +24,7 @@ class Viewer (
     last_name = graphene.String()
     company = graphene.String()
 
-    roles = graphene.Field(graphene.List(graphene.String))
+    system_roles = graphene.Field(graphene.List(graphene.String))
 
     account_key = graphene.String()
     account = Account.Field()
@@ -58,7 +58,7 @@ class Viewer (
     def resolve_last_name(self, info, **kwargs):
         return self.current_user.last_name
 
-    def resolve_roles(self, info, **kwargs):
+    def resolve_system_roles(self, info, **kwargs):
         return [role.name for role in self.current_user.roles]
 
     def resolve_account_key(self, info, **kwargs):

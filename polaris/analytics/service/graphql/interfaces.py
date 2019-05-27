@@ -16,6 +16,11 @@ from polaris.common.enums import WorkTrackingIntegrationType as _WorkTrackingInt
 WorkTrackingIntegrationType = graphene.Enum.from_enum(_WorkTrackingIntegrationType)
 
 
+class ScopedRole(graphene.ObjectType):
+    key = graphene.String(required=True)
+    role = graphene.String(required=True)
+
+
 class FileTypesSummary(graphene.ObjectType):
     file_type = graphene.String(required=True)
     count = graphene.Int(required=True)

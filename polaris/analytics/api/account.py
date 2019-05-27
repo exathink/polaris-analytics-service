@@ -12,14 +12,15 @@ import uuid
 from polaris.auth.db import api as auth_db_api
 from polaris.auth.db.model import User
 from polaris.common import db
-from polaris.analytics.db.model import Account, Organization, AccountMember
-from polaris.common.enums import AccountRoles
+from polaris.analytics.db.model import Account, Organization, AccountMember, \
+    OrganizationMember, AccountRoles, OrganizationRoles
+
 from datetime import datetime
 
 from polaris.utils.exceptions import ProcessingException
 
 
-def create_account(company, owner_key=None, join_this=None):
+def create_account_and_organization(company, owner_key=None, join_this=None):
     with db.orm_session(join_this) as session:
         organization = Organization(
             key=uuid.uuid4(),
@@ -34,7 +35,7 @@ def create_account(company, owner_key=None, join_this=None):
         )
         account.organizations.append(organization)
         session.add(account)
-        return account
+        return account, organization
 
 
 def create_account_with_owner(company, account_owner_info, join_this=None):
@@ -47,7 +48,7 @@ def create_account_with_owner(company, account_owner_info, join_this=None):
                     'Cannot create a new account with this same owner'
                 )
 
-            account = create_account(
+            account, organization = create_account_and_organization(
                 company,
                 owner_key=user.key if user else None,
                 join_this=session
@@ -67,6 +68,13 @@ def create_account_with_owner(company, account_owner_info, join_this=None):
                 AccountMember(
                     user_key=user.key,
                     role=AccountRoles.owner.value
+                )
+            )
+
+            organization.members.append(
+                OrganizationMember(
+                    user_key=user.key,
+                    role=OrganizationRoles.owner.value
                 )
             )
 

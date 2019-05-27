@@ -17,7 +17,7 @@ from sqlalchemy.orm import relationship, object_session
 
 from polaris.common import db
 from polaris.utils.collections import find
-from polaris.common.enums import AccountRoles
+from polaris.common.enums import AccountRoles, OrganizationRoles
 
 logger = getLogger('polaris.analytics.db.model')
 Base = db.polaris_declarative_base(schema='analytics')
@@ -121,7 +121,7 @@ class Organization(Base):
     contributors = relationship('Contributor', secondary=organizations_contributors, back_populates='organizations')
     repositories = relationship('Repository')
     work_items_sources = relationship('WorkItemsSource')
-
+    members = relationship("OrganizationMember", back_populates="organization")
 
 
     @classmethod
@@ -172,6 +172,16 @@ class Organization(Base):
 
 
 organizations = Organization.__table__
+
+
+class OrganizationMember(Base):
+    __tablename__ = 'organization_members'
+
+    organization_id = Column(Integer, ForeignKey('organizations.id'), primary_key=True)
+    user_key = Column(UUID(as_uuid=True), primary_key=True)
+    role = Column(String, nullable=False, server_default=OrganizationRoles.member.value)
+
+    organization = relationship('Organization', back_populates='members')
 
 # many-many relationship table
 class Project(Base):

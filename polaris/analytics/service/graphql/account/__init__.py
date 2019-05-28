@@ -17,7 +17,7 @@ from polaris.graphql.selectable import Selectable, CountableConnection, Connecti
 from .selectables import AccountNode, AccountCommitSummary, AccountUserInfo, AccountContributorCount, AccountOrganizationsNodes, \
     AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes, AccountRecentlyActiveRepositoriesNodes,\
     AccountRecentlyActiveProjectsNodes, AccountRecentlyActiveOrganizationsNodes, AccountWorkItemsSourcesNodes, \
-    AllAccountNodes
+    AllAccountNodes, AccountUserNodes
 
 from ..contributor import ContributorsConnectionMixin
 from ..interface_mixins import AccountInfoResolverMixin, OwnerInfoResolverMixin, UserInfoResolverMixin, NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
@@ -26,6 +26,7 @@ from ..organization import OrganizationsConnectionMixin, RecentlyActiveOrganizat
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 from ..work_items_source import WorkItemsSourcesConnectionMixin
+from ..users import UsersConnectionMixin
 
 class Account(
     # Interface Mixins
@@ -44,6 +45,7 @@ class Account(
     RecentlyActiveOrganizationsConnectionMixin,
     ContributorsConnectionMixin,
     WorkItemsSourcesConnectionMixin,
+    UsersConnectionMixin,
     #
     Selectable
 ):
@@ -66,6 +68,7 @@ class Account(
             'recently_active_projects': AccountRecentlyActiveProjectsNodes,
             'recently_active_organizations': AccountRecentlyActiveOrganizationsNodes,
             'contributors': AccountContributorNodes,
+            'users': AccountUserNodes
         }
 
     @classmethod

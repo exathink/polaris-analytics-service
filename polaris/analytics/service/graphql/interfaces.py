@@ -141,7 +141,7 @@ class AccountInfo(graphene.Interface):
 
 
 class UserInfo(graphene.Interface):
-    user_key = graphene.String(required=True)
+    name = graphene.String(required=True)
     first_name = graphene.String(required=True)
     last_name = graphene.String(required=True)
     email = graphene.String(required=True)

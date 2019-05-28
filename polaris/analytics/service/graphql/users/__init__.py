@@ -1,0 +1,52 @@
+# -*- coding: utf-8 -*-
+
+# Copyright: © Exathink, LLC (2018) All Rights Reserved
+
+# Unauthorized use or copying of this file and its contents, via any medium
+# is strictly prohibited. The work product in this file is proprietary and
+# confidential.
+
+# Author: Krishna Kumar
+
+import graphene
+
+from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
+from polaris.graphql.interfaces import NamedNode
+from ..interfaces import UserInfo, ScopedRole
+from ..interface_mixins import NamedNodeResolverMixin, UserInfoResolverMixin, ScopedRoleResolverMixin
+from .selectable import UserNode, UserUserInfo
+
+
+class User(
+    NamedNodeResolverMixin,
+    UserInfoResolverMixin,
+    ScopedRoleResolverMixin,
+    Selectable
+):
+    class Meta:
+        interfaces = (NamedNode, UserInfo, ScopedRole)
+        named_node_resolver = UserNode
+        interface_resolvers = {
+            'UserInfo': UserUserInfo
+        }
+        connection_class = lambda: Users
+
+
+class Users(
+    CountableConnection
+):
+    class Meta:
+        node = User
+
+
+class UsersConnectionMixin(ConnectionResolverMixin):
+    users = User.ConnectionField()
+
+    def resolve_users(self, info, **kwargs):
+        return User.resolve_connection(
+            self.get_connection_resolver_context('users'),
+            self.get_connection_node_resolver('users'),
+            self.get_instance_query_params(),
+            join_field='key',
+            **kwargs
+        )

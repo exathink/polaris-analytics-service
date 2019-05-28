@@ -28,7 +28,8 @@ from .interfaces import \
     WorkItemInfo, \
     WorkItemEventSpan, \
     UserInfo, \
-    OwnerInfo
+    OwnerInfo, \
+    ScopedRole
 
 
 
@@ -398,3 +399,29 @@ class OwnerInfoResolverMixin(KeyIdResolverMixin):
 
     def resolve_owner_key(self, info, **kwargs):
         return self.get_owner_info(info, **kwargs).owner_key
+
+
+class ScopedRoleResolverMixin(KeyIdResolverMixin):
+    scoped_role_tuple = create_tuple(ScopedRole)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.scoped_role = init_tuple(self.scoped_role_tuple, **kwargs)
+
+    def resolve_scoped_role(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['ScopedRole'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_scoped_role(self, info, **kwargs):
+        if self.scoped_role is None:
+            self.scoped_role = self.resolve_scoped_role(info, **kwargs)
+        return self.scoped_role
+
+    def resolve_scope_key(self, info, **kwargs):
+        return self.get_scoped_role(info, **kwargs).scope_key
+
+    def resolve_role(self, info, **kwargs):
+        return self.get_scoped_role(info, **kwargs).role

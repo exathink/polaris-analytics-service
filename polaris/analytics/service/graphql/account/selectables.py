@@ -21,15 +21,17 @@ from datetime import datetime, timedelta
 from sqlalchemy import select, func, bindparam, and_, distinct, between, cast, Text
 
 from polaris.utils.datetime_utils import time_window
-from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.interfaces import NamedNode, KeyIdNode
 from polaris.analytics.db.model import organizations, accounts_organizations, accounts, \
     projects, repositories, projects_repositories, contributors, commits, \
     repositories_contributor_aliases, \
-    work_items_sources
+    work_items_sources, account_members
 
 from polaris.auth.db.model import users
 
-from ..interfaces import CommitSummary, UserInfo, ContributorCount, CommitCount, AccountInfo, OwnerInfo
+from ..interfaces import CommitSummary, UserInfo, \
+    ContributorCount, CommitCount, AccountInfo, \
+    OwnerInfo, ScopedRole
 
 
 
@@ -295,6 +297,28 @@ class AccountContributorNodes:
         ).distinct()
 
 
+class AccountUserNodes:
+    interfaces = (KeyIdNode, ScopedRole)
+
+    @staticmethod
+    def selectable(**kwargs):
+        # This looks different from other node resolvers since we
+        # need to join users by key since it is in the auth schema.
+        # the connection resolver mixin provides the join_field as the key
+        # to ensure this happens.
+        return select([
+            account_members.c.user_key.label('key'),
+            accounts.c.key.label('scope_key'),
+            account_members.c.role
+        ]).select_from(
+            accounts.join(
+                account_members
+            )
+        ).where(
+            accounts.c.key == bindparam('key')
+        )
+
+
 class AccountCommitSummary:
     interface = CommitSummary
 
@@ -348,8 +372,8 @@ class AccountUserInfo:
     def selectable(account_node, **kwargs):
         return select([
             account_node.c.id,
-            users.c.key.label('user_key'),
             users.c.email,
+            func.concat(users.c.first_name, ' ', users.c.last_name).label('name'),
             users.c.first_name,
             users.c.last_name
 
@@ -358,3 +382,5 @@ class AccountUserInfo:
         ).where(
             users.c.key == account_node.c.owner_key
         )
+
+

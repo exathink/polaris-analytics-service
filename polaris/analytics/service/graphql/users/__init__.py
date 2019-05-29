@@ -31,6 +31,14 @@ class User(
         }
         connection_class = lambda: Users
 
+    @classmethod
+    def Field(cls, **kwargs):
+        return super().Field(key_is_required=False, **kwargs)
+
+    @classmethod
+    def resolve_field(cls, info, user_key, **kwargs):
+        return cls.resolve_instance(key=user_key, **kwargs)
+
 
 class Users(
     CountableConnection

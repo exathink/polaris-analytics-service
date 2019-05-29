@@ -17,7 +17,7 @@ from polaris.common import db
 
 from flask import abort
 from flask_login import current_user
-from polaris.analytics.service.invite import send_reset_password_instructions
+from polaris.analytics.service.invite import send_new_member_invite
 
 from .. import Account
 
@@ -50,7 +50,7 @@ class CreateAccount(graphene.Mutation):
                     join_this=session
                 )
 
-                send_reset_password_instructions(owner, invitation=dict(subject='Welcome to Urjuna'))
+                send_new_member_invite(owner, invitation=dict(subject='Welcome to Urjuna'))
                 if account is not None:
                     return CreateAccount(
                         account=Account.resolve_field(info, key=account.key)

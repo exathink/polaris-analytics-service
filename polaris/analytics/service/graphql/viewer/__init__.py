@@ -12,7 +12,7 @@ from flask_login import current_user
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
-
+from polaris.common.enums import AccountRoles
 from ..account import Account
 from ..interfaces import ScopedRole
 from .selectables import ViewerAccountRoles, ViewerOrganizationRoles
@@ -22,7 +22,7 @@ from ..selectable_field_mixins import SelectablePropertyResolverMixin
 
 class ScopedRoleField(graphene.ObjectType):
     class Meta:
-        interfaces = (ScopedRole, )
+        interfaces = (ScopedRole, NamedNode)
 
 
 class Viewer (
@@ -65,8 +65,12 @@ class Viewer (
         return graphene.Field(cls)
 
     @classmethod
-    def resolve_field(cls, info, **kwargs):
+    def get_viewer(cls):
         return Viewer(current_user)
+
+    @classmethod
+    def resolve_field(cls, info, **kwargs):
+        return cls.get_viewer()
 
     def resolve_user_name(self, info, **kwargs):
         return self.current_user.user_name
@@ -97,3 +101,9 @@ class Viewer (
 
     def resolve_account(self, info, **kwargs):
         return Account.resolve_field(info, **kwargs)
+
+    @classmethod
+    def is_account_owner(cls, account_key):
+        for account in cls.get_viewer().resolve_account_roles(info={}):
+            if str(account.key) == account_key and account.role == AccountRoles.owner.value:
+                return True

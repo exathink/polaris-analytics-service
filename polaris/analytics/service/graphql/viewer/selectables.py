@@ -10,18 +10,20 @@
 
 from sqlalchemy import select, bindparam
 
-from ..interfaces import ScopedRole
+from ..interfaces import NamedNode, ScopedRole
 from polaris.analytics.db.model import \
     accounts, account_members, \
     organizations, organization_members
 
 
 class ViewerAccountRoles:
-    interfaces = (ScopedRole, )
+    interfaces = (NamedNode, ScopedRole, )
 
     @staticmethod
     def selectable(**kwargs):
         return select([
+            accounts.c.key,
+            accounts.c.name,
             accounts.c.key.label('scope_key'),
             account_members.c.role,
         ]).select_from(
@@ -30,11 +32,13 @@ class ViewerAccountRoles:
 
 
 class ViewerOrganizationRoles:
-    interfaces = (ScopedRole, )
+    interfaces = (NamedNode, ScopedRole)
 
     @staticmethod
     def selectable(**kwargs):
         return select([
+            organizations.c.key,
+            organizations.c.name,
             organizations.c.key.label('scope_key'),
             organization_members.c.role,
         ]).select_from(

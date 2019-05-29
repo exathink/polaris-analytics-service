@@ -11,3 +11,4 @@
 from .contributor import *
 from .viewer import *
 from .account import *
+from .user import *

@@ -87,6 +87,20 @@ class Account(Base):
     def find_by_name(cls, session, name):
         return session.query(cls).filter(cls.name == name).first()
 
+    def is_member(self, user):
+        for member in self.members:
+            if member.user_key == user.key:
+                return True
+
+    def add_member(self, user, role=AccountRoles.member):
+        if not self.is_member(user):
+            self.members.append(
+                AccountMember(
+                    user_key=user.key,
+                    role=role.value
+                )
+            )
+            return True
 
 accounts = Account.__table__
 
@@ -150,6 +164,25 @@ class Organization(Base):
 
             return organization
 
+    def belongs_to_account(self, account):
+        for ac in self.accounts:
+            if ac.key == account.key:
+                return True
+
+    def is_member(self, user):
+        for member in self.members:
+            if member.user_key == user.key:
+                return True
+
+    def add_member(self, user, role = OrganizationRoles.member):
+        if not self.is_member(user):
+            self.members.append(
+                OrganizationMember(
+                    user_key=user.key,
+                    role=role.value
+                )
+            )
+            return True
 
     def add_or_update_project(self, name,  project_key=None,  properties=None, repositories=None):
         existing = find(self.projects, lambda project: project.name == name)

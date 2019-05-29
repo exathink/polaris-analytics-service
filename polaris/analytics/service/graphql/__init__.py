@@ -18,6 +18,8 @@ from .viewer.mutations import ViewerMutationsMixin
 from .account import Account
 from .account.mutations import AccountMutationsMixin
 
+from .users.mutations import UseMutationsMixin
+
 from .commit import Commit
 from .organization import Organization
 from .project import Project
@@ -78,7 +80,8 @@ class Mutations(
     graphene.ObjectType,
     AccountMutationsMixin,
     ContributorMutationsMixin,
-    ViewerMutationsMixin
+    ViewerMutationsMixin,
+    UseMutationsMixin
 ):
     pass
 

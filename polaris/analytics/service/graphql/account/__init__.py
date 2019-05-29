@@ -26,7 +26,7 @@ from ..organization import OrganizationsConnectionMixin, RecentlyActiveOrganizat
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 from ..work_items_source import WorkItemsSourcesConnectionMixin
-from ..users import UsersConnectionMixin
+from ..user import UsersConnectionMixin
 
 class Account(
     # Interface Mixins

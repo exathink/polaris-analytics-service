@@ -18,7 +18,7 @@ from .viewer.mutations import ViewerMutationsMixin
 from .account import Account
 from .account.mutations import AccountMutationsMixin
 
-from .users.mutations import UseMutationsMixin
+from .user.mutations import UseMutationsMixin
 
 from .commit import Commit
 from .organization import Organization

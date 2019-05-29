@@ -46,7 +46,7 @@ def send_new_member_invite(user, invitation):
         'invite_member',
         user=user,
         get_started_link=get_link('AUTH_SERVICE_URL', 'reset'),
-        signin_link=get_link('WEB_APP_URL')
+        signin_link=get_link('AUTH_SERVICE_URL')
     )
     logging.info(f"Invite sent to {user.email}")
     return True
@@ -64,8 +64,8 @@ def send_join_account_notice(user, invitation):
         user.email,
         'invite_member',
         user=user,
-        get_started_link=get_link('WEB_APP_URL'),
-        signin_link=get_link('WEB_APP_URL')
+        get_started_link=get_link('AUTH_SERVICE_URL'),
+        signin_link=get_link('AUTH_SERVICE_URL')
     )
 
     logging.info(f"Invite sent to {user.email}")

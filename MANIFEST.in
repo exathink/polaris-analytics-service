@@ -1,0 +1,1 @@
+recursive-include polaris/auth/service/templates *

@@ -9,6 +9,7 @@
     <mapping directory="$PROJECT_DIR$/polaris-build" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/polaris-flask" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/polaris-flask/polaris-auth-db" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/polaris-flask/polaris-common-db" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/polaris-graphql" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/polaris-messaging" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/polaris-messaging/pika-pool" vcs="Git" />

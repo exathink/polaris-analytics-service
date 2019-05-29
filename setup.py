@@ -54,7 +54,7 @@ setup(
         'polaris.analytics.service.graphql.summarizers',
 
     ],
-
+    include_package_data=True,
     url='',
     license='Commercial',
     author='Krishna Kumar',

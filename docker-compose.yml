@@ -47,6 +47,7 @@ services:
       PROCESSES: 1
       AUTH_SERVICE_URL: http://polaris-services.exathink.localdev:8000
       POLARIS_DB_URL: postgres://polaris:polaris@${POLARIS_DEV_DB}/polaris
+
     depends_on:
       - auth-service
       - polaris-db
@@ -105,6 +106,7 @@ services:
       FLASK_DEBUG: 1
       POLARIS_DB_URL: postgres://polaris:polaris@polaris-db
       AUTH_SERVICE_URL: http://polaris-services.exathink.localdev:8000
+      WEB_APP_URL: http://polaris-services.exathink.localdev:3000
       PYTHONPATH: ${PYTHONPATH}
     depends_on:
       - auth-service

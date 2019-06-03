@@ -9,27 +9,28 @@
 # Author: Krishna Kumar
 
 import logging
+
 import graphene
-
-from polaris.analytics import api
-from polaris.utils.exceptions import ProcessingException
-from polaris.common import db
-
 from flask import abort
 from flask_login import current_user
+
+from polaris.analytics import api
+from polaris.analytics.service.graphql.input_types import AccountProfileInput, UserInfoInput, OrganizationInput
 from polaris.analytics.service.invite import send_new_member_invite
-
+from polaris.common import db
+from polaris.utils.exceptions import ProcessingException
 from .. import Account
-
-from polaris.analytics.service.graphql.input_types import AccountProfileInput, UserInfoInput
 
 logger = logging.getLogger('polaris.analytics.graphql')
 
 
 class CreateAccountInput(graphene.InputObjectType):
-    company = graphene.String(required=True)
-    account_owner_info = graphene.Field(UserInfoInput, required=False)
-    account_profile = graphene.Field(AccountProfileInput, required=False)
+    name = graphene.String(required=True)
+    profile = graphene.Field(AccountProfileInput, required=False)
+
+    default_organization = graphene.Field(OrganizationInput, required=True)
+    account_owner_info = graphene.Field(UserInfoInput, required=True)
+
 
 
 class CreateAccount(graphene.Mutation):
@@ -44,9 +45,10 @@ class CreateAccount(graphene.Mutation):
             logger.info('Create Account called')
 
             with db.orm_session() as session:
-                account, owner = api.create_account_with_owner(
-                    create_account_input.company,
-                    create_account_input.account_owner_info,
+                account, owner = api.create_account_with_owner_and_default_org(
+                    account_info=create_account_input,
+                    organization_info=create_account_input.default_organization,
+                    account_owner_info=create_account_input.account_owner_info,
                     join_this=session
                 )
 

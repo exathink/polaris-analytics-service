@@ -9,16 +9,14 @@
 # Author: Krishna Kumar
 
 import logging
+
 import graphene
-
 from flask_login import current_user
+
 from polaris.analytics import api
-from polaris.utils.exceptions import ProcessingException
-
 from polaris.analytics.service.graphql.input_types import AccountProfileInput
-
+from polaris.utils.exceptions import ProcessingException
 from ..viewer import Viewer
-
 
 logger = logging.getLogger('polaris.analytics.graphql')
 
@@ -37,7 +35,7 @@ class InitViewerAccount(graphene.Mutation):
 
     def mutate(self, info, init_viewer_account_input):
         logger.info('InitViewer Account called')
-        account, owner = api.create_account_with_owner(
+        account, owner = api.create_account_with_owner_and_default_org(
             company=init_viewer_account_input.organization_name,
             account_owner_info=dict(
                 email=current_user.email

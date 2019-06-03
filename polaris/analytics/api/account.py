@@ -8,50 +8,20 @@
 
 # Author: Krishna Kumar
 
-import uuid
+from polaris.analytics.db.model import Account
 from polaris.auth.db import api as auth_db_api
 from polaris.auth.db.model import User
 from polaris.common import db
-from polaris.analytics.db.model import Account, Organization, AccountMember, \
-    OrganizationMember, AccountRoles, OrganizationRoles
-
-from datetime import datetime
-
 from polaris.utils.exceptions import ProcessingException
 
 
-def create_account_and_organization(company, owner_key=None, join_this=None):
+def create_account_with_owner_and_default_org(account_info, organization_info, account_owner_info, join_this=None):
     with db.orm_session(join_this) as session:
-        organization = Organization(
-            key=uuid.uuid4(),
-            name=company,
-            created=datetime.utcnow()
-        )
-        account = Account(
-            key=uuid.uuid4(),
-            name=company,
-            owner_key=owner_key,
-            created=datetime.utcnow()
-        )
-        account.organizations.append(organization)
-        session.add(account)
-        return account, organization
-
-
-def create_account_with_owner(company, account_owner_info, join_this=None):
-    with db.orm_session(join_this) as session:
-        if Account.find_by_name(session, company) is None:
+        if Account.find_by_name(session, account_info.name) is None:
             user = User.find_by_email(session, account_owner_info.email)
-            if user and 'account-owner' in user.role_names:
-                raise ProcessingException(
-                    'User exists and is already an account owner on a different account.'
-                    'Cannot create a new account with this same owner'
-                )
-
-            account, organization = create_account_and_organization(
-                company,
-                owner_key=user.key if user else None,
-                join_this=session
+            account = Account.create(
+                name=account_info.name,
+                profile=account_info.profile
             )
 
             if not user:
@@ -61,22 +31,17 @@ def create_account_with_owner(company, account_owner_info, join_this=None):
                     join_this=session
                 )
                 user.account_key = account.key
-                account.owner_key = user.key
                 session.add(user)
 
-            account.members.append(
-                AccountMember(
-                    user_key=user.key,
-                    role=AccountRoles.owner.value
-                )
+            account.set_owner(user)
+
+            account.create_organization(
+                name=organization_info.name,
+                profile=organization_info.profile,
+                owner=user
             )
 
-            organization.members.append(
-                OrganizationMember(
-                    user_key=user.key,
-                    role=OrganizationRoles.owner.value
-                )
-            )
+            session.add(account)
 
             return account, user
         else:

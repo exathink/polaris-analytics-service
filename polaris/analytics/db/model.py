@@ -9,15 +9,17 @@
 # Author: Krishna Kumar
 
 import uuid
+from datetime import datetime
 from logging import getLogger
 
-from sqlalchemy import Table, Column, BigInteger, Integer, Boolean, text, Text, String, UniqueConstraint, ForeignKey, Index, DateTime, and_
+from sqlalchemy import Table, Column, BigInteger, Integer, Boolean, text, Text, String, UniqueConstraint, ForeignKey, \
+    Index, DateTime, and_
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import relationship, object_session
 
 from polaris.common import db
-from polaris.utils.collections import find
 from polaris.common.enums import AccountRoles, OrganizationRoles
+from polaris.utils.collections import find
 
 logger = getLogger('polaris.analytics.db.model')
 Base = db.polaris_declarative_base(schema='analytics')
@@ -79,6 +81,20 @@ class Account(Base):
 
     members = relationship("AccountMember", back_populates="account")
 
+
+    @classmethod
+    def create(cls, name, key=None, profile=None, owner=None):
+        account = Account(
+            key=key or uuid.uuid4(),
+            name=name,
+            profile=profile or {},
+            created=datetime.utcnow()
+        )
+        if owner:
+            account.set_owner(owner)
+
+        return account
+
     @classmethod
     def find_by_account_key(cls, session, account_key):
         return session.query(cls).filter(cls.key == account_key).first()
@@ -101,6 +117,19 @@ class Account(Base):
                 )
             )
             return True
+
+    def create_organization(self, name, key=None, profile=None, owner=None):
+        organization = Organization.create(name, key, profile)
+        self.organizations.append(organization)
+        if owner:
+            organization.set_owner(owner)
+        return organization
+
+
+    def set_owner(self, user):
+        self.add_member(user, AccountRoles.owner)
+        self.owner_key = user.key
+
 
 accounts = Account.__table__
 
@@ -125,6 +154,7 @@ class Organization(Base):
     key = Column(UUID(as_uuid=True), nullable=False, unique=True)
     name = Column(String(256))
     public = Column(Boolean, default=False, nullable=True)
+    profile = Column(JSONB, nullable=True, server_default='{}')
 
     created = Column(DateTime, nullable=True)
     updated = Column(DateTime, nullable=True)
@@ -138,6 +168,16 @@ class Organization(Base):
     repositories = relationship('Repository')
     work_items_sources = relationship('WorkItemsSource')
     members = relationship("OrganizationMember", back_populates="organization")
+
+    @classmethod
+    def create(cls, name, key=None, profile=None):
+        organization = Organization(
+            key=key or uuid.uuid4(),
+            name=name,
+            profile=profile or {},
+            created=datetime.utcnow()
+        )
+        return organization
 
 
     @classmethod
@@ -156,13 +196,7 @@ class Organization(Base):
     def find_by_organization_keys(cls, session, organization_keys):
         return session.query(cls).filter(cls.key.in_(organization_keys)).all()
 
-    @classmethod
-    def create(cls, session, name):
-            organization=Organization(name=name, organization_key=uuid.uuid4())
-            session.add(organization)
-            session.flush()
 
-            return organization
 
     def belongs_to_account(self, account):
         for ac in self.accounts:
@@ -183,6 +217,9 @@ class Organization(Base):
                 )
             )
             return True
+
+    def set_owner(self, user):
+        self.add_member(user, OrganizationRoles.owner)
 
     def add_or_update_project(self, name,  project_key=None,  properties=None, repositories=None):
         existing = find(self.projects, lambda project: project.name == name)

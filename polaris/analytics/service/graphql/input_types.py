@@ -9,20 +9,21 @@
 # Author: Krishna Kumar
 import graphene
 
-from .interfaces import UserInfo
-from polaris.analytics.service.graphql.interfaces import WorkTrackingIntegrationType
-
-
-class WorkTrackingSettingsInput(graphene.InputObjectType):
-    enabled = graphene.Boolean(required=True, default_value=False)
-    providers = graphene.List(WorkTrackingIntegrationType, required=True, default_value=[])
-
 
 class AccountProfileInput(graphene.InputObjectType):
-    work_tracking = graphene.Field(WorkTrackingSettingsInput, required=True)
+    defaultWorkTracking = graphene.String(required=False, default_value=None)
 
 
 class UserInfoInput(graphene.InputObjectType):
     first_name = graphene.String(required=True)
     last_name = graphene.String(required=True)
     email = graphene.String(required=True)
+
+
+class OrganizationProfileInput(graphene.InputObjectType):
+    defaultWorkTracking = graphene.String(required=False, default_value=None)
+
+
+class OrganizationInput(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    profile = graphene.Field(OrganizationProfileInput, required=False)

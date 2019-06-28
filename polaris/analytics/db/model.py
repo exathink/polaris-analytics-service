@@ -270,6 +270,7 @@ class Project(Base):
     organization_id = Column(Integer, ForeignKey('organizations.id'))
     organization = relationship('Organization', back_populates='projects')
     repositories = relationship('Repository', secondary=projects_repositories, back_populates='projects')
+    work_items_sources = relationship('WorkItemsSource')
 
     @classmethod
     def find_by_project_key(cls, session, project_key):
@@ -513,6 +514,7 @@ class WorkItemsSource(Base):
     # type of integration: github, github_enterprise, jira, pivotal_tracker etc..
     integration_type = Column(String, nullable=False)
 
+    description = Column(String, nullable=True)
     # Commit mapping scope specifies the repositories that are mapped to this
     # work item source. The valid values are ('organization', 'project', 'repository')
     # Given the commit mapping scope key, commits originating from all repositories
@@ -523,6 +525,9 @@ class WorkItemsSource(Base):
 
     organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
     organization = relationship('Organization', back_populates='work_items_sources')
+
+    project_id = Column(Integer, ForeignKey('projects.id'), nullable=True)
+    project = relationship('Project', back_populates='work_items_sources')
 
     work_items = relationship('WorkItem')
 
@@ -551,6 +556,7 @@ Index('ix_analytics_work_items_sources_commit_mapping_scope',
       work_items_sources.c.commit_mapping_scope,
       work_items_sources.c.commit_mapping_scope_key
 )
+
 
 class WorkItem(Base):
     __tablename__ = 'work_items'

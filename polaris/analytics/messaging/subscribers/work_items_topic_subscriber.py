@@ -9,12 +9,11 @@
 # Author: Krishna Kumar
 import logging
 
-from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated, \
-    WorkItemsStatesChanged
-from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic, AnalyticsTopic
-from polaris.utils.collections import dict_select
-from polaris.messaging.utils import raise_on_failure
 from polaris.analytics.db import api
+from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated, \
+    WorkItemsStatesChanged, ProjectImported
+from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic, AnalyticsTopic
+from polaris.messaging.utils import raise_on_failure
 
 logger = logging.getLogger('polaris.analytics.work_items_topic_subscriber')
 
@@ -29,6 +28,7 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                 WorkItemsSourceCreated,
                 WorkItemsCreated,
                 WorkItemsUpdated,
+                ProjectImported
             ],
             publisher=publisher,
             exclusive=False
@@ -42,7 +42,7 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                 self.publish(AnalyticsTopic, work_items_created, channel=channel)
                 return work_items_created
 
-        if WorkItemsUpdated.message_type == message.message_type:
+        elif WorkItemsUpdated.message_type == message.message_type:
             resolved = self.process_work_items_updated(message)
             if resolved:
                 work_items_updated = WorkItemsUpdated(send=message.dict, in_response_to=message)
@@ -66,6 +66,9 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                 work_items_source_created = WorkItemsSourceCreated(send=message.dict, in_response_to=message)
                 self.publish(AnalyticsTopic, work_items_source_created, channel=channel)
                 return work_items_source_created
+
+        elif ProjectImported.message_type == message.message_type:
+            logger.info('Received ProjectImported Message')
 
 
     @staticmethod

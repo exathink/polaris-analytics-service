@@ -129,3 +129,19 @@ def update_contributor_for_contributor_aliases(organization_key, contributor_key
         return db.process_exception("Update contributor for contributor aliases", exc)
     except Exception as e:
         return db.failure_message('Update contributor for contributor aliases', e)
+    
+    
+def import_project(organization_key, project_summary):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.import_project(
+                    session,
+                    organization_key,
+                    project_summary
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Import Project", exc)
+    except Exception as e:
+        return db.failure_message('Import Project', e)

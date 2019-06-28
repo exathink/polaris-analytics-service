@@ -10,7 +10,7 @@
 import logging
 from functools import reduce
 from polaris.common import db
-from polaris.utils.collections import dict_select
+from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
 from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal
@@ -19,8 +19,7 @@ from polaris.utils.work_tracking import WorkItemResolver
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
-    Commit, WorkItem, work_item_state_transitions
-
+    Commit, WorkItem, work_item_state_transitions, Project
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
 
@@ -769,3 +768,32 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
             update_count=updated,
             state_changes=state_changes
         )
+
+
+def import_project(session, organization_key, project_summary):
+    organization = Organization.find_by_organization_key(session, organization_key)
+    if organization is not None:
+        project = Project.find_by_project_key(session, project_summary['key'])
+        if project is None:
+            project = Project(
+                key=project_summary['key'],
+                name=project_summary['name']
+            )
+            session.add(project)
+
+        for source in project_summary['work_items_sources']:
+            work_items_source = WorkItemsSource.find_by_work_items_source_key(session, source.key)
+            if work_items_source is None:
+                work_items_source = WorkItemsSource(
+                    **source
+                )
+                organization.work_items_sources.append(work_items_source)
+                project.work_items_sources.append(work_items_source)
+
+            elif not find(projects.work_items_sources, lambda w: w.key == work_items_source.key):
+                project.work_items_sources.append(work_items_source)
+
+        return dict()
+
+    else:
+        raise ProcessingException(f'Could not find organization with key {organization_key}')

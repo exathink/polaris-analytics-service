@@ -69,6 +69,13 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
 
         elif ProjectImported.message_type == message.message_type:
             logger.info('Received ProjectImported Message')
+            result = self.process_project_imported(message)
+            if result is not None:
+                logger.info(f"{result['new_work_items_sources']} work_items_sources created")
+                project_imported = ProjectImported(send=message.dict, in_response_to=message)
+                self.publish(AnalyticsTopic, project_imported, channel=channel)
+
+                return project_imported
 
 
     @staticmethod
@@ -110,3 +117,15 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
             api.register_work_items_source(organization_key, work_items_source)
         )
 
+    @staticmethod
+    def process_project_imported(message):
+        project_imported = message.dict
+        organization_key = project_imported['organization_key']
+        project_summary = project_imported['project_summary']
+        logger.info(f"Processing  {message.message_type}: "
+                    f" Organization: {organization_key}")
+
+        return raise_on_failure(
+            message,
+            api.import_project(organization_key, project_summary)
+        )

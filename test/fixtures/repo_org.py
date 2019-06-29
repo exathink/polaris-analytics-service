@@ -24,6 +24,7 @@ def cleanup(setup_schema):
     db.connection().execute("delete from analytics.contributor_aliases")
     db.connection().execute("delete from analytics.contributors")
     db.connection().execute("delete from analytics.repositories")
+    db.connection().execute("delete from analytics.projects")
     db.connection().execute("delete from analytics.organizations")
 
 @pytest.yield_fixture()

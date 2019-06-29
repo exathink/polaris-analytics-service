@@ -472,3 +472,118 @@ class TestStateTransitionSequence:
         assert result['success']
         assert db.connection().execute(f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
 
+
+class TestImportProject:
+
+    def it_imports_a_new_project(self, setup_org):
+        organization = setup_org
+        organization_key = organization.key
+        project_key = uuid.uuid4()
+        source_key = uuid.uuid4()
+
+        project_summary = dict(
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type='github',
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project'
+                    )
+                ]
+            )
+
+        result = api.import_project(organization_key, project_summary)
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(id) from analytics.projects where key='{project_key}'"
+        ).scalar() == 1
+
+    def it_creates_work_items_sources_when_they_dont_exist(self, setup_org):
+        organization = setup_org
+        organization_key = organization.key
+        project_key = uuid.uuid4()
+        source_key = uuid.uuid4()
+
+        project_summary = dict(
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type='github',
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project'
+                    )
+                ]
+            )
+
+        result = api.import_project(organization_key, project_summary)
+        assert result['success']
+        assert db.connection().execute(
+            f"select work_items_sources.key from analytics.work_items_sources inner join analytics.projects"
+            f" on projects.id = work_items_sources.project_id where projects.key='{project_key}'"
+        ).scalar() == source_key
+
+    def it_returns_new_work_items_sources(self, setup_org):
+        organization = setup_org
+        organization_key = organization.key
+        project_key = uuid.uuid4()
+        source_key = uuid.uuid4()
+
+        project_summary = dict(
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type='github',
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project'
+                    )
+                ]
+            )
+
+        result = api.import_project(organization_key, project_summary)
+        assert result['success']
+        assert result['new_work_items_sources'] == 1
+
+    def it_is_idempotent(self, setup_org):
+        organization = setup_org
+        organization_key = organization.key
+        project_key = uuid.uuid4()
+        source_key = uuid.uuid4()
+
+        project_summary = dict(
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type='github',
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project'
+                    )
+                ]
+            )
+        # import once
+        api.import_project(organization_key, project_summary)
+        # import again
+        result = api.import_project(organization_key, project_summary)
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(id) from analytics.projects where key='{project_key}'"
+        ).scalar() == 1

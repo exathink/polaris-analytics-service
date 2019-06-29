@@ -779,21 +779,26 @@ def import_project(session, organization_key, project_summary):
                 key=project_summary['key'],
                 name=project_summary['name']
             )
+            organization.projects.append(project)
             session.add(project)
-
+        new_work_items_sources = []
         for source in project_summary['work_items_sources']:
-            work_items_source = WorkItemsSource.find_by_work_items_source_key(session, source.key)
+            work_items_source = WorkItemsSource.find_by_work_items_source_key(session, source['key'])
             if work_items_source is None:
                 work_items_source = WorkItemsSource(
+                    organization_key=organization.key,
                     **source
                 )
                 organization.work_items_sources.append(work_items_source)
                 project.work_items_sources.append(work_items_source)
+                new_work_items_sources.append(work_items_source)
 
-            elif not find(projects.work_items_sources, lambda w: w.key == work_items_source.key):
+            elif not find(project.work_items_sources, lambda w: w.key == work_items_source.key):
                 project.work_items_sources.append(work_items_source)
 
-        return dict()
+        return dict(
+            new_work_items_sources=len(new_work_items_sources)
+        )
 
     else:
         raise ProcessingException(f'Could not find organization with key {organization_key}')

@@ -23,6 +23,8 @@ from .user.mutations import UseMutationsMixin
 from .commit import Commit
 from .organization import Organization
 from .project import Project
+from .project.mutations import ProjectMutationsMixin
+
 from .repository import Repository
 from .contributor import Contributor, ContributorMutationsMixin
 from .public import Public
@@ -81,7 +83,8 @@ class Mutations(
     AccountMutationsMixin,
     ContributorMutationsMixin,
     ViewerMutationsMixin,
-    UseMutationsMixin
+    UseMutationsMixin,
+    ProjectMutationsMixin
 ):
     pass
 

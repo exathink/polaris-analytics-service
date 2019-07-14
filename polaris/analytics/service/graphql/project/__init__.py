@@ -52,6 +52,7 @@ from .selectables import ProjectNode, \
 from polaris.graphql.connection_utils import CountableConnection
 
 
+
 class Project(
     # interface mixins
     NamedNodeResolverMixin,

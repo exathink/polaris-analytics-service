@@ -267,6 +267,8 @@ class Project(Base):
     name = Column(String(256), nullable=False)
     public = Column(Boolean, default=False, nullable=True)
     properties = Column(JSONB, default={})
+    archived = Column(Boolean, server_default=text('FALSE'), nullable=False)
+
     organization_id = Column(Integer, ForeignKey('organizations.id'))
     organization = relationship('Organization', back_populates='projects')
     repositories = relationship('Repository', secondary=projects_repositories, back_populates='projects')

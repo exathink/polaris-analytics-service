@@ -19,20 +19,21 @@ from polaris.analytics.db.model import projects, projects_repositories, organiza
 
 from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
-    CumulativeCommitCount, CommitInfo, WeeklyContributorCount
+    CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 
 
 class ProjectNode:
-    interface = NamedNode
+    interfaces = (NamedNode, ArchivedStatus)
 
     @staticmethod
     def selectable(**kwargs):
         return select([
             projects.c.id,
             projects.c.key.label('key'),
-            projects.c.name
+            projects.c.name,
+            projects.c.archived
         ]).select_from(
             projects
         ).where(projects.c.key == bindparam('key'))
@@ -320,5 +321,20 @@ class ProjectsOrganizationRef:
                 projects, project_nodes.c.id == projects.c.id
             ).outerjoin(
                 organizations, projects.c.organization_id == organizations.c.id
+            )
+        )
+
+
+class ProjectsArchivedStatus:
+    interface = ArchivedStatus
+
+    @staticmethod
+    def selectable(project_nodes, **kwargs):
+        return select([
+            project_nodes.c.id,
+            projects.c.archived
+        ]).select_from(
+            project_nodes.outerjoin(
+                projects, project_nodes.c.id == projects.c.id
             )
         )

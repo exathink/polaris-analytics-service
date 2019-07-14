@@ -154,3 +154,9 @@ class OwnerInfo(graphene.Interface):
 class ScopedRole(graphene.Interface):
     scope_key = graphene.String(required=True)
     role = graphene.String(required=True)
+
+
+class ArchivedStatus(graphene.Interface):
+    """Indicate whether the implementing object is archived or not"""
+
+    archived = graphene.Boolean(required=True)

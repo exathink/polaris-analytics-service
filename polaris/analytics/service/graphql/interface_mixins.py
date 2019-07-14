@@ -29,7 +29,8 @@ from .interfaces import \
     WorkItemEventSpan, \
     UserInfo, \
     OwnerInfo, \
-    ScopedRole
+    ScopedRole, \
+    ArchivedStatus
 
 
 
@@ -425,3 +426,27 @@ class ScopedRoleResolverMixin(KeyIdResolverMixin):
 
     def resolve_role(self, info, **kwargs):
         return self.get_scoped_role(info, **kwargs).role
+    
+
+class ArchivedStatusResolverMixin(KeyIdResolverMixin):
+    archived_status_tuple = create_tuple(ArchivedStatus)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.archived_status = init_tuple(self.archived_status_tuple, **kwargs)
+
+    def resolve_archived_status(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['ArchivedStatus'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_archived_status(self, info, **kwargs):
+        if self.archived_status is None:
+            self.archived_status = self.resolve_archived_status(info, **kwargs)
+        return self.archived_status
+
+    def resolve_archived(self, info, **kwargs):
+        return self.get_archived_status(info, **kwargs).archived
+

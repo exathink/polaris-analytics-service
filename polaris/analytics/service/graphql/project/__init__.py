@@ -13,14 +13,15 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
-from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef
+from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, ArchivedStatus
 from ..interface_mixins import \
     KeyIdResolverMixin, \
     NamedNodeResolverMixin, \
     CommitSummaryResolverMixin, \
     ContributorCountResolverMixin, \
     RepositoryCountResolverMixin, \
-    OrganizationRefResolverMixin
+    OrganizationRefResolverMixin, \
+    ArchivedStatusResolverMixin
 
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
@@ -43,6 +44,7 @@ from .selectables import ProjectNode, \
     ProjectsCommitSummary, \
     ProjectsRepositoryCount, \
     ProjectsOrganizationRef, \
+    ProjectsArchivedStatus, \
     ProjectRecentlyActiveRepositoriesNodes, \
     ProjectRecentlyActiveContributorNodes, \
     ProjectCumulativeCommitCount, \
@@ -60,6 +62,7 @@ class Project(
     ContributorCountResolverMixin,
     RepositoryCountResolverMixin,
     OrganizationRefResolverMixin,
+    ArchivedStatusResolverMixin,
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
@@ -74,7 +77,22 @@ class Project(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, ContributorCount, RepositoryCount, OrganizationRef)
+        description = """
+Project: A NamedNode representing a project. 
+            
+Implicit Interfaces: ArchivedStatus
+"""
+        interfaces = (
+            # ----Implicit Interfaces ------- #
+            NamedNode,
+            ArchivedStatus,
+
+            # ---- Explicit Interfaces -------#
+            CommitSummary,
+            ContributorCount,
+            RepositoryCount,
+            OrganizationRef,
+        )
         named_node_resolver = ProjectNode
         interface_resolvers = {
             'CommitSummary': ProjectsCommitSummary,

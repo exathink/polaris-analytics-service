@@ -25,7 +25,7 @@ from polaris.analytics.db.model import \
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
     ProjectCount, RepositoryCount, WorkItemsSourceCount,  \
     WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef,\
-    WorkItemStateTransition, WorkItemCommitInfo, WorkItemEventSpan
+    WorkItemStateTransition, WorkItemCommitInfo, WorkItemEventSpan, ArchivedStatus
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 from ..work_item.sql_expressions import \
@@ -52,14 +52,15 @@ class OrganizationNode:
 
 
 class OrganizationProjectsNodes:
-    interface = NamedNode
+    interfaces = (NamedNode, ArchivedStatus)
 
     @staticmethod
     def selectable(**kwargs):
         return select([
             projects.c.id,
             projects.c.key.label('key'),
-            projects.c.name
+            projects.c.name,
+            projects.c.archived
         ]).select_from(
             projects.join(
                 organizations

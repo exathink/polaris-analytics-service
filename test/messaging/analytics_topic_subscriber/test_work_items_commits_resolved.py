@@ -52,20 +52,22 @@ def work_items_commits_fixture(commits_fixture):
         )
     ]
     create_test_commits(test_commits)
-    yield new_key, test_commit_key
+    yield new_key, test_commit_key, work_item_source.key, test_repo.key
 
 
 class TestWorkItemsCommitsResolved:
 
     def it_returns_a_valid_response(self, work_items_commits_fixture):
-        work_item_key, commit_key = work_items_commits_fixture
+        work_item_key, commit_key, work_items_source_key, repository_key = work_items_commits_fixture
         message = fake_send(WorkItemsCommitsResolved(
             send=dict(
                 organization_key=test_organization_key,
                 work_items_commits=[
                     dict(
                         work_item_key=work_item_key,
-                        commit_key=commit_key
+                        commit_key=commit_key,
+                        work_items_source_key=work_items_source_key,
+                        repository_key=repository_key
                     )
                 ]
             )

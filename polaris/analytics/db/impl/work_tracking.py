@@ -15,7 +15,7 @@ from polaris.utils.exceptions import ProcessingException
 
 from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal
 from sqlalchemy.dialects.postgresql import UUID, insert
-from polaris.utils.work_tracking import WorkItemResolver
+from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \

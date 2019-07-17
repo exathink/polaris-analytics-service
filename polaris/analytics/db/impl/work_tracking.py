@@ -13,13 +13,14 @@ from polaris.common import db
 from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
-from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal
+from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_
 from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
-    Commit, WorkItem, work_item_state_transitions, Project
+    Commit, WorkItem, work_item_state_transitions, Project, work_items_sources
+
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
 
@@ -162,7 +163,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
 
             session.connection().execute(
                 work_item_state_transitions.insert().from_select(
-                    ['work_item_id', 'seq_no', 'previous_state', 'state',  'created_at'],
+                    ['work_item_id', 'seq_no', 'previous_state', 'state', 'created_at'],
                     select([
                         work_items.c.id,
                         literal('1').label('seq_no'),
@@ -815,3 +816,86 @@ def import_project(session, organization_key, project_summary):
 
     else:
         raise ProcessingException(f'Could not find organization with key {organization_key}')
+
+
+def infer_projects_repositories_relationships(session, organization_key, work_items_commits):
+    wisr_temp = db.create_temp_table(
+        'work_items_sources_repositories_temp', [
+            Column('work_items_source_key', UUID(as_uuid=True)),
+            Column('repository_key', UUID(as_uuid=True))
+        ]
+    )
+    wisr_temp.create(session.connection(), checkfirst=True)
+
+    session.connection().execute(
+        wisr_temp.insert().values(
+            [
+                dict_select(
+                    work_items_commit,
+                    [
+                        'work_items_source_key',
+                        'repository_key'
+                    ]
+                )
+                for work_items_commit in work_items_commits
+            ]
+        )
+    )
+
+    projects_repositories_relationships = select([
+        projects.c.key.label('project_key'),
+        repositories.c.key.label('repository_key'),
+        projects.c.id.label('project_id'),
+        repositories.c.id.label('repository_id')
+    ]).select_from(
+        wisr_temp.join(
+            repositories, wisr_temp.c.repository_key == repositories.c.key
+        ).join(
+            work_items_sources, wisr_temp.c.work_items_source_key == work_items_sources.c.key
+        ).join(
+            projects, work_items_sources.c.project_id == projects.c.id
+        )
+    ).distinct().alias()
+
+    new_relationships_query = select([
+            projects_repositories_relationships.c.project_key,
+            projects_repositories_relationships.c.repository_key,
+            projects_repositories_relationships.c.project_id,
+            projects_repositories_relationships.c.repository_id
+        ]).select_from(
+            projects_repositories_relationships.outerjoin(
+                projects_repositories,
+                and_(
+                    projects_repositories_relationships.c.project_id == projects_repositories.c.project_id,
+                    projects_repositories_relationships.c.repository_id == projects_repositories.c.repository_id
+                )
+            )
+        ).where(
+            or_(
+                projects_repositories.c.project_id == None,
+                projects_repositories.c.repository_id == None
+            )
+        ).alias()
+
+    new_relationships = session.connection().execute(
+        new_relationships_query
+    ).fetchall()
+
+    if len(new_relationships) > 0:
+        session.connection().execute(
+            insert(projects_repositories).from_select(
+                ['project_id', 'repository_id'],
+                select([new_relationships_query.c.project_id, new_relationships_query.c.repository_id])
+            )
+        )
+
+    return dict(
+        new_relationships=[
+            dict(
+                project_key=str(relationship.project_key),
+                repository_key=str(relationship.repository_key)
+            )
+            for relationship in new_relationships
+        ]
+    )
+

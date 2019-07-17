@@ -155,7 +155,7 @@ work_items_source_common = dict(
 )
 
 
-def setup_work_items(organization, source_data, items_data):
+def setup_work_items(organization, source_data, items_data, project_key=None):
     with db.orm_session() as session:
         session.expire_on_commit = False
         source = WorkItemsSource(
@@ -169,4 +169,8 @@ def setup_work_items(organization, source_data, items_data):
             for item in items_data
         ])
         session.add(source)
+        if project_key is not None:
+            project = Project.find_by_project_key(session, project_key)
+            project.work_items_sources.append(source)
+
         return source

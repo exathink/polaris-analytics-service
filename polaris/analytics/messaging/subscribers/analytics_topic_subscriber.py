@@ -87,6 +87,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         elif UpdateCommitsWorkItemsSummaries.message_type == message.message_type:
             return self.process_update_commits_work_items_summaries(channel, message)
 
+        elif InferProjectsRepositoriesRelationships.message_type == message.message_type:
+            return self.process_infer_projects_repositories_relationships(channel, message)
+
 
     @staticmethod
     def process_resolve_commit_details_created(channel, message):
@@ -150,4 +153,15 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             return raise_on_failure(
                 message,
                 aggregations.update_commit_work_item_summaries(organization_key, work_items_commits)
+            )
+
+    @staticmethod
+    def process_infer_projects_repositories_relationships(channel, message):
+        organization_key = message['organization_key']
+        work_items_commits = message['work_items_commits']
+
+        if len(work_items_commits) > 0:
+            return raise_on_failure(
+                message,
+                aggregations.infer_projects_repositories_relationships(organization_key, work_items_commits)
             )

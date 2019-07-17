@@ -26,3 +26,16 @@ def update_commit_work_item_summaries(organization_key, work_item_commits):
         return db.process_exception("Update commit work item summaries failed", exc)
     except Exception as e:
         return db.failure_message('Update commit work item summaries failed', e)
+
+
+def infer_projects_repositories_relationships(organization_key, work_items_commits):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.infer_projects_repositories_relationships(
+                    session, organization_key, work_items_commits)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Update commit work item summaries failed", exc)
+    except Exception as e:
+        return db.failure_message('Update commit work item summaries failed', e)

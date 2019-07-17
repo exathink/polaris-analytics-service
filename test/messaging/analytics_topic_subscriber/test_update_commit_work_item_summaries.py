@@ -57,11 +57,11 @@ def work_items_commits_fixture(commits_fixture):
     yield new_key, test_commit_key, work_item_source.key, test_repo.key
 
 
-class TestWorkItemsCommitsResolved:
+class TestUpdateCommitsWorkItemsSummaries:
 
     def it_returns_a_valid_response(self, work_items_commits_fixture):
         work_item_key, commit_key, work_items_source_key, repository_key = work_items_commits_fixture
-        message = fake_send(WorkItemsCommitsResolved(
+        message = fake_send(UpdateCommitsWorkItemsSummaries(
             send=dict(
                 organization_key=test_organization_key,
                 work_items_commits=[
@@ -76,6 +76,7 @@ class TestWorkItemsCommitsResolved:
         ))
         publisher = mock_publisher()
         channel = mock_channel()
-        AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateCommitsWorkItemsSummaries)
+        result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        assert result['success']
+
 

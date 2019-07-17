@@ -11,6 +11,8 @@
 import logging
 from polaris.messaging.topics import TopicSubscriber, AnalyticsTopic
 from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, WorkItemsCreated, WorkItemsCommitsResolved
+from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
+
 from polaris.messaging.utils import raise_on_failure
 
 from polaris.analytics.db import api, aggregations
@@ -26,7 +28,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 CommitsCreated,
                 CommitDetailsCreated,
                 WorkItemsCreated,
-                WorkItemsCommitsResolved
+                WorkItemsCommitsResolved,
+                # Commands
+                UpdateCommitsWorkItemsSummaries
             ],
             publisher=publisher,
             exclusive=False
@@ -64,7 +68,16 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             return self.process_resolve_commit_details_created(channel, message)
 
         elif WorkItemsCommitsResolved.message_type == message.message_type:
-            return self.process_work_items_commits_resolved(channel, message)
+            update_commit_work_items_summaries_command = UpdateCommitsWorkItemsSummaries(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, update_commit_work_items_summaries_command)
+            return update_commit_work_items_summaries_command
+
+        elif UpdateCommitsWorkItemsSummaries.message_type == message.message_type:
+            return self.process_update_commits_work_items_summaries(channel, message)
+
 
     @staticmethod
     def process_resolve_commit_details_created(channel, message):
@@ -120,7 +133,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
 
     @staticmethod
-    def process_work_items_commits_resolved(channel, message):
+    def process_update_commits_work_items_summaries(channel, message):
         organization_key = message['organization_key']
         work_items_commits = message['work_items_commits']
 

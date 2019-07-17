@@ -31,7 +31,7 @@ class TestSingleRepo:
         new_key = uuid.uuid4()
         new_work_items = [
             dict(
-                key=new_key.hex,
+                key=new_key,
                 display_id='1000',
                 created_at=get_date("2018-12-02"),
                 **work_items_common
@@ -52,7 +52,7 @@ class TestSingleRepo:
         create_test_commits([
             dict(
                 repository_id=test_repo.id,
-                key=test_commit_key.hex,
+                key=test_commit_key,
                 source_commit_id=test_commit_source_id,
                 commit_message="Another change. Fixes issue #1000",
                 author_date=get_date("2018-12-03"),
@@ -63,8 +63,10 @@ class TestSingleRepo:
         result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
         assert result['success']
         assert len(result['resolved']) == 1
-        assert result['resolved'][0]['commit_key'] == test_commit_key.hex
-        assert result['resolved'][0]['work_item_key'] == new_key.hex
+        assert result['resolved'][0]['commit_key'] == str(test_commit_key)
+        assert result['resolved'][0]['work_item_key'] == str(new_key)
+        assert result['resolved'][0]['work_items_source_key'] == str(work_item_source.key)
+        assert result['resolved'][0]['repository_key'] == str(test_repo.key)
 
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
 
@@ -72,8 +74,8 @@ class TestSingleRepo:
     def it_returns_a_valid_map_when_there_are_multiple_matching_commits_and_work_items(self, commits_fixture):
         organization, _, repositories, _ = commits_fixture
         test_repo = repositories['alpha']
-        key_1000 = uuid.uuid4().hex
-        key_1002 = uuid.uuid4().hex
+        key_1000 = uuid.uuid4()
+        key_1002 = uuid.uuid4()
         new_work_items = [
             dict(
                 key=key_1000,
@@ -88,7 +90,7 @@ class TestSingleRepo:
                 **work_items_common
             ),
             dict(
-                key=uuid.uuid4().hex,
+                key=uuid.uuid4(),
                 display_id='1003',
                 created_at=get_date("2018-12-02"),
                 **work_items_common
@@ -106,8 +108,8 @@ class TestSingleRepo:
             items_data=new_work_items
         )
 
-        commit_1000_key = uuid.uuid4().hex
-        commit_1002_key = uuid.uuid4().hex
+        commit_1000_key = uuid.uuid4()
+        commit_1002_key = uuid.uuid4()
         create_test_commits([
             dict(
                 repository_id=test_repo.id,
@@ -127,8 +129,8 @@ class TestSingleRepo:
             ),
             dict(
                 repository_id=test_repo.id,
-                key=uuid.uuid4().hex,
-                source_commit_id=uuid.uuid4().hex,
+                key=uuid.uuid4(),
+                source_commit_id=uuid.uuid4(),
                 commit_message="Another change. Fixes no issues",
                 author_date=get_date("2018-12-03"),
                 **commits_common_fields(commits_fixture)
@@ -147,7 +149,7 @@ class TestSingleRepo:
         new_key = uuid.uuid4()
         new_work_items = [
             dict(
-                key=new_key.hex,
+                key=new_key,
                 display_id='1000',
                 created_at=get_date("2018-12-02"),
                 **work_items_common
@@ -168,7 +170,7 @@ class TestSingleRepo:
         create_test_commits([
             dict(
                 repository_id=test_repo.id,
-                key=uuid.uuid4().hex,
+                key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
                 author_date=get_date("2018-12-03"),
@@ -189,7 +191,7 @@ class TestSingleRepo:
         new_key = uuid.uuid4()
         new_work_items = [
             dict(
-                key=new_key.hex,
+                key=new_key,
                 display_id='1000',
                 created_at=get_date("2018-12-02"),
                 **work_items_common
@@ -209,7 +211,7 @@ class TestSingleRepo:
         create_test_commits([
             dict(
                 repository_id=test_repo.id,
-                key=uuid.uuid4().hex,
+                key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
                 author_date=get_date("2018-12-01"),
@@ -234,7 +236,7 @@ class TestMultipleRepos:
         new_key = uuid.uuid4()
         new_work_items = [
             dict(
-                key=new_key.hex,
+                key=new_key,
                 display_id='1000',
                 created_at=get_date("2018-12-02"),
                 **work_items_common
@@ -254,7 +256,7 @@ class TestMultipleRepos:
         create_test_commits([
             dict(
                 repository_id=alpha.id,
-                key=uuid.uuid4().hex,
+                key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
                 author_date=get_date("2018-12-03"),
@@ -262,7 +264,7 @@ class TestMultipleRepos:
             ),
             dict(
                 repository_id=beta.id,
-                key=uuid.uuid4().hex,
+                key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Also changed here to Fixes issue #1000",
                 author_date=get_date("2018-12-04"),
@@ -285,7 +287,7 @@ class TestMultipleRepos:
         new_key = uuid.uuid4()
         new_work_items=[
             dict(
-                key=new_key.hex,
+                key=new_key,
                 display_id='1000',
                 created_at=get_date("2018-12-02"),
                 **work_items_common
@@ -320,7 +322,7 @@ class TestMultipleRepos:
             ),
             dict(
                 repository_id=beta.id,
-                key=uuid.uuid4().hex,
+                key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Also changed here to Fixes issue #1000",
                 author_date=get_date("2018-12-04"),
@@ -333,8 +335,8 @@ class TestMultipleRepos:
 
         # only alpha commit should be matched.
         assert len(result['resolved']) == 1
-        assert result['resolved'][0]['commit_key'] == alpha_commit_key.hex
-        assert result['resolved'][0]['work_item_key'] == new_key.hex
+        assert result['resolved'][0]['commit_key'] == str(alpha_commit_key)
+        assert result['resolved'][0]['work_item_key'] == str(new_key)
 
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
 
@@ -352,7 +354,7 @@ class TestMultipleRepos:
         new_key = uuid.uuid4()
         new_work_items = [
             dict(
-                key=new_key.hex,
+                key=new_key,
                 display_id='1000',
                 created_at=get_date("2018-12-02"),
                 **work_items_common
@@ -372,7 +374,7 @@ class TestMultipleRepos:
         create_test_commits([
             dict(
                 repository_id=alpha.id,
-                key=uuid.uuid4().hex,
+                key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
                 author_date=get_date("2018-12-03"),
@@ -380,7 +382,7 @@ class TestMultipleRepos:
             ),
             dict(
                 repository_id=beta.id,
-                key=uuid.uuid4().hex,
+                key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Also changed here to Fixes issue #1000",
                 author_date=get_date("2018-12-04"),
@@ -399,8 +401,8 @@ class TestPaging:
     def it_returns_a_valid_map_when_there_are_more_commits_than_the_page_size(self, commits_fixture):
         organization, _, repositories, _ = commits_fixture
         test_repo = repositories['alpha']
-        key_1000 = uuid.uuid4().hex
-        key_1002 = uuid.uuid4().hex
+        key_1000 = uuid.uuid4()
+        key_1002 = uuid.uuid4()
         new_work_items = [
             dict(
                 key=key_1000,
@@ -415,7 +417,7 @@ class TestPaging:
                 **work_items_common
             ),
             dict(
-                key=uuid.uuid4().hex,
+                key=uuid.uuid4(),
                 display_id='1003',
                 created_at=get_date("2018-12-02"),
                 **work_items_common
@@ -436,8 +438,8 @@ class TestPaging:
         create_test_commits([
             dict(
                 repository_id=test_repo.id,
-                key=uuid.uuid4().hex,
-                source_commit_id=uuid.uuid4().hex,
+                key=uuid.uuid4(),
+                source_commit_id=uuid.uuid4(),
                 commit_message=f"Change {i}. Fixes issue #1000",
                 author_date=get_date("2018-12-03"),
                 **commits_common_fields(commits_fixture)

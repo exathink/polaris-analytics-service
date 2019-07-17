@@ -66,6 +66,8 @@ class TestRepoScope:
         assert len(result['resolved']) == 1
         assert result['resolved'][0]['commit_key'] == str(test_commit_key)
         assert result['resolved'][0]['work_item_key'] == str(new_key)
+        assert result['resolved'][0]['work_items_source_key'] == str(work_item_source.key)
+        assert result['resolved'][0]['repository_key'] == str(test_repo.key)
 
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
 

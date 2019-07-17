@@ -199,7 +199,8 @@ def get_commits_query(mapping_scope):
     output_cols = [
         commits.c.id,
         commits.c.key,
-        commits.c.commit_message
+        commits.c.commit_message,
+        repositories.c.key.label('repository_key')
     ]
     if mapping_scope == 'organization':
         return select(
@@ -249,7 +250,7 @@ def get_commits_query(mapping_scope):
         )
 
 
-def resolve_display_id_commits(commits_batch, integration_type, input_display_ids):
+def resolve_display_id_commits(commits_batch, integration_type, input_display_id_to_key_map):
     resolver = WorkItemResolver.get_resolver(integration_type)
     assert resolver, f"No work item resolver registered for integration type {integration_type}"
     resolved = []
@@ -257,11 +258,12 @@ def resolve_display_id_commits(commits_batch, integration_type, input_display_id
         display_ids = resolver.resolve(commit.commit_message)
         if len(display_ids) > 0:
             for display_id in display_ids:
-                if display_id in input_display_ids:
+                if display_id in input_display_id_to_key_map:
                     resolved.append(dict(
                         commit_id=commit.id,
                         commit_key=commit.key,
-                        work_item_key=input_display_ids[display_id]
+                        repository_key=commit.repository_key,
+                        work_item_key=input_display_id_to_key_map[display_id]
                     ))
 
     return resolved
@@ -287,7 +289,7 @@ def map_display_ids_to_commits(session, work_item_summaries, work_items_source):
         )
     ).scalar()
 
-    input_display_ids = {work_item['display_id']: work_item['key'] for work_item in work_item_summaries}
+    input_display_id_to_key_map = {work_item['display_id']: work_item['key'] for work_item in work_item_summaries}
     resolved = []
 
     fetched = 0
@@ -305,7 +307,7 @@ def map_display_ids_to_commits(session, work_item_summaries, work_items_source):
         resolved.extend(resolve_display_id_commits(
             commits_batch,
             work_items_source.integration_type,
-            input_display_ids,
+            input_display_id_to_key_map,
         ))
         offset = offset + batch_size
         fetched = fetched + len(commits_batch)
@@ -314,7 +316,6 @@ def map_display_ids_to_commits(session, work_item_summaries, work_items_source):
 
 
 def resolve_commits_for_work_items(session, organization_key, work_items_source_key, work_item_summaries):
-    resolved = []
     if len(work_item_summaries) > 0:
         work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
         if work_items_source is not None:
@@ -322,7 +323,8 @@ def resolve_commits_for_work_items(session, organization_key, work_items_source_
             if len(resolved) > 0:
                 wc_temp = db.create_temp_table('work_items_commits_temp', [
                     Column('commit_id', BigInteger),
-                    Column('work_item_key', UUID)
+                    Column('work_item_key', UUID(as_uuid=True)),
+                    Column('repository_key', UUID(as_uuid=True))
                 ])
                 wc_temp.create(session.connection(), checkfirst=True)
                 session.connection().execute(
@@ -330,7 +332,8 @@ def resolve_commits_for_work_items(session, organization_key, work_items_source_
                         dict_select(
                             rel, [
                                 'commit_id',
-                                'work_item_key'
+                                'work_item_key',
+                                'repository_key'
                             ]
                         )
                         for rel in resolved
@@ -353,15 +356,17 @@ def resolve_commits_for_work_items(session, organization_key, work_items_source_
                     )
                 )
 
-        return dict(
-            resolved=[
-                dict(
-                    work_item_key=wic['work_item_key'],
-                    commit_key=wic['commit_key'].hex
-                )
-                for wic in resolved
-            ]
-        )
+            return dict(
+                resolved=[
+                    dict(
+                        work_item_key=str(wic['work_item_key']),
+                        commit_key=str(wic['commit_key']),
+                        repository_key=str(wic['repository_key']),
+                        work_items_source_key=str(work_items_source.key)
+                    )
+                    for wic in resolved
+                ]
+            )
 
 
 # -----------------------------------------------
@@ -554,14 +559,15 @@ def find_work_items_sources(session, organization_key, repository_key):
 def update_commits_work_items(session, repository_key, commits_display_id):
     cdi_temp = db.create_temp_table(
         'commits_display_ids_temp', [
+            Column('work_items_source_key', UUID(as_uuid=True)),
             Column('work_items_source_id', Integer),
             Column('repository_id', Integer),
             Column('source_commit_id', String),
-            Column('commit_key', UUID),
+            Column('commit_key', UUID(as_uuid=True)),
             Column('display_id', String),
             Column('commit_id', BigInteger),
             Column('work_item_id', BigInteger),
-            Column('work_item_key', UUID)
+            Column('work_item_key', UUID(as_uuid=True))
         ]
     )
     cdi_temp.create(session.connection(), checkfirst=True)
@@ -605,11 +611,17 @@ def update_commits_work_items(session, repository_key, commits_display_id):
     )
     return [
         dict(
-            commit_key=row.commit_key,
-            work_item_key=row.work_item_key
+            commit_key=str(row.commit_key),
+            work_item_key=str(row.work_item_key),
+            work_items_source_key=str(row.work_items_source_key),
+            repository_key=str(repository_key),
         )
         for row in session.connection().execute(
-            select([cdi_temp.c.work_item_key, cdi_temp.c.commit_key]).where(
+            select([
+                cdi_temp.c.work_item_key,
+                cdi_temp.c.commit_key,
+                cdi_temp.c.work_items_source_key
+            ]).where(
                 cdi_temp.c.work_item_id != None
             ).distinct()
         ).fetchall()
@@ -633,6 +645,7 @@ def resolve_work_items_for_commits(session, organization_key, repository_key, co
                                 source_commit_id=commit['source_commit_id'],
                                 commit_key=commit['key'],
                                 work_items_source_id=work_items_source.id,
+                                work_items_source_key=work_items_source.key,
                                 display_id=display_id
                             )
                         )

@@ -48,7 +48,7 @@ def org_repo_fixture(setup_schema):
 
         for repo_name in test_repositories:
             repositories[repo_name] = Repository(
-                key=uuid.uuid4().hex,
+                key=uuid.uuid4(),
                 name=repo_name
             )
             organization.repositories.append(repositories[repo_name])
@@ -159,7 +159,7 @@ def setup_work_items(organization, source_data, items_data):
     with db.orm_session() as session:
         session.expire_on_commit = False
         source = WorkItemsSource(
-            key=uuid.uuid4().hex,
+            key=uuid.uuid4(),
             organization_key=organization.key,
             organization_id=organization.id,
             **source_data

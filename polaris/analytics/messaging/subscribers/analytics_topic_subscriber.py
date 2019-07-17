@@ -10,7 +10,7 @@
 
 import logging
 from polaris.messaging.topics import TopicSubscriber, AnalyticsTopic
-from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, WorkItemsCreated, WorkItemsCommitsResolved
+from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, WorkItemsCreated, WorkItemsCommitsResolved, ProjectsRepositoriesAdded
 from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, InferProjectsRepositoriesRelationships
 
 from polaris.messaging.utils import raise_on_failure
@@ -88,7 +88,17 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             return self.process_update_commits_work_items_summaries(channel, message)
 
         elif InferProjectsRepositoriesRelationships.message_type == message.message_type:
-            return self.process_infer_projects_repositories_relationships(channel, message)
+            result = self.process_infer_projects_repositories_relationships(channel, message)
+            if result['success']:
+                if len(result['new_relationships']) > 0:
+                    projects_repositories_added = ProjectsRepositoriesAdded(
+                        send=dict(
+                            organization_key=message['organization_key'],
+                            projects_repositories=result['new_relationships']
+                        )
+                    )
+                    self.publish(AnalyticsTopic, projects_repositories_added)
+                    return projects_repositories_added
 
 
     @staticmethod

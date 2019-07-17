@@ -12,7 +12,8 @@
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
 from polaris.analytics.messaging.commands import InferProjectsRepositoriesRelationships
 from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
-
+from polaris.messaging.topics import AnalyticsTopic
+from polaris.messaging.messages import ProjectsRepositoriesAdded
 from test.fixtures.work_item_commit_resolution import *
 
 
@@ -81,6 +82,7 @@ class TestUpdateCommitsWorkItemsSummaries:
         publisher = mock_publisher()
         channel = mock_channel()
         result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        assert result['success']
+        assert result
+        publisher.assert_topic_called_with_message(AnalyticsTopic, ProjectsRepositoriesAdded)
 
 

@@ -12,7 +12,7 @@ from unittest.mock import patch
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
 from polaris.messaging.messages import WorkItemsCommitsResolved
 from polaris.messaging.topics import AnalyticsTopic
-from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
+from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, InferProjectsRepositoriesRelationships
 from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
 
 from test.fixtures.work_item_commit_resolution import *
@@ -76,6 +76,8 @@ class TestWorkItemsCommitsResolved:
         ))
         publisher = mock_publisher()
         channel = mock_channel()
-        AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateCommitsWorkItemsSummaries)
+        result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        assert len(result) == 2
+        publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateCommitsWorkItemsSummaries, call=0)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, InferProjectsRepositoriesRelationships, call=1)
 

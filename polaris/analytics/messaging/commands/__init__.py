@@ -1,9 +1,10 @@
 from polaris.messaging.message_factory import register_messages
 from .resolve_commits_work_items import ResolveCommitsWorkItems
-from .on_work_items_commits_resolved import UpdateCommitsWorkItemsSummaries
+from .on_work_items_commits_resolved import UpdateCommitsWorkItemsSummaries, InferProjectsRepositoriesRelationships
 __exported__ = [
     ResolveCommitsWorkItems,
-    UpdateCommitsWorkItemsSummaries
+    UpdateCommitsWorkItemsSummaries,
+    InferProjectsRepositoriesRelationships
 ]
 
 register_messages(__exported__)

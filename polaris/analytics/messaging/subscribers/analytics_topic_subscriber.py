@@ -11,7 +11,7 @@
 import logging
 from polaris.messaging.topics import TopicSubscriber, AnalyticsTopic
 from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, WorkItemsCreated, WorkItemsCommitsResolved
-from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
+from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, InferProjectsRepositoriesRelationships
 
 from polaris.messaging.utils import raise_on_failure
 
@@ -30,7 +30,8 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 WorkItemsCreated,
                 WorkItemsCommitsResolved,
                 # Commands
-                UpdateCommitsWorkItemsSummaries
+                UpdateCommitsWorkItemsSummaries,
+                InferProjectsRepositoriesRelationships
             ],
             publisher=publisher,
             exclusive=False
@@ -68,12 +69,20 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             return self.process_resolve_commit_details_created(channel, message)
 
         elif WorkItemsCommitsResolved.message_type == message.message_type:
+            # Publish a sub command to update commit work items summaries
             update_commit_work_items_summaries_command = UpdateCommitsWorkItemsSummaries(
                 send=message.dict,
                 in_response_to=message
             )
             self.publish(AnalyticsTopic, update_commit_work_items_summaries_command)
-            return update_commit_work_items_summaries_command
+            # Publish a sub command to infer project repositories relationships
+
+            infer_projects_repositories_relationships = InferProjectsRepositoriesRelationships(
+                send=message.dict
+            )
+            self.publish(AnalyticsTopic, infer_projects_repositories_relationships)
+
+            return update_commit_work_items_summaries_command, infer_projects_repositories_relationships
 
         elif UpdateCommitsWorkItemsSummaries.message_type == message.message_type:
             return self.process_update_commits_work_items_summaries(channel, message)

@@ -15,3 +15,7 @@ from polaris.messaging.messages import WorkItemsCommitsResolved
 class UpdateCommitsWorkItemsSummaries(WorkItemsCommitsResolved):
     message_type = 'analytics.update_commit_work_items_summaries'
 
+
+class InferProjectsRepositoriesRelationships(WorkItemsCommitsResolved):
+    message_type = 'analytics.infer_projects_repositories_relationships'
+

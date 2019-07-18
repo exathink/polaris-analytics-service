@@ -9,6 +9,8 @@
 # Author: Krishna Kumar
 
 import re
+from polaris.utils.exceptions import ProcessingException
+from polaris.common.enums import WorkTrackingIntegrationType
 
 class WorkItemResolver:
 
@@ -18,12 +20,17 @@ class WorkItemResolver:
 
     @classmethod
     def get_resolver(cls, integration_type):
-        if integration_type in ['github', 'github_enterprise']:
-            return GithubWorkItemResolver
-        elif integration_type in ['pivotal_tracker']:
-            return PivotalTrackerWorkItemResolver
-        elif integration_type in ['jira']:
-            return JiraWorkItemResolver
+        if integration_type is not None:
+            if integration_type in ['github', 'github_enterprise']:
+                return GithubWorkItemResolver
+            elif integration_type in ['pivotal_tracker']:
+                return PivotalTrackerWorkItemResolver
+            elif integration_type in ['jira']:
+                return JiraWorkItemResolver
+            else:
+                raise ProcessingException(f'WorkItemResolver: Could not find work item resolver for integration_type: {integration_type}')
+        else:
+            raise ProcessingException(f'WorkItemResolver: Cannot resolve null integration type')
 
 
 class PivotalTrackerWorkItemResolver(WorkItemResolver):

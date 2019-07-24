@@ -25,7 +25,6 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
             subscriber_queue='work_items_analytics',
             message_classes=[
                 #Events
-                WorkItemsSourceCreated,
                 WorkItemsCreated,
                 WorkItemsUpdated,
                 ProjectImported
@@ -60,13 +59,6 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
 
                 return work_items_updated
 
-        elif WorkItemsSourceCreated.message_type == message.message_type:
-            result = self.process_work_items_source_created(message)
-            if result is not None and result['created']:
-                work_items_source_created = WorkItemsSourceCreated(send=message.dict, in_response_to=message)
-                self.publish(AnalyticsTopic, work_items_source_created, channel=channel)
-                return work_items_source_created
-
         elif ProjectImported.message_type == message.message_type:
             logger.info('Received ProjectImported Message')
             result = self.process_project_imported(message)
@@ -76,7 +68,6 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                 self.publish(AnalyticsTopic, project_imported, channel=channel)
 
                 return project_imported
-
 
     @staticmethod
     def process_work_items_created(message):
@@ -104,17 +95,6 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
         return raise_on_failure(
             message,
             api.update_work_items(organization_key, work_items_source_key, updated_work_items)
-        )
-
-    @staticmethod
-    def process_work_items_source_created(message):
-        work_items_created = message.dict
-        organization_key = work_items_created['organization_key']
-        work_items_source = work_items_created['work_items_source']
-
-        return raise_on_failure(
-            message,
-            api.register_work_items_source(organization_key, work_items_source)
         )
 
     @staticmethod

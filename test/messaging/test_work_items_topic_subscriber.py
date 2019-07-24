@@ -19,30 +19,6 @@ from polaris.utils.collections import dict_merge
 from test.fixtures.work_items import *
 
 
-class TestWorkItemsSourceCreated:
-
-    def it_returns_a_valid_response(self, setup_org):
-        organization = setup_org
-        source_key = uuid.uuid4()
-        payload = dict(
-            organization_key=organization.key,
-            work_items_source=dict(
-                name='a source',
-                key=source_key,
-                integration_type='github',
-                commit_mapping_scope='organization',
-                commit_mapping_scope_key=organization.key
-            )
-        )
-        message = fake_send(WorkItemsSourceCreated(send=payload))
-        channel = mock_channel()
-        publisher = mock_publisher()
-
-        WorkItemsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsSourceCreated)
-
-
-
 class TestWorkItemsCreated:
 
     def it_returns_a_valid_response(self, work_items_setup):
@@ -65,6 +41,7 @@ class TestWorkItemsCreated:
 
         WorkItemsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
         publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsCreated)
+
 
 class TestWorkItemsUpdated:
 

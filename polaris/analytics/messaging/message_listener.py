@@ -12,7 +12,7 @@ import logging
 
 from polaris.analytics.messaging.subscribers import CommitsTopicSubscriber, \
     AnalyticsTopicSubscriber, \
-    CommandsTopicSubscriber, \
+    VcsTopicSubscriber, \
     WorkItemsTopicSubscriber
 
 from polaris.common import db
@@ -42,7 +42,7 @@ if __name__ == "__main__":
             CommitsTopicSubscriber,
             AnalyticsTopicSubscriber,
             WorkItemsTopicSubscriber,
-            CommandsTopicSubscriber
+            VcsTopicSubscriber
         ],
         token_provider=token_provider
     ).start_consuming()

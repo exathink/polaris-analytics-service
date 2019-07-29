@@ -1,4 +1,4 @@
 from .work_items_topic_subscriber import WorkItemsTopicSubscriber
 from .commits_topic_subscriber import CommitsTopicSubscriber
-from .commands_topic_subscriber import CommandsTopicSubscriber
 from .analytics_topic_subscriber import AnalyticsTopicSubscriber
+from .vcs_topics_subscriber import VcsTopicSubscriber

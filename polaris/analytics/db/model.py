@@ -307,9 +307,12 @@ class Repository(Base):
     id = Column(Integer, primary_key=True)
     key = Column(UUID(as_uuid=True), unique=True, nullable=False)
     name = Column(String(256), nullable=False)
+    description = Column(Text, nullable=True)
+
     url = Column(String(256),  nullable=True)
     public = Column(Boolean, nullable=True, default=False)
-    vendor = Column(String(5)) # {git, svn, tfs, cvs, hg} etc
+    integration_type = Column(String, nullable=True)
+
     properties = Column(JSONB, default={}, nullable=True)
     earliest_commit = Column(DateTime, nullable=True)
     latest_commit = Column( DateTime, nullable=True)

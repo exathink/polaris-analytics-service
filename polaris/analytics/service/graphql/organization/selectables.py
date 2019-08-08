@@ -113,7 +113,8 @@ class OrganizationRepositoriesNodes:
         return select([
             repositories.c.id,
             repositories.c.key,
-            repositories.c.name
+            repositories.c.name,
+            repositories.c.description
         ]).select_from(
             repositories.join(
                 organizations

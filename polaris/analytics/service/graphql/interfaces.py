@@ -160,3 +160,6 @@ class ArchivedStatus(graphene.Interface):
     """Indicate whether the implementing object is archived or not"""
 
     archived = graphene.Boolean(required=True)
+
+class Describable(graphene.Interface):
+    description = graphene.String(required=False)

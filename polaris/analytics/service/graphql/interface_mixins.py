@@ -30,7 +30,8 @@ from .interfaces import \
     UserInfo, \
     OwnerInfo, \
     ScopedRole, \
-    ArchivedStatus
+    ArchivedStatus, \
+    Describable
 
 
 
@@ -450,3 +451,25 @@ class ArchivedStatusResolverMixin(KeyIdResolverMixin):
     def resolve_archived(self, info, **kwargs):
         return self.get_archived_status(info, **kwargs).archived
 
+
+class DescribableResolverMixin(KeyIdResolverMixin):
+    describable_tuple = create_tuple(Describable)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.describable = init_tuple(self.describable_tuple, **kwargs)
+
+    def resolve_describable(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['Describable'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_describable(self, info, **kwargs):
+        if self.describable is None:
+            self.describable = self.resolve_describable(info, **kwargs)
+        return self.describable
+
+    def description(self, info, **kwargs):
+        return self.get_describable(info, **kwargs).description

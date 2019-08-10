@@ -13,7 +13,8 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
-from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, ArchivedStatus
+from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
+    OrganizationRef, ArchivedStatus, WorkItemEventSpan
 from ..interface_mixins import \
     KeyIdResolverMixin, \
     NamedNodeResolverMixin, \
@@ -21,7 +22,8 @@ from ..interface_mixins import \
     ContributorCountResolverMixin, \
     RepositoryCountResolverMixin, \
     OrganizationRefResolverMixin, \
-    ArchivedStatusResolverMixin
+    ArchivedStatusResolverMixin, \
+    WorkItemEventSpanResolverMixin
 
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
@@ -35,11 +37,13 @@ from ..selectable_field_mixins import CumulativeCommitCountResolverMixin, Weekly
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
+from ..work_items_source import WorkItemsSourcesConnectionMixin
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
     ProjectContributorNodes, \
     ProjectCommitNodes,\
+    ProjectWorkItemsSourceNodes,\
     ProjectsContributorCount, \
     ProjectsCommitSummary, \
     ProjectsRepositoryCount, \
@@ -48,7 +52,8 @@ from .selectables import ProjectNode, \
     ProjectRecentlyActiveRepositoriesNodes, \
     ProjectRecentlyActiveContributorNodes, \
     ProjectCumulativeCommitCount, \
-    ProjectWeeklyContributorCount
+    ProjectWeeklyContributorCount, \
+    ProjectWorkItemEventSpan
 
 
 from polaris.graphql.connection_utils import CountableConnection
@@ -63,12 +68,14 @@ class Project(
     RepositoryCountResolverMixin,
     OrganizationRefResolverMixin,
     ArchivedStatusResolverMixin,
+    WorkItemEventSpanResolverMixin,
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
     RecentlyActiveRepositoriesConnectionMixin,
     RecentlyActiveContributorsConnectionMixin,
     CommitsConnectionMixin,
+    WorkItemsSourcesConnectionMixin,
     # field mixins
     CumulativeCommitCountResolverMixin,
     WeeklyContributorCountsResolverMixin,
@@ -92,6 +99,7 @@ Implicit Interfaces: ArchivedStatus
             ContributorCount,
             RepositoryCount,
             OrganizationRef,
+            WorkItemEventSpan,
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -99,13 +107,15 @@ Implicit Interfaces: ArchivedStatus
             'ContributorCount': ProjectsContributorCount,
             'RepositoryCount': ProjectsRepositoryCount,
             'OrganizationRef': ProjectsOrganizationRef,
+            'WorkItemEventSpan': ProjectWorkItemEventSpan
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
             'contributors': ProjectContributorNodes,
             'recently_active_repositories': ProjectRecentlyActiveRepositoriesNodes,
             'recently_active_contributors': ProjectRecentlyActiveContributorNodes,
-            'commits': ProjectCommitNodes
+            'commits': ProjectCommitNodes,
+            'work_items_sources': ProjectWorkItemsSourceNodes,
         }
         selectable_field_resolvers = {
           'cumulative_commit_count': ProjectCumulativeCommitCount,

@@ -15,11 +15,13 @@ from polaris.utils.datetime_utils import time_window
 from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
-    contributor_aliases, repositories_contributor_aliases, commits
+    contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
+    work_items
 
 from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
-    CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus
+    CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
+    WorkItemEventSpan
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 
@@ -53,6 +55,22 @@ class ProjectRepositoriesNodes:
                 projects_repositories
             ).join(
                 repositories
+            )
+        ).where(projects.c.key == bindparam('key'))
+
+
+class ProjectWorkItemsSourceNodes:
+    interface = NamedNode
+
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            work_items_sources.c.id,
+            work_items_sources.c.key,
+            work_items_sources.c.name
+        ]).select_from(
+            projects.join(
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
             )
         ).where(projects.c.key == bindparam('key'))
 
@@ -102,14 +120,13 @@ class ProjectCommitNodes:
         ]).select_from(
             projects.join(
                 projects_repositories, projects_repositories.c.project_id == projects.c.id
-            ).join (
+            ).join(
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             ).join(commits)
         ).where(
             projects.c.key == bindparam('key')
         )
         return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
-
 
     @staticmethod
     def sort_order(project_commit_nodes, **kwargs):
@@ -128,7 +145,7 @@ class ProjectContributorNodes:
             repositories_contributor_aliases.c.repository_id
         ]).select_from(
             contributors.join(
-                    repositories_contributor_aliases.join(
+                repositories_contributor_aliases.join(
                     repositories.join(
                         projects_repositories
                     ).join(
@@ -183,7 +200,6 @@ class ProjectRecentlyActiveContributorNodes:
 
 
 class ProjectCumulativeCommitCount:
-
     interface = CumulativeCommitCount
 
     @staticmethod
@@ -218,7 +234,6 @@ class ProjectCumulativeCommitCount:
 
 
 class ProjectWeeklyContributorCount:
-
     interface = WeeklyContributorCount
 
     @staticmethod
@@ -241,8 +256,6 @@ class ProjectWeeklyContributorCount:
             extract('year', commits.c.commit_date),
             extract('week', commits.c.commit_date)
         )
-
-
 
 
 class ProjectsCommitSummary:
@@ -289,6 +302,7 @@ class ProjectsContributorCount:
             repositories_contributor_aliases.c.robot == False
         ).group_by(project_nodes.c.id)
 
+
 class ProjectsRepositoryCount:
     interface = RepositoryCount
 
@@ -305,6 +319,7 @@ class ProjectsRepositoryCount:
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             )
         ).group_by(project_nodes.c.id)
+
 
 class ProjectsOrganizationRef:
     interface = OrganizationRef
@@ -338,3 +353,21 @@ class ProjectsArchivedStatus:
                 projects, project_nodes.c.id == projects.c.id
             )
         )
+
+
+class ProjectWorkItemEventSpan:
+    interface = WorkItemEventSpan
+
+    @staticmethod
+    def selectable(project_nodes, **kwargs):
+        return select([
+            project_nodes.c.id,
+            func.min(work_items.c.created_at).label('earliest_work_item_event'),
+            func.max(work_items.c.updated_at).label('latest_work_item_event')
+        ]).select_from(
+            project_nodes.outerjoin(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
+            ).outerjoin(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            )
+        ).group_by(project_nodes.c.id)

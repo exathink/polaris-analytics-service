@@ -518,8 +518,12 @@ class WorkItemsSource(Base):
     organization_key = Column(UUID(as_uuid=True), nullable=False)
     # type of integration: github, github_enterprise, jira, pivotal_tracker etc..
     integration_type = Column(String, nullable=False)
+    # subtype of the integration type
+    work_items_source_type = Column(String, nullable=True)
 
     description = Column(String, nullable=True)
+    # the id of the external source from which this work item source was imported.
+    source_id = Column(String, nullable=True)
     # Commit mapping scope specifies the repositories that are mapped to this
     # work item source. The valid values are ('organization', 'project', 'repository')
     # Given the commit mapping scope key, commits originating from all repositories
@@ -576,9 +580,12 @@ class WorkItem(Base):
     tags = Column(ARRAY(String), nullable=False, default=[], server_default='{}')
     state = Column(String, nullable=True)
     url = Column(String, nullable=True)
+    # The id of the entity in a remote system that this is mapped to.
+    source_id = Column(String, nullable=True)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
     next_state_seq_no = Column(Integer, nullable=False, server_default='0')
+
 
     # Work Items Source relationship
     work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'))

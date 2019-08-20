@@ -11,6 +11,7 @@ import uuid
 
 # work_item_sources
 rails_work_items_source_key = uuid.uuid4()
+rails_work_items_source_id = 1000
 polaris_work_items_source_key = uuid.uuid4()
 empty_work_items_source_key = uuid.uuid4()
 
@@ -31,7 +32,8 @@ def work_items_common():
         description='An issue here',
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
-        state='open'
+        state='open',
+        source_id=str(uuid.uuid4())
     )
 
 
@@ -40,8 +42,10 @@ def work_item_source_common():
         key=rails_work_items_source_key.hex,
         name='Rails Project',
         integration_type='github',
+        work_items_source_type='repository_issues',
         commit_mapping_scope='organization',
-        commit_mapping_scope_key=rails_organization_key
+        commit_mapping_scope_key=rails_organization_key,
+        source_id=str(uuid.uuid4())
     )
 
 

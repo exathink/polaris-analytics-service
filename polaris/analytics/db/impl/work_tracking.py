@@ -24,8 +24,8 @@ from polaris.analytics.db.model import \
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
 
-def register_work_items_source(session, organization_key, work_items_source_summmary):
-    work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_summmary[
+def register_work_items_source(session, organization_key, work_items_source_summary):
+    work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_summary[
         'key'])
 
     created = False
@@ -33,12 +33,14 @@ def register_work_items_source(session, organization_key, work_items_source_summ
         organization = Organization.find_by_organization_key(session, organization_key)
         if organization is not None:
             work_items_source = WorkItemsSource(
-                key=work_items_source_summmary['key'],
-                name=work_items_source_summmary['name'],
+                key=work_items_source_summary['key'],
+                name=work_items_source_summary['name'],
                 organization_key=organization.key,
-                integration_type=work_items_source_summmary['integration_type'],
-                commit_mapping_scope=work_items_source_summmary['commit_mapping_scope'],
-                commit_mapping_scope_key=work_items_source_summmary['commit_mapping_scope_key']
+                integration_type=work_items_source_summary['integration_type'],
+                work_items_source_type=work_items_source_summary['work_items_source_type'],
+                commit_mapping_scope=work_items_source_summary['commit_mapping_scope'],
+                commit_mapping_scope_key=work_items_source_summary['commit_mapping_scope_key'],
+                source_id=work_items_source_summary['source_id'],
             )
             organization.work_items_sources.append(work_items_source)
             created = True
@@ -48,7 +50,7 @@ def register_work_items_source(session, organization_key, work_items_source_summ
     return dict(
         created=created,
         organization_key=organization_key,
-        work_items_source=work_items_source_summmary
+        work_items_source=work_items_source_summary
     )
 
 
@@ -84,7 +86,8 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             'tags',
                             'state',
                             'created_at',
-                            'updated_at'
+                            'updated_at',
+                            'source_id'
                         ])
                     )
                     for work_item in work_item_summaries
@@ -115,6 +118,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                         'created_at',
                         'updated_at',
                         'work_items_source_id',
+                        'source_id',
                         'next_state_seq_no'
                     ],
                     select(
@@ -131,6 +135,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             work_items_temp.c.created_at,
                             work_items_temp.c.updated_at,
                             work_items_temp.c.work_items_source_id,
+                            work_items_temp.c.source_id,
                             # We initialize the next state seq no as 2 since
                             # the seq_no 0 and 1 will be taken up by the initial states which
                             # we create below. Subsequent state changes will use

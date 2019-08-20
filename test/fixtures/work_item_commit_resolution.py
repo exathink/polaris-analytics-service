@@ -29,7 +29,8 @@ work_items_common = dict(
     tags=['ares2'],
     updated_at=datetime.utcnow(),
     state='open',
-    description='foo'
+    description='foo',
+    source_id=str(uuid.uuid4())
 
 )
 
@@ -151,7 +152,8 @@ def get_date(str_date):
 
 
 work_items_source_common = dict(
-    name='foo'
+    name='foo',
+    source_id=str(uuid.uuid4())
 )
 
 

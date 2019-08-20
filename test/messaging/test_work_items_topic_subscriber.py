@@ -99,9 +99,11 @@ class TestProjectImported:
                         name='a source',
                         key=source_key,
                         integration_type='github',
+                        work_items_source_type='repository_issues',
                         commit_mapping_scope='organization',
                         commit_mapping_scope_key=organization.key,
-                        description='A new remote project'
+                        description='A new remote project',
+                        source_id='1000'
                     )
                 ]
             )

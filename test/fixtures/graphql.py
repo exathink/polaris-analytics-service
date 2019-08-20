@@ -147,7 +147,9 @@ def get_date(str_date):
 
 
 work_items_source_common = dict(
-    name='foo'
+    name='foo',
+    work_items_source_type='repository_issues',
+    source_id=str(uuid.uuid4())
 )
 
 

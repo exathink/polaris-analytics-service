@@ -20,8 +20,8 @@ work_items_common = dict(
     url='http://foo.com',
     tags=['ares2'],
     state='open',
-    description='foo'
-
+    description='foo',
+    source_id=str(uuid.uuid4())
 )
 
 

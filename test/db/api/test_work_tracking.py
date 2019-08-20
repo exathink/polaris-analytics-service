@@ -25,8 +25,10 @@ class TestRegisterWorkItemsSource:
                 key=source_key,
                 name='rails',
                 integration_type='github',
+                work_items_source_type='repository_issues',
                 commit_mapping_scope='organization',
-                commit_mapping_scope_key=organization.key
+                commit_mapping_scope_key=organization.key,
+                source_id=rails_work_items_source_id
         ))
 
         assert result['created']
@@ -44,8 +46,10 @@ class TestRegisterWorkItemsSource:
                 key=source_key,
                 name='rails',
                 integration_type='github',
+                work_items_source_type='repository_issues',
                 commit_mapping_scope='organization',
-                commit_mapping_scope_key=organization.key
+                commit_mapping_scope_key=organization.key,
+                source_id=rails_work_items_source_id
             ))
         # call again
         result = api.register_work_items_source(
@@ -54,8 +58,10 @@ class TestRegisterWorkItemsSource:
                 key=source_key,
                 name='rails',
                 integration_type='github',
+                work_items_source_type='repository_issues',
                 commit_mapping_scope='organization',
-                commit_mapping_scope_key=organization.key
+                commit_mapping_scope_key=organization.key,
+                source_id=rails_work_items_source_id
             ))
         assert not result['created']
         assert db.connection().execute(
@@ -492,7 +498,10 @@ class TestImportProject:
                         integration_type='github',
                         commit_mapping_scope='organization',
                         commit_mapping_scope_key=organization.key,
-                        description='A new remote project'
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
+
                     )
                 ]
             )
@@ -520,7 +529,9 @@ class TestImportProject:
                         integration_type='github',
                         commit_mapping_scope='organization',
                         commit_mapping_scope_key=organization.key,
-                        description='A new remote project'
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
                     )
                 ]
             )
@@ -549,7 +560,9 @@ class TestImportProject:
                         integration_type='github',
                         commit_mapping_scope='organization',
                         commit_mapping_scope_key=organization.key,
-                        description='A new remote project'
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
                     )
                 ]
             )
@@ -575,7 +588,9 @@ class TestImportProject:
                         integration_type='github',
                         commit_mapping_scope='organization',
                         commit_mapping_scope_key=organization.key,
-                        description='A new remote project'
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
                     )
                 ]
             )

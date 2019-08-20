@@ -313,6 +313,9 @@ class Repository(Base):
     public = Column(Boolean, nullable=True, default=False)
     integration_type = Column(String, nullable=True)
 
+    # id of the repository in the source system that it was imported from.
+    source_id = Column(String, nullable=True)
+
     properties = Column(JSONB, default={}, nullable=True)
     earliest_commit = Column(DateTime, nullable=True)
     latest_commit = Column( DateTime, nullable=True)

@@ -10,8 +10,11 @@
 
 import logging
 from polaris.messaging.topics import TopicSubscriber, AnalyticsTopic
-from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, WorkItemsCreated, WorkItemsCommitsResolved, ProjectsRepositoriesAdded
-from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, InferProjectsRepositoriesRelationships
+from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, WorkItemsCreated, WorkItemsCommitsResolved, \
+    ProjectsRepositoriesAdded, RepositoriesImported
+
+from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, \
+    InferProjectsRepositoriesRelationships,ResolveWorkItemsSourcesForRepositories
 
 from polaris.messaging.utils import raise_on_failure
 
@@ -19,26 +22,29 @@ from polaris.analytics.db import api, aggregations
 
 logger = logging.getLogger('polaris.analytics.analytics_topic_subscriber')
 
+
 class AnalyticsTopicSubscriber(TopicSubscriber):
     def __init__(self, channel, publisher=None):
         super().__init__(
             topic = AnalyticsTopic(channel, create=True),
             subscriber_queue='analytics_analytics',
             message_classes=[
+                RepositoriesImported,
                 CommitsCreated,
                 CommitDetailsCreated,
                 WorkItemsCreated,
                 WorkItemsCommitsResolved,
                 # Commands
                 UpdateCommitsWorkItemsSummaries,
-                InferProjectsRepositoriesRelationships
+                InferProjectsRepositoriesRelationships,
+                ResolveWorkItemsSourcesForRepositories
             ],
             publisher=publisher,
             exclusive=False
         )
 
     def dispatch(self, channel, message):
-
+        # Messages
         if CommitsCreated.message_type == message.message_type:
             result = self.process_resolve_work_items_for_commits(channel, message)
             if result is not None and len(result['resolved']) > 0:
@@ -84,6 +90,19 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
             return update_commit_work_items_summaries_command, infer_projects_repositories_relationships
 
+        elif RepositoriesImported.message_type == message.message_type:
+            return self.publish(
+                AnalyticsTopic,
+                ResolveWorkItemsSourcesForRepositories(
+                    send=dict(
+                        organization_key=message['organization_key'],
+                        repositories=message['imported_repositories']
+                    ),
+                    in_response_to=message
+                )
+            )
+
+        # Commands
         elif UpdateCommitsWorkItemsSummaries.message_type == message.message_type:
             return self.process_update_commits_work_items_summaries(channel, message)
 
@@ -99,6 +118,10 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                     )
                     self.publish(AnalyticsTopic, projects_repositories_added)
                     return projects_repositories_added
+
+        elif ResolveWorkItemsSourcesForRepositories.message_type == message.message_type:
+            return self.process_resolve_work_items_sources_for_repositories(channel, message)
+
 
 
     @staticmethod
@@ -165,6 +188,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 aggregations.update_commit_work_item_summaries(organization_key, work_items_commits)
             )
 
+
     @staticmethod
     def process_infer_projects_repositories_relationships(channel, message):
         organization_key = message['organization_key']
@@ -174,4 +198,18 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             return raise_on_failure(
                 message,
                 aggregations.infer_projects_repositories_relationships(organization_key, work_items_commits)
+            )
+
+    @staticmethod
+    def process_resolve_work_items_sources_for_repositories(channel, message):
+        organization_key = message['organization_key']
+        repositories = message['repositories']
+
+        if len(repositories) > 0:
+            return raise_on_failure(
+                message,
+                aggregations.resolve_work_items_sources_for_repositories(
+                    organization_key,
+                    repositories
+                )
             )

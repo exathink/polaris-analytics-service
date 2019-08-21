@@ -24,6 +24,48 @@ from polaris.analytics.db.model import \
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
 
+def resolve_repository_commit_mapping_scope_from_repositories(session, organization_key, repository_summaries):
+    # This is the mirror of the method below for work_items_sources that are mapped to these
+    # repositories using 'repository' commit mapping scope. They cannot be commit mapped until we
+    # know the repository key and so we try and match them up by source id at this point.
+
+    work_items_sources_mapped = []
+    organization = Organization.find_by_organization_key(session, organization_key)
+    if organization is not None:
+
+        for work_items_source in organization.work_items_sources:
+            if work_items_source.commit_mapping_scope == 'repository' and work_items_source.commit_mapping_scope_key is None:
+                mapped_repository = find(
+                    repository_summaries,
+                    lambda repository: repository['source_id'] == work_items_source.source_id
+                )
+                if mapped_repository is not None:
+                    logger.info(f"Repository {mapped_repository['name']} mapped to work items source "
+                                f"{work_items_source.name} for commit_mapping")
+                    work_items_source.commit_mapping_scope_key = mapped_repository['key']
+                    work_items_sources_mapped.append(dict(
+                        work_items_source_key=work_items_source.key,
+                        repository_key=mapped_repository['key']
+                    ))
+
+    return dict(
+        work_items_sources_mapped=work_items_sources_mapped
+    )
+
+
+def resolve_commit_mapping_scope_for_work_items_source(session, work_items_source):
+    if work_items_source.commit_mapping_scope == 'repository' and work_items_source.source_id is not None:
+        # for work items sources where we have specified 'repository' as the commit_mapping_scope
+        # (github is the first example) we cant know the repository key until we create the object here.
+        # We try to resolve the repository key by using the source id of the repo to which this source is mapped.
+        # it will succeed only if the repository exists. We have to do a similar mapping in the reverse
+        # direction when a repository is created - ie match it up to work_items_sources that may be mapped to it via
+        # commit_mapping_scope. This is the mirror method above
+        repository = Repository.find_by_source_id(session, work_items_source.source_id)
+        if repository is not None:
+            work_items_source.commit_mapping_scope_key = repository.key
+
+
 def register_work_items_source(session, organization_key, work_items_source_summary):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_summary[
         'key'])
@@ -39,9 +81,13 @@ def register_work_items_source(session, organization_key, work_items_source_summ
                 integration_type=work_items_source_summary['integration_type'],
                 work_items_source_type=work_items_source_summary['work_items_source_type'],
                 commit_mapping_scope=work_items_source_summary['commit_mapping_scope'],
-                commit_mapping_scope_key=work_items_source_summary['commit_mapping_scope_key'],
-                source_id=work_items_source_summary['source_id'],
+                commit_mapping_scope_key=work_items_source_summary.get('commit_mapping_scope_key'),
+                source_id=work_items_source_summary.get('source_id'),
             )
+
+            if work_items_source.commit_mapping_scope_key is None:
+                resolve_commit_mapping_scope_for_work_items_source(session, work_items_source)
+
             organization.work_items_sources.append(work_items_source)
             created = True
         else:
@@ -201,7 +247,9 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
 # Map commits to work items
 # -----------------------------
 
-def get_commits_query(mapping_scope):
+def get_commits_query(work_items_source):
+    mapping_scope = work_items_source.commit_mapping_scope
+
     output_cols = [
         commits.c.id,
         commits.c.key,
@@ -279,7 +327,7 @@ map_display_ids_to_commits_page_size = 1000
 
 
 def map_display_ids_to_commits(session, work_item_summaries, work_items_source):
-    commit_query = get_commits_query(work_items_source.commit_mapping_scope)
+    commit_query = get_commits_query(work_items_source)
     earliest_created = reduce(
         lambda earliest, work_item: min(earliest, work_item['created_at']),
         work_item_summaries,
@@ -863,24 +911,24 @@ def infer_projects_repositories_relationships(session, organization_key, work_it
     ).distinct().alias()
 
     new_relationships_query = select([
-            projects_repositories_relationships.c.project_key,
-            projects_repositories_relationships.c.repository_key,
-            projects_repositories_relationships.c.project_id,
-            projects_repositories_relationships.c.repository_id
-        ]).select_from(
-            projects_repositories_relationships.outerjoin(
-                projects_repositories,
-                and_(
-                    projects_repositories_relationships.c.project_id == projects_repositories.c.project_id,
-                    projects_repositories_relationships.c.repository_id == projects_repositories.c.repository_id
-                )
+        projects_repositories_relationships.c.project_key,
+        projects_repositories_relationships.c.repository_key,
+        projects_repositories_relationships.c.project_id,
+        projects_repositories_relationships.c.repository_id
+    ]).select_from(
+        projects_repositories_relationships.outerjoin(
+            projects_repositories,
+            and_(
+                projects_repositories_relationships.c.project_id == projects_repositories.c.project_id,
+                projects_repositories_relationships.c.repository_id == projects_repositories.c.repository_id
             )
-        ).where(
-            or_(
-                projects_repositories.c.project_id == None,
-                projects_repositories.c.repository_id == None
-            )
-        ).alias()
+        )
+    ).where(
+        or_(
+            projects_repositories.c.project_id == None,
+            projects_repositories.c.repository_id == None
+        )
+    ).alias()
 
     new_relationships = session.connection().execute(
         new_relationships_query
@@ -903,4 +951,3 @@ def infer_projects_repositories_relationships(session, organization_key, work_it
             for relationship in new_relationships
         ]
     )
-

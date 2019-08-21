@@ -7,23 +7,26 @@
 # confidential.
 
 # Author: Krishna Kumar
-
+import logging
 from sqlalchemy.dialects.postgresql import insert
 from polaris.analytics.db.model import repositories, Organization
 from polaris.utils.exceptions import ProcessingException
+
+
+logger = logging.getLogger('polaris.analytics.db.impl.repositories')
 
 
 def import_repositories(session, organization_key, repository_summaries):
     organization = Organization.find_by_organization_key(session, organization_key)
     if organization is not None:
         upsert = insert(repositories).values([
-                dict(
+            dict(
 
-                    organization_id=organization.id,
-                    **repository_summary
-                )
-                for repository_summary in repository_summaries
-            ])
+                organization_id=organization.id,
+                **repository_summary
+            )
+            for repository_summary in repository_summaries
+        ])
         inserted = session.connection().execute(
             upsert.on_conflict_do_update(
                 index_elements=['key'],
@@ -41,3 +44,9 @@ def import_repositories(session, organization_key, repository_summaries):
 
     else:
         raise ProcessingException(f"Could not find organization with key: {organization_key}")
+
+
+
+
+
+

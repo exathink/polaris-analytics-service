@@ -39,3 +39,18 @@ def infer_projects_repositories_relationships(organization_key, work_items_commi
         return db.process_exception("Update commit work item summaries failed", exc)
     except Exception as e:
         return db.failure_message('Update commit work item summaries failed', e)
+
+
+def resolve_work_items_sources_for_repositories(organization_key, repositories):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.resolve_repository_commit_mapping_scope_from_repositories(
+                    session, organization_key, repositories)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Resolve work items sources for repositories failed", exc)
+    except Exception as e:
+        return db.failure_message('Resolve work items sources for repositories failed', e)
+
+

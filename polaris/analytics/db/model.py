@@ -335,6 +335,10 @@ class Repository(Base):
         return session.query(cls).filter(cls.key == repository_key).first()
 
     @classmethod
+    def find_by_source_id(cls, session, source_id):
+        return session.query(cls).filter(cls.source_id == source_id).first()
+
+    @classmethod
     def find_repositories_by_name(cls, session,  organization_key, repo_names):
         repos = cls.__table__
         return session.query(cls).filter(
@@ -533,7 +537,7 @@ class WorkItemsSource(Base):
     # within that specific scope (instance of org, project or repository) will be evaluated to
     # see if they can be mapped to a given work item originating from this work items source.
     commit_mapping_scope = Column(String, nullable=False, default='organization', server_default="'organization'")
-    commit_mapping_scope_key = Column(UUID(as_uuid=True), nullable=False)
+    commit_mapping_scope_key = Column(UUID(as_uuid=True), nullable=True)
 
     organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
     organization = relationship('Organization', back_populates='work_items_sources')

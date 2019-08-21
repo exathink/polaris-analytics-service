@@ -53,7 +53,7 @@ def resolve_repository_commit_mapping_scope_from_repositories(session, organizat
     )
 
 
-def resolve_commit_mapping_scope_for_work_items_source(session, work_items_source):
+def resolve_commit_mapping_scope_key_for_work_items_source(session, work_items_source):
     if work_items_source.commit_mapping_scope == 'repository' and work_items_source.source_id is not None:
         # for work items sources where we have specified 'repository' as the commit_mapping_scope
         # (github is the first example) we cant know the repository key until we create the object here.
@@ -63,6 +63,9 @@ def resolve_commit_mapping_scope_for_work_items_source(session, work_items_sourc
         # commit_mapping_scope. This is the mirror method above
         repository = Repository.find_by_source_id(session, work_items_source.source_id)
         if repository is not None:
+            logger.info(f"Mapped repository {repository.name} to "
+                        f"work items source {work_items_source.name} as commit mapping scope")
+
             work_items_source.commit_mapping_scope_key = repository.key
 
 
@@ -86,7 +89,7 @@ def register_work_items_source(session, organization_key, work_items_source_summ
             )
 
             if work_items_source.commit_mapping_scope_key is None:
-                resolve_commit_mapping_scope_for_work_items_source(session, work_items_source)
+                resolve_commit_mapping_scope_key_for_work_items_source(session, work_items_source)
 
             organization.work_items_sources.append(work_items_source)
             created = True
@@ -856,6 +859,9 @@ def import_project(session, organization_key, project_summary):
                     organization_key=organization.key,
                     **source
                 )
+                if work_items_source.commit_mapping_scope_key is None:
+                    resolve_commit_mapping_scope_key_for_work_items_source(session, work_items_source)
+
                 organization.work_items_sources.append(work_items_source)
                 project.work_items_sources.append(work_items_source)
                 new_work_items_sources.append(work_items_source)

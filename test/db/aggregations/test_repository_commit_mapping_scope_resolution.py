@@ -38,6 +38,35 @@ class TestGithubWorkItemSourceRepositoryResolution:
             f"select commit_mapping_scope_key from analytics.work_items_sources where key='{work_items_source_key}'"
         ).scalar() == repository.key
 
+    def it_resolves_when_projects_are_created(self, setup_work_items_source_repo_resolution):
+        organization, repository = setup_work_items_source_repo_resolution
+
+        work_items_source_key = str(uuid.uuid4())
+        work_items_source_summary = dict(
+            key=work_items_source_key,
+            name='foo',
+            integration_type='github',
+            work_items_source_type='repository_issues',
+            commit_mapping_scope='repository',
+            source_id=repository.source_id
+        )
+        result = api.import_project(
+            organization.key,
+            project_summary=dict(
+                key=uuid.uuid4(),
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    work_items_source_summary
+                ]
+            )
+        )
+
+        assert result['success']
+        assert db.connection().execute(
+            f"select commit_mapping_scope_key from analytics.work_items_sources where key='{work_items_source_key}'"
+        ).scalar() == repository.key
+
     def it_resolves_repositories_are_created(self, setup_repo_work_items_source_resolution):
         organization, work_items_source = setup_repo_work_items_source_resolution
         repository_key = uuid.uuid4()

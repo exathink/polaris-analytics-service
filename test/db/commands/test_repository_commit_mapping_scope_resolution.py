@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 import uuid
-from polaris.analytics.db import api, aggregations
+from polaris.analytics.db import api, commands
 
 from test.fixtures.repository_commit_scope_resolution import *
 
@@ -79,7 +79,7 @@ class TestGithubWorkItemSourceRepositoryResolution:
             )
         ]
 
-        result = aggregations.resolve_work_items_sources_for_repositories(
+        result = commands.resolve_work_items_sources_for_repositories(
             organization.key,
             repository_summaries
         )

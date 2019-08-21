@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 
-from polaris.analytics.db import aggregations
+from polaris.analytics.db import commands
 
 from test.fixtures.work_item_commit_resolution import *
 
@@ -66,7 +66,7 @@ class TestInferProjectsRepositoriesRelationships:
             )
         ]
 
-        result = aggregations.infer_projects_repositories_relationships(organization.key, resolved_work_items_commits)
+        result = commands.infer_projects_repositories_relationships(organization.key, resolved_work_items_commits)
         assert result['success']
         assert result['new_relationships'] == [
             dict(
@@ -130,7 +130,7 @@ class TestInferProjectsRepositoriesRelationships:
             )
         ]
 
-        result = aggregations.infer_projects_repositories_relationships(organization.key, resolved_work_items_commits)
+        result = commands.infer_projects_repositories_relationships(organization.key, resolved_work_items_commits)
         assert result['success']
         assert result['new_relationships'] == []
 

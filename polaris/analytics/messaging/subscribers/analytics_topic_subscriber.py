@@ -18,7 +18,7 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
 
 from polaris.messaging.utils import raise_on_failure
 
-from polaris.analytics.db import api, aggregations
+from polaris.analytics.db import api, commands
 
 logger = logging.getLogger('polaris.analytics.analytics_topic_subscriber')
 
@@ -185,7 +185,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         if len(work_items_commits) > 0:
             return raise_on_failure(
                 message,
-                aggregations.update_commit_work_item_summaries(organization_key, work_items_commits)
+                commands.update_commit_work_item_summaries(organization_key, work_items_commits)
             )
 
 
@@ -197,7 +197,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         if len(work_items_commits) > 0:
             return raise_on_failure(
                 message,
-                aggregations.infer_projects_repositories_relationships(organization_key, work_items_commits)
+                commands.infer_projects_repositories_relationships(organization_key, work_items_commits)
             )
 
     @staticmethod
@@ -208,7 +208,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         if len(repositories) > 0:
             return raise_on_failure(
                 message,
-                aggregations.resolve_work_items_sources_for_repositories(
+                commands.resolve_work_items_sources_for_repositories(
                     organization_key,
                     repositories
                 )

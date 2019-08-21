@@ -10,7 +10,7 @@
 
 
 
-from polaris.analytics.db import aggregations
+from polaris.analytics.db import commands
 from test.fixtures.work_item_commit_resolution import *
 
 
@@ -58,7 +58,7 @@ class TestUpdateCommitWorkItemSummaries:
                 work_item_key=work_item_key
             )
         ]
-        resolved = aggregations.update_commit_work_item_summaries(organization.key, work_items_commits)
+        resolved = commands.update_commit_work_item_summaries(organization.key, work_items_commits)
         assert resolved['success']
         saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
         assert saved.work_items_summaries == [
@@ -124,7 +124,7 @@ class TestUpdateCommitWorkItemSummaries:
                 work_item_key=work_item_key2
             )
         ]
-        resolved = aggregations.update_commit_work_item_summaries(organization.key, work_items_commits)
+        resolved = commands.update_commit_work_item_summaries(organization.key, work_items_commits)
         assert resolved['success']
         saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
         assert saved.work_items_summaries == [
@@ -201,7 +201,7 @@ class TestUpdateCommitWorkItemSummaries:
                 work_item_key=work_item_key
             )
         ]
-        resolved = aggregations.update_commit_work_item_summaries(organization.key, work_items_commits)
+        resolved = commands.update_commit_work_item_summaries(organization.key, work_items_commits)
         assert resolved['success']
         saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key in ('{test_commit_key1}', '{test_commit_key2}')").fetchall()
         assert saved[0].work_items_summaries == [
@@ -266,9 +266,9 @@ class TestUpdateCommitWorkItemSummaries:
             )
         ]
         # update once
-        aggregations.update_commit_work_item_summaries(organization.key, work_items_commits)
+        commands.update_commit_work_item_summaries(organization.key, work_items_commits)
         # update again
-        resolved = aggregations.update_commit_work_item_summaries(organization.key, work_items_commits)
+        resolved = commands.update_commit_work_item_summaries(organization.key, work_items_commits)
         assert resolved['success']
         saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
         assert saved.work_items_summaries == [

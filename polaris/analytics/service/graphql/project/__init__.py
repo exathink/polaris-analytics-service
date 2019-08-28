@@ -38,6 +38,7 @@ from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositories
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
 from ..work_items_source import WorkItemsSourcesConnectionMixin
+from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -53,7 +54,10 @@ from .selectables import ProjectNode, \
     ProjectRecentlyActiveContributorNodes, \
     ProjectCumulativeCommitCount, \
     ProjectWeeklyContributorCount, \
-    ProjectWorkItemEventSpan
+    ProjectWorkItemEventSpan, \
+    ProjectWorkItemNodes, \
+    ProjectWorkItemEventNodes, \
+    ProjectWorkItemCommitNodes
 
 
 from polaris.graphql.connection_utils import CountableConnection
@@ -76,6 +80,9 @@ class Project(
     RecentlyActiveContributorsConnectionMixin,
     CommitsConnectionMixin,
     WorkItemsSourcesConnectionMixin,
+    WorkItemsConnectionMixin,
+    WorkItemEventsConnectionMixin,
+    WorkItemCommitsConnectionMixin,
     # field mixins
     CumulativeCommitCountResolverMixin,
     WeeklyContributorCountsResolverMixin,
@@ -116,6 +123,9 @@ Implicit Interfaces: ArchivedStatus
             'recently_active_contributors': ProjectRecentlyActiveContributorNodes,
             'commits': ProjectCommitNodes,
             'work_items_sources': ProjectWorkItemsSourceNodes,
+            'work_items': ProjectWorkItemNodes,
+            'work_item_events': ProjectWorkItemEventNodes,
+            'work_item_commits': ProjectWorkItemCommitNodes,
         }
         selectable_field_resolvers = {
           'cumulative_commit_count': ProjectCumulativeCommitCount,

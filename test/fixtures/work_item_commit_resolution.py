@@ -136,7 +136,8 @@ def commits_common_fields(commits_fixture):
         author_date_tz_offset=0,
         author_contributor_alias_id=contributor_alias,
         author_contributor_key=uuid.uuid4().hex,
-        author_contributor_name='Billy Bob'
+        author_contributor_name='Billy Bob',
+        created_on_branch='master'
     )
 
 

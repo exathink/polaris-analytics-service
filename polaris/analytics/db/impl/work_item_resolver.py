@@ -36,17 +36,14 @@ class WorkItemResolver:
 
 
 class PivotalTrackerWorkItemResolver(WorkItemResolver):
-    brackets = re.compile(r'\[(.*)\]', re.DOTALL)
-    stories = re.compile('#(\d+)')
+    stories = re.compile("[#'](\d+)")
     branch = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names
 
     @classmethod
     def resolve(cls, commit_message, branch_name):
         resolved = []
         # check commit message for matches
-        groups = cls.brackets.findall(commit_message)
-        for group in groups:
-            resolved.extend(cls.stories.findall(group))
+        resolved.extend(cls.stories.findall(commit_message))
         # check branch name for matches
         if branch_name is not None:
             resolved.extend(cls.branch.findall(branch_name))

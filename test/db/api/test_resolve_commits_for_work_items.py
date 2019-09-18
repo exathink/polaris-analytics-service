@@ -21,7 +21,7 @@ from polaris.analytics.db import api
 
 from polaris.analytics.db.model import work_items as work_items_impl
 from test.fixtures.work_item_commit_resolution import *
-
+from polaris.utils.collections import dict_merge
 
 class TestSingleRepo:
 
@@ -70,6 +70,53 @@ class TestSingleRepo:
 
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
 
+    def it_returns_a_match_when_the_commit_is_on_a_branch_matching_the_work_item(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='github',
+                commit_mapping_scope='repository',
+                commit_mapping_scope_key=test_repo.key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+        )
+        test_commit_source_id = '00001'
+        test_commit_key = uuid.uuid4()
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=test_commit_key,
+                source_commit_id=test_commit_source_id,
+                commit_message="Another change.",
+                author_date=get_date("2018-12-03"),
+                **dict_merge(
+                    commits_common_fields(commits_fixture),
+                    dict(created_on_branch="1000")
+                )
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 1
+        assert result['resolved'][0]['commit_key'] == str(test_commit_key)
+        assert result['resolved'][0]['work_item_key'] == str(new_key)
+        assert result['resolved'][0]['work_items_source_key'] == str(work_item_source.key)
+        assert result['resolved'][0]['repository_key'] == str(test_repo.key)
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
 
     def it_returns_a_valid_map_when_there_are_multiple_matching_commits_and_work_items(self, commits_fixture):
         organization, _, repositories, _ = commits_fixture
@@ -184,7 +231,6 @@ class TestSingleRepo:
 
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
 
-
     def it_only_matches_commits_that_have_commit_date_after_create_date_of_work_items(self, commits_fixture):
         organization, _, repositories, _ = commits_fixture
         test_repo = repositories['alpha']
@@ -277,7 +323,6 @@ class TestMultipleRepos:
         assert len(result['resolved']) == 2
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 2
 
-
     def it_returns_a_valid_match_when_there_is_a_commit_matching_the_work_item_at_repo_scope(self, commits_fixture):
         organization, _, repositories, _ = commits_fixture
         # There are two repos with commits
@@ -285,7 +330,7 @@ class TestMultipleRepos:
         beta = repositories['beta']
 
         new_key = uuid.uuid4()
-        new_work_items=[
+        new_work_items = [
             dict(
                 key=new_key,
                 display_id='1000',
@@ -305,7 +350,6 @@ class TestMultipleRepos:
             ),
             items_data=new_work_items
         )
-
 
         test_commit_key = '00001'
 
@@ -339,10 +383,6 @@ class TestMultipleRepos:
         assert result['resolved'][0]['work_item_key'] == str(new_key)
 
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
-
-
-
-
 
     def it_returns_a_valid_map_when_there_is_a_commit_matching_the_work_item_at_project_scope(self,
                                                                                               commits_fixture):
@@ -394,6 +434,7 @@ class TestMultipleRepos:
         assert result['success']
         assert len(result['resolved']) == 2
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 2
+
 
 class TestPaging:
     work_items_impl.map_display_ids_to_commits_page_size = 5

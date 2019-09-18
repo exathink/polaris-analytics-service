@@ -60,6 +60,14 @@ class TestPivotalCommitWorkItemResolution:
         assert len(resolved) == 1
         assert resolved[0] == '2378'
 
+    def it_resolves_a_commit_with_a_single_work_item_id_preceded_by_a_quote(self):
+        commit_message = "This merges branch '2378' into master"
+
+        resolved = PivotalTrackerWorkItemResolver.resolve(commit_message, 'master')
+
+        assert len(resolved) == 1
+        assert resolved[0] == '2378'
+
     def it_resolves_a_commit_with_multiple_work_item_ids(self):
         commit_message = "This fixes [ issue #2378 and #24532] No other animals were harmed"
 

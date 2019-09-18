@@ -12,10 +12,11 @@ import re
 from polaris.utils.exceptions import ProcessingException
 from polaris.common.enums import WorkTrackingIntegrationType
 
+
 class WorkItemResolver:
 
     @classmethod
-    def resolve(cls, commit_message):
+    def resolve(cls, commit_message, branch_name):
         raise NotImplementedError
 
     @classmethod
@@ -28,7 +29,8 @@ class WorkItemResolver:
             elif integration_type in ['jira']:
                 return JiraWorkItemResolver
             else:
-                raise ProcessingException(f'WorkItemResolver: Could not find work item resolver for integration_type: {integration_type}')
+                raise ProcessingException(
+                    f'WorkItemResolver: Could not find work item resolver for integration_type: {integration_type}')
         else:
             raise ProcessingException(f'WorkItemResolver: Cannot resolve null integration type')
 
@@ -36,27 +38,44 @@ class WorkItemResolver:
 class PivotalTrackerWorkItemResolver(WorkItemResolver):
     brackets = re.compile(r'\[(.*)\]', re.DOTALL)
     stories = re.compile('#(\d+)')
+    branch = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names
 
     @classmethod
-    def resolve(cls, commit_message):
+    def resolve(cls, commit_message, branch_name):
         resolved = []
+        # check commit message for matches
         groups = cls.brackets.findall(commit_message)
         for group in groups:
             resolved.extend(cls.stories.findall(group))
+        # check branch name for matches
+        if branch_name is not None:
+            resolved.extend(cls.branch.findall(branch_name))
         return resolved
 
 
 class GithubWorkItemResolver(WorkItemResolver):
-    matcher = re.compile('#(\d+)')
+    commit_message_matcher = re.compile('#(\d+)')
+    branch = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names
 
     @classmethod
-    def resolve(cls,commit_message):
-        return cls.matcher.findall(commit_message)
+    def resolve(cls, commit_message, branch_name):
+        resolved = []
+        resolved.extend(cls.commit_message_matcher.findall(commit_message))
+
+        if branch_name is not None:
+            resolved.extend(cls.branch.findall(branch_name))
+
+        return resolved
 
 
 class JiraWorkItemResolver(WorkItemResolver):
     matcher = re.compile('([A-Z]+-\d+)')
 
     @classmethod
-    def resolve(cls,commit_message):
-        return cls.matcher.findall(commit_message)
+    def resolve(cls, commit_message, branch_name):
+        resolved = []
+        resolved.extend(cls.matcher.findall(commit_message))
+        if branch_name is not None:
+            resolved.extend(cls.matcher.findall(branch_name))
+
+        return resolved

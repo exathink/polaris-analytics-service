@@ -52,7 +52,7 @@ class CommitInfo(NamedNode):
     author = graphene.String(required=True)
     author_key = graphene.String(required=True)
     commit_message = graphene.String(required=True)
-    num_parents = graphene.Int(required=True)
+    num_parents = graphene.Int(required=False)
     branch = graphene.String(required=False)
     stats = graphene.Field(CommitChangeStats, required=False)
     file_types_summary = graphene.Field(graphene.List(FileTypesSummary, required=False))

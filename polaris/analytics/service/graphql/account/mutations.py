@@ -52,7 +52,7 @@ class CreateAccount(graphene.Mutation):
                     join_this=session
                 )
 
-                send_new_member_invite(owner, invitation=dict(subject='Welcome to Urjuna'))
+                send_new_member_invite(owner, invitation=dict(subject='Welcome to Polaris Flow'))
                 if account is not None:
                     return CreateAccount(
                         account=Account.resolve_field(info, key=account.key)

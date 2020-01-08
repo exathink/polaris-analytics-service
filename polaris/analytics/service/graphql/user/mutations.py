@@ -54,20 +54,20 @@ class InviteUser(graphene.Mutation):
                 if user is not None:
                     if created:
                         invite_sent = send_new_member_invite(user, invitation=dict(
-                            subject=f"{current_user.first_name} {current_user.last_name} has invited you to join Urjuna"
+                            subject=f"{current_user.first_name} {current_user.last_name} has invited you to join Polaris Flow"
                         ))
                     elif added and len(added_orgs) > 0:
                         invite_sent = send_join_account_notice(user, invitation=dict(
                             subject=f"{current_user.first_name} {current_user.last_name}"
                                      f" has added you to the organization {added_orgs[0].name} "
-                                     f" on Urjuna"
+                                     f" on Polaris"
 
                         ))
                     elif added:
                         invite_sent = send_join_account_notice(user, invitation=dict(
                             subject=f"{current_user.first_name} {current_user.last_name}"
                                     f" has added you to the account {account.name} "
-                                    f" on Urjuna"
+                                    f" on Polaris"
 
                         ))
 

@@ -18,7 +18,8 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import relationship, object_session
 
 from polaris.common import db
-from polaris.common.enums import AccountRoles, OrganizationRoles, WorkItemsSourceStateType
+from polaris.common.enums import AccountRoles, OrganizationRoles
+from polaris.analytics.db.enums import WorkItemsSourceStateType
 from polaris.utils.collections import find
 
 logger = getLogger('polaris.analytics.db.model')

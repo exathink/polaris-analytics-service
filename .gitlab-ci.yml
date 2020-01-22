@@ -18,6 +18,8 @@
 
   build-package-image:
     stage: build
+    only:
+        - master
     tags:
       - polaris-runner
     script:
@@ -27,6 +29,8 @@
 
   test:
     stage: test
+    only:
+        - master
     tags:
       - polaris-runner
     script:
@@ -34,14 +38,19 @@
 
   push:
     stage: push
+    only:
+        - master
     tags:
       - polaris-runner
     script:
       - package push
+
   cleanup:
-    tags:
-      - polaris-runner
     stage: cleanup
+    only:
+        - master
+    tags:
+        - polaris-runner
     script: package down
 
 

@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import relationship, object_session
 
 from polaris.common import db
-from polaris.common.enums import AccountRoles, OrganizationRoles
+from polaris.common.enums import AccountRoles, OrganizationRoles, WorkItemsSourceStateType
 from polaris.utils.collections import find
 
 logger = getLogger('polaris.analytics.db.model')
@@ -546,6 +546,7 @@ class WorkItemsSource(Base):
     project = relationship('Project', back_populates='work_items_sources')
 
     work_items = relationship('WorkItem')
+    state_maps = relationship('WorkItemSourceStateMap')
 
     @classmethod
     def find_by_organization_key(cls, session, organization_key):
@@ -637,6 +638,20 @@ class WorkItemStateTransition(Base):
 
 
 work_item_state_transitions = WorkItemStateTransition.__table__
+
+
+class WorkItemsSourceStateMap(Base):
+    __tablename__ = 'work_items_source_state_map'
+
+    state = Column(String, primary_key=True)
+    state_type = Column(String, nullable=False, server_default=WorkItemsSourceStateType.open.value)
+
+    # Work Items Source relationship
+    work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'), primary_key=True)
+    work_items_source = relationship('WorkItemsSource', back_populates='state_maps')
+
+
+work_items_source_state_map = WorkItemsSourceStateMap.__table__
 
 
 def recreate_all(engine):

@@ -547,7 +547,7 @@ class WorkItemsSource(Base):
     project = relationship('Project', back_populates='work_items_sources')
 
     work_items = relationship('WorkItem')
-    state_maps = relationship('WorkItemSourceStateMap')
+    state_maps = relationship('WorkItemsSourceStateMap')
 
     @classmethod
     def find_by_organization_key(cls, session, organization_key):

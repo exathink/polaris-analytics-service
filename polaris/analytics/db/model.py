@@ -547,7 +547,7 @@ class WorkItemsSource(Base):
     project = relationship('Project', back_populates='work_items_sources')
 
     work_items = relationship('WorkItem')
-    state_maps = relationship('WorkItemsSourceStateMap')
+    state_maps = relationship('WorkItemsSourceStateMap', cascade="all, delete-orphan")
 
     @classmethod
     def find_by_organization_key(cls, session, organization_key):
@@ -570,18 +570,18 @@ class WorkItemsSource(Base):
     def get_default_state_map(self):
         if self.integration_type == WorkTrackingIntegrationType.github.value:
             return [
-                dict(state='open', state_type='open'),
-                dict(state='closed', state_type='closed')
+                dict(state='open', state_type=WorkItemsSourceStateType.open.value),
+                dict(state='closed', state_type=WorkItemsSourceStateType.complete.value)
             ]
         elif self.integration_type == WorkTrackingIntegrationType.pivotal.value:
             return [
-                dict(state='unscheduled', state_type='open'),
-                dict(state='unstarted', state_type='open'),
-                dict(state='planned', state_type='open'),
-                dict(state='started', state_type='wip'),
-                dict(state='finished', state_type='wip'),
-                dict(state='delivered', state_type='wip'),
-                dict(state='accepted', state_type='completed')
+                dict(state='unscheduled', state_type=WorkItemsSourceStateType.open.value),
+                dict(state='unstarted', state_type=WorkItemsSourceStateType.open.value),
+                dict(state='planned', state_type=WorkItemsSourceStateType.open.value),
+                dict(state='started', state_type=WorkItemsSourceStateType.wip.value),
+                dict(state='finished', state_type=WorkItemsSourceStateType.wip.value),
+                dict(state='delivered', state_type=WorkItemsSourceStateType.wip.value),
+                dict(state='accepted', state_type=WorkItemsSourceStateType.complete.value)
             ]
         else:
             return []

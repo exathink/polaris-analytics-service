@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import relationship, object_session
 
 from polaris.common import db
-from polaris.common.enums import AccountRoles, OrganizationRoles
+from polaris.common.enums import AccountRoles, OrganizationRoles, WorkTrackingIntegrationType
 from polaris.analytics.db.enums import WorkItemsSourceStateType
 from polaris.utils.collections import find
 
@@ -566,6 +566,32 @@ class WorkItemsSource(Base):
                 cls.commit_mapping_scope_key.in_(commit_mapping_scope_keys)
             )
         ).all()
+
+    def get_default_state_map(self):
+        if self.integration_type == WorkTrackingIntegrationType.github.value:
+            return [
+                dict(state='open', state_type='open'),
+                dict(state='closed', state_type='closed')
+            ]
+        elif self.integration_type == WorkTrackingIntegrationType.pivotal.value:
+            return [
+                dict(state='unscheduled', state_type='open'),
+                dict(state='unstarted', state_type='open'),
+                dict(state='planned', state_type='open'),
+                dict(state='started', state_type='wip'),
+                dict(state='finished', state_type='wip'),
+                dict(state='delivered', state_type='wip'),
+                dict(state='accepted', state_type='completed')
+            ]
+        else:
+            return []
+
+    def init_state_map(self, state_map_entries=None):
+        entries = state_map_entries or self.get_default_state_map()
+        self.state_maps = [
+            WorkItemsSourceStateMap(**entry)
+            for entry in entries
+        ]
 
 
 work_items_sources = WorkItemsSource.__table__

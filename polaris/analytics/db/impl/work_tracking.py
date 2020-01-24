@@ -855,11 +855,14 @@ def import_project(session, organization_key, project_summary):
         new_work_items_sources = []
         for source in project_summary['work_items_sources']:
             work_items_source = WorkItemsSource.find_by_work_items_source_key(session, source['key'])
+
             if work_items_source is None:
                 work_items_source = WorkItemsSource(
                     organization_key=organization.key,
                     **source
                 )
+                work_items_source.init_state_map()
+
                 if work_items_source.commit_mapping_scope_key is None:
                     resolve_commit_mapping_scope_key_for_work_items_source(session, work_items_source)
 

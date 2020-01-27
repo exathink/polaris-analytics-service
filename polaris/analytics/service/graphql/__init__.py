@@ -30,7 +30,7 @@ from .contributor import Contributor, ContributorMutationsMixin
 from .public import Public
 from .work_item import WorkItem
 from .summarizers import *
-from .work_items_source.mutations import UpdateProjectStateMapsMixin
+
 
 
 class Query(graphene.ObjectType):
@@ -85,8 +85,7 @@ class Mutations(
     ContributorMutationsMixin,
     ViewerMutationsMixin,
     UseMutationsMixin,
-    ProjectMutationsMixin,
-    UpdateProjectStateMapsMixin
+    ProjectMutationsMixin
 ):
     pass
 

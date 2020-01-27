@@ -31,6 +31,9 @@ from .public import Public
 from .work_item import WorkItem
 from .summarizers import *
 
+from .mutations import \
+    UpdateProjectStateMaps
+
 
 class Query(graphene.ObjectType):
     node = NamedNode.Field()
@@ -46,6 +49,8 @@ class Query(graphene.ObjectType):
     work_item = WorkItem.Field()
 
     all_accounts = Account.ConnectionField()
+
+    create_work_items_source_state_map = UpdateProjectStateMaps.Field()
 
     def resolve_viewer(self, info, **kwargs):
         return Viewer.resolve_field(info, **kwargs)

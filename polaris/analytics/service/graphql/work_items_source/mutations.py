@@ -15,7 +15,7 @@ class UpdateProjectStateMapsInput(graphene.InputObjectType):
 
 class UpdateProjectStateMaps(graphene.Mutation):
     class Arguments:
-        create_work_items_source_state_map_input = UpdateProjectStateMapsInput(required=True)
+        update_project_state_maps_input = UpdateProjectStateMapsInput(required=True)
 
     success = graphene.Boolean()
 
@@ -23,3 +23,6 @@ class UpdateProjectStateMaps(graphene.Mutation):
         return UpdateProjectStateMaps(
             success=True
         )
+
+class UpdateProjectStateMapsMixin:
+    update_project_state_maps = UpdateProjectStateMaps.Field()

@@ -30,9 +30,7 @@ from .contributor import Contributor, ContributorMutationsMixin
 from .public import Public
 from .work_item import WorkItem
 from .summarizers import *
-
-from .mutations import \
-    UpdateProjectStateMaps
+from .work_items_source.mutations import UpdateProjectStateMapsMixin
 
 
 class Query(graphene.ObjectType):
@@ -49,8 +47,6 @@ class Query(graphene.ObjectType):
     work_item = WorkItem.Field()
 
     all_accounts = Account.ConnectionField()
-
-    create_work_items_source_state_map = UpdateProjectStateMaps.Field()
 
     def resolve_viewer(self, info, **kwargs):
         return Viewer.resolve_field(info, **kwargs)
@@ -89,7 +85,8 @@ class Mutations(
     ContributorMutationsMixin,
     ViewerMutationsMixin,
     UseMutationsMixin,
-    ProjectMutationsMixin
+    ProjectMutationsMixin,
+    UpdateProjectStateMapsMixin
 ):
     pass
 

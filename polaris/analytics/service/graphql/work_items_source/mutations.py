@@ -4,22 +4,19 @@ import logging
 
 import graphene
 
-from polaris.analytics.db.enums import WorkItemsSourceStateType
-from polaris.analytics.db.model import WorkItemsSourceStateMap
-
 logger = logging.getLogger('polaris.work_items_source_stat_map.mutations')
 
 class StateMapParams(graphene.InputObjectType):
     state = graphene.String(required=True)
-    stateType = graphene.String(required=True)
+    state_type = graphene.String(required=True)
 
 class WorkItemsSourceStateMap(graphene.InputObjectType):
-    workItemsSourceKey = graphene.String(required=True)
-    stateMaps = graphene.List(StateMapParams)
+    work_items_source_key = graphene.String(required=True)
+    state_maps = graphene.List(StateMapParams)
 
 class UpdateProjectStateMapsInput(graphene.InputObjectType):
-    projectKey = graphene.String(required=True)
-    workItemsSourceStateMaps = graphene.List(WorkItemsSourceStateMap)
+    project_key = graphene.String(required=True)
+    work_items_source_state_maps = graphene.List(WorkItemsSourceStateMap)
 
 class UpdateProjectStateMaps(graphene.Mutation):
     class Arguments:

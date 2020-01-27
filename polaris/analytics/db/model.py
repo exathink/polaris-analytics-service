@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import relationship, object_session
 
 from polaris.common import db
-from polaris.common.enums import AccountRoles, OrganizationRoles
+from polaris.common.enums import AccountRoles, OrganizationRoles, WorkTrackingIntegrationType
 from polaris.analytics.db.enums import WorkItemsSourceStateType
 from polaris.utils.collections import find
 
@@ -547,7 +547,7 @@ class WorkItemsSource(Base):
     project = relationship('Project', back_populates='work_items_sources')
 
     work_items = relationship('WorkItem')
-    state_maps = relationship('WorkItemsSourceStateMap')
+    state_maps = relationship('WorkItemsSourceStateMap', cascade="all, delete-orphan")
 
     @classmethod
     def find_by_organization_key(cls, session, organization_key):
@@ -566,6 +566,32 @@ class WorkItemsSource(Base):
                 cls.commit_mapping_scope_key.in_(commit_mapping_scope_keys)
             )
         ).all()
+
+    def get_default_state_map(self):
+        if self.integration_type == WorkTrackingIntegrationType.github.value:
+            return [
+                dict(state='open', state_type=WorkItemsSourceStateType.open.value),
+                dict(state='closed', state_type=WorkItemsSourceStateType.complete.value)
+            ]
+        elif self.integration_type == WorkTrackingIntegrationType.pivotal.value:
+            return [
+                dict(state='unscheduled', state_type=WorkItemsSourceStateType.open.value),
+                dict(state='unstarted', state_type=WorkItemsSourceStateType.open.value),
+                dict(state='planned', state_type=WorkItemsSourceStateType.open.value),
+                dict(state='started', state_type=WorkItemsSourceStateType.wip.value),
+                dict(state='finished', state_type=WorkItemsSourceStateType.wip.value),
+                dict(state='delivered', state_type=WorkItemsSourceStateType.wip.value),
+                dict(state='accepted', state_type=WorkItemsSourceStateType.complete.value)
+            ]
+        else:
+            return []
+
+    def init_state_map(self, state_map_entries=None):
+        entries = state_map_entries or self.get_default_state_map()
+        self.state_maps = [
+            WorkItemsSourceStateMap(**entry)
+            for entry in entries
+        ]
 
 
 work_items_sources = WorkItemsSource.__table__

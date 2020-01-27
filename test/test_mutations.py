@@ -12,7 +12,7 @@ class TestUpdateProjectStateMaps:
         client = Client(schema)
 
         response = client.execute("""
-            mutation UpdateProjectStateMaps {
+            mutation updateProjectStateMaps {
                     updateProjectStateMaps(
                         updateProjectStateMapsInput:{
                             projectKey:"2b10652d-d0c2-4059-a178-060610daef62",

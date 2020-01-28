@@ -33,7 +33,9 @@ def update_project_state_maps(project_state_maps, join_this=None):
 
         # Check if project exists. Not sure if this is required
         project_key = project_state_maps.project_key
+        logger.info(project_key)
         project = Project.find_by_project_key(session, project_key)
+        logger.info(project)
         if project is None:
             raise ProcessingException(f'Could not find project with key: {project_key}')
 
@@ -42,7 +44,11 @@ def update_project_state_maps(project_state_maps, join_this=None):
             source_key = work_items_source_state_map.work_items_source_key
             work_items_source = WorkItemsSource.find_by_work_items_source_key(session, source_key)
             if work_items_source is not None:
-                work_items_source.init_state_map(work_items_source_state_map.state_maps)
+                project_work_items_source = WorkItemsSource.find_by_project_id(session, project.id, source_key)
+                if project_work_items_source is not None:
+                    project_work_items_source.init_state_map(work_items_source_state_map.state_maps)
+                else:
+                    raise ProcessingException(f'Work item source with key: {source_key} is not associated to project with key: {project_key}')
             else:
                 raise ProcessingException(f'Could not find work item source with key: {source_key}')
     return True

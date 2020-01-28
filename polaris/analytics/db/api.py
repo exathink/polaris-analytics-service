@@ -164,10 +164,3 @@ def import_repositories(organization_key, repository_summaries):
         return db.process_exception("Imported Repositories", exc)
     except Exception as e:
         return db.failure_message('', e)
-
-def update_project_state_maps(update_project_state_maps_input, join_this=None):
-    with db.orm_session(join_this) as session:
-        session.expire_on_commit = False
-        # Query to get distinct states for this work item source and update state map
-        work_item_source_state_map = WorkItemsSourceStateMap()
-        return work_item_source_state_map

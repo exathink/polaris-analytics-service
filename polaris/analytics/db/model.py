@@ -554,6 +554,10 @@ class WorkItemsSource(Base):
         return session.query(cls).filter(cls.organization_key == organization_key).all()
 
     @classmethod
+    def find_by_project_id(cls, session, project_id, work_item_source_key):
+        return session.query(cls).filter(and_(cls.project_id == project_id, cls.key == work_item_source_key)).first()
+
+    @classmethod
     def find_by_work_items_source_key(cls, session, work_items_source_key):
         return session.query(cls).filter(cls.key == work_items_source_key).first()
 

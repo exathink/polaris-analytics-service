@@ -58,11 +58,11 @@ class UpdateProjectStateMaps(graphene.Mutation):
     success = graphene.Boolean()
 
     def mutate(self, info, update_project_state_maps_input):
-        logger.info('CreateWorkItemsSource called')
-        work_items_source = api.update_project_state_maps(update_project_state_maps_input=update_project_state_maps_input)
-        return UpdateProjectStateMaps(
-            success=True
-        )
+        logger.info('UpdateProjectStateMaps called')
+        with db.orm_session() as session:
+            return UpdateProjectStateMaps(
+                success=project.update_project_state_maps(update_project_state_maps_input, join_this=session)
+         )
 
 
 class ProjectMutationsMixin:

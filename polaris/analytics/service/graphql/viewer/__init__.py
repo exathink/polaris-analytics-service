@@ -32,6 +32,13 @@ class Viewer (
 ):
 
     class Meta:
+        description = """
+        Viewer 
+        
+        Provides attributes of the currently logged in user. This root attribute
+        is used by the web application to fetch all information that is accessible
+        to the user. 
+                """
         interfaces = (NamedNode, )
         selectable_field_resolvers = {
             'account_roles': ViewerAccountRoles,

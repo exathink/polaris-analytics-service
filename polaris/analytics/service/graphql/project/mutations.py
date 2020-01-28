@@ -9,8 +9,12 @@
 # Author: Krishna Kumar
 
 import graphene
+import logging
 from polaris.common import db
 from polaris.analytics.api import project
+from polaris.analytics import api
+
+logger = logging.getLogger('polaris.analytics.mutations')
 
 
 class ArchiveProjectInput(graphene.InputObjectType):
@@ -54,6 +58,8 @@ class UpdateProjectStateMaps(graphene.Mutation):
     success = graphene.Boolean()
 
     def mutate(self, info, update_project_state_maps_input):
+        logger.info('CreateWorkItemsSource called')
+        work_items_source = api.update_project_state_maps(update_project_state_maps_input=update_project_state_maps_input)
         return UpdateProjectStateMaps(
             success=True
         )

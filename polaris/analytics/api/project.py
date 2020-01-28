@@ -11,6 +11,7 @@
 from polaris.common import db
 from polaris.analytics.db.model import Project
 from polaris.utils.exceptions import ProcessingException
+from polaris.analytics  import api
 
 
 def archive_project(project_key, join_this=None):
@@ -21,3 +22,7 @@ def archive_project(project_key, join_this=None):
             return project.name
         else:
             raise ProcessingException(f'Could not find project with key: {project_key}')
+
+def update_project_state_maps(update_project_state_maps_input, channel=None):
+        work_items_source_state_map = api.update_project_state_maps(update_project_state_maps_input)
+        return work_items_source_state_map

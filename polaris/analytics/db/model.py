@@ -601,6 +601,11 @@ class WorkItemsSource(Base):
             for entry in entries
         ]
 
+    def get_state_type(self, state):
+        state_map = find(self.state_maps, lambda sm: sm.state == state)
+        if state_map is not None:
+            return state_map.state_type
+
 
 work_items_sources = WorkItemsSource.__table__
 Index('ix_analytics_work_items_sources_commit_mapping_scope',
@@ -628,6 +633,10 @@ class WorkItem(Base):
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
     next_state_seq_no = Column(Integer, nullable=False, server_default='0')
+
+    # calculated time stamps
+    completed_at = Column(DateTime, nullable=True)
+
 
 
     # Work Items Source relationship

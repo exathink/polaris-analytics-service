@@ -53,16 +53,19 @@ def work_item_source_common():
 def work_items_setup(setup_repo_org):
     _, organization_id = setup_repo_org
     with db.orm_session() as session:
-        session.add(
-            WorkItemsSource(
+        work_items_source = WorkItemsSource(
                 organization_id=organization_id,
                 organization_key=rails_organization_key,
                 **work_item_source_common()
             )
+        work_items_source.init_state_map()
+        session.add(
+            work_items_source
         )
 
     yield rails_organization_key, rails_work_items_source_key
 
+    db.connection().execute("delete from analytics.work_items_source_state_map")
     db.connection().execute("delete from analytics.work_item_state_transitions")
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")

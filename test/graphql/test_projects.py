@@ -222,4 +222,4 @@ class TestUpdateProjectStateMaps:
         assert not result
         assert 'errors' in response
         message = response['errors'][0]['message']
-        assert (message == "Cannot process with duplicate states in the input")
+        assert (message == "Invalid state map: duplicate states in the input")

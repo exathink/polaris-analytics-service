@@ -21,6 +21,7 @@ from polaris.common import db
 from polaris.common.enums import AccountRoles, OrganizationRoles, WorkTrackingIntegrationType
 from polaris.analytics.db.enums import WorkItemsSourceStateType
 from polaris.utils.collections import find
+from polaris.utils.exceptions import ProcessingException
 
 logger = getLogger('polaris.analytics.db.model')
 Base = db.polaris_declarative_base(schema='analytics')
@@ -587,6 +588,11 @@ class WorkItemsSource(Base):
             return []
 
     def init_state_map(self, state_map_entries=None):
+        if state_map_entries is not None:
+            state_maps_keys = [mapping['state'] for mapping in state_map_entries]
+            if len(set(state_maps_keys)) < len(state_maps_keys):
+                raise ProcessingException(f'Invalid state map: duplicate states in the input')
+
         entries = state_map_entries or self.get_default_state_map()
         self.state_maps = [
             WorkItemsSourceStateMap(**entry)

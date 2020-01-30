@@ -11,10 +11,12 @@
 import graphene
 import logging
 from polaris.common import db
-from polaris.analytics.api import project
 from polaris.analytics import api
+from polaris.analytics.db.enums import WorkItemsStateType
 
 logger = logging.getLogger('polaris.analytics.mutations')
+
+WorkItemsStateType = graphene.Enum.from_enum(WorkItemsStateType)
 
 
 class ArchiveProjectInput(graphene.InputObjectType):
@@ -30,7 +32,7 @@ class ArchiveProject(graphene.Mutation):
     def mutate(self, info, archive_project_input):
         with db.orm_session() as session:
             return ArchiveProject(
-                project_name=project.archive_project(archive_project_input.project_key, join_this=session)
+                project_name=api.archive_project(archive_project_input.project_key, join_this=session)
             )
 
 
@@ -38,7 +40,7 @@ class ArchiveProject(graphene.Mutation):
 
 class StateMapParams(graphene.InputObjectType):
     state = graphene.String(required=True)
-    state_type = graphene.String(required=True)
+    state_type = WorkItemsStateType(required=True)
 
 
 class WorkItemsSourceStateMap(graphene.InputObjectType):
@@ -62,7 +64,7 @@ class UpdateProjectStateMaps(graphene.Mutation):
         logger.info('UpdateProjectStateMaps called')
         with db.orm_session() as session:
             return UpdateProjectStateMaps(
-                success=project.update_project_state_maps(update_project_state_maps_input, join_this=session)
+                success=api.update_project_state_maps(update_project_state_maps_input, join_this=session)
          )
 
 

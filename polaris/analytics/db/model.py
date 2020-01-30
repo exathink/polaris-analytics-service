@@ -19,7 +19,7 @@ from sqlalchemy.orm import relationship, object_session
 
 from polaris.common import db
 from polaris.common.enums import AccountRoles, OrganizationRoles, WorkTrackingIntegrationType
-from polaris.analytics.db.enums import WorkItemsSourceStateType
+from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.utils.collections import find
 from polaris.utils.exceptions import ProcessingException
 
@@ -571,18 +571,18 @@ class WorkItemsSource(Base):
     def get_default_state_map(self):
         if self.integration_type == WorkTrackingIntegrationType.github.value:
             return [
-                dict(state='open', state_type=WorkItemsSourceStateType.open.value),
-                dict(state='closed', state_type=WorkItemsSourceStateType.complete.value)
+                dict(state='open', state_type=WorkItemsStateType.open.value),
+                dict(state='closed', state_type=WorkItemsStateType.complete.value)
             ]
         elif self.integration_type == WorkTrackingIntegrationType.pivotal.value:
             return [
-                dict(state='unscheduled', state_type=WorkItemsSourceStateType.open.value),
-                dict(state='unstarted', state_type=WorkItemsSourceStateType.open.value),
-                dict(state='planned', state_type=WorkItemsSourceStateType.open.value),
-                dict(state='started', state_type=WorkItemsSourceStateType.wip.value),
-                dict(state='finished', state_type=WorkItemsSourceStateType.wip.value),
-                dict(state='delivered', state_type=WorkItemsSourceStateType.wip.value),
-                dict(state='accepted', state_type=WorkItemsSourceStateType.complete.value)
+                dict(state='unscheduled', state_type=WorkItemsStateType.open.value),
+                dict(state='unstarted', state_type=WorkItemsStateType.open.value),
+                dict(state='planned', state_type=WorkItemsStateType.open.value),
+                dict(state='started', state_type=WorkItemsStateType.wip.value),
+                dict(state='finished', state_type=WorkItemsStateType.wip.value),
+                dict(state='delivered', state_type=WorkItemsStateType.wip.value),
+                dict(state='accepted', state_type=WorkItemsStateType.complete.value)
             ]
         else:
             return []
@@ -677,7 +677,7 @@ class WorkItemsSourceStateMap(Base):
     __tablename__ = 'work_items_source_state_map'
 
     state = Column(String, primary_key=True)
-    state_type = Column(String, nullable=False, server_default=WorkItemsSourceStateType.open.value)
+    state_type = Column(String, nullable=False, server_default=WorkItemsStateType.open.value)
 
     # Work Items Source relationship
     work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'), primary_key=True)

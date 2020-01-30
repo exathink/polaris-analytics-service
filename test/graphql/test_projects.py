@@ -153,7 +153,7 @@ class TestUpdateProjectStateMaps:
         assert not result
         assert 'errors' in response
         message = response['errors'][0]['message']
-        assert (message=="Could not find project with key: %s" %project_key)
+        assert message=="Could not find project with key: %s" %project_key
 
 
     def it_checks_if_work_items_source_belongs_to_project(self, setup_work_items_sources):
@@ -188,7 +188,7 @@ class TestUpdateProjectStateMaps:
         assert not result
         assert 'errors' in response
         message = response['errors'][0]['message']
-        assert (message == "Work item source with key: %s is not associated to project with key: %s" % (work_items_source_key, project_key))
+        assert message == "Work item source with key: %s is not associated to project with key: %s" % (work_items_source_key, project_key)
 
     def it_checks_if_work_items_source_states_have_duplicates(self, setup_work_items_sources):
         client = Client(schema)
@@ -222,4 +222,34 @@ class TestUpdateProjectStateMaps:
         assert not result
         assert 'errors' in response
         message = response['errors'][0]['message']
-        assert (message == "Invalid state map: duplicate states in the input")
+        assert message == "Invalid state map: duplicate states in the input"
+
+    def it_validates_that_state_types_have_legal_values(self, setup_work_items_sources):
+        client = Client(schema)
+        project = setup_work_items_sources
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        response = client.execute("""
+                            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                        success
+                                    }
+                                }
+                        """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="todo", stateType="opened"),
+
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'errors' in response
+        message = response['errors'][0]['message']
+        assert 'got invalid value' in message

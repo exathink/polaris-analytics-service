@@ -7,10 +7,14 @@
 # confidential.
 
 # Author: Krishna Kumar
+import logging
 
 from polaris.common import db
-from polaris.analytics.db.model import Project
+from polaris.analytics.db.model import Project, WorkItemsSource
 from polaris.utils.exceptions import ProcessingException
+from polaris.utils.collections import find
+
+logger = logging.getLogger('polaris.analytics.api.project')
 
 
 def archive_project(project_key, join_this=None):
@@ -21,3 +25,28 @@ def archive_project(project_key, join_this=None):
             return project.name
         else:
             raise ProcessingException(f'Could not find project with key: {project_key}')
+
+
+def update_project_state_maps(project_state_maps, join_this=None):
+    logger.info("Inside update_project_state_maps")
+    with db.orm_session(join_this) as session:
+
+        # Check if project exists. Not sure if this is required
+        project_key = project_state_maps.project_key
+        project = Project.find_by_project_key(session, project_key)
+        if project is None:
+            raise ProcessingException(f'Could not find project with key: {project_key}')
+
+        # Find and update corresponding work items source state maps
+        for work_items_source_state_map in project_state_maps.work_items_source_state_maps:
+            source_key = work_items_source_state_map.work_items_source_key
+
+            work_items_source = find(project.work_items_sources,
+                                     lambda work_item_source: str(work_item_source.key) == str(source_key))
+
+            if work_items_source is not None:
+                work_items_source.init_state_map(work_items_source_state_map.state_maps)
+            else:
+                raise ProcessingException(f'Work item source with key: {source_key} '
+                                          f'is not associated to project with key: {project_key}')
+    return True

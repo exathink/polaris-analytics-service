@@ -32,6 +32,7 @@ from .work_item import WorkItem
 from .summarizers import *
 
 
+
 class Query(graphene.ObjectType):
     node = NamedNode.Field()
 

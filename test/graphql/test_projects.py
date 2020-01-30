@@ -11,22 +11,26 @@
 import pytest
 import uuid
 from polaris.common import db
-from polaris.analytics.db.model import Project
+from polaris.analytics.db.model import Project, WorkItemsSource
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
+from polaris.utils.collections import find
 
 from test.fixtures.repo_org import *
+from test.constants import *
 
 test_projects = [
     dict(name='mercury', key=uuid.uuid4()),
     dict(name='venus', key=uuid.uuid4())
 ]
 
-@pytest.fixture()
+
+@pytest.yield_fixture()
 def setup_projects(setup_org):
     organization = setup_org
     for project in test_projects:
         with db.orm_session() as session:
+            session.expire_on_commit = False
             session.add(organization)
             organization.projects.append(
                 Project(
@@ -35,6 +39,30 @@ def setup_projects(setup_org):
                 )
             )
 
+    yield organization
+
+
+@pytest.yield_fixture()
+def setup_work_items_sources(setup_projects):
+    organization = setup_projects
+    project = organization.projects[0]
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        session.add(organization)
+        session.add(project)
+        project.work_items_sources.append(
+            WorkItemsSource(
+                    organization_key=str(organization.key),
+                    organization_id=organization.id,
+                    key=str(uuid.uuid4()),
+                    name='foo',
+                    integration_type='jira',
+                    work_items_source_type='repository_issues',
+                    commit_mapping_scope='repository',
+                    source_id=str(uuid.uuid4())
+            )
+        )
+    yield project
 
 
 class TestArchiveProject:
@@ -60,38 +88,33 @@ class TestArchiveProject:
 
 
 class TestUpdateProjectStateMaps:
-    def it_creates_a_github_source_state_map(self, setup_schema):
+    def it_updates_project_work_items_source_state_map(self, setup_work_items_sources):
         client = Client(schema)
-
+        project = setup_work_items_sources
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
         response = client.execute("""
-            mutation updateProjectStateMaps {
-                    updateProjectStateMaps(
-                        updateProjectStateMapsInput:{
-                            projectKey:"2b10652d-d0c2-4059-a178-060610daef62",
-                            workItemsSourceStateMaps: [
-                            {
-                                workItemsSourceKey:"afa3c667-f7d5-4806-8af1-94b531c03dc5", 
-                                stateMaps:[
-                                    {
-                                        state: "todo",
-                                        stateType: "open"
-                                    },
-                                    {
-                                        state: "doing",
-                                        stateType:"wip",
-                                    },
-                                    {
-                                        state:"done",
-                                        stateType:"complete"
-                                    }
-                                ]
-                            }
-                        ]
-                    }){
+            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
                         success
                     }
                 }
-        """)
+        """, variable_values=dict(
+                    updateProjectStateMapsInput=dict(
+                        projectKey=project_key,
+                        workItemsSourceStateMaps=[
+                         dict(
+                             workItemsSourceKey=work_items_source_key,
+                             stateMaps=[
+                                 dict(state='todo', stateType=open),
+                                 dict(state="doing", stateType="wip"),
+                                 dict(state="done", stateType="complete")
+                             ]
+                         )
+                        ]
+                    )
+        )
+        )
         assert 'data' in response
         result = response['data']['updateProjectStateMaps']
         assert result

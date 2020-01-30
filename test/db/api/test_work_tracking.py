@@ -576,7 +576,7 @@ class TestImportProject:
             f" inner join analytics.projects on projects.id = work_items_sources.project_id"
             f" inner join analytics.work_items_source_state_map on work_items_source_state_map.work_items_source_id = work_items_sources.id"
             f" where projects.key='{project_key}'"
-        ).scalar() == 2
+        ).scalar() == 3
 
     def it_initializes_default_state_map_for_new_pivotal_work_item_sources(self, setup_org):
         organization = setup_org
@@ -609,7 +609,7 @@ class TestImportProject:
             f" inner join analytics.projects on projects.id = work_items_sources.project_id"
             f" inner join analytics.work_items_source_state_map on work_items_source_state_map.work_items_source_id = work_items_sources.id"
             f" where projects.key='{project_key}'"
-        ).scalar() == 7
+        ).scalar() == 8
 
     def it_allows_the_state_map_to_be_reinitialized(self, setup_org):
         organization = setup_org

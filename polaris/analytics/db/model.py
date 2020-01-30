@@ -571,11 +571,13 @@ class WorkItemsSource(Base):
     def get_default_state_map(self):
         if self.integration_type == WorkTrackingIntegrationType.github.value:
             return [
+                dict(state='created', state_type=WorkItemsStateType.open.value),
                 dict(state='open', state_type=WorkItemsStateType.open.value),
                 dict(state='closed', state_type=WorkItemsStateType.complete.value)
             ]
         elif self.integration_type == WorkTrackingIntegrationType.pivotal.value:
             return [
+                dict(state='created', state_type=WorkItemsStateType.open.value),
                 dict(state='unscheduled', state_type=WorkItemsStateType.open.value),
                 dict(state='unstarted', state_type=WorkItemsStateType.open.value),
                 dict(state='planned', state_type=WorkItemsStateType.open.value),
@@ -588,12 +590,12 @@ class WorkItemsSource(Base):
             return []
 
     def init_state_map(self, state_map_entries=None):
-        if state_map_entries is not None:
-            state_maps_keys = [mapping['state'] for mapping in state_map_entries]
+        entries = state_map_entries or self.get_default_state_map()
+        if len(entries) > 0:
+            state_maps_keys = [mapping['state'] for mapping in entries]
             if len(set(state_maps_keys)) < len(state_maps_keys):
                 raise ProcessingException(f'Invalid state map: duplicate states in the input')
 
-        entries = state_map_entries or self.get_default_state_map()
         self.state_maps = [
             WorkItemsSourceStateMap(**entry)
             for entry in entries

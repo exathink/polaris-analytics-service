@@ -43,6 +43,7 @@ class StateMapParams(graphene.InputObjectType):
 
 class WorkItemsSourceStateMap(graphene.InputObjectType):
     work_items_source_key = graphene.String(required=True)
+    #TODO Find out how to check for unique keys in stateMapParams here
     state_maps = graphene.List(StateMapParams)
 
 

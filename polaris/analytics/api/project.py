@@ -40,10 +40,15 @@ def update_project_state_maps(project_state_maps, join_this=None):
         # Find and update corresponding work items source state maps
         for work_items_source_state_map in project_state_maps.work_items_source_state_maps:
             source_key = work_items_source_state_map.work_items_source_key
+            # Checking for unique states in state mapping. Might be better to do in input class
+            state_maps = work_items_source_state_map.state_maps
+            state_maps_keys = [mapping['state'] for mapping in state_maps]
+            if len(set(state_maps_keys)) < len(state_maps_keys):
+                raise ProcessingException(f'Cannot process with duplicate states in the input')
             work_items_source = find(project.work_items_sources, lambda work_item_source: str(work_item_source.key) == str(source_key))
             logger.info(work_items_source)
             if work_items_source is not None:
-                work_items_source.init_state_map(work_items_source_state_map.state_maps)
+                work_items_source.init_state_map(state_maps)
             else:
                 raise ProcessingException(f'Work item source with key: {source_key} is not associated to project with key: {project_key}')
     return True

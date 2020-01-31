@@ -16,6 +16,8 @@ from polaris.utils.exceptions import ProcessingException
 from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_
 from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
+from polaris.analytics.db.enums import WorkItemsStateType
+
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
@@ -120,6 +122,9 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
             )
             work_items_temp.create(session.connection(), checkfirst=True)
 
+            # Update the completed at date for each work item based on the state map of the work_items_source
+            work_item_summaries = update_completion_dates(work_items_source, work_item_summaries)
+
             session.connection().execute(
                 insert(work_items_temp).values([
                     dict(
@@ -136,6 +141,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             'state',
                             'created_at',
                             'updated_at',
+                            'completed_at',
                             'source_id'
                         ])
                     )
@@ -166,6 +172,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                         'state',
                         'created_at',
                         'updated_at',
+                        'completed_at',
                         'work_items_source_id',
                         'source_id',
                         'next_state_seq_no'
@@ -183,6 +190,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             work_items_temp.c.state,
                             work_items_temp.c.created_at,
                             work_items_temp.c.updated_at,
+                            work_items_temp.c.completed_at,
                             work_items_temp.c.work_items_source_id,
                             work_items_temp.c.source_id,
                             # We initialize the next state seq no as 2 since
@@ -244,6 +252,17 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
     return dict(
         insert_count=inserted
     )
+
+
+def update_completion_dates(work_items_source, work_item_summaries):
+    return [
+        dict(
+            completed_at=work_item['updated_at']
+            if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.complete.value else None,
+            **work_item
+        )
+        for work_item in work_item_summaries
+    ]
 
 
 # ---------------------------
@@ -752,6 +771,8 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
             )
             work_items_temp.create(session.connection(), checkfirst=True)
 
+            work_item_summaries = update_completion_dates(work_items_source, work_item_summaries)
+
             session.connection().execute(
                 insert(work_items_temp).values([
                     dict_select(
@@ -763,7 +784,8 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                             'is_bug',
                             'tags',
                             'state',
-                            'updated_at'
+                            'updated_at',
+                            'completed_at'
                         ]
                     )
                     for work_item in work_item_summaries
@@ -824,7 +846,8 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     is_bug=work_items_temp.c.is_bug,
                     tags=work_items_temp.c.tags,
                     state=work_items_temp.c.state,
-                    updated_at=work_items_temp.c.updated_at
+                    updated_at=work_items_temp.c.updated_at,
+                    completed_at=work_items_temp.c.completed_at
                 ).where(
                     work_items_temp.c.key == work_items.c.key
                 )

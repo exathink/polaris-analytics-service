@@ -123,7 +123,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
             work_items_temp.create(session.connection(), checkfirst=True)
 
             # Update the completed at date for each work item based on the state map of the work_items_source
-            work_item_summaries = update_completion_dates(work_items_source, work_item_summaries)
+            work_item_summaries = update_work_item_calculated_fields(work_items_source, work_item_summaries)
 
             session.connection().execute(
                 insert(work_items_temp).values([
@@ -139,6 +139,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             'is_bug',
                             'tags',
                             'state',
+                            'state_type',
                             'created_at',
                             'updated_at',
                             'completed_at',
@@ -170,6 +171,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                         'is_bug',
                         'tags',
                         'state',
+                        'state_type',
                         'created_at',
                         'updated_at',
                         'completed_at',
@@ -188,6 +190,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             work_items_temp.c.is_bug,
                             work_items_temp.c.tags,
                             work_items_temp.c.state,
+                            work_items_temp.c.state_type,
                             work_items_temp.c.created_at,
                             work_items_temp.c.updated_at,
                             work_items_temp.c.completed_at,
@@ -254,9 +257,11 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
     )
 
 
-def update_completion_dates(work_items_source, work_item_summaries):
+def update_work_item_calculated_fields(work_items_source, work_item_summaries):
+
     return [
         dict(
+            state_type=work_items_source.get_state_type(work_item['state']),
             completed_at=work_item['updated_at']
             if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.complete.value else None,
             **work_item
@@ -771,7 +776,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
             )
             work_items_temp.create(session.connection(), checkfirst=True)
 
-            work_item_summaries = update_completion_dates(work_items_source, work_item_summaries)
+            work_item_summaries = update_work_item_calculated_fields(work_items_source, work_item_summaries)
 
             session.connection().execute(
                 insert(work_items_temp).values([
@@ -784,6 +789,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                             'is_bug',
                             'tags',
                             'state',
+                            'state_type',
                             'updated_at',
                             'completed_at'
                         ]
@@ -846,6 +852,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     is_bug=work_items_temp.c.is_bug,
                     tags=work_items_temp.c.tags,
                     state=work_items_temp.c.state,
+                    state_type=work_items_temp.c.state_type,
                     updated_at=work_items_temp.c.updated_at,
                     completed_at=work_items_temp.c.completed_at
                 ).where(

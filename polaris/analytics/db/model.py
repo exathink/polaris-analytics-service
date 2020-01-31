@@ -634,7 +634,13 @@ class WorkItem(Base):
     updated_at = Column(DateTime)
     next_state_seq_no = Column(Integer, nullable=False, server_default='0')
 
-    # calculated time stamps
+    # calculated fields
+
+    # state_type based on current state value.
+    state_type = Column(String, nullable=True)
+
+    # if state type of current state is 'completed' this is the
+    # source time stamp of the update that put it in that state else it is None.
     completed_at = Column(DateTime, nullable=True)
 
 

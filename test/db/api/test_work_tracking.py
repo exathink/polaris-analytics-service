@@ -134,6 +134,49 @@ class TestImportWorkItems:
         assert result['insert_count'] == 1
         assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 11
 
+    def it_updates_state_types_for_added_items(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, [
+            dict(
+                key=uuid.uuid4().hex,
+                name='alpha',
+                display_id='alpha',
+                work_item_type='issue',
+                is_bug=True,
+                url='http://foo.com',
+                tags=['ares2'],
+                description='An issue here',
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                state='open',
+                source_id=str(uuid.uuid4())
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='beta',
+                display_id='beta',
+                work_item_type='issue',
+                is_bug=True,
+                url='http://foo.com',
+                tags=['ares2'],
+                description='An issue here',
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                state='closed',
+                source_id=str(uuid.uuid4())
+            )
+        ])
+        assert result['success']
+        # alpha should be open.
+        assert db.connection().execute(
+            "select name from analytics.work_items where state_type='open'"
+        ).scalar() == 'alpha'
+        # beta should be closed
+        assert db.connection().execute(
+            "select name from analytics.work_items where state_type='complete'").scalar() == 'beta'
+
+
     def it_updates_completion_dates_for_added_items(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
 
@@ -242,6 +285,19 @@ class TestUpdateWorkItems:
         ])
         assert result['success']
         assert db.connection().execute("select count(id) from analytics.work_items where state='foo'").scalar() == 2
+
+    def it_updates_state_type(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(state='closed')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(id) from analytics.work_items where state_type = 'complete'").scalar() == 2
 
     def it_updates_completed_at(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup

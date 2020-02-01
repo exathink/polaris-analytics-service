@@ -8,13 +8,37 @@ Create Date: 2020-01-22 09:49:35.484005
 from alembic import op
 import sqlalchemy as sa
 from polaris.analytics.db.enums import WorkItemsStateType
-from polaris.common import db
+from polaris.common.enums import WorkTrackingIntegrationType
+from sqlalchemy.ext.declarative import declarative_base
 
 # revision identifiers, used by Alembic.
 revision = '11506ba01d30'
 down_revision = 'c74cb2b8db51'
 branch_labels = None
 depends_on = None
+
+Base = declarative_base()
+
+def get_default_state_map(integration_type):
+    if integration_type == WorkTrackingIntegrationType.github.value:
+        return [
+            dict(state='created', state_type=WorkItemsStateType.open.value),
+            dict(state='open', state_type=WorkItemsStateType.open.value),
+            dict(state='closed', state_type=WorkItemsStateType.complete.value)
+        ]
+    elif integration_type == WorkTrackingIntegrationType.pivotal.value:
+        return [
+            dict(state='created', state_type=WorkItemsStateType.open.value),
+            dict(state='unscheduled', state_type=WorkItemsStateType.open.value),
+            dict(state='unstarted', state_type=WorkItemsStateType.open.value),
+            dict(state='planned', state_type=WorkItemsStateType.open.value),
+            dict(state='started', state_type=WorkItemsStateType.wip.value),
+            dict(state='finished', state_type=WorkItemsStateType.wip.value),
+            dict(state='delivered', state_type=WorkItemsStateType.wip.value),
+            dict(state='accepted', state_type=WorkItemsStateType.complete.value)
+        ]
+    else:
+        return []
 
 
 def upgrade():
@@ -28,23 +52,36 @@ def upgrade():
     schema='analytics'
     )
 
-    state_mapping = {'created': WorkItemsStateType.open.value, 'open': WorkItemsStateType.open.value, 'closed': WorkItemsStateType.complete.value,
-               'unscheduled': WorkItemsStateType.open.value, 'unstarted': WorkItemsStateType.open.value, 'planned': WorkItemsStateType.open.value,
-               'started': WorkItemsStateType.open.value,
-               'finished': WorkItemsStateType.wip.value, 'delivered': WorkItemsStateType.wip.value, 'accepted': WorkItemsStateType.complete.value}
+    work_items_sources = sa.Table(
+        'work_items_sources', Base.metadata,
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('integration_type', sa.String()),
+        schema='analytics'
+    )
 
     conn = op.get_bind()
+    session = sa.orm.Session(bind=conn)
 
-    work_item_sources_data = conn.execute("SELECT DISTINCT work_item_state_transitions.state,  work_items_source_id from analytics.work_items_sources "
-               "INNER JOIN analytics.work_items on analytics.work_items.work_items_source_id = analytics.work_items_sources.id "
-               "INNER JOIN analytics.work_item_state_transitions ON analytics.work_items.id =  analytics.work_item_state_transitions.work_item_id  "
-               "WHERE integration_type IN ('github', 'pivotal_tracker')")
+    work_item_sources_data = session.execute(
+            sa.select([
+                work_items_sources.c.id,
+                work_items_sources.c.integration_type
+            ]).select_from(
+                work_items_sources
+            ).where(
+                work_items_sources.c.integration_type.in_(('github', 'pivotal_tracker'))
+            )
+    )
 
-    results = work_item_sources_data.fetchall()
+    state_maps_data = []
+    for work_item_source in work_item_sources_data:
+        default_state_map = get_default_state_map(work_item_source.integration_type)
+        state_maps_data.extend([dict(
+            work_items_source_id=work_item_source.id,
+            state=mapping["state"],
+            state_type=mapping["state_type"]) for mapping in default_state_map])
 
-    work_items_source_state_map_entries = [
-        {'state': str(row[0]), 'state_type': state_mapping[str(row[0])], 'work_items_source_id': str(row[1])} for row in results]
-    op.bulk_insert(work_items_source_state_map, work_items_source_state_map_entries)
+    op.bulk_insert(work_items_source_state_map, state_maps_data)
 
 def downgrade():
     op.drop_table('work_items_source_state_map', schema='analytics')

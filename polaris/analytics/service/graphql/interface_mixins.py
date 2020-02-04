@@ -294,6 +294,9 @@ class WorkItemInfoResolverMixin(KeyIdResolverMixin):
     def resolve_tags(self, info, **kwargs):
         return self.get_work_item_info(info, **kwargs).tags
 
+    def resolve_state_type(self, info, **kwargs):
+        return self.get_work_item_info(info, **kwargs).state_type
+
 
 class WorkItemEventSpanResolverMixin(KeyIdResolverMixin):
     work_item_event_span_tuple_type = create_tuple(WorkItemEventSpan)

@@ -107,9 +107,9 @@ class TestUpdateProjectStateMaps:
                          dict(
                              workItemsSourceKey=work_items_source_key,
                              stateMaps=[
-                                 dict(state="todo", stateType=WorkItemsStateType.open),
-                                 dict(state="doing", stateType=WorkItemsStateType.wip),
-                                 dict(state="done", stateType=WorkItemsStateType.complete)
+                                 dict(state="todo", stateType=WorkItemsStateType.open.value),
+                                 dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                                 dict(state="done", stateType=WorkItemsStateType.complete.value)
                              ]
                          )
                         ]
@@ -140,9 +140,9 @@ class TestUpdateProjectStateMaps:
                     dict(
                         workItemsSourceKey=work_items_source_key,
                         stateMaps=[
-                            dict(state="todo", stateType=WorkItemsStateType.open),
-                            dict(state="doing", stateType=WorkItemsStateType.wip),
-                            dict(state="done", stateType=WorkItemsStateType.complete)
+                            dict(state="todo", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.complete.value)
                         ]
                     )
                 ]
@@ -175,9 +175,9 @@ class TestUpdateProjectStateMaps:
                     dict(
                         workItemsSourceKey=work_items_source_key,
                         stateMaps=[
-                            dict(state="todo", stateType=WorkItemsStateType.open),
-                            dict(state="doing", stateType=WorkItemsStateType.wip),
-                            dict(state="done", stateType=WorkItemsStateType.complete)
+                            dict(state="todo", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.complete.value)
                         ]
                     )
                 ]
@@ -209,9 +209,9 @@ class TestUpdateProjectStateMaps:
                     dict(
                         workItemsSourceKey=work_items_source_key,
                         stateMaps=[
-                            dict(state="todo", stateType=WorkItemsStateType.open),
-                            dict(state="todo", stateType=WorkItemsStateType.wip),
-                            dict(state="done", stateType=WorkItemsStateType.complete)
+                            dict(state="todo", stateType=WorkItemsStateType.open.value),
+                            dict(state="todo", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.complete.value)
                         ]
                     )
                 ]

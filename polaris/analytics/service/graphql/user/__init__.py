@@ -13,14 +13,12 @@ import graphene
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import UserInfo, ScopedRole
-from ..interface_mixins import NamedNodeResolverMixin, UserInfoResolverMixin, ScopedRoleResolverMixin
+from ..interface_mixins import NamedNodeResolverMixin
 from .selectable import UserNode, UserUserInfo
 
 
 class User(
     NamedNodeResolverMixin,
-    UserInfoResolverMixin,
-    ScopedRoleResolverMixin,
     Selectable
 ):
     class Meta:

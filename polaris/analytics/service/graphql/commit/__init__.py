@@ -13,15 +13,82 @@ import graphene
 
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.connection_utils import CountableConnection
+from polaris.graphql.utils import create_tuple, init_tuple
 
-
-from ..interfaces import CommitInfo
-from ..interface_mixins import CommitInfoResolverMixin, KeyIdResolverMixin
+from ..interfaces import CommitInfo,CommitChangeStats, FileTypesSummary, \
+    CommitWorkItemsSummary
+from ..interface_mixins import KeyIdResolverMixin
 
 from .selectables import CommitNode, CommitFileTypesSummary
 
 
+class CommitInfoResolverMixin(KeyIdResolverMixin):
+    commit_tuple = create_tuple(CommitInfo)
+    stats_tuple = create_tuple(CommitChangeStats)
+    no_stats = dict(files=0, lines=0, insertions=0, deletions=0)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.commit_info = init_tuple(self.commit_tuple, **kwargs)
+
+    def resolve_commit(self, info, **kwargs):
+        return self.resolve_interface_for_instance(
+            interface=['Commit'],
+            params=self.get_instance_query_params(),
+            **kwargs
+        )
+
+    def get_commit(self, info, **kwargs):
+        if self.commit_info is None:
+            self.commit_info = self.resolve_commit(info, **kwargs)
+        return self.commit_info
+
+    def resolve_commit_hash(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).commit_hash
+
+    def resolve_repository(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).repository
+
+    def resolve_repository_key(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).repository_key
+
+    def resolve_repository_url(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).repository_url
+
+    def resolve_commit_date(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).commit_date
+
+    def resolve_committer(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).committer
+
+    def resolve_committer_key(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).committer_key
+
+    def resolve_author_date(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).author_date
+
+    def resolve_author(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).author
+
+    def resolve_author_key(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).author_key
+
+    def resolve_commit_message(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).commit_message
+
+    def resolve_num_parents(self, info, **kwargs):
+        return self.get_commit(info, **kwargs).num_parents
+
+    def resolve_stats(self, info, **kwargs):
+        return init_tuple(self.stats_tuple, **(self.get_commit(info, **kwargs).stats or self.no_stats))
+
+    def resolve_file_types_summary(self, info, **kwargs):
+        file_types_summary = self.get_commit(info, **kwargs).file_types_summary or []
+        return [FileTypesSummary(**summary) for summary in file_types_summary]
+
+    def resolve_work_items_summaries(self, info, **kwargs):
+        work_items_summaries = self.get_commit(info, **kwargs).work_items_summaries or []
+        return [CommitWorkItemsSummary(**summary) for summary in work_items_summaries]
 
 
 class Commit(

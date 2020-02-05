@@ -10,7 +10,7 @@
 
 import graphene
 
-from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin, WorkItemInfoResolverMixin
+from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition,\
     WorkItemCommitInfo
@@ -138,7 +138,8 @@ class WorkItemCommitsConnectionMixin(ConnectionResolverMixin):
 class WorkItem(
     # interface resolver mixins
     NamedNodeResolverMixin,
-    WorkItemInfoResolverMixin,
+
+    # Connection Mixins
     WorkItemEventsConnectionMixin,
     CommitsConnectionMixin,
     # selectable

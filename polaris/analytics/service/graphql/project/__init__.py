@@ -15,16 +15,7 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan
-from ..interface_mixins import \
-    KeyIdResolverMixin, \
-    NamedNodeResolverMixin, \
-    CommitSummaryResolverMixin, \
-    ContributorCountResolverMixin, \
-    RepositoryCountResolverMixin, \
-    OrganizationRefResolverMixin, \
-    ArchivedStatusResolverMixin, \
-    WorkItemEventSpanResolverMixin
-
+from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -67,12 +58,7 @@ from polaris.graphql.connection_utils import CountableConnection
 class Project(
     # interface mixins
     NamedNodeResolverMixin,
-    CommitSummaryResolverMixin,
-    ContributorCountResolverMixin,
-    RepositoryCountResolverMixin,
-    OrganizationRefResolverMixin,
-    ArchivedStatusResolverMixin,
-    WorkItemEventSpanResolverMixin,
+
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,

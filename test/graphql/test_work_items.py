@@ -21,7 +21,8 @@ work_items_common = dict(
     tags=['ares2'],
     state='open',
     description='foo',
-    source_id=str(uuid.uuid4())
+    source_id=str(uuid.uuid4()),
+    state_type='open'
 )
 
 
@@ -162,6 +163,7 @@ class TestWorkItemInstance:
                     updatedAt
                     url
                     tags
+                    stateType
                 }
             } 
         """
@@ -175,6 +177,7 @@ class TestWorkItemInstance:
         assert work_item['updatedAt'] == get_date("2018-12-03").isoformat()
         assert work_item['url'] == work_items_common['url']
         assert work_item['tags'] == work_items_common['tags']
+        assert work_item['stateType'] == work_items_common['state_type']
 
     class TestWorkItemInstanceEvents:
 
@@ -349,7 +352,8 @@ class TestOrganizationWorkItems:
                               createdAt
                               updatedAt
                               url
-                              tags  
+                              tags
+                              stateType
                             }
                         }
                     }
@@ -369,6 +373,7 @@ class TestOrganizationWorkItems:
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
+            assert node['stateType']
 
     def it_supports_paging(self, work_items_fixture):
         work_item_key, _, _ = work_items_fixture
@@ -386,7 +391,8 @@ class TestOrganizationWorkItems:
                               createdAt
                               updatedAt
                               url
-                              tags  
+                              tags
+                              stateType 
                             }
                         }
                     }
@@ -510,7 +516,8 @@ class TestOrganizationWorkItemEvents:
                                 createdAt
                                 updatedAt
                                 url
-                                tags  
+                                tags
+                                stateType
                             }
                         }
                     }
@@ -530,6 +537,7 @@ class TestOrganizationWorkItemEvents:
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
+            assert node['stateType']
 
 
     def it_implements_the_work_item_source_ref_interface(self, setup_work_item_transitions):
@@ -734,7 +742,8 @@ class TestOrganizationWorkItemCommits:
                                 createdAt
                                 updatedAt
                                 url
-                                tags  
+                                tags
+                                stateType
                             }
                         }
                     }
@@ -754,6 +763,7 @@ class TestOrganizationWorkItemCommits:
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
+            assert node['stateType']
 
     def it_implements_the_work_item_commit_info_interface(self, setup_work_item_transitions):
         client = Client(schema)

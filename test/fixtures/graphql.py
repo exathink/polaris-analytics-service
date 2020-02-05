@@ -169,6 +169,23 @@ def create_work_items(organization, source_data, items_data):
         session.add(source)
         return source
 
+def create_project_work_items(organization, project, source_data, items_data):
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        source = WorkItemsSource(
+            key=uuid.uuid4().hex,
+            organization_key=organization.key,
+            organization_id=organization.id,
+            project_id=project.id,
+            **source_data
+        )
+        source.work_items.extend([
+            WorkItem(**item)
+            for item in items_data
+        ])
+        session.add(source)
+        return source
+
 
 def create_transitions(work_item_key, transitions):
     with db.orm_session() as session:

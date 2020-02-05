@@ -46,6 +46,7 @@ def work_item_event_columns(work_items, work_item_state_transitions):
         work_items.c.work_item_type,
         work_items.c.url,
         work_items.c.state,
+        work_items.c.state_type,
         work_items.c.tags,
         work_items.c.created_at,
         work_items.c.updated_at,

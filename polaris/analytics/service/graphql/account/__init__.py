@@ -20,7 +20,7 @@ from .selectables import AccountNode, AccountCommitSummary, AccountUserInfo, Acc
     AllAccountNodes, AccountUserNodes
 
 from ..contributor import ContributorsConnectionMixin
-from ..interface_mixins import AccountInfoResolverMixin, OwnerInfoResolverMixin, UserInfoResolverMixin, NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin
+from ..interface_mixins import NamedNodeResolverMixin
 from ..interfaces import AccountInfo, CommitSummary, ContributorCount, UserInfo, OwnerInfo
 from ..organization import OrganizationsConnectionMixin, RecentlyActiveOrganizationsConnectionMixin
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
@@ -31,11 +31,7 @@ from ..user import UsersConnectionMixin
 class Account(
     # Interface Mixins
     NamedNodeResolverMixin,
-    AccountInfoResolverMixin,
-    UserInfoResolverMixin,
-    CommitSummaryResolverMixin,
-    ContributorCountResolverMixin,
-    OwnerInfoResolverMixin,
+
     # ConnectionMixins
     OrganizationsConnectionMixin,
     ProjectsConnectionMixin,

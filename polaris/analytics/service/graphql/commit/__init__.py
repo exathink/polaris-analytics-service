@@ -13,15 +13,34 @@ import graphene
 
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.connection_utils import CountableConnection
+from polaris.graphql.utils import create_tuple, init_tuple
 
-
-from ..interfaces import CommitInfo
-from ..interface_mixins import CommitInfoResolverMixin, KeyIdResolverMixin
+from ..interfaces import CommitInfo, CommitChangeStats, FileTypesSummary, \
+    CommitWorkItemsSummary
+from ..interface_mixins import KeyIdResolverMixin
 
 from .selectables import CommitNode, CommitFileTypesSummary
 
 
+class CommitInfoResolverMixin(KeyIdResolverMixin):
+    commit_tuple = create_tuple(CommitInfo)
+    stats_tuple = create_tuple(CommitChangeStats)
+    no_stats = dict(files=0, lines=0, insertions=0, deletions=0)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.commit_info = init_tuple(self.commit_tuple, **kwargs)
+
+    def resolve_stats(self, info, **kwargs):
+        return init_tuple(self.stats_tuple, **(self.commit_info.stats or self.no_stats))
+
+    def resolve_file_types_summary(self, info, **kwargs):
+        file_types_summary = self.commit_info.file_types_summary or []
+        return [FileTypesSummary(**summary) for summary in file_types_summary]
+
+    def resolve_work_items_summaries(self, info, **kwargs):
+        work_items_summaries = self.commit_info.work_items_summaries or []
+        return [CommitWorkItemsSummary(**summary) for summary in work_items_summaries]
 
 
 class Commit(
@@ -53,8 +72,8 @@ class Commits(
     class Meta:
         node = Commit
 
-class CommitsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
+class CommitsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
     commits = Commit.ConnectionField(
         before=graphene.Argument(
             graphene.DateTime, required=False,

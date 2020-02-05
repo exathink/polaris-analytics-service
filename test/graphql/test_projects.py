@@ -15,6 +15,7 @@ from polaris.analytics.db.model import Project, WorkItemsSource
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
 from polaris.utils.collections import find
+from polaris.analytics.db.enums import WorkItemsStateType
 
 from test.fixtures.repo_org import *
 from test.constants import *
@@ -106,9 +107,9 @@ class TestUpdateProjectStateMaps:
                          dict(
                              workItemsSourceKey=work_items_source_key,
                              stateMaps=[
-                                 dict(state="todo", stateType="open"),
-                                 dict(state="doing", stateType="wip"),
-                                 dict(state="done", stateType="complete")
+                                 dict(state="todo", stateType=WorkItemsStateType.open.value),
+                                 dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                                 dict(state="done", stateType=WorkItemsStateType.complete.value)
                              ]
                          )
                         ]
@@ -139,9 +140,9 @@ class TestUpdateProjectStateMaps:
                     dict(
                         workItemsSourceKey=work_items_source_key,
                         stateMaps=[
-                            dict(state="todo", stateType="open"),
-                            dict(state="doing", stateType="wip"),
-                            dict(state="done", stateType="complete")
+                            dict(state="todo", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.complete.value)
                         ]
                     )
                 ]
@@ -174,9 +175,9 @@ class TestUpdateProjectStateMaps:
                     dict(
                         workItemsSourceKey=work_items_source_key,
                         stateMaps=[
-                            dict(state="todo", stateType="open"),
-                            dict(state="doing", stateType="wip"),
-                            dict(state="done", stateType="complete")
+                            dict(state="todo", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.complete.value)
                         ]
                     )
                 ]
@@ -208,9 +209,9 @@ class TestUpdateProjectStateMaps:
                     dict(
                         workItemsSourceKey=work_items_source_key,
                         stateMaps=[
-                            dict(state="todo", stateType="open"),
-                            dict(state="todo", stateType="wip"),
-                            dict(state="done", stateType="complete")
+                            dict(state="todo", stateType=WorkItemsStateType.open.value),
+                            dict(state="todo", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.complete.value)
                         ]
                     )
                 ]

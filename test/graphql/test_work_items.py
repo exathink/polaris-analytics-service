@@ -21,7 +21,8 @@ work_items_common = dict(
     tags=['ares2'],
     state='open',
     description='foo',
-    source_id=str(uuid.uuid4())
+    source_id=str(uuid.uuid4()),
+    state_type='open'
 )
 
 
@@ -82,6 +83,66 @@ def work_items_fixture(commits_fixture):
     create_test_commits(test_commits)
     create_work_item_commits(new_key, map(lambda commit: commit['key'], test_commits))
     yield new_key, test_commit_key, new_work_items
+
+@pytest.yield_fixture
+def project_fixture(commits_fixture):
+    organization, _, repositories, _ = commits_fixture
+    project = organization.projects[0]
+    test_repo = repositories['alpha']
+    new_key = uuid.uuid4()
+    new_work_items = [
+        dict(
+            key=new_key.hex,
+            name='Issue 1',
+            display_id='1000',
+            created_at=get_date("2018-12-02"),
+            updated_at=get_date("2018-12-03"),
+            **work_items_common
+        ),
+        dict(
+            key=uuid.uuid4().hex,
+            name='Issue 2',
+            display_id='2000',
+            created_at=get_date("2018-12-03"),
+            updated_at=get_date("2018-12-04"),
+            **work_items_common
+        ),
+
+    ]
+    create_project_work_items(
+        organization,
+        project,
+        source_data=dict(
+            integration_type='github',
+            commit_mapping_scope='repository',
+            commit_mapping_scope_key=test_repo.key,
+            **work_items_source_common
+        ),
+        items_data=new_work_items
+    )
+    test_commit_source_id = 'XXXXXX'
+    test_commit_key = uuid.uuid4()
+    test_commits = [
+        dict(
+            repository_id=test_repo.id,
+            key=test_commit_key.hex,
+            source_commit_id=test_commit_source_id,
+            commit_message="Another change. Fixes issue #1000",
+            author_date=get_date("2018-12-03"),
+            **commits_common_fields(commits_fixture)
+        ),
+        dict(
+            repository_id=test_repo.id,
+            key=uuid.uuid4().hex,
+            source_commit_id='YYYYYY',
+            commit_message="Another change. Fixes issue #2000",
+            author_date=get_date("2018-12-03"),
+            **commits_common_fields(commits_fixture)
+        )
+    ]
+    create_test_commits(test_commits)
+    create_work_item_commits(new_key, map(lambda commit: commit['key'], test_commits))
+    yield new_key, test_commit_key, new_work_items,project
 
 
 @pytest.yield_fixture
@@ -162,6 +223,7 @@ class TestWorkItemInstance:
                     updatedAt
                     url
                     tags
+                    stateType
                 }
             } 
         """
@@ -175,6 +237,7 @@ class TestWorkItemInstance:
         assert work_item['updatedAt'] == get_date("2018-12-03").isoformat()
         assert work_item['url'] == work_items_common['url']
         assert work_item['tags'] == work_items_common['tags']
+        assert work_item['stateType'] == work_items_common['state_type']
 
     class TestWorkItemInstanceEvents:
 
@@ -349,7 +412,8 @@ class TestOrganizationWorkItems:
                               createdAt
                               updatedAt
                               url
-                              tags  
+                              tags
+                              stateType
                             }
                         }
                     }
@@ -369,6 +433,46 @@ class TestOrganizationWorkItems:
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
+            assert node['stateType']
+
+    def it_implements_the_project_work_item_info_interface(self, project_fixture):
+        _,_,_,project = project_fixture
+        client = Client(schema)
+        query = """
+            query getProjectWorkItems($project_key:String!) {
+                project(key: $project_key) {
+                    workItems {
+                        edges {
+                            node {
+                              description
+                              displayId
+                              state
+                              workItemType
+                              createdAt
+                              updatedAt
+                              url
+                              tags
+                              stateType
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        edges = result['data']['project']['workItems']['edges']
+        assert len(edges) == 2
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['description']
+            assert node['displayId']
+            assert node['state']
+            assert node['workItemType']
+            assert node['tags']
+            assert node['url']
+            assert node['updatedAt']
+            assert node['createdAt']
+            assert node['stateType']
 
     def it_supports_paging(self, work_items_fixture):
         work_item_key, _, _ = work_items_fixture
@@ -386,7 +490,8 @@ class TestOrganizationWorkItems:
                               createdAt
                               updatedAt
                               url
-                              tags  
+                              tags
+                              stateType 
                             }
                         }
                     }
@@ -510,7 +615,8 @@ class TestOrganizationWorkItemEvents:
                                 createdAt
                                 updatedAt
                                 url
-                                tags  
+                                tags
+                                stateType
                             }
                         }
                     }
@@ -530,6 +636,7 @@ class TestOrganizationWorkItemEvents:
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
+            assert node['stateType']
 
 
     def it_implements_the_work_item_source_ref_interface(self, setup_work_item_transitions):
@@ -734,7 +841,8 @@ class TestOrganizationWorkItemCommits:
                                 createdAt
                                 updatedAt
                                 url
-                                tags  
+                                tags
+                                stateType
                             }
                         }
                     }
@@ -754,6 +862,7 @@ class TestOrganizationWorkItemCommits:
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
+            assert node['stateType']
 
     def it_implements_the_work_item_commit_info_interface(self, setup_work_item_transitions):
         client = Client(schema)

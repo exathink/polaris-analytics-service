@@ -18,8 +18,7 @@ from .selectables import \
     ContributorCumulativeCommitCount
 
 from ..interfaces import CommitSummary, RepositoryCount
-from ..interface_mixins import KeyIdResolverMixin, \
-    NamedNodeResolverMixin, CommitSummaryResolverMixin, RepositoryCountResolverMixin
+from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -43,8 +42,6 @@ class ContributorMutationsMixin:
 
 class Contributor(
     NamedNodeResolverMixin,
-    CommitSummaryResolverMixin,
-    RepositoryCountResolverMixin,
     # connection mixins
     CommitsConnectionMixin,
     # Selectable fields

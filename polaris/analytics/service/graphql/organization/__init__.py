@@ -24,12 +24,7 @@ from .selectables import \
     OrganizationCommitNodes, OrganizationWorkItemNodes, OrganizationWorkItemEventNodes, OrganizationWorkItemCommitNodes,\
     OrganizationWorkItemEventSpan
 
-
-
-from ..interface_mixins import \
-    KeyIdResolverMixin, \
-    NamedNodeResolverMixin, CommitSummaryResolverMixin, ContributorCountResolverMixin, \
-    ProjectCountResolverMixin, RepositoryCountResolverMixin, WorkItemsSourceCountResolverMixin, WorkItemEventSpanResolverMixin
+from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, ProjectCount, RepositoryCount, WorkItemsSourceCount, WorkItemEventSpan
 
@@ -45,12 +40,7 @@ from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin,
 class Organization(
     # Interface Mixins
     NamedNodeResolverMixin,
-    CommitSummaryResolverMixin,
-    ContributorCountResolverMixin,
-    ProjectCountResolverMixin,
-    RepositoryCountResolverMixin,
-    WorkItemsSourceCountResolverMixin,
-    WorkItemEventSpanResolverMixin,
+
     # Connection Mixins
     ProjectsConnectionMixin,
     ContributorsConnectionMixin,

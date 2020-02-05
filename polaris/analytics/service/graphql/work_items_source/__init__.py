@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 import graphene
-from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin
+from ..interface_mixins import NamedNodeResolverMixin
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.service.graphql.interfaces import WorkTrackingIntegrationType

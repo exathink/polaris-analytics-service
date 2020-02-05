@@ -14,11 +14,7 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, Describable
-from ..interface_mixins import KeyIdResolverMixin, \
-    NamedNodeResolverMixin, CommitSummaryResolverMixin, \
-    ContributorCountResolverMixin, OrganizationRefResolverMixin, \
-    DescribableResolverMixin
-
+from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolverMixin
 from ..selectable_field_mixins import CumulativeCommitCountResolverMixin, WeeklyContributorCountsResolverMixin
@@ -41,10 +37,6 @@ from polaris.graphql.connection_utils import CountableConnection
 class Repository(
     # interface mixins
     NamedNodeResolverMixin,
-    CommitSummaryResolverMixin,
-    ContributorCountResolverMixin,
-    OrganizationRefResolverMixin,
-    DescribableResolverMixin,
     # connection mixins
     ContributorsConnectionMixin,
     RecentlyActiveContributorsConnectionMixin,

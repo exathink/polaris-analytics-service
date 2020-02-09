@@ -10,7 +10,7 @@
 
 from flask_security import current_user
 import graphene
-
+import os
 from polaris.graphql.exceptions import AccessDeniedException
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
@@ -72,11 +72,15 @@ class Account(
         return super().Field(key_is_required=False, **kwargs)
 
     @classmethod
+    def check_access(cls, key):
+        return key == str(current_user.account_key) or 'admin' in current_user.role_names
+
+    @classmethod
     def resolve_field(cls, info,  key=None, **kwargs):
         if key is None:
             key = str(current_user.account_key)
 
-        if key == str(current_user.account_key) or 'admin' in current_user.role_names:
+        if cls.check_access(key):
             return cls.resolve_instance(key, **kwargs)
         else:
             raise AccessDeniedException('Access denied for specified account')

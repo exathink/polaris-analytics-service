@@ -12,11 +12,12 @@ from datetime import datetime
 
 import pytest
 
-from polaris.analytics.db.model import Organization, Repository, Project, contributors, contributor_aliases, commits, \
+from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, commits, \
     WorkItemsSource, WorkItem, WorkItemStateTransition, Commit
 from polaris.common import db
 from polaris.utils.collections import find
 
+test_account_key = uuid.uuid4().hex
 test_organization_key = uuid.uuid4().hex
 test_contributor_key = uuid.uuid4().hex
 test_repositories = ['alpha', 'beta', 'gamma', 'delta']
@@ -35,11 +36,16 @@ def org_repo_fixture(setup_schema):
     projects = {}
     with db.orm_session() as session:
         session.expire_on_commit = False
+        account = Account(
+            key=test_account_key,
+            name='test-account'
+        )
         organization = Organization(
             key=test_organization_key,
             name='test-org',
             public=False
         )
+        account.organizations.append(organization)
 
         for repo_name in test_repositories:
             repositories[repo_name] = Repository(
@@ -72,7 +78,9 @@ def org_repo_fixture(setup_schema):
     db.connection().execute("delete from analytics.projects_repositories")
     db.connection().execute("delete from analytics.repositories")
     db.connection().execute("delete from analytics.projects")
+    db.connection().execute("delete from analytics.accounts_organizations")
     db.connection().execute("delete from analytics.organizations")
+    db.connection().execute("delete from analytics.accounts")
 
 
 @pytest.yield_fixture()

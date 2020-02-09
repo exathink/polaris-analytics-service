@@ -33,13 +33,14 @@ from ..interfaces import CommitSummary, UserInfo, \
     ContributorCount, CommitCount, AccountInfo, \
     OwnerInfo, ScopedRole
 
+from polaris.graphql.base_classes import NamedNodeResolver, ConnectionResolver, InterfaceResolver
 
 
-class AccountNode:
+class AccountNode(NamedNodeResolver):
     interfaces = (NamedNode, OwnerInfo)
 
     @staticmethod
-    def selectable(**kwargs):
+    def named_node_selector(**kwargs):
         return select([
             accounts.c.id,
             accounts.c.key.label('key'),
@@ -50,11 +51,11 @@ class AccountNode:
         ).where(accounts.c.key == bindparam('key'))
 
 
-class AllAccountNodes:
+class AllAccountNodes(ConnectionResolver):
     interfaces = (NamedNode, OwnerInfo, AccountInfo)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             accounts.c.id,
             accounts.c.key,
@@ -69,11 +70,11 @@ class AllAccountNodes:
         return [all_accounts_nodes.c.created.desc().nullslast()]
 
 
-class AccountOrganizationsNodes:
+class AccountOrganizationsNodes(ConnectionResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             organizations.c.id,
             organizations.c.key.label('key'),
@@ -87,11 +88,11 @@ class AccountOrganizationsNodes:
         ).where(accounts.c.key == bindparam('key'))
 
 
-class AccountRecentlyActiveOrganizationsNodes:
+class AccountRecentlyActiveOrganizationsNodes(ConnectionResolver):
     interfaces = (NamedNode, CommitCount)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         end_date = kwargs.get('before') or datetime.utcnow()
         window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
@@ -124,11 +125,11 @@ class AccountRecentlyActiveOrganizationsNodes:
         return [account_recently_active_organizations.c.commit_count.desc()]
 
 
-class AccountProjectsNodes:
+class AccountProjectsNodes(ConnectionResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             projects.c.id,
             projects.c.key.label('key'),
@@ -144,11 +145,11 @@ class AccountProjectsNodes:
         ).where(accounts.c.key == bindparam('key'))
 
 
-class AccountWorkItemsSourcesNodes:
+class AccountWorkItemsSourcesNodes(ConnectionResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(integration_type=None, **kwargs):
+    def connection_nodes_selector(integration_type=None, **kwargs):
         query = select([
             work_items_sources.c.id,
             work_items_sources.c.key,
@@ -167,11 +168,12 @@ class AccountWorkItemsSourcesNodes:
 
         return query
 
-class AccountRecentlyActiveProjectsNodes:
+
+class AccountRecentlyActiveProjectsNodes(ConnectionResolver):
     interfaces = (NamedNode, CommitCount)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         end_date = kwargs.get('before') or datetime.utcnow()
         window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
@@ -208,12 +210,11 @@ class AccountRecentlyActiveProjectsNodes:
         return [account_recently_active_projects.c.commit_count.desc()]
 
 
-
-class AccountRepositoriesNodes:
+class AccountRepositoriesNodes(ConnectionResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             repositories.c.id,
             repositories.c.key,
@@ -229,11 +230,11 @@ class AccountRepositoriesNodes:
         ).where(accounts.c.key == bindparam('key'))
 
 
-class AccountRecentlyActiveRepositoriesNodes:
+class AccountRecentlyActiveRepositoriesNodes(ConnectionResolver):
     interfaces = (NamedNode, CommitCount)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         end_date = kwargs.get('before') or datetime.utcnow()
         window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
@@ -266,11 +267,11 @@ class AccountRecentlyActiveRepositoriesNodes:
         return [account_most_active_repository.c.commit_count.desc()]
 
 
-class AccountContributorNodes:
+class AccountContributorNodes(ConnectionResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             contributors.c.id,
             contributors.c.key,
@@ -297,11 +298,11 @@ class AccountContributorNodes:
         ).distinct()
 
 
-class AccountUserNodes:
+class AccountUserNodes(ConnectionResolver):
     interfaces = (KeyIdNode, ScopedRole)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         # This looks different from other node resolvers since we
         # need to join users by key since it is in the auth schema.
         # the connection resolver mixin provides the join_field as the key
@@ -319,34 +320,33 @@ class AccountUserNodes:
         )
 
 
-class AccountCommitSummary:
+class AccountCommitSummary(InterfaceResolver):
     interface = CommitSummary
 
     @staticmethod
-    def selectable(account_node, **kwargs):
+    def interface_selector(account_nodes, **kwargs):
         return select([
-            account_node.c.id,
+            account_nodes.c.id,
             func.sum(repositories.c.commit_count).label('commit_count'),
             func.min(repositories.c.earliest_commit).label('earliest_commit'),
             func.max(repositories.c.latest_commit).label('latest_commit')
 
         ]).select_from(
-            account_node.outerjoin(
-                accounts_organizations, accounts_organizations.c.account_id == account_node.c.id
+            account_nodes.outerjoin(
+                accounts_organizations, accounts_organizations.c.account_id == account_nodes.c.id
             ).outerjoin(
                 organizations
             ).outerjoin(
                 repositories
             )
-        ).group_by(account_node.c.id)
+        ).group_by(account_nodes.c.id)
 
 
-
-class AccountContributorCount:
+class AccountContributorCount(InterfaceResolver):
     interface = ContributorCount
 
     @staticmethod
-    def selectable(account_node, **kwargs):
+    def interface_selector(account_node, **kwargs):
         return select([
             account_node.c.id,
             func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
@@ -365,11 +365,11 @@ class AccountContributorCount:
         ).group_by(account_node.c.id)
 
 
-class AccountUserInfo:
+class AccountUserInfo(InterfaceResolver):
     interface = UserInfo
 
     @staticmethod
-    def selectable(account_node, **kwargs):
+    def interface_selector(account_node, **kwargs):
         return select([
             account_node.c.id,
             users.c.email,
@@ -382,5 +382,3 @@ class AccountUserInfo:
         ).where(
             users.c.key == account_node.c.owner_key
         )
-
-

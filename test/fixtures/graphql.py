@@ -76,6 +76,7 @@ def org_repo_fixture(setup_schema):
     yield organization, projects, repositories
 
     db.connection().execute("delete from analytics.projects_repositories")
+    db.connection().execute("delete from analytics.commits")
     db.connection().execute("delete from analytics.repositories")
     db.connection().execute("delete from analytics.projects")
     db.connection().execute("delete from analytics.accounts_organizations")
@@ -138,7 +139,7 @@ def commits_common_fields(commits_fixture):
         committer_contributor_name='Joe Blow',
         author_date_tz_offset=0,
         author_contributor_alias_id=contributor_alias,
-        author_contributor_key=uuid.uuid4().hex,
+        author_contributor_key=test_contributor_key,
         author_contributor_name='Billy Bob'
     )
 

@@ -10,7 +10,7 @@
 
 from datetime import datetime
 from test.constants import *
-from test.fixtures.repo_org import *
+from test.fixtures.graphql import *
 
 from polaris.analytics.db import impl
 from polaris.common import db
@@ -33,12 +33,13 @@ Assign one alias to committers and assign the other two alias to authors.
 Then we test by reassigning contributor_aliases 
 """
 @pytest.fixture
-def setup_commits_for_contributor_updates(setup_repo_org):
+def setup_commits_for_contributor_updates(org_repo_fixture):
+    _, _, repositories = org_repo_fixture
     with db.create_session() as session:
         impl.import_new_commits(
             session,
-            organization_key=rails_organization_key,
-            repository_key=rails_repository_key,
+            organization_key=test_organization_key,
+            repository_key=repositories['alpha'].key,
             new_commits=[
                 dict(
                     source_commit_id='XXXX',

@@ -92,11 +92,8 @@ class TestContributors:
         assert len(contributor_commits) == 2
 
 
-    @pytest.skip
-    # TODO: Fix this test. It needs a setup that uses the api to create commits
-    # since we rely on denormalizations from that process to report contributor commit
-    # summary roll ups.
-    def it_implements_commit_summary_interface(self, test_commits_fixture):
+
+    def it_implements_commit_summary_interface(self, api_import_commits_fixture):
 
         client = Client(schema)
         response = client.execute("""

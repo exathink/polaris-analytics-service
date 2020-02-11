@@ -12,6 +12,7 @@ from datetime import datetime
 
 import pytest
 
+from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, commits, \
     WorkItemsSource, WorkItem, WorkItemStateTransition, Commit
 from polaris.common import db
@@ -151,6 +152,7 @@ def create_test_commits(test_commits):
         )
 
 
+
 def get_date(str_date):
     return datetime.strptime(str_date, "%Y-%m-%d")
 
@@ -223,3 +225,243 @@ def create_work_item_commits(work_item_key, commit_keys):
                     assert None, f"Failed to find commit with key {commit_key}"
         else:
             assert None, f"Failed to find work item with key {work_item_key}"
+
+
+work_items_common = dict(
+    is_bug=True,
+    work_item_type='issue',
+    url='http://foo.com',
+    tags=['ares2'],
+    state='open',
+    description='foo',
+    source_id=str(uuid.uuid4()),
+    state_type='open'
+)
+
+
+@pytest.yield_fixture
+def work_items_fixture(commits_fixture):
+    organization, _, repositories, _ = commits_fixture
+    test_repo = repositories['alpha']
+    new_key = uuid.uuid4()
+    new_work_items = [
+        dict(
+            key=new_key.hex,
+            name='Issue 1',
+            display_id='1000',
+            created_at=get_date("2018-12-02"),
+            updated_at=get_date("2018-12-03"),
+            **work_items_common
+        ),
+        dict(
+            key=uuid.uuid4().hex,
+            name='Issue 2',
+            display_id='2000',
+            created_at=get_date("2018-12-03"),
+            updated_at=get_date("2018-12-04"),
+            **work_items_common
+        ),
+
+    ]
+    create_work_items(
+        organization,
+        source_data=dict(
+            integration_type='github',
+            commit_mapping_scope='repository',
+            commit_mapping_scope_key=test_repo.key,
+            **work_items_source_common
+        ),
+        items_data=new_work_items
+    )
+    test_commit_source_id = 'XXXXXX'
+    test_commit_key = uuid.uuid4()
+    test_commits = [
+        dict(
+            repository_id=test_repo.id,
+            key=test_commit_key.hex,
+            source_commit_id=test_commit_source_id,
+            commit_message="Another change. Fixes issue #1000",
+            author_date=get_date("2018-12-03"),
+            **commits_common_fields(commits_fixture)
+        ),
+        dict(
+            repository_id=test_repo.id,
+            key=uuid.uuid4().hex,
+            source_commit_id='YYYYYY',
+            commit_message="Another change. Fixes issue #2000",
+            author_date=get_date("2018-12-03"),
+            **commits_common_fields(commits_fixture)
+        )
+    ]
+    create_test_commits(test_commits)
+    create_work_item_commits(new_key, map(lambda commit: commit['key'], test_commits))
+    yield new_key, test_commit_key, new_work_items
+
+
+@pytest.yield_fixture
+def setup_work_item_transitions(work_items_fixture):
+    new_key, test_commit_key, new_work_items = work_items_fixture
+    key = new_work_items[0]['key']
+    create_transitions(key, [
+        dict(
+            seq_no=0,
+            previous_state=None,
+            state='open',
+            created_at=new_work_items[0]['created_at']
+        ),
+        dict(
+            seq_no=1,
+            previous_state='open',
+            state='closed',
+            created_at=new_work_items[0]['updated_at']
+        ),
+
+    ])
+    key = new_work_items[1]['key']
+    create_transitions(key, [
+        dict(
+            seq_no=0,
+            previous_state=None,
+            state='open',
+            created_at=new_work_items[1]['created_at']
+        ),
+        dict(
+            seq_no=1,
+            previous_state='open',
+            state='closed',
+            created_at=new_work_items[1]['updated_at']
+        ),
+    ])
+
+    yield new_work_items
+
+    db.connection().execute("delete from analytics.work_item_state_transitions")
+
+
+@pytest.yield_fixture
+def project_fixture(commits_fixture):
+    organization, _, repositories, _ = commits_fixture
+    project = organization.projects[0]
+    test_repo = repositories['alpha']
+    new_key = uuid.uuid4()
+    new_work_items = [
+        dict(
+            key=new_key.hex,
+            name='Issue 1',
+            display_id='1000',
+            created_at=get_date("2018-12-02"),
+            updated_at=get_date("2018-12-03"),
+            **work_items_common
+        ),
+        dict(
+            key=uuid.uuid4().hex,
+            name='Issue 2',
+            display_id='2000',
+            created_at=get_date("2018-12-03"),
+            updated_at=get_date("2018-12-04"),
+            **work_items_common
+        ),
+
+    ]
+    create_project_work_items(
+        organization,
+        project,
+        source_data=dict(
+            integration_type='github',
+            commit_mapping_scope='repository',
+            commit_mapping_scope_key=test_repo.key,
+            **work_items_source_common
+        ),
+        items_data=new_work_items
+    )
+    test_commit_source_id = 'XXXXXX'
+    test_commit_key = uuid.uuid4()
+    test_commits = [
+        dict(
+            repository_id=test_repo.id,
+            key=test_commit_key.hex,
+            source_commit_id=test_commit_source_id,
+            commit_message="Another change. Fixes issue #1000",
+            author_date=get_date("2018-12-03"),
+            **commits_common_fields(commits_fixture)
+        ),
+        dict(
+            repository_id=test_repo.id,
+            key=uuid.uuid4().hex,
+            source_commit_id='YYYYYY',
+            commit_message="Another change. Fixes issue #2000",
+            author_date=get_date("2018-12-03"),
+            **commits_common_fields(commits_fixture)
+        )
+    ]
+    create_test_commits(test_commits)
+    create_work_item_commits(new_key, map(lambda commit: commit['key'], test_commits))
+    yield new_key, test_commit_key, new_work_items,project
+
+
+@pytest.fixture
+def api_import_commits_fixture(org_repo_fixture, cleanup):
+    _, _, repositories = org_repo_fixture
+
+    commit_common_fields = dict(
+        commit_date_tz_offset=0,
+        committer_alias_key=test_contributor_key,
+        author_date=datetime.utcnow(),
+        author_date_tz_offset=0,
+        author_alias_key=test_contributor_key,
+        created_at=datetime.utcnow(),
+        commit_message='a change'
+
+    )
+
+    api.import_new_commits(
+        organization_key=test_organization_key,
+        repository_key=repositories['alpha'].key,
+        new_commits=[
+            dict(
+                source_commit_id='a-XXXX',
+                commit_date="11/1/2019",
+                key=uuid.uuid4().hex,
+                **commit_common_fields
+            ),
+            dict(
+                source_commit_id='a-YYYY',
+                commit_date="11/2/2019",
+                key=uuid.uuid4().hex,
+                **commit_common_fields
+            )
+        ],
+        new_contributors=[
+            dict(
+                name='Joe Blow',
+                key=test_contributor_key,
+                alias='joe@blow.com'
+            )
+        ]
+    )
+
+    api.import_new_commits(
+        organization_key=test_organization_key,
+        repository_key=repositories['gamma'].key,
+        new_commits=[
+            dict(
+                source_commit_id='b-XXXX',
+                commit_date="10/1/2019",
+                key=uuid.uuid4().hex,
+                **commit_common_fields
+            ),
+            dict(
+                source_commit_id='b-YYYY',
+                commit_date="11/1/2019",
+                key=uuid.uuid4().hex,
+                **commit_common_fields
+            )
+        ],
+        new_contributors=[
+            dict(
+                name='Joe Blow',
+                key=test_contributor_key,
+                alias='joe@blow.com'
+            )
+        ]
+    )

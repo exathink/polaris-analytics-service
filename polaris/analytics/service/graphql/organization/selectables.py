@@ -15,6 +15,7 @@ from sqlalchemy import select, func, bindparam, distinct, and_, between, cast, T
 
 from polaris.graphql.utils import nulls_to_zero
 from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.base_classes import NamedNodeResolver, ConnectionResolver, InterfaceResolver, SelectableFieldResolver
 
 from polaris.analytics.db.model import \
     organizations, projects, projects_repositories, \
@@ -36,11 +37,11 @@ from ..work_item.sql_expressions import \
     work_item_events_connection_apply_time_window_filters
 
 
-class OrganizationNode:
+class OrganizationNode(NamedNodeResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def named_node_selector(**kwargs):
         return select([
             organizations.c.id,
             organizations.c.key.label('key'),
@@ -51,11 +52,14 @@ class OrganizationNode:
         ).where(organizations.c.key == bindparam('key'))
 
 
-class OrganizationProjectsNodes:
+# ----------------------------------------------------------------------------------------------------------------------
+# Connection Resolvers
+
+class OrganizationProjectsNodes(ConnectionResolver):
     interfaces = (NamedNode, ArchivedStatus)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             projects.c.id,
             projects.c.key.label('key'),
@@ -68,11 +72,11 @@ class OrganizationProjectsNodes:
         ).where(organizations.c.key == bindparam('key'))
 
 
-class OrganizationRecentlyActiveProjectsNodes:
+class OrganizationRecentlyActiveProjectsNodes(ConnectionResolver):
     interfaces = (NamedNode, CommitCount)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         end_date = kwargs.get('before') or datetime.utcnow()
         window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
@@ -105,11 +109,11 @@ class OrganizationRecentlyActiveProjectsNodes:
         return [organizations_recently_active_projects.c.commit_count.desc()]
 
 
-class OrganizationRepositoriesNodes:
+class OrganizationRepositoriesNodes(ConnectionResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             repositories.c.id,
             repositories.c.key,
@@ -122,11 +126,11 @@ class OrganizationRepositoriesNodes:
         ).where(organizations.c.key == bindparam('key'))
 
 
-class OrganizationRecentlyActiveRepositoriesNodes:
+class OrganizationRecentlyActiveRepositoriesNodes(ConnectionResolver):
     interfaces = (NamedNode, CommitCount)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         end_date = kwargs.get('before') or datetime.utcnow()
         window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
@@ -155,11 +159,11 @@ class OrganizationRecentlyActiveRepositoriesNodes:
         return [organizations_recently_active_repositories.c.commit_count.desc()]
 
 
-class OrganizationContributorNodes:
+class OrganizationContributorNodes(ConnectionResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             contributors.c.id,
             contributors.c.key,
@@ -181,11 +185,11 @@ class OrganizationContributorNodes:
         ).distinct()
 
 
-class OrganizationCommitNodes:
+class OrganizationCommitNodes(ConnectionResolver):
     interface = CommitInfo
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         select_stmt = select([
             *commit_info_columns(repositories, commits)
         ]).select_from(
@@ -204,11 +208,11 @@ class OrganizationCommitNodes:
         return [repository_commit_nodes.c.commit_date.desc()]
 
 
-class OrganizationWorkItemNodes:
+class OrganizationWorkItemNodes(ConnectionResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
@@ -231,11 +235,11 @@ class OrganizationWorkItemNodes:
         return [organization_work_items_nodes.c.updated_at.desc()]
 
 
-class OrganizationWorkItemEventNodes:
+class OrganizationWorkItemEventNodes(ConnectionResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
@@ -258,11 +262,11 @@ class OrganizationWorkItemEventNodes:
         return [organization_work_item_event_nodes.c.event_date.desc()]
 
 
-class OrganizationWorkItemCommitNodes:
+class OrganizationWorkItemCommitNodes(ConnectionResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
@@ -290,11 +294,11 @@ class OrganizationWorkItemCommitNodes:
         return [organization_work_item_commits_nodes.c.commit_date.desc()]
 
 
-class OrganizationRecentlyActiveContributorNodes:
+class OrganizationRecentlyActiveContributorNodes(ConnectionResolver):
     interfaces = (NamedNode, CommitCount)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         end_date = kwargs.get('before') or datetime.utcnow()
         window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
@@ -325,12 +329,14 @@ class OrganizationRecentlyActiveContributorNodes:
     def sort_order(recently_active_contributors, **kwargs):
         return [recently_active_contributors.c.commit_count.desc()]
 
+# ----------------------------------------------------------------------------------------------------------------------
+#  Interface Resolvers
 
-class OrganizationsCommitSummary:
+class OrganizationsCommitSummary(InterfaceResolver):
     interface = CommitSummary
 
     @staticmethod
-    def selectable(organization_nodes, **kwargs):
+    def interface_selector(organization_nodes, **kwargs):
         return select([
             organization_nodes.c.id,
             func.sum(repositories.c.commit_count).label('commit_count'),
@@ -345,8 +351,91 @@ class OrganizationsCommitSummary:
     def sort_order(organizations_commit_summary, **kwargs):
         return [nulls_to_zero(organizations_commit_summary.c.commit_count).desc()]
 
+class OrganizationsContributorCount(InterfaceResolver):
+    interface = ContributorCount
 
-class OrganizationWeeklyContributorCount:
+    @staticmethod
+    def interface_selector(organization_nodes, **kwargs):
+        return select([
+            organization_nodes.c.id,
+            func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
+        ]).select_from(
+            organization_nodes.outerjoin(
+                repositories, repositories.c.organization_id == organization_nodes.c.id
+            ).outerjoin(
+                repositories_contributor_aliases, repositories.c.id == repositories_contributor_aliases.c.repository_id
+            )
+        ).where(
+            repositories_contributor_aliases.c.robot == False
+        ).group_by(organization_nodes.c.id)
+
+
+class OrganizationsProjectCount(InterfaceResolver):
+    interface = ProjectCount
+
+    @staticmethod
+    def interface_selector(organization_nodes, **kwargs):
+        return select([
+            organization_nodes.c.id,
+            func.count(projects.c.id).label('project_count')
+        ]).select_from(
+            organization_nodes.outerjoin(
+                projects, projects.c.organization_id == organization_nodes.c.id
+            )
+        ).group_by(organization_nodes.c.id)
+
+
+class OrganizationsRepositoryCount(InterfaceResolver):
+    interface = RepositoryCount
+
+    @staticmethod
+    def interface_selector(organization_nodes, **kwargs):
+        return select([
+            organization_nodes.c.id,
+            func.count(repositories.c.id).label('repository_count')
+        ]).select_from(
+            organization_nodes.outerjoin(
+                repositories, repositories.c.organization_id == organization_nodes.c.id
+            )
+        ).group_by(organization_nodes.c.id)
+
+
+class OrganizationsWorkItemsSourceCount(InterfaceResolver):
+    interface = WorkItemsSourceCount
+
+    @staticmethod
+    def interface_selector(organization_nodes, **kwargs):
+        return select([
+            organization_nodes.c.id,
+            func.count(work_items_sources.c.id).label('work_items_source_count')
+        ]).select_from(
+            organization_nodes.outerjoin(
+                work_items_sources, work_items_sources.c.organization_id == organization_nodes.c.id
+            )
+        ).group_by(organization_nodes.c.id)
+
+
+class OrganizationWorkItemEventSpan(InterfaceResolver):
+    interface = WorkItemEventSpan
+
+    @staticmethod
+    def interface_selector(organization_nodes, **kwargs):
+        return select([
+            organization_nodes.c.id,
+            func.min(work_items.c.created_at).label('earliest_work_item_event'),
+            func.max(work_items.c.updated_at).label('latest_work_item_event')
+        ]).select_from(
+            organization_nodes.outerjoin(
+                work_items_sources, work_items_sources.c.organization_id == organization_nodes.c.id
+            ).outerjoin(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            )
+        ).group_by(organization_nodes.c.id)
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Selectable field resolvers
+
+class OrganizationWeeklyContributorCount(SelectableFieldResolver):
 
     interface = WeeklyContributorCount
 
@@ -368,85 +457,3 @@ class OrganizationWeeklyContributorCount:
             extract('year', commits.c.commit_date),
             extract('week', commits.c.commit_date)
         )
-
-
-class OrganizationsContributorCount:
-    interface = ContributorCount
-
-    @staticmethod
-    def selectable(organization_nodes, **kwargs):
-        return select([
-            organization_nodes.c.id,
-            func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
-        ]).select_from(
-            organization_nodes.outerjoin(
-                repositories, repositories.c.organization_id == organization_nodes.c.id
-            ).outerjoin(
-                repositories_contributor_aliases, repositories.c.id == repositories_contributor_aliases.c.repository_id
-            )
-        ).where(
-            repositories_contributor_aliases.c.robot == False
-        ).group_by(organization_nodes.c.id)
-
-
-class OrganizationsProjectCount:
-    interface = ProjectCount
-
-    @staticmethod
-    def selectable(organization_nodes, **kwargs):
-        return select([
-            organization_nodes.c.id,
-            func.count(projects.c.id).label('project_count')
-        ]).select_from(
-            organization_nodes.outerjoin(
-                projects, projects.c.organization_id == organization_nodes.c.id
-            )
-        ).group_by(organization_nodes.c.id)
-
-
-class OrganizationsRepositoryCount:
-    interface = RepositoryCount
-
-    @staticmethod
-    def selectable(organization_nodes, **kwargs):
-        return select([
-            organization_nodes.c.id,
-            func.count(repositories.c.id).label('repository_count')
-        ]).select_from(
-            organization_nodes.outerjoin(
-                repositories, repositories.c.organization_id == organization_nodes.c.id
-            )
-        ).group_by(organization_nodes.c.id)
-
-
-class OrganizationsWorkItemsSourceCount:
-    interface = WorkItemsSourceCount
-
-    @staticmethod
-    def selectable(organization_nodes, **kwargs):
-        return select([
-            organization_nodes.c.id,
-            func.count(work_items_sources.c.id).label('work_items_source_count')
-        ]).select_from(
-            organization_nodes.outerjoin(
-                work_items_sources, work_items_sources.c.organization_id == organization_nodes.c.id
-            )
-        ).group_by(organization_nodes.c.id)
-
-
-class OrganizationWorkItemEventSpan:
-    interface = WorkItemEventSpan
-
-    @staticmethod
-    def selectable(organization_nodes, **kwargs):
-        return select([
-            organization_nodes.c.id,
-            func.min(work_items.c.created_at).label('earliest_work_item_event'),
-            func.max(work_items.c.updated_at).label('latest_work_item_event')
-        ]).select_from(
-            organization_nodes.outerjoin(
-                work_items_sources, work_items_sources.c.organization_id == organization_nodes.c.id
-            ).outerjoin(
-                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
-            )
-        ).group_by(organization_nodes.c.id)

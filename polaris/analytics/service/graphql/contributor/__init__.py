@@ -13,8 +13,8 @@ from polaris.graphql.connection_utils import CountableConnection
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from .selectables import \
-    ContributorNodes, ContributorCommitNodes, ContributorRepositoriesNodes,\
-    ContributorsCommitSummary, ContributorsRepositoryCount, ContributorRecentlyActiveRepositoriesNodes, \
+    ContributorNodes, ContributorCommitNodes, ContributorRepositoriesActivitySummary,\
+    ContributorsCommitSummary, ContributorsRepositoryCount, ContributorRecentlyActiveRepositories, \
     ContributorCumulativeCommitCount
 
 from ..interfaces import CommitSummary, RepositoryCount
@@ -59,8 +59,8 @@ class Contributor(
             'RepositoryCount': ContributorsRepositoryCount
         }
         selectable_field_resolvers = {
-            'repositories_activity_summary': ContributorRepositoriesNodes,
-            'recently_active_repositories' : ContributorRecentlyActiveRepositoriesNodes,
+            'repositories_activity_summary': ContributorRepositoriesActivitySummary,
+            'recently_active_repositories' : ContributorRecentlyActiveRepositories,
             'cumulative_commit_count': ContributorCumulativeCommitCount,
         }
         connection_node_resolvers = {

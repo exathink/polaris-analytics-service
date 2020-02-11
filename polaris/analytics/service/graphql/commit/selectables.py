@@ -11,15 +11,15 @@
 from ..interfaces import CommitInfo, FileTypesSummary
 from sqlalchemy import select, func, bindparam, and_, case
 from polaris.analytics.db.model import commits, repositories, source_files
-
+from polaris.graphql.base_classes import NamedNodeResolver
 from .sql_expressions import commit_info_columns
 
 
-class CommitNode:
+class CommitNode(NamedNodeResolver):
     interface = CommitInfo
 
     @staticmethod
-    def selectable(**kwargs):
+    def named_node_selector(**kwargs):
         return select([
             *commit_info_columns(repositories, commits)
         ]).select_from(

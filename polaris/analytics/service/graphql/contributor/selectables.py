@@ -20,6 +20,7 @@
 
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract
 from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, SelectableFieldResolver
 
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
@@ -31,11 +32,12 @@ from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 
 
-class ContributorNodes:
+# Node Resolvers
+class ContributorNodes(NamedNodeResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def named_node_selector(**kwargs):
         return select([
             contributors.c.id,
             contributors.c.key,
@@ -45,7 +47,129 @@ class ContributorNodes:
         ).where(contributors.c.key == bindparam('key'))
 
 
-class ContributorRepositoriesNodes:
+# ----------------------------------------------------------------------------------------------------------------------
+# Interface Resolvers
+
+class ContributorsCommitSummary(InterfaceResolver):
+    interface = CommitSummary
+
+    @staticmethod
+    def repository_level_of_detail(contributor_repository_nodes, **kwargs):
+        return select([
+            contributor_repository_nodes.c.id,
+            func.sum(repositories_contributor_aliases.c.commit_count).label('commit_count'),
+            func.min(repositories_contributor_aliases.c.earliest_commit).label('earliest_commit'),
+            func.max(repositories_contributor_aliases.c.latest_commit).label('latest_commit')
+
+        ]).select_from(
+            contributor_repository_nodes.outerjoin(
+                repositories_contributor_aliases,
+                and_(
+                    repositories_contributor_aliases.c.repository_id == contributor_repository_nodes.c.repository_id,
+                    repositories_contributor_aliases.c.contributor_id == contributor_repository_nodes.c.id
+                )
+            )
+        ).group_by(contributor_repository_nodes.c.id)
+
+    @staticmethod
+    def contributor_level_of_detail(contributor_nodes, **kwargs):
+        return select([
+            contributor_nodes.c.id,
+            func.sum(repositories_contributor_aliases.c.commit_count).label('commit_count'),
+            func.min(repositories_contributor_aliases.c.earliest_commit).label('earliest_commit'),
+            func.max(repositories_contributor_aliases.c.latest_commit).label('latest_commit')
+
+        ]).select_from(
+            contributor_nodes.outerjoin(
+                contributors, contributor_nodes.c.id == contributors.c.id,
+            ).outerjoin(
+                contributor_aliases, contributors.c.id == contributor_aliases.c.contributor_id
+            ).outerjoin(
+                repositories_contributor_aliases,
+                repositories_contributor_aliases.c.contributor_alias_id == contributor_aliases.c.id
+            ).outerjoin(
+                repositories, repositories.c.id == repositories_contributor_aliases.c.repository_id
+            )
+        ).group_by(contributor_nodes.c.id)
+
+    @staticmethod
+    def interface_selector(contributor_nodes, **kwargs):
+        level_of_detail = kwargs.get('level_of_detail')
+        if level_of_detail == 'repository':
+            return ContributorsCommitSummary.repository_level_of_detail(contributor_nodes, **kwargs)
+        else:
+            return ContributorsCommitSummary.contributor_level_of_detail(contributor_nodes, **kwargs)
+
+    @staticmethod
+    def sort_order(contributor_summary, **kwargs):
+        return [contributor_summary.c.commit_count.desc()]
+
+
+class ContributorsRepositoryCount(InterfaceResolver):
+    interface = RepositoryCount
+
+    @staticmethod
+    def contributor_level_of_detail(contributor_nodes, **kwargs):
+        return select([
+            contributor_nodes.c.id,
+            func.count(distinct(repositories_contributor_aliases.c.repository_id)).label('repository_count')
+        ]).select_from(
+            contributor_nodes.outerjoin(
+                contributors, contributor_nodes.c.id == contributors.c.id,
+            ).outerjoin(
+                contributor_aliases, contributors.c.id == contributor_aliases.c.contributor_id
+            ).outerjoin(
+                repositories_contributor_aliases,
+                contributor_aliases.c.id == repositories_contributor_aliases.c.contributor_alias_id
+            )
+        ).group_by(contributor_nodes.c.id)
+
+    @staticmethod
+    def repository_level_of_detail(contributor_repository_nodes, **kwargs):
+        return select([
+            contributor_repository_nodes.c.id,
+            func.count(distinct(contributor_repository_nodes.c.repository_id)).label('repository_count')
+        ]).select_from(
+            contributor_repository_nodes
+        ).group_by(contributor_repository_nodes.c.id)
+
+    @staticmethod
+    def interface_selector(contributor_nodes, **kwargs):
+        level_of_detail = kwargs.get('level_of_detail')
+        if level_of_detail == 'repository':
+            return ContributorsRepositoryCount.repository_level_of_detail(contributor_nodes, **kwargs)
+        else:
+            return ContributorsRepositoryCount.contributor_level_of_detail(contributor_nodes, **kwargs)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Connection Resolvers
+
+class ContributorCommitNodes(ConnectionResolver):
+    interface = CommitInfo
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        select_stmt = select([
+            *commit_info_columns(repositories, commits)
+        ]).select_from(
+            commits.join(
+                repositories
+            )
+        ).where(
+            commits.c.author_contributor_key == bindparam('key')
+        )
+        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+
+    @staticmethod
+    def sort_order(contributor_commit_nodes, **kwargs):
+        return [contributor_commit_nodes.c.commit_date.desc()]
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Selectable field resolvers
+
+class ContributorRepositoriesActivitySummary(SelectableFieldResolver):
     interfaces = (NamedNode, CommitSummary)
 
     @staticmethod
@@ -60,7 +184,7 @@ class ContributorRepositoriesNodes:
         ]).select_from(
             contributors.join(
                 repositories_contributor_aliases, repositories_contributor_aliases.c.contributor_id == contributors.c.id
-            ).join (
+            ).join(
                 repositories, repositories_contributor_aliases.c.repository_id == repositories.c.id
             )
         ).where(
@@ -70,7 +194,7 @@ class ContributorRepositoriesNodes:
         )
 
 
-class ContributorRecentlyActiveRepositoriesNodes:
+class ContributorRecentlyActiveRepositories(SelectableFieldResolver):
     interfaces = (NamedNode, CommitCount)
 
     @staticmethod
@@ -104,121 +228,7 @@ class ContributorRecentlyActiveRepositoriesNodes:
         return query
 
 
-class ContributorCommitNodes:
-    interface = CommitInfo
-
-    @staticmethod
-    def selectable(**kwargs):
-        select_stmt = select([
-            *commit_info_columns(repositories, commits)
-        ]).select_from(
-            commits.join(
-                repositories
-            )
-        ).where(
-            commits.c.author_contributor_key == bindparam('key')
-        )
-        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
-
-    @staticmethod
-    def sort_order(contributor_commit_nodes, **kwargs):
-        return [contributor_commit_nodes.c.commit_date.desc()]
-
-
-class ContributorsCommitSummary:
-    interface = CommitSummary
-
-    @staticmethod
-    def repository_level_of_detail(contributor_repository_nodes, **kwargs):
-        return select([
-            contributor_repository_nodes.c.id,
-            func.sum(repositories_contributor_aliases.c.commit_count).label('commit_count'),
-            func.min(repositories_contributor_aliases.c.earliest_commit).label('earliest_commit'),
-            func.max(repositories_contributor_aliases.c.latest_commit).label('latest_commit')
-
-        ]).select_from(
-            contributor_repository_nodes.outerjoin(
-                repositories_contributor_aliases,
-                and_(
-                    repositories_contributor_aliases.c.repository_id == contributor_repository_nodes.c.repository_id,
-                    repositories_contributor_aliases.c.contributor_id == contributor_repository_nodes.c.id
-                )
-            )
-        ).group_by(contributor_repository_nodes.c.id)
-
-
-    @staticmethod
-    def contributor_level_of_detail(contributor_nodes, **kwargs):
-        return select([
-            contributor_nodes.c.id,
-            func.sum(repositories_contributor_aliases.c.commit_count).label('commit_count'),
-            func.min(repositories_contributor_aliases.c.earliest_commit).label('earliest_commit'),
-            func.max(repositories_contributor_aliases.c.latest_commit).label('latest_commit')
-
-        ]).select_from(
-            contributor_nodes.outerjoin(
-                contributors, contributor_nodes.c.id == contributors.c.id,
-            ).outerjoin(
-                contributor_aliases, contributors.c.id == contributor_aliases.c.contributor_id
-            ).outerjoin(
-                repositories_contributor_aliases,
-                repositories_contributor_aliases.c.contributor_alias_id == contributor_aliases.c.id
-            ).outerjoin(
-                repositories, repositories.c.id == repositories_contributor_aliases.c.repository_id
-            )
-        ).group_by(contributor_nodes.c.id)
-
-    @staticmethod
-    def selectable(contributor_nodes, **kwargs):
-        level_of_detail = kwargs.get('level_of_detail')
-        if level_of_detail == 'repository':
-            return ContributorsCommitSummary.repository_level_of_detail(contributor_nodes, **kwargs)
-        else:
-            return ContributorsCommitSummary.contributor_level_of_detail(contributor_nodes, **kwargs)
-
-    @staticmethod
-    def sort_order(contributor_summary, **kwargs):
-        return [contributor_summary.c.commit_count.desc()]
-
-
-class ContributorsRepositoryCount:
-    interface = RepositoryCount
-
-    @staticmethod
-    def contributor_level_of_detail(contributor_nodes, **kwargs):
-        return select([
-            contributor_nodes.c.id,
-            func.count(distinct(repositories_contributor_aliases.c.repository_id)).label('repository_count')
-        ]).select_from(
-            contributor_nodes.outerjoin(
-                contributors, contributor_nodes.c.id == contributors.c.id,
-            ).outerjoin(
-                contributor_aliases, contributors.c.id == contributor_aliases.c.contributor_id
-            ).outerjoin(
-                repositories_contributor_aliases, contributor_aliases.c.id == repositories_contributor_aliases.c.contributor_alias_id
-            )
-        ).group_by(contributor_nodes.c.id)
-
-    @staticmethod
-    def repository_level_of_detail(contributor_repository_nodes, **kwargs):
-        return select([
-            contributor_repository_nodes.c.id,
-            func.count(distinct(contributor_repository_nodes.c.repository_id)).label('repository_count')
-        ]).select_from(
-            contributor_repository_nodes
-        ).group_by(contributor_repository_nodes.c.id)
-
-
-    @staticmethod
-    def selectable(contributor_nodes, **kwargs):
-        level_of_detail = kwargs.get('level_of_detail')
-        if level_of_detail == 'repository':
-            return ContributorsRepositoryCount.repository_level_of_detail(contributor_nodes, **kwargs)
-        else:
-            return ContributorsRepositoryCount.contributor_level_of_detail(contributor_nodes, **kwargs)
-
-class ContributorCumulativeCommitCount:
-
+class ContributorCumulativeCommitCount(SelectableFieldResolver):
     interface = CumulativeCommitCount
 
     @staticmethod
@@ -244,4 +254,3 @@ class ContributorCumulativeCommitCount:
                 commit_counts.c.week
             ]).label('cumulative_commit_count')
         ])
-

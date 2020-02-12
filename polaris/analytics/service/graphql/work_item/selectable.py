@@ -8,7 +8,7 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam, and_
+from sqlalchemy import select, bindparam, and_, func
 
 from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
@@ -17,7 +17,8 @@ from polaris.analytics.db.model import \
 
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
-    WorkItemsSourceRef, WorkItemStateTransition, CommitInfo
+    WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary
+
 
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, work_item_events_connection_apply_time_window_filters
 
@@ -135,6 +136,24 @@ class WorkItemCommitNode:
                 commits.c.key == bindparam('commit_key')
             )
         )
+
+class WorkItemsCommitSummary:
+    interface = CommitSummary
+    @staticmethod
+    def selectable(work_items_node, **kwargs):
+        return select([
+            work_items_node.c.id,
+            func.count(commits.c.commit_date).label('commit_count'),
+            func.min(commits.c.commit_date).label('earliest_commit'),
+            func.max(commits.c.commit_date).label('latest_commit')
+
+        ]).select_from(
+            work_items_node.join(
+                work_items_commits, work_items_commits.c.work_item_id == work_items_node.c.id
+            ).join(
+                commits, commits.c.id == work_items_commits.c.commit_id
+            )
+        ).group_by(work_items_node.c.id)
 
 
 

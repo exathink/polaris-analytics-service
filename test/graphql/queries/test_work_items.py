@@ -64,6 +64,40 @@ class TestWorkItemInstance:
         assert work_item['tags'] == work_items_common['tags']
         assert work_item['stateType'] == work_items_common['state_type']
 
+    def it_implements_commit_summary_info_interface(self, work_items_commit_summary_fixture):
+        work_item_key, _, _ = work_items_commit_summary_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItem($key:String!) {
+                workItem(key: $key, interfaces: [WorkItemInfo, CommitSummary]){
+                    description
+                    displayId
+                    state
+                    workItemType
+                    updatedAt
+                    url
+                    tags
+                    earliestCommit
+                    latestCommit
+                    commitCount
+                }
+            } 
+        """
+        result = client.execute(query, variable_values=dict(key=work_item_key))
+
+        assert 'data' in result
+        work_item = result['data']['workItem']
+        assert work_item['displayId'] == '1002'
+        assert work_item['description'] == work_items_common['description']
+        assert work_item['state'] == work_items_common['state']
+        assert work_item['workItemType'] == work_items_common['work_item_type']
+        assert work_item['updatedAt'] == get_date("2018-12-03").isoformat()
+        assert work_item['url'] == work_items_common['url']
+        assert work_item['tags'] == work_items_common['tags']
+        assert work_item['earliestCommit'] == get_date("2020-01-29").isoformat()
+        assert work_item['latestCommit'] == get_date("2020-02-05").isoformat()
+        assert work_item['commitCount'] == 2
+
     class TestWorkItemInstanceEvents:
 
         def it_returns_work_item_event_named_nodes(self, setup_work_item_transitions):

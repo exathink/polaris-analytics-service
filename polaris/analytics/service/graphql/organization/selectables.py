@@ -218,7 +218,8 @@ class OrganizationWorkItemNodes(ConnectionResolver):
             work_items_sources.c.name.label('work_items_source_name'),
             work_items.c.name,
             work_items.c.key,
-            *work_item_info_columns(work_items)
+            *work_item_info_columns(work_items),
+            work_items.c.id
         ]).select_from(
             organizations.join(
                 work_items_sources, work_items_sources.c.organization_id == organizations.c.id

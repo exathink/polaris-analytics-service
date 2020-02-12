@@ -33,7 +33,8 @@ def work_item_info_columns(work_items):
         work_items.c.state_type,
         work_items.c.tags,
         work_items.c.created_at,
-        work_items.c.updated_at
+        work_items.c.updated_at,
+        work_items.c.id
     ]
 
 

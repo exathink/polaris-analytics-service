@@ -18,6 +18,7 @@ from polaris.analytics.db.model import Account, Organization, Repository, Projec
 from polaris.common import db
 from polaris.utils.collections import find
 
+test_user_key = uuid.uuid4().hex
 test_account_key = uuid.uuid4().hex
 test_organization_key = uuid.uuid4().hex
 test_contributor_key = uuid.uuid4().hex
@@ -39,7 +40,10 @@ def org_repo_fixture(setup_schema):
         session.expire_on_commit = False
         account = Account(
             key=test_account_key,
-            name='test-account'
+            name='test-account',
+            owner_key=test_user_key,
+            created=datetime.utcnow(),
+            updated=datetime.utcnow()
         )
         organization = Organization(
             key=test_organization_key,

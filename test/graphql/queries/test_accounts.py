@@ -20,8 +20,7 @@ from polaris.analytics.service.graphql import schema
 
 class TestAccount:
 
-
-    def it_resolves_named_nodes(self, org_repo_fixture):
+    def it_implements_the_named_node_interface(self, org_repo_fixture):
         client = Client(schema)
 
         with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
@@ -42,6 +41,51 @@ class TestAccount:
         assert result['id']
         assert result['name']
         assert result['key']
+
+    def it_implements_the_account_info_interface(self, org_repo_fixture):
+        client = Client(schema)
+
+        with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
+            response = client.execute("""
+                        query getAccountNode($account_key:String!) {
+                            account(key: $account_key, interfaces: [AccountInfo]) {
+                                ... on AccountInfo {
+                                    created
+                                    updated
+                                }
+                            }
+                        }
+                    """, variable_values=dict(account_key=test_account_key)
+                                      )
+
+        assert 'data' in response
+        result = response['data']['account']
+        assert result
+        assert result['created']
+        assert result['updated']
+
+
+    def it_implements_the_owner_info_interface(self, org_repo_fixture):
+        client = Client(schema)
+
+        with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
+            response = client.execute("""
+                        query getAccountNode($account_key:String!) {
+                            account(key: $account_key, interfaces: [AccountInfo]) {
+                                ... on OwnerInfo {
+                                    ownerKey
+                                }
+                            }
+                        }
+                    """, variable_values=dict(account_key=test_account_key)
+                                      )
+
+        assert 'data' in response
+        result = response['data']['account']
+        assert result
+        assert result['ownerKey'] == str(uuid.UUID(test_user_key))
+
+
 
     def it_resolves_organizations(self, org_repo_fixture):
         client = Client(schema)

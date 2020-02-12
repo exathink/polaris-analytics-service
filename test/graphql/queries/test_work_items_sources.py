@@ -34,3 +34,94 @@ class TestWorkItemsSourceInstance:
         assert workItemsSource['name'] == 'Test Work Items Source 1'
         assert workItemsSource['key'] == str(work_items_source_key)
 
+    def it_returns_work_items(self, work_items_sources_work_items_fixture):
+        work_items_source_key, _ = work_items_sources_work_items_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key){
+                    workItems {
+                        edges {
+                        node {
+                          id
+                          name
+                          key
+                        }
+                      }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=work_items_source_key))
+        assert 'data' in result
+        workItemsSource = result['data']['workItemsSource']
+        workItems = workItemsSource['workItems']
+        edges = workItems['edges']
+        assert len(edges) == 2
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['id']
+            assert node['name']
+            assert node['key']
+
+    def it_implements_work_items_pagination(self, work_items_sources_work_items_fixture):
+        work_items_source_key, _ = work_items_sources_work_items_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key){
+                    workItems(first:1) {
+                        edges {
+                        node {
+                          id
+                          name
+                          key
+                        }
+                      }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=work_items_source_key))
+        assert 'data' in result
+        workItemsSource = result['data']['workItemsSource']
+        workItems = workItemsSource['workItems']
+        edges = workItems['edges']
+        assert len(edges) == 1
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['id']
+            assert node['name']
+            assert node['key']
+
+    def it_implements_work_items_info_interface(self, work_items_sources_work_items_fixture):
+        work_items_source_key, _ = work_items_sources_work_items_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key){
+                    workItems(interfaces: [WorkItemInfo]) {
+                        edges {
+                        node {
+                          id
+                          name
+                          key
+                          ... on WorkItemInfo {
+                            description
+                          }
+                        }
+                      }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=work_items_source_key))
+        assert 'data' in result
+        workItemsSource = result['data']['workItemsSource']
+        workItems = workItemsSource['workItems']
+        edges = workItems['edges']
+        assert len(edges) == 2
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['id']
+            assert node['name']
+            assert node['key']
+            assert node['description']
+

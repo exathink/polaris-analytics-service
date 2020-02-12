@@ -50,8 +50,8 @@ class TestOrganizationInstance:
         assert 'data' in result
         organization = result['data']['organization']
         assert organization['earliestCommit'] == '2019-10-01T00:00:00'
-        assert organization['latestCommit'] == '2019-11-02T00:00:00'
-        assert organization['commitCount'] == 4
+        assert organization['latestCommit'] == '2020-02-05T00:00:00'
+        assert organization['commitCount'] == 12
 
 
 class TestOrganizationWorkItems:

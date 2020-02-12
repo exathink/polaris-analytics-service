@@ -56,7 +56,10 @@ def org_repo_fixture(setup_schema):
             repositories[repo_name] = Repository(
                 key=uuid.uuid4().hex,
                 name=repo_name,
-                url=f'git@github.com/{repo_name}'
+                url=f'git@github.com/{repo_name}',
+                commit_count = 2,
+                earliest_commit=get_date("2020-01-10"),
+                latest_commit=get_date("2020-02-05")
             )
             organization.repositories.append(repositories[repo_name])
 

@@ -164,3 +164,8 @@ class ArchivedStatus(graphene.Interface):
 
 class Describable(graphene.Interface):
     description = graphene.String(required=False)
+
+
+class DistinctState(graphene.Interface):
+    state = graphene.String(required=True)
+    state_type = graphene.String(required=False)

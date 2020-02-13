@@ -12,9 +12,12 @@ from sqlalchemy import select, bindparam, and_
 
 from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemsSourceRef
 from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.base_classes import SelectableFieldResolver
 
 from polaris.analytics.db.model import work_items_sources, work_items
 from ..work_item.sql_expressions import work_item_info_columns, work_items_connection_apply_time_window_filters
+
+from ..interfaces import DistinctState
 
 
 class WorkItemsSourceNode:
@@ -54,8 +57,18 @@ class WorkItemsSourceWorkItemNodes:
         return work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
 
 
+class WorkItemsSourceDistinctStates(SelectableFieldResolver):
+    interface = DistinctState
 
-
-
-
-
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+             work_items.c.state_type.label('state_type'),
+             work_items.c.state.label('state')
+        ]).select_from(
+            work_items_sources.join(
+                work_items, work_items_sources.c.id == work_items.c.work_items_source_id
+            )
+        ).where(
+            work_items_sources.c.key == bindparam('key')
+        ).distinct()

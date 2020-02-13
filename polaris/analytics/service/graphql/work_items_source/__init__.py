@@ -14,25 +14,36 @@ from polaris.graphql.selectable import Selectable, CountableConnection, Connecti
 from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.service.graphql.interfaces import WorkTrackingIntegrationType
 
-from .selectable import WorkItemsSourceNode, WorkItemsSourceWorkItemNodes
+from .selectable import WorkItemsSourceNode, WorkItemsSourceWorkItemNodes, WorkItemsSourceDistinctStates
 from ..work_item import WorkItemsConnectionMixin
+from ..selectable_field_mixins import DistinctStatesResolverMixin
 
 
 class WorkItemsSource(
     # interface mixins
     NamedNodeResolverMixin,
 
-    Selectable,
-    WorkItemsConnectionMixin
+    # Connection mixins
+    WorkItemsConnectionMixin,
+
+    # Field mixins
+    DistinctStatesResolverMixin,
+    #
+    Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, )
+        interfaces = (NamedNode,)
         interface_resolvers = {}
+        named_node_resolver = WorkItemsSourceNode
+
         connection_node_resolvers = {
             'work_items': WorkItemsSourceWorkItemNodes,
         }
-        named_node_resolver = WorkItemsSourceNode
-        connection_class = lambda : WorkItemsSources
+
+        selectable_field_resolvers = {
+            'distinct_states': WorkItemsSourceDistinctStates
+        }
+        connection_class = lambda: WorkItemsSources
 
     @classmethod
     def resolve_field(cls, parent, info, work_items_source_key, **kwargs):

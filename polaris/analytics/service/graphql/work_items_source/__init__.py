@@ -30,6 +30,10 @@ class WorkItemsSource(
         named_node_resolver = WorkItemsSourceNode
         connection_class = lambda : WorkItemsSources
 
+    @classmethod
+    def resolve_field(cls, parent, info, work_items_source_key, **kwargs):
+        return cls.resolve_instance(key=work_items_source_key, **kwargs)
+
 
 class WorkItemsSources(
     CountableConnection

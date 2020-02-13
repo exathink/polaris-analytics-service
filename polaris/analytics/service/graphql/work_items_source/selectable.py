@@ -18,13 +18,15 @@ class WorkItemsSourceNode:
     interfaces = (NamedNode, )
 
     @staticmethod
-    def selectable(**kwargs):
+    def named_node_selector(**kwargs):
         return select([
             work_items_sources.c.id,
-            work_items_sources.c.key,
+            work_items_sources.c.key.label('key'),
             work_items_sources.c.name,
 
-        ]).where(
+        ]).select_from(
+            work_items_sources
+        ).where(
             work_items_sources.c.key == bindparam('key')
         )
 

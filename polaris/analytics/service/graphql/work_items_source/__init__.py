@@ -23,10 +23,13 @@ class WorkItemsSource(
     # interface mixins
     NamedNodeResolverMixin,
 
-    Selectable,
+    # connection mixins
     WorkItemsConnectionMixin,
     WorkItemEventsConnectionMixin,
-    WorkItemCommitsConnectionMixin
+    WorkItemCommitsConnectionMixin,
+
+    #
+    Selectable,
 ):
     class Meta:
         interfaces = (NamedNode, )

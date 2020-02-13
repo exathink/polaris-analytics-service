@@ -663,3 +663,70 @@ def work_items_sources_work_items_fixture(org_repo_fixture, cleanup):
         ])
         session.add_all(work_items_sources.values())
     yield new_key, work_items_sources
+
+
+@pytest.yield_fixture()
+def work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
+    work_items_common_fields = dict(
+        is_bug=True,
+        work_item_type='issue',
+        url='http://foo.com',
+        tags=['testing'],
+        description='foo',
+        source_id=str(uuid.uuid4()),
+    )
+    organization, _, _ = org_repo_fixture
+    new_source_key = uuid.uuid4()
+    work_items_sources = {}
+    new_work_items = [
+        dict(
+            key=uuid.uuid4().hex,
+            name='Issue 5',
+            display_id='1005',
+            created_at=get_date("2018-12-02"),
+            updated_at=get_date("2018-12-03"),
+            state='open',
+            state_type='open',
+            **work_items_common_fields
+        ),
+        dict(
+            key=uuid.uuid4().hex,
+            name='Issue 6',
+            display_id='1006',
+            created_at=get_date("2018-12-03"),
+            updated_at=get_date("2018-12-04"),
+            state='unassigned',
+            state_type=None,
+            **work_items_common_fields
+        ),
+        dict(
+            key=uuid.uuid4().hex,
+            name='Issue 7',
+            display_id='1007',
+            created_at=get_date("2018-12-04"),
+            updated_at=get_date("2018-12-05"),
+            state='open',
+            state_type='open',
+            **work_items_common_fields
+        ),
+
+
+    ]
+    with db.orm_session() as session:
+        session.expire_on_commit=False
+        work_items_sources['jira'] = WorkItemsSource(
+            key=new_source_key.hex,
+            integration_type='jira',
+            name='Test Work Items Distinct State',
+            organization_key=organization.key,
+            commit_mapping_scope='organization',
+            commit_mapping_scope_key=organization.key,
+            organization_id=organization.id,
+        )
+        work_items_sources['jira'].work_items.extend([
+            WorkItem(**item)
+            for item in new_work_items
+        ])
+        session.add_all(work_items_sources.values())
+    yield new_source_key, work_items_sources
+

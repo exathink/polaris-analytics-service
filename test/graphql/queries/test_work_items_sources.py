@@ -125,3 +125,25 @@ class TestWorkItemsSourceInstance:
             assert node['key']
             assert node['description']
 
+
+class TestWorkItemsSourceDistinctStates:
+
+    def it_implements_distinct_states_with_nullable_state_types(self, work_items_source_work_items_states_fixture):
+        work_items_source_key, _ = work_items_source_work_items_states_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key){
+                    distinctStates {
+                        state
+                        stateType
+                        }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=work_items_source_key))
+        assert 'data' in result
+        distinct_states = result['data']['workItemsSource']['distinctStates']
+        assert len(distinct_states) == 2
+        assert not all([mapping['stateType'] for mapping in distinct_states])
+        assert any([mapping['stateType'] for mapping in distinct_states])

@@ -686,3 +686,4 @@ def work_items_sources_work_items_fixture(commits_fixture, cleanup):
         create_test_commits(test_commits)
         create_work_item_commits(new_work_item_key, map(lambda commit: commit['key'], test_commits))
     yield new_key, work_items_sources
+

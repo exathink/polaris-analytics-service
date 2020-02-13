@@ -155,4 +155,3 @@ class TestWorkItemsSourceWorkItemCommits:
             assert node['id']
             assert node['name']
             assert node['key']
-

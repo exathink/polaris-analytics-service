@@ -166,16 +166,15 @@ class RepositoriesCommitSummary:
     def selectable(repositories_nodes, **kwargs):
         return select([
             repositories_nodes.c.id,
-            func.sum(repositories.c.commit_count).label('commit_count'),
-            func.min(repositories.c.earliest_commit).label('earliest_commit'),
-            func.max(repositories.c.latest_commit).label('latest_commit')
+            repositories.c.commit_count.label('commit_count'),
+            repositories.c.earliest_commit.label('earliest_commit'),
+            repositories.c.latest_commit.label('latest_commit')
 
         ]).select_from(
-            repositories_nodes.outerjoin(
-                repositories,
-                repositories_nodes.c.id == repositories.c.id
-            )
-        ).group_by(repositories_nodes.c.id)
+            repositories
+        ).where(
+            repositories_nodes.c.id == repositories.c.id
+        )
 
     @staticmethod
     def sort_order(repositories_commit_summary, **kwargs):

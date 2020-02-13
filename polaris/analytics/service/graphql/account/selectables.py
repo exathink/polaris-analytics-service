@@ -37,7 +37,7 @@ from polaris.graphql.base_classes import NamedNodeResolver, ConnectionResolver, 
 
 
 class AccountNode(NamedNodeResolver):
-    interfaces = (NamedNode, OwnerInfo)
+    interfaces = (NamedNode, OwnerInfo, AccountInfo)
 
     @staticmethod
     def named_node_selector(**kwargs):
@@ -45,7 +45,9 @@ class AccountNode(NamedNodeResolver):
             accounts.c.id,
             accounts.c.key.label('key'),
             accounts.c.name,
-            accounts.c.owner_key
+            accounts.c.owner_key,
+            accounts.c.created,
+            accounts.c.updated
         ]).select_from(
             accounts
         ).where(accounts.c.key == bindparam('key'))

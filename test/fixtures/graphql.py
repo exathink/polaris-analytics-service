@@ -18,6 +18,7 @@ from polaris.analytics.db.model import Account, Organization, Repository, Projec
 from polaris.common import db
 from polaris.utils.collections import find
 
+test_user_key = uuid.uuid4().hex
 test_account_key = uuid.uuid4().hex
 test_organization_key = uuid.uuid4().hex
 test_contributor_key = uuid.uuid4().hex
@@ -40,7 +41,10 @@ def org_repo_fixture(setup_schema):
         session.expire_on_commit = False
         account = Account(
             key=test_account_key,
-            name='test-account'
+            name='test-account',
+            owner_key=test_user_key,
+            created=datetime.utcnow(),
+            updated=datetime.utcnow()
         )
         organization = Organization(
             key=test_organization_key,
@@ -53,7 +57,10 @@ def org_repo_fixture(setup_schema):
             repositories[repo_name] = Repository(
                 key=uuid.uuid4().hex,
                 name=repo_name,
-                url=f'git@github.com/{repo_name}'
+                url=f'git@github.com/{repo_name}',
+                commit_count = 2,
+                earliest_commit=get_date("2020-01-10"),
+                latest_commit=get_date("2020-02-05")
             )
             organization.repositories.append(repositories[repo_name])
 
@@ -145,6 +152,20 @@ def commits_common_fields(commits_fixture):
         author_contributor_name='Billy Bob'
     )
 
+def commit_summary_common_fields(commits_fixture):
+    _, _, _, contributor = commits_fixture
+
+    contributor_alias = contributor['alias_id']
+    return dict(
+        commit_date_tz_offset=0,
+        committer_contributor_alias_id=contributor_alias,
+        committer_contributor_key=test_contributor_key,
+        committer_contributor_name='Joe Blow',
+        author_date_tz_offset=0,
+        author_contributor_alias_id=contributor_alias,
+        author_contributor_key=uuid.uuid4().hex,
+        author_contributor_name='Billy Bob'
+    )
 
 def create_test_commits(test_commits):
     with db.create_session() as session:
@@ -297,6 +318,111 @@ def work_items_fixture(commits_fixture):
     create_test_commits(test_commits)
     create_work_item_commits(new_key, map(lambda commit: commit['key'], test_commits))
     yield new_key, test_commit_key, new_work_items
+
+@pytest.yield_fixture
+def work_items_commit_summary_fixture(commits_fixture):
+    organization, _, repositories, _ = commits_fixture
+    test_repo = repositories['alpha']
+    new_key = uuid.uuid4()
+    new_work_items = [
+        dict(
+            key=new_key.hex,
+            name='Issue 1',
+            display_id='1002',
+            created_at=get_date("2018-12-02"),
+            updated_at=get_date("2018-12-03"),
+            **work_items_common
+        )
+
+    ]
+    create_work_items(
+        organization,
+        source_data=dict(
+            integration_type='github',
+            commit_mapping_scope='repository',
+            commit_mapping_scope_key=test_repo.key,
+            **work_items_source_common
+        ),
+        items_data=new_work_items
+    )
+    test_commit_source_id = 'XXXXXX'
+    test_commit_key = uuid.uuid4()
+    test_commits = [
+        dict(
+            repository_id=test_repo.id,
+            key=test_commit_key.hex,
+            source_commit_id=test_commit_source_id,
+            commit_message="Another change. Fixes issue #1002",
+            author_date=get_date("2018-12-03"),
+            commit_date=get_date("2020-01-29"),
+            **commit_summary_common_fields(commits_fixture)
+        ),
+        dict(
+            repository_id=test_repo.id,
+            key=uuid.uuid4().hex,
+            source_commit_id='YYYYYY',
+            commit_message="Another change. Fixes issue #1002",
+            author_date=get_date("2018-12-03"),
+            commit_date=get_date("2020-02-05"),
+            **commit_summary_common_fields(commits_fixture)
+        )
+    ]
+    create_test_commits(test_commits)
+    create_work_item_commits(new_key, map(lambda commit: commit['key'], test_commits))
+    yield new_key, test_commit_key, new_work_items
+
+@pytest.yield_fixture
+def commit_summary_fixture(commits_fixture):
+    organization, _, repositories, _ = commits_fixture
+    project = organization.projects[0]
+    test_repo = repositories['alpha']
+    work_item_key = uuid.uuid4()
+    new_work_items = [
+        dict(
+            key=work_item_key.hex,
+            name='Issue 1',
+            display_id='1001',
+            created_at=get_date("2018-12-02"),
+            updated_at=get_date("2018-12-03"),
+            **work_items_common
+        )
+    ]
+    create_project_work_items(
+        organization,
+        project,
+        source_data=dict(
+            integration_type='github',
+            commit_mapping_scope='repository',
+            commit_mapping_scope_key=test_repo.key,
+            **work_items_source_common
+        ),
+        items_data=new_work_items
+    )
+    test_commit_source_id = 'XXXXXX'
+    test_commit_key = uuid.uuid4()
+    test_commits = [
+        dict(
+            repository_id=test_repo.id,
+            key=test_commit_key.hex,
+            source_commit_id=test_commit_source_id,
+            commit_message="Another change. Fixes issue #1001",
+            author_date=get_date("2018-12-03"),
+            commit_date=get_date("2020-01-29"),
+            **commit_summary_common_fields(commits_fixture)
+        ),
+        dict(
+            repository_id=test_repo.id,
+            key=uuid.uuid4().hex,
+            source_commit_id='YYYYYY',
+            commit_message="Another change. Fixes issue #1001",
+            author_date=get_date("2018-12-03"),
+            commit_date=get_date("2020-02-05"),
+            **commit_summary_common_fields(commits_fixture)
+        )
+    ]
+    create_test_commits(test_commits)
+    create_work_item_commits(work_item_key, map(lambda commit: commit['key'], test_commits))
+    yield work_item_key, test_commit_key, new_work_items, project
 
 
 @pytest.yield_fixture
@@ -466,7 +592,6 @@ def api_import_commits_fixture(org_repo_fixture, cleanup):
             )
         ]
     )
-
 
 @pytest.yield_fixture()
 def work_items_sources_fixture(org_repo_fixture, cleanup):

@@ -50,8 +50,8 @@ class TestOrganizationInstance:
         assert 'data' in result
         organization = result['data']['organization']
         assert organization['earliestCommit'] == '2019-10-01T00:00:00'
-        assert organization['latestCommit'] == '2019-11-02T00:00:00'
-        assert organization['commitCount'] == 4
+        assert organization['latestCommit'] == '2020-02-05T00:00:00'
+        assert organization['commitCount'] == 12
 
 
 class TestOrganizationWorkItems:
@@ -122,13 +122,13 @@ class TestOrganizationWorkItems:
             assert node['createdAt']
             assert node['stateType']
 
-    def it_implements_the_project_work_item_info_interface(self, project_fixture):
-        _, _, _, project = project_fixture
+    def it_implements_the_commit_summary_interface(self, work_items_commit_summary_fixture):
+        work_item_key, _, _ = work_items_commit_summary_fixture
         client = Client(schema)
         query = """
-            query getProjectWorkItems($project_key:String!) {
-                project(key: $project_key) {
-                    workItems {
+            query getOrganizationWorkItems($organization_key:String!) {
+                organization(key: $organization_key) {
+                    workItems(interfaces: [CommitSummary]) {
                         edges {
                             node {
                               description
@@ -140,16 +140,19 @@ class TestOrganizationWorkItems:
                               url
                               tags
                               stateType
+                              earliestCommit
+                              latestCommit
+                              commitCount
                             }
                         }
                     }
                 }
             }
         """
-        result = client.execute(query, variable_values=dict(project_key=project.key))
+        result = client.execute(query, variable_values=dict(organization_key=test_organization_key))
         assert 'data' in result
-        edges = result['data']['project']['workItems']['edges']
-        assert len(edges) == 2
+        edges = result['data']['organization']['workItems']['edges']
+        assert len(edges) == 1
         for node in map(lambda edge: edge['node'], edges):
             assert node['description']
             assert node['displayId']
@@ -160,6 +163,9 @@ class TestOrganizationWorkItems:
             assert node['updatedAt']
             assert node['createdAt']
             assert node['stateType']
+            assert  node['earliestCommit']
+            assert node['latestCommit']
+            assert node['commitCount']
 
     def it_supports_paging(self, work_items_fixture):
         work_item_key, _, _ = work_items_fixture

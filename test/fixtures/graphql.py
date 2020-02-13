@@ -593,7 +593,6 @@ def api_import_commits_fixture(org_repo_fixture, cleanup):
         ]
     )
 
-
 @pytest.yield_fixture()
 def work_items_sources_fixture(org_repo_fixture, cleanup):
     organization, _, _ = org_repo_fixture
@@ -621,3 +620,70 @@ def work_items_sources_fixture(org_repo_fixture, cleanup):
         )
         session.add_all(work_items_sources.values())
     yield new_key, work_items_sources
+
+@pytest.yield_fixture()
+def work_items_sources_work_items_fixture(commits_fixture, cleanup):
+    organization, _, repositories, _ = commits_fixture
+    new_key = uuid.uuid4()
+    work_items_sources = {}
+    test_repo = repositories['alpha']
+    new_work_item_key = uuid.uuid4()
+    new_work_items = [
+        dict(
+            key=new_work_item_key.hex,
+            name='Issue 5',
+            display_id='1005',
+            created_at=get_date("2018-12-02"),
+            updated_at=get_date("2018-12-03"),
+            **work_items_common
+        ),
+        dict(
+            key=uuid.uuid4().hex,
+            name='Issue 6',
+            display_id='1006',
+            created_at=get_date("2018-12-03"),
+            updated_at=get_date("2018-12-04"),
+            **work_items_common
+        )
+
+    ]
+    with db.orm_session() as session:
+        session.expire_on_commit=False
+        work_items_sources['pivotal'] = WorkItemsSource(
+            key=new_key.hex,
+            integration_type='pivotal_tracker',
+            name='Test Work Items Source 2',
+            organization_key=organization.key,
+            commit_mapping_scope='organization',
+            commit_mapping_scope_key=organization.key,
+            organization_id=organization.id,
+        )
+        work_items_sources['pivotal'].work_items.extend([
+            WorkItem(**item)
+            for item in new_work_items
+        ])
+        session.add_all(work_items_sources.values())
+        test_commit_source_id = 'XXXXXX'
+        test_commit_key = uuid.uuid4()
+        test_commits = [
+            dict(
+                repository_id=test_repo.id,
+                key=test_commit_key.hex,
+                source_commit_id=test_commit_source_id,
+                commit_message="Another change. Fixes issue #1006",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            ),
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4().hex,
+                source_commit_id='YYYYYY',
+                commit_message="Another change. Fixes issue #1006",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ]
+        create_test_commits(test_commits)
+        create_work_item_commits(new_work_item_key, map(lambda commit: commit['key'], test_commits))
+    yield new_key, work_items_sources
+

@@ -14,8 +14,9 @@ from polaris.graphql.selectable import Selectable, CountableConnection, Connecti
 from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.service.graphql.interfaces import WorkTrackingIntegrationType
 
-from .selectable import WorkItemsSourceNode, WorkItemsSourceWorkItemNodes
-from ..work_item import WorkItemsConnectionMixin
+from .selectable import WorkItemsSourceNode, WorkItemsSourceWorkItemNodes, WorkItemsSourceWorkItemEventNodes, \
+    WorkItemsSourceWorkItemCommitNodes
+from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin
 
 
 class WorkItemsSource(
@@ -23,13 +24,17 @@ class WorkItemsSource(
     NamedNodeResolverMixin,
 
     Selectable,
-    WorkItemsConnectionMixin
+    WorkItemsConnectionMixin,
+    WorkItemEventsConnectionMixin,
+    WorkItemCommitsConnectionMixin
 ):
     class Meta:
         interfaces = (NamedNode, )
         interface_resolvers = {}
         connection_node_resolvers = {
             'work_items': WorkItemsSourceWorkItemNodes,
+            'work_item_events': WorkItemsSourceWorkItemEventNodes,
+            'work_item_commits': WorkItemsSourceWorkItemCommitNodes
         }
         named_node_resolver = WorkItemsSourceNode
         connection_class = lambda : WorkItemsSources

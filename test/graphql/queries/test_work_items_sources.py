@@ -34,6 +34,7 @@ class TestWorkItemsSourceInstance:
         assert workItemsSource['name'] == 'Test Work Items Source 1'
         assert workItemsSource['key'] == str(work_items_source_key)
 
+class TestWorkItemsSourceWorkItems:
     def it_returns_work_items(self, work_items_sources_work_items_fixture):
         work_items_source_key, _ = work_items_sources_work_items_fixture
         client = Client(schema)
@@ -124,4 +125,34 @@ class TestWorkItemsSourceInstance:
             assert node['name']
             assert node['key']
             assert node['description']
+
+class TestWorkItemsSourceWorkItemCommits:
+    def it_returns_work_item_events(self, work_items_sources_work_items_fixture):
+        work_items_source_key, _ = work_items_sources_work_items_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key){
+                    workItemCommits{
+                      edges {
+                        node {
+                          id
+                          name
+                          key
+                        }
+                      }
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=work_items_source_key))
+        assert 'data' in result
+        workItemsSource = result['data']['workItemsSource']
+        workItemCommits = workItemsSource['workItemCommits']
+        edges = workItemCommits['edges']
+        assert len(edges) == 2
+        for node in map(lambda edge: edge['node'], edges):
+            assert node['id']
+            assert node['name']
+            assert node['key']
 

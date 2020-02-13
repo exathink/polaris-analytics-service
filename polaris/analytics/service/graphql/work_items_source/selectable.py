@@ -10,11 +10,15 @@
 
 from sqlalchemy import select, bindparam, and_
 
-from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemsSourceRef
+from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemsSourceRef, WorkItemStateTransition, \
+    WorkItemCommitInfo
 from polaris.graphql.interfaces import NamedNode
 
-from polaris.analytics.db.model import work_items_sources, work_items
-from ..work_item.sql_expressions import work_item_info_columns, work_items_connection_apply_time_window_filters
+from polaris.analytics.db.model import work_items_sources, work_items, work_item_state_transitions, repositories, \
+    commits, work_items_commits
+from ..commit.sql_expressions import commits_connection_apply_time_window_filters
+from ..work_item.sql_expressions import work_item_info_columns, work_items_connection_apply_time_window_filters, \
+    work_item_event_columns, work_item_events_connection_apply_time_window_filters, work_item_commit_info_columns
 
 
 class WorkItemsSourceNode:
@@ -52,6 +56,60 @@ class WorkItemsSourceWorkItemNodes:
             work_items_sources.c.key == bindparam('key')
         )
         return work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
+
+class WorkItemsSourceWorkItemEventNodes:
+    interfaces = (NamedNode, WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
+
+    @staticmethod
+    def selectable(**kwargs):
+        select_stmt = select([
+            work_items_sources.c.key.label('work_items_source_key'),
+            work_items_sources.c.name.label('work_items_source_name'),
+            *work_item_event_columns(work_items, work_item_state_transitions)
+        ]).select_from(
+            work_items_sources.join(
+                work_items, work_items_sources.c.id == work_items.c.work_items_source_id
+            ).join(
+                work_item_state_transitions
+            )
+        ).where(
+            work_items_sources.c.key == bindparam('key')
+        )
+        return work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions, **kwargs)
+
+    @staticmethod
+    def sort_order(project_work_item_event_nodes, **kwargs):
+        return [project_work_item_event_nodes.c.event_date.desc()]
+
+
+class WorkItemsSourceWorkItemCommitNodes:
+    interfaces = (NamedNode, WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
+
+    @staticmethod
+    def selectable(**kwargs):
+        select_stmt = select([
+            work_items_sources.c.key.label('work_items_source_key'),
+            work_items_sources.c.name.label('work_items_source_name'),
+            *work_item_info_columns(work_items),
+            *work_item_commit_info_columns(work_items, repositories, commits)
+        ]).select_from(
+            work_items_sources.join(
+                work_items, work_items_sources.c.id == work_items.c.work_items_source_id
+            ).join(
+                work_items_commits
+            ).join(
+                commits
+            ).join(
+                repositories
+            )
+        ).where(
+            work_items_sources.c.key == bindparam('key')
+        )
+        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+
+    @staticmethod
+    def sort_order(project_work_item_commits_nodes, **kwargs):
+        return [project_work_item_commits_nodes.c.commit_date.desc()]
 
 
 

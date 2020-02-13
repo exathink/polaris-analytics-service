@@ -139,6 +139,8 @@ class TestWorkItemsSourceWorkItemCommits:
                           id
                           name
                           key
+                          commitDate
+                          commitMessage
                         }
                       }
                     }
@@ -155,3 +157,5 @@ class TestWorkItemsSourceWorkItemCommits:
             assert node['id']
             assert node['name']
             assert node['key']
+            assert node['commitDate']
+            assert node['commitMessage']

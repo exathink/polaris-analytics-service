@@ -32,6 +32,7 @@ def getRepository(name):
         organization = Organization.find_by_organization_key(session, test_organization_key)
         return find(organization.repositories, lambda repository: repository.name == name)
 
+
 @pytest.yield_fixture()
 def org_repo_fixture(setup_schema):
     repositories = {}
@@ -591,3 +592,32 @@ def api_import_commits_fixture(org_repo_fixture, cleanup):
             )
         ]
     )
+
+
+@pytest.yield_fixture()
+def work_items_sources_fixture(org_repo_fixture, cleanup):
+    organization, _, _ = org_repo_fixture
+    new_key = uuid.uuid4()
+    work_items_sources = {}
+    with db.orm_session() as session:
+        session.expire_on_commit=False
+        work_items_sources['github'] = WorkItemsSource(
+            key=new_key.hex,
+            integration_type='github',
+            name='Test Work Items Source 1',
+            organization_key=organization.key,
+            commit_mapping_scope='organization',
+            commit_mapping_scope_key=organization.key,
+            organization_id=organization.id,
+        )
+        work_items_sources['pivotal'] = WorkItemsSource(
+            key=uuid.uuid4().hex,
+            integration_type='pivotal_tracker',
+            name='Test Work Items Source 2',
+            organization_key=organization.key,
+            commit_mapping_scope='organization',
+            commit_mapping_scope_key=organization.key,
+            organization_id=organization.id,
+        )
+        session.add_all(work_items_sources.values())
+    yield new_key, work_items_sources

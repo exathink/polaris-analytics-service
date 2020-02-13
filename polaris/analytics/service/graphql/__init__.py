@@ -29,6 +29,7 @@ from .repository import Repository
 from .contributor import Contributor, ContributorMutationsMixin
 from .public import Public
 from .work_item import WorkItem
+from .work_items_source import WorkItemsSource
 from .summarizers import *
 
 
@@ -45,6 +46,7 @@ class Query(graphene.ObjectType):
     contributor = Contributor.Field()
     public = Public.Field()
     work_item = WorkItem.Field()
+    work_items_source = WorkItemsSource.Field()
 
     all_accounts = Account.ConnectionField()
 
@@ -71,6 +73,9 @@ class Query(graphene.ObjectType):
 
     def resolve_work_item(self, info, key, **kwargs):
         return WorkItem.resolve_field(self, info, key, **kwargs)
+
+    def resolve_work_items_source(self, info, key, **kwargs):
+        return WorkItemsSource.resolve_field(self, info, key, **kwargs)
 
     def resolve_public(self, info, **kwargs):
         return Public.resolve_field(info, **kwargs)

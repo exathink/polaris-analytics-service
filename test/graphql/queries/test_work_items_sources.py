@@ -163,15 +163,15 @@ class TestWorkItemsSourceWorkItemCommits:
             assert node['commitMessage']
 
 
-class TestWorkItemsSourceDistinctStates:
+class TestWorkItemsSourceWorkItemsStateMapping:
 
-    def it_implements_distinct_states_with_nullable_state_types(self, work_items_source_work_items_states_fixture):
+    def it_resolves_work_items_state_mappings(self, work_items_source_work_items_states_fixture):
         work_items_source_key, _ = work_items_source_work_items_states_fixture
         client = Client(schema)
         query = """
             query getWorkItemsSource($key:String!) {
                 workItemsSource(key: $key){
-                    distinctStates {
+                    workItemsStateMapping {
                         state
                         stateType
                         }
@@ -180,7 +180,7 @@ class TestWorkItemsSourceDistinctStates:
         """
         result = client.execute(query, variable_values=dict(key=work_items_source_key))
         assert 'data' in result
-        distinct_states = result['data']['workItemsSource']['distinctStates']
-        assert len(distinct_states) == 2
-        assert not all([mapping['stateType'] for mapping in distinct_states])
-        assert any([mapping['stateType'] for mapping in distinct_states])
+        work_items_state_mapping = result['data']['workItemsSource']['workItemsStateMapping']
+        assert len(work_items_state_mapping) == 2
+        assert not all([mapping['stateType'] for mapping in work_items_state_mapping])
+        assert any([mapping['stateType'] for mapping in work_items_state_mapping])

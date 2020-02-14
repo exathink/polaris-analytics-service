@@ -15,9 +15,12 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.service.graphql.interfaces import WorkTrackingIntegrationType
 
 from .selectable import WorkItemsSourceNode, WorkItemsSourceWorkItemNodes, WorkItemsSourceWorkItemEventNodes, \
-    WorkItemsSourceWorkItemCommitNodes, WorkItemsSourceDistinctStates
+    WorkItemsSourceWorkItemCommitNodes, WorkItemsSourceWorkItemsStateMapping
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin
-from ..selectable_field_mixins import DistinctStatesResolverMixin
+from ..selectable_field_mixins import WorkItemsStateMappingResolverMixin
+
+
+
 
 
 class WorkItemsSource(
@@ -30,7 +33,7 @@ class WorkItemsSource(
     WorkItemCommitsConnectionMixin,
 
     # Field mixins
-    DistinctStatesResolverMixin,
+    WorkItemsStateMappingResolverMixin,
     #
     Selectable,
 ):
@@ -46,7 +49,7 @@ class WorkItemsSource(
         }
 
         selectable_field_resolvers = {
-            'distinct_states': WorkItemsSourceDistinctStates
+            'work_items_state_mapping': WorkItemsSourceWorkItemsStateMapping
         }
         connection_class = lambda: WorkItemsSources
 

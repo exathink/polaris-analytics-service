@@ -10,7 +10,7 @@
 
 import graphene
 from .interfaces import CumulativeCommitCount, WeeklyContributorCount, FileTypesSummary, \
-    DistinctState
+    WorkItemStateMapping
 
 
 class CumulativeCommitCountField(graphene.ObjectType):
@@ -23,9 +23,9 @@ class WeeklyContributorCountsField(graphene.ObjectType):
         interfaces = (CumulativeCommitCount, WeeklyContributorCount)
 
 
-class DistinctStatesField(graphene.ObjectType):
+class WorkItemStateMappingField(graphene.ObjectType):
     class Meta:
-        interfaces = (DistinctState,)
+        interfaces = (WorkItemStateMapping,)
 
 
 

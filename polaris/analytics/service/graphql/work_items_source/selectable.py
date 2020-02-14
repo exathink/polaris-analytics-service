@@ -21,7 +21,7 @@ from ..commit.sql_expressions import commits_connection_apply_time_window_filter
 from ..work_item.sql_expressions import work_item_info_columns, work_items_connection_apply_time_window_filters, \
     work_item_event_columns, work_item_events_connection_apply_time_window_filters, work_item_commit_info_columns
 
-from ..interfaces import DistinctState
+from ..interfaces import WorkItemStateMapping
 
 
 class WorkItemsSourceNode:
@@ -115,8 +115,8 @@ class WorkItemsSourceWorkItemCommitNodes:
         return [project_work_item_commits_nodes.c.commit_date.desc()]
 
 
-class WorkItemsSourceDistinctStates(SelectableFieldResolver):
-    interface = DistinctState
+class WorkItemsSourceWorkItemsStateMapping(SelectableFieldResolver):
+    interface = WorkItemStateMapping
 
     @staticmethod
     def selectable(**kwargs):

@@ -12,7 +12,7 @@ import graphene
 
 from polaris.graphql.selectable import SimpleSelectableResolverMixin
 from .selectable_fields import CumulativeCommitCountField, WeeklyContributorCountsField, \
-    DistinctStatesField
+    WorkItemStateMappingField
 from .interface_mixins import KeyIdResolverMixin
 
 
@@ -39,9 +39,9 @@ class WeeklyContributorCountsResolverMixin(SelectablePropertyResolverMixin):
         return self.resolve_selectable_field('weekly_contributor_counts')
 
 
-class DistinctStatesResolverMixin(SelectablePropertyResolverMixin):
+class WorkItemsStateMappingResolverMixin(SelectablePropertyResolverMixin):
 
-    distinct_states = graphene.Field(graphene.List(DistinctStatesField))
+    work_items_state_mapping = graphene.Field(graphene.List(WorkItemStateMappingField))
 
-    def resolve_distinct_states(self, info, **kwargs):
-        return self.resolve_selectable_field('distinct_states')
+    def resolve_work_items_state_mapping(self, info, **kwargs):
+        return self.resolve_selectable_field('work_items_state_mapping')

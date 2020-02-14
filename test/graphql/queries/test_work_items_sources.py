@@ -44,11 +44,11 @@ class TestWorkItemsSourceWorkItems:
                 workItemsSource(key: $key){
                     workItems {
                         edges {
-                        node {
-                          id
-                          name
-                          key
-                        }
+                            node {
+                              id
+                              name
+                              key
+                            }
                       }
                     }
                 }
@@ -73,11 +73,11 @@ class TestWorkItemsSourceWorkItems:
                 workItemsSource(key: $key){
                     workItems(first:1) {
                         edges {
-                        node {
-                          id
-                          name
-                          key
-                        }
+                            node {
+                              id
+                              name
+                              key
+                            }
                       }
                     }
                 }
@@ -102,14 +102,14 @@ class TestWorkItemsSourceWorkItems:
                 workItemsSource(key: $key){
                     workItems(interfaces: [WorkItemInfo]) {
                         edges {
-                        node {
-                          id
-                          name
-                          key
-                          ... on WorkItemInfo {
-                            description
-                          }
-                        }
+                            node {
+                              id
+                              name
+                              key
+                              ... on WorkItemInfo {
+                                description
+                              }
+                            }
                       }
                     }
                 }

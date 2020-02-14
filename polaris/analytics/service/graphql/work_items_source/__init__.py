@@ -23,14 +23,16 @@ from ..selectable_field_mixins import DistinctStatesResolverMixin
 class WorkItemsSource(
     # interface mixins
     NamedNodeResolverMixin,
+
+    # connection mixins
+    WorkItemsConnectionMixin,
+    WorkItemEventsConnectionMixin,
+    WorkItemCommitsConnectionMixin,
+
     # Field mixins
     DistinctStatesResolverMixin,
     #
     Selectable,
-    # Connection mixins
-    WorkItemsConnectionMixin,
-    WorkItemEventsConnectionMixin,
-    WorkItemCommitsConnectionMixin
 ):
     class Meta:
         interfaces = (NamedNode,)

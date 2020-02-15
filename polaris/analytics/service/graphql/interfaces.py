@@ -43,7 +43,6 @@ class CommitChangeStats(graphene.ObjectType):
 class CommitInfo(NamedNode):
     commit_hash = graphene.String(required=True)
     repository = graphene.String(required=True)
-    integration_type = graphene.String(required=True)
     repository_key = graphene.String(required=True)
     repository_url = graphene.String(required=True)
     commit_date = graphene.DateTime(required=True)
@@ -58,6 +57,7 @@ class CommitInfo(NamedNode):
     stats = graphene.Field(CommitChangeStats, required=False)
     file_types_summary = graphene.Field(graphene.List(FileTypesSummary, required=False))
     work_items_summaries = graphene.Field(graphene.List(CommitWorkItemsSummary, required=False))
+    integration_type = graphene.String(required=False)
 
 
 class WorkItemCommitInfo(CommitInfo):

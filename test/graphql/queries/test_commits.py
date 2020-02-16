@@ -90,6 +90,7 @@ class TestCommit:
                             ... on CommitInfo {
                                 commitHash
                                 repository
+                                integrationType
                                 repositoryUrl
                                 repositoryKey
                                 commitDate
@@ -110,6 +111,7 @@ class TestCommit:
         assert result
         assert result['commitHash']
         assert result['repository']
+        assert result['integrationType']
         assert result['repositoryUrl']
         assert result['repositoryKey']
         assert result['commitDate']

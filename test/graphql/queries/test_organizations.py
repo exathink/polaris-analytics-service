@@ -567,6 +567,7 @@ class TestOrganizationWorkItemCommits:
                                 commitKey
                                 commitHash
                                 repository
+                                integrationType
                                 repositoryKey
                                 repositoryUrl
                                 commitDate
@@ -591,6 +592,7 @@ class TestOrganizationWorkItemCommits:
             assert node['commitKey']
             assert node['commitHash']
             assert node['repository']
+            assert node['integrationType']
             assert node['repositoryKey']
             assert node['repositoryUrl']
             assert node['commitDate']

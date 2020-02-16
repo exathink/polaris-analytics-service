@@ -73,6 +73,7 @@ def setup_work_items_sources(setup_projects):
 def setup_work_items(setup_projects):
     organization = setup_projects
     project = organization.projects[0]
+    # open state_type of this new work item should be updated to complete after the test
     new_work_items = [
         dict(
             key=uuid.uuid4().hex,

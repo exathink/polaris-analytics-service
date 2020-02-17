@@ -8,7 +8,7 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam, and_
+from sqlalchemy import select, bindparam, and_, distinct
 
 from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemsSourceRef, WorkItemStateTransition, \
     WorkItemCommitInfo
@@ -16,7 +16,7 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import SelectableFieldResolver
 
 from polaris.analytics.db.model import work_items_sources, work_items, work_item_state_transitions, repositories, \
-    commits, work_items_commits
+    commits, work_items_commits, work_items_source_state_map
 from ..commit.sql_expressions import commits_connection_apply_time_window_filters
 from ..work_item.sql_expressions import work_item_info_columns, work_items_connection_apply_time_window_filters, \
     work_item_event_columns, work_item_events_connection_apply_time_window_filters, work_item_commit_info_columns
@@ -121,12 +121,22 @@ class WorkItemsSourceWorkItemsStateMapping(SelectableFieldResolver):
     @staticmethod
     def selectable(**kwargs):
         return select([
-             work_items.c.state_type.label('state_type'),
-             work_items.c.state.label('state')
-        ]).select_from(
+            distinct(work_items.c.state),
+            work_items_source_state_map.c.state_type
+            ]).select_from(
             work_items_sources.join(
-                work_items, work_items_sources.c.id == work_items.c.work_items_source_id
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).outerjoin(
+                work_items_source_state_map, and_(
+                    work_items.c.work_items_source_id == work_items_source_state_map.c.work_items_source_id,
+                    work_items.c.state == work_items_source_state_map.c.state
+                )
             )
         ).where(
             work_items_sources.c.key == bindparam('key')
-        ).distinct()
+        )
+
+
+
+
+

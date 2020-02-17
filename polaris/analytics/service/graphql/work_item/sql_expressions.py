@@ -66,6 +66,7 @@ def work_item_commit_info_columns(work_items, repositories, commits):
         work_items.c.name.label('work_item_name'),
         work_items.c.key.label('work_item_key'),
         repositories.c.name.label('repository'),
+        repositories.c.integration_type.label('integration_type'),
         repositories.c.url.label('repository_url'),
         repositories.c.key.label('repository_key'),
         commits.c.commit_date,

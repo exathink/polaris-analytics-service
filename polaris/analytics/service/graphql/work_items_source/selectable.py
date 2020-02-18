@@ -8,21 +8,24 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam, and_
+from sqlalchemy import select, bindparam, and_, distinct
 
 from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItemsSourceRef, WorkItemStateTransition, \
     WorkItemCommitInfo
 from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.base_classes import SelectableFieldResolver, NamedNodeResolver, ConnectionResolver
 
 from polaris.analytics.db.model import work_items_sources, work_items, work_item_state_transitions, repositories, \
-    commits, work_items_commits
+    commits, work_items_commits, work_items_source_state_map
 from ..commit.sql_expressions import commits_connection_apply_time_window_filters
 from ..work_item.sql_expressions import work_item_info_columns, work_items_connection_apply_time_window_filters, \
     work_item_event_columns, work_item_events_connection_apply_time_window_filters, work_item_commit_info_columns
 
+from ..interfaces import WorkItemStateMapping
 
-class WorkItemsSourceNode:
-    interfaces = (NamedNode, )
+
+class WorkItemsSourceNode(NamedNodeResolver):
+    interfaces = (NamedNode,)
 
     @staticmethod
     def named_node_selector(**kwargs):
@@ -37,11 +40,12 @@ class WorkItemsSourceNode:
             work_items_sources.c.key == bindparam('key')
         )
 
-class WorkItemsSourceWorkItemNodes:
+
+class WorkItemsSourceWorkItemNodes(ConnectionResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
@@ -57,11 +61,12 @@ class WorkItemsSourceWorkItemNodes:
         )
         return work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
 
-class WorkItemsSourceWorkItemEventNodes:
+
+class WorkItemsSourceWorkItemEventNodes(ConnectionResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
@@ -82,11 +87,11 @@ class WorkItemsSourceWorkItemEventNodes:
         return [project_work_item_event_nodes.c.event_date.desc()]
 
 
-class WorkItemsSourceWorkItemCommitNodes:
+class WorkItemsSourceWorkItemCommitNodes(ConnectionResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
@@ -112,8 +117,23 @@ class WorkItemsSourceWorkItemCommitNodes:
         return [project_work_item_commits_nodes.c.commit_date.desc()]
 
 
+class WorkItemsSourceWorkItemsStateMapping(SelectableFieldResolver):
+    interface = WorkItemStateMapping
 
-
-
-
-
+    @staticmethod
+    def selectable(**kwargs):
+        return select([
+            distinct(work_items.c.state),
+            work_items_source_state_map.c.state_type
+        ]).select_from(
+            work_items_sources.join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).outerjoin(
+                work_items_source_state_map, and_(
+                    work_items.c.work_items_source_id == work_items_source_state_map.c.work_items_source_id,
+                    work_items.c.state == work_items_source_state_map.c.state
+                )
+            )
+        ).where(
+            work_items_sources.c.key == bindparam('key')
+        )

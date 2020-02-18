@@ -15,8 +15,12 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.service.graphql.interfaces import WorkTrackingIntegrationType
 
 from .selectable import WorkItemsSourceNode, WorkItemsSourceWorkItemNodes, WorkItemsSourceWorkItemEventNodes, \
-    WorkItemsSourceWorkItemCommitNodes
+    WorkItemsSourceWorkItemCommitNodes, WorkItemsSourceWorkItemsStateMapping
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin
+from ..selectable_field_mixins import WorkItemsStateMappingResolverMixin
+
+
+
 
 
 class WorkItemsSource(
@@ -28,19 +32,26 @@ class WorkItemsSource(
     WorkItemEventsConnectionMixin,
     WorkItemCommitsConnectionMixin,
 
+    # Field mixins
+    WorkItemsStateMappingResolverMixin,
     #
     Selectable,
 ):
     class Meta:
-        interfaces = (NamedNode, )
+        interfaces = (NamedNode,)
         interface_resolvers = {}
+        named_node_resolver = WorkItemsSourceNode
+
         connection_node_resolvers = {
             'work_items': WorkItemsSourceWorkItemNodes,
             'work_item_events': WorkItemsSourceWorkItemEventNodes,
             'work_item_commits': WorkItemsSourceWorkItemCommitNodes
         }
-        named_node_resolver = WorkItemsSourceNode
-        connection_class = lambda : WorkItemsSources
+
+        selectable_field_resolvers = {
+            'work_items_state_mapping': WorkItemsSourceWorkItemsStateMapping
+        }
+        connection_class = lambda: WorkItemsSources
 
     @classmethod
     def resolve_field(cls, parent, info, work_items_source_key, **kwargs):

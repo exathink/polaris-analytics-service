@@ -34,6 +34,7 @@ class TestWorkItemsSourceInstance:
         assert workItemsSource['name'] == 'Test Work Items Source 1'
         assert workItemsSource['key'] == str(work_items_source_key)
 
+
 class TestWorkItemsSourceWorkItems:
     def it_returns_work_items(self, work_items_sources_work_items_fixture):
         work_items_source_key, _ = work_items_sources_work_items_fixture
@@ -126,6 +127,7 @@ class TestWorkItemsSourceWorkItems:
             assert node['key']
             assert node['description']
 
+
 class TestWorkItemsSourceWorkItemCommits:
     def it_returns_work_item_events(self, work_items_sources_work_items_fixture):
         work_items_source_key, _ = work_items_sources_work_items_fixture
@@ -159,3 +161,76 @@ class TestWorkItemsSourceWorkItemCommits:
             assert node['key']
             assert node['commitDate']
             assert node['commitMessage']
+
+
+class TestWorkItemsSourceWorkItemsStateMapping:
+
+    def it_resolves_work_items_state_mappings_for_jira(self, jira_work_items_source_work_items_states_fixture):
+        source_key,_ = jira_work_items_source_work_items_states_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key){
+                    workItemsStateMapping {
+                        state
+                        stateType
+                        }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=source_key))
+        assert 'data' in result
+        work_items_state_mapping = result['data']['workItemsSource']['workItemsStateMapping']
+        states = [mapping['state'].lower() for mapping in work_items_state_mapping]
+        state_types = [mapping['stateType'] for mapping in work_items_state_mapping]
+        assert len(set(states))==len(states)
+        assert 'backlog' in states
+        assert not any(state_types) #Since no state is mapped for jira
+
+
+    def it_resolves_work_items_state_mappings_for_github(self, github_work_items_source_work_items_states_fixture):
+        source_key,_ = github_work_items_source_work_items_states_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key){
+                    workItemsStateMapping {
+                        state
+                        stateType
+                        }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=source_key))
+        assert 'data' in result
+        work_items_state_mapping = result['data']['workItemsSource']['workItemsStateMapping']
+        states = [mapping['state'].lower() for mapping in work_items_state_mapping]
+        state_types = [mapping['stateType'] for mapping in work_items_state_mapping]
+        assert len(set(states))==len(states)
+        assert 'backlog' in states
+        assert 'closed' not in states
+        assert any(state_types)
+
+
+    def it_resolves_work_items_state_mappings_for_pivotal(self, pivotal_work_items_source_work_items_states_fixture):
+        source_key,_ = pivotal_work_items_source_work_items_states_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key){
+                    workItemsStateMapping {
+                        state
+                        stateType
+                        }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=source_key))
+        assert 'data' in result
+        work_items_state_mapping = result['data']['workItemsSource']['workItemsStateMapping']
+        states = [mapping['state'].lower() for mapping in work_items_state_mapping]
+        state_types = [mapping['stateType'] for mapping in work_items_state_mapping]
+        assert len(set(states))==len(states)
+        assert 'backlog' in states
+        assert 'started' not in states
+        assert any(state_types)

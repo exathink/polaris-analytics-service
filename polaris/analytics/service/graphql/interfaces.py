@@ -16,9 +16,6 @@ from polaris.common.enums import WorkTrackingIntegrationType as _WorkTrackingInt
 WorkTrackingIntegrationType = graphene.Enum.from_enum(_WorkTrackingIntegrationType)
 
 
-
-
-
 class FileTypesSummary(graphene.ObjectType):
     file_type = graphene.String(required=True)
     count = graphene.Int(required=True)
@@ -137,6 +134,12 @@ class WorkItemEventSpan(graphene.Interface):
     earliest_work_item_event = graphene.DateTime(required=False)
     latest_work_item_event = graphene.DateTime(required=False)
 
+
+class WorkItemStateMapping(graphene.Interface):
+    state = graphene.String(required=True)
+    state_type = graphene.String(required=False)
+
+
 class AccountInfo(graphene.Interface):
     created = graphene.DateTime(required=False)
     updated = graphene.DateTime(required=False)
@@ -162,6 +165,7 @@ class ArchivedStatus(graphene.Interface):
     """Indicate whether the implementing object is archived or not"""
 
     archived = graphene.Boolean(required=True)
+
 
 class Describable(graphene.Interface):
     description = graphene.String(required=False)

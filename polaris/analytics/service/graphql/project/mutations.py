@@ -11,8 +11,8 @@
 import graphene
 import logging
 from polaris.common import db
+from polaris.analytics.db import api as db_api
 from polaris.analytics import api
-from polaris.analytics.db import commands
 from polaris.analytics.db.enums import WorkItemsStateType
 
 logger = logging.getLogger('polaris.analytics.mutations')
@@ -60,16 +60,14 @@ class UpdateProjectStateMaps(graphene.Mutation):
         update_project_state_maps_input = UpdateProjectStateMapsInput(required=True)
 
     success = graphene.Boolean()
+    error_message = graphene.String()
 
     def mutate(self, info, update_project_state_maps_input):
         logger.info('UpdateProjectStateMaps called')
-        with db.orm_session() as session:
-            return UpdateProjectStateMaps(
-                success=commands.update_project_work_items_source_state_mappings(update_project_state_maps_input, join_this=session)
-         )
+        result = db_api.update_project_work_items_source_state_mappings(update_project_state_maps_input)
+        return UpdateProjectStateMaps(success=result['success'], error_message=result.get('exception'))
 
 
 class ProjectMutationsMixin:
     archive_project = ArchiveProject.Field()
     update_project_state_maps = UpdateProjectStateMaps.Field()
-

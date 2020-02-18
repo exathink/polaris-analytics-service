@@ -12,6 +12,7 @@ from polaris.common import db
 from polaris.analytics.db import impl
 from sqlalchemy.exc import SQLAlchemyError
 
+
 from .api import success
 
 
@@ -27,6 +28,14 @@ def update_commit_work_item_summaries(organization_key, work_item_commits):
     except Exception as e:
         return db.failure_message('Update commit work item summaries failed', e)
 
+
+def update_project_work_items_source_state_mappings(project_state_mappings, join_this=None):
+    with db.orm_session(join_this) as session:
+        work_items_source = impl.update_project_work_items_source_state_mappings(session, project_state_mappings)
+        # Syncing all related work items' state_type
+        impl.sync_work_items_state_mappings(session, work_items_source)
+        if work_items_source:
+            return True
 
 def infer_projects_repositories_relationships(organization_key, work_items_commits):
     try:

@@ -703,6 +703,34 @@ class WorkItemsSourceStateMap(Base):
 
 work_items_source_state_map = WorkItemsSourceStateMap.__table__
 
+class FeatureFlags(Base):
+    __tablename__ = 'feature_flags'
+
+    id = Column(BigInteger, primary_key=True)
+    name = Column(String(256), nullable=False, unique=True)
+    key = Column(UUID(as_uuid=True), nullable=False, unique=True)
+    active = Column(Boolean, nullable=False, default=True, server_default='TRUE')
+    created = Column(DateTime)
+    updated = Column(DateTime)
+    enable_all = Column(Boolean, nullable=False, default=False, server_default='FALSE')
+    enable_all_date = Column(DateTime)
+    deactivated_date = Column(DateTime)
+
+feature_flags = FeatureFlags.__table__
+
+class FeatureFlagEnablements(Base):
+    __tablename__ = 'feature_flag_enablements'
+
+    scope = Column(String(256), nullable=False)
+    scope_key = Column(UUID(as_uuid=True), nullable=False, unique=True)
+    enabled = Column(Boolean, nullable=False, default=False, server_default='FALSE')
+
+    # Feature flags relationship
+    feature_flag_id = Column(Integer, ForeignKey('feature_flags.id'), primary_key=True)
+    feature_flags = relationship('FeatureFlags', back_populates='feature_flag_enablements')
+
+feature_flag_enablements = FeatureFlagEnablements.__table__
+
 
 def recreate_all(engine):
     Base.metadata.drop_all(engine)

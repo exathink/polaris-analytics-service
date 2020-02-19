@@ -26,7 +26,6 @@ from polaris.utils.exceptions import ProcessingException
 logger = getLogger('polaris.analytics.db.model')
 Base = db.polaris_declarative_base(schema='analytics')
 
-
 # many-many relationship table
 organizations_contributors = Table(
     'organizations_contributors', Base.metadata,
@@ -55,7 +54,7 @@ work_items_commits = Table(
 repositories_contributor_aliases = Table(
     'repositories_contributor_aliases', Base.metadata,
     Column('repository_id', Integer, ForeignKey('repositories.id', ondelete='CASCADE'), primary_key=True),
-    Column('contributor_alias_id', Integer, ForeignKey('contributor_aliases.id', ondelete='CASCADE'),  primary_key=True),
+    Column('contributor_alias_id', Integer, ForeignKey('contributor_aliases.id', ondelete='CASCADE'), primary_key=True),
     Column('earliest_commit', DateTime, nullable=True),
     Column('latest_commit', DateTime, nullable=True),
     Column('commit_count', Integer, nullable=True),
@@ -64,6 +63,7 @@ repositories_contributor_aliases = Table(
     Column('robot', Boolean, nullable=True),
     Index('ix_repositories_contributor_aliasesrepositoryidcontributorid', 'repository_id', 'contributor_id')
 )
+
 
 class Account(Base):
     __tablename__ = 'accounts'
@@ -82,7 +82,6 @@ class Account(Base):
                                  back_populates="accounts")
 
     members = relationship("AccountMember", back_populates="account")
-
 
     @classmethod
     def create(cls, name, key=None, profile=None, owner=None):
@@ -126,7 +125,6 @@ class Account(Base):
         if owner:
             organization.set_owner(owner)
         return organization
-
 
     def set_owner(self, user):
         self.add_member(user, AccountRoles.owner)
@@ -181,7 +179,6 @@ class Organization(Base):
         )
         return organization
 
-
     @classmethod
     def find_all(cls, session):
         return session.query(cls).all()
@@ -198,8 +195,6 @@ class Organization(Base):
     def find_by_organization_keys(cls, session, organization_keys):
         return session.query(cls).filter(cls.key.in_(organization_keys)).all()
 
-
-
     def belongs_to_account(self, account):
         for ac in self.accounts:
             if ac.key == account.key:
@@ -210,7 +205,7 @@ class Organization(Base):
             if member.user_key == user.key:
                 return True
 
-    def add_member(self, user, role = OrganizationRoles.member):
+    def add_member(self, user, role=OrganizationRoles.member):
         if not self.is_member(user):
             self.members.append(
                 OrganizationMember(
@@ -223,7 +218,7 @@ class Organization(Base):
     def set_owner(self, user):
         self.add_member(user, OrganizationRoles.owner)
 
-    def add_or_update_project(self, name,  project_key=None,  properties=None, repositories=None):
+    def add_or_update_project(self, name, project_key=None, properties=None, repositories=None):
         existing = find(self.projects, lambda project: project.name == name)
         if not existing:
             project = Project.create(
@@ -290,7 +285,8 @@ class Project(Base):
         return project
 
     def update_repositories(self, repo_names):
-        repo_instances = Repository.find_repositories_by_name(object_session(self), self.organization.organization_key, repo_names)
+        repo_instances = Repository.find_repositories_by_name(object_session(self), self.organization.organization_key,
+                                                              repo_names)
         if len(repo_instances) < len(repo_names):
             logger.warning("One or more repositories in the list of provided repo_names were not found when adding"
                            " repositories to project {} by name".format(self.name))
@@ -303,6 +299,7 @@ class Project(Base):
 
 projects = Project.__table__
 
+
 class Repository(Base):
     __tablename__ = 'repositories'
 
@@ -311,7 +308,7 @@ class Repository(Base):
     name = Column(String(256), nullable=False)
     description = Column(Text, nullable=True)
 
-    url = Column(String(256),  nullable=True)
+    url = Column(String(256), nullable=True)
     public = Column(Boolean, nullable=True, default=False)
     integration_type = Column(String, nullable=True)
 
@@ -320,7 +317,7 @@ class Repository(Base):
 
     properties = Column(JSONB, default={}, nullable=True)
     earliest_commit = Column(DateTime, nullable=True)
-    latest_commit = Column( DateTime, nullable=True)
+    latest_commit = Column(DateTime, nullable=True)
     commit_count = Column(BigInteger, nullable=True)
 
     # parent
@@ -341,7 +338,7 @@ class Repository(Base):
         return session.query(cls).filter(cls.source_id == source_id).first()
 
     @classmethod
-    def find_repositories_by_name(cls, session,  organization_key, repo_names):
+    def find_repositories_by_name(cls, session, organization_key, repo_names):
         repos = cls.__table__
         return session.query(cls).filter(
             and_(
@@ -386,7 +383,7 @@ class Repository(Base):
             instance.vendor = kwargs['vendor']
 
         if kwargs.get('properties'):
-           instance.properties = {*instance.properties, *kwargs['properties']}
+            instance.properties = {*instance.properties, *kwargs['properties']}
 
 
 repositories = Repository.__table__
@@ -407,8 +404,8 @@ class Contributor(Base):
     def find_by_contributor_key(cls, session, contributor_key):
         return session.query(cls).filter(cls.key == contributor_key).first()
 
-contributors = Contributor.__table__
 
+contributors = Contributor.__table__
 
 
 class ContributorAlias(Base):
@@ -426,6 +423,7 @@ class ContributorAlias(Base):
     @classmethod
     def find_by_contributor_alias_key(cls, session, contributor_alias_key):
         return session.query(cls).filter(cls.key == contributor_alias_key).first()
+
 
 contributor_aliases = ContributorAlias.__table__
 
@@ -448,7 +446,6 @@ class Commit(Base):
     commit_date_tz_offset = Column(Integer, default=0)
     committer_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
 
-
     author_contributor_name = Column(String, nullable=True)
     author_contributor_key = Column(UUID(as_uuid=True), nullable=True)
     author_date = Column(DateTime, nullable=True)
@@ -470,7 +467,7 @@ class Commit(Base):
     work_items_summaries = Column(JSONB, nullable=True, server_default='[]')
 
     # relationships
-    repository  = relationship('Repository', back_populates='commits')
+    repository = relationship('Repository', back_populates='commits')
     committer_alias = relationship('ContributorAlias', foreign_keys=[committer_contributor_alias_id])
     author_alias = relationship('ContributorAlias', foreign_keys=[author_contributor_alias_id])
 
@@ -493,7 +490,8 @@ class Commit(Base):
 commits = Commit.__table__
 
 UniqueConstraint(commits.c.repository_id, commits.c.source_commit_id)
-Index('ix_analytics_commits_author_committer_contributor_key', commits.c.author_contributor_key, commits.c.committer_contributor_key)
+Index('ix_analytics_commits_author_committer_contributor_key', commits.c.author_contributor_key,
+      commits.c.committer_contributor_key)
 
 
 class SourceFile(Base):
@@ -511,6 +509,7 @@ class SourceFile(Base):
 
 
 source_files = SourceFile.__table__
+
 
 # -------------------------------------
 # Work Tracking
@@ -612,7 +611,7 @@ Index('ix_analytics_work_items_sources_commit_mapping_scope',
       work_items_sources.c.organization_key,
       work_items_sources.c.commit_mapping_scope,
       work_items_sources.c.commit_mapping_scope_key
-)
+      )
 
 
 class WorkItem(Base):
@@ -643,14 +642,12 @@ class WorkItem(Base):
     # source time stamp of the update that put it in that state else it is None.
     completed_at = Column(DateTime, nullable=True)
 
-
-
     # Work Items Source relationship
     work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'))
     work_items_source = relationship('WorkItemsSource', back_populates='work_items')
     commits = relationship("Commit",
-                                 secondary=work_items_commits,
-                                 back_populates="work_items")
+                           secondary=work_items_commits,
+                           back_populates="work_items")
 
     state_transitions = relationship("WorkItemStateTransition")
 
@@ -672,14 +669,14 @@ work_items = WorkItem.__table__
 Index('ix_analytics_work_items_work_items_source_id_display_id',
       work_items.c.work_items_source_id,
       work_items.c.display_id
-)
+      )
 
 
 class WorkItemStateTransition(Base):
     __tablename__ = 'work_item_state_transitions'
 
-    work_item_id = Column(BigInteger,  ForeignKey('work_items.id'), primary_key=True)
-    seq_no = Column(Integer, primary_key=True,  server_default='0')
+    work_item_id = Column(BigInteger, ForeignKey('work_items.id'), primary_key=True)
+    seq_no = Column(Integer, primary_key=True, server_default='0')
     created_at = Column(DateTime, nullable=False)
     previous_state = Column(String, nullable=True)
     state = Column(String, nullable=False)
@@ -703,22 +700,26 @@ class WorkItemsSourceStateMap(Base):
 
 work_items_source_state_map = WorkItemsSourceStateMap.__table__
 
-class FeatureFlags(Base):
+
+class FeatureFlag(Base):
     __tablename__ = 'feature_flags'
 
-    id = Column(BigInteger, primary_key=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String(256), nullable=False, unique=True)
     key = Column(UUID(as_uuid=True), nullable=False, unique=True)
-    active = Column(Boolean, nullable=False, default=True, server_default='TRUE')
-    created = Column(DateTime)
+    active = Column(Boolean, nullable=False, default=True, server_default=text('TRUE'))
+    created = Column(DateTime, nullable=False)
     updated = Column(DateTime)
-    enable_all = Column(Boolean, nullable=False, default=False, server_default='FALSE')
+    enable_all = Column(Boolean, nullable=False, default=False, server_default=text('FALSE'))
     enable_all_date = Column(DateTime)
     deactivated_date = Column(DateTime)
+    enablements = relationship('FeatureFlagEnablement', cascade='all, delete-orphan')
 
-feature_flags = FeatureFlags.__table__
 
-class FeatureFlagEnablements(Base):
+feature_flags = FeatureFlag.__table__
+
+
+class FeatureFlagEnablement(Base):
     __tablename__ = 'feature_flag_enablements'
 
     scope = Column(String(256), nullable=False)
@@ -727,9 +728,9 @@ class FeatureFlagEnablements(Base):
 
     # Feature flags relationship
     feature_flag_id = Column(Integer, ForeignKey('feature_flags.id'), primary_key=True)
-    feature_flags = relationship('FeatureFlags', back_populates='feature_flag_enablements')
+    feature_flags = relationship('FeatureFlag', back_populates='enablements')
 
-feature_flag_enablements = FeatureFlagEnablements.__table__
+feature_flag_enablements = FeatureFlagEnablement.__table__
 
 
 def recreate_all(engine):

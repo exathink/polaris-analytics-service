@@ -715,6 +715,15 @@ class FeatureFlag(Base):
     deactivated_date = Column(DateTime)
     enablements = relationship('FeatureFlagEnablement', cascade='all, delete-orphan')
 
+    @classmethod
+    def create(cls, name, key=None):
+        feature_flag = FeatureFlag(
+            key=key or uuid.uuid4(),
+            name=name,
+            created=datetime.utcnow()
+        )
+        return feature_flag
+
 
 feature_flags = FeatureFlag.__table__
 
@@ -729,6 +738,7 @@ class FeatureFlagEnablement(Base):
     # Feature flags relationship
     feature_flag_id = Column(Integer, ForeignKey('feature_flags.id'), primary_key=True)
     feature_flags = relationship('FeatureFlag', back_populates='enablements')
+
 
 feature_flag_enablements = FeatureFlagEnablement.__table__
 

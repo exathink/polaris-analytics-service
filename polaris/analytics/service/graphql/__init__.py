@@ -24,6 +24,7 @@ from .commit import Commit
 from .organization import Organization
 from .project import Project
 from .project.mutations import ProjectMutationsMixin
+from .feature_flag.mutations import FeatureFlagMutationsMixin
 
 from .repository import Repository
 from .contributor import Contributor, ContributorMutationsMixin
@@ -90,7 +91,8 @@ class Mutations(
     ContributorMutationsMixin,
     ViewerMutationsMixin,
     UseMutationsMixin,
-    ProjectMutationsMixin
+    ProjectMutationsMixin,
+    FeatureFlagMutationsMixin
 ):
     pass
 

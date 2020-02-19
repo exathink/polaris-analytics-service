@@ -164,3 +164,18 @@ def import_repositories(organization_key, repository_summaries):
         return db.process_exception("Imported Repositories", exc)
     except Exception as e:
         return db.failure_message('', e)
+
+
+def create_feature_flag(create_feature_flag_input):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.create_feature_flag(
+                    session,
+                    create_feature_flag_input
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Create Feature Flag", exc)
+    except Exception as e:
+        return db.failure_message('Create Feature Flag', e)

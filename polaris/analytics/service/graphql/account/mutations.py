@@ -32,7 +32,6 @@ class CreateAccountInput(graphene.InputObjectType):
     account_owner_info = graphene.Field(UserInfoInput, required=True)
 
 
-
 class CreateAccount(graphene.Mutation):
     class Arguments:
         create_account_input = CreateAccountInput(required=True)

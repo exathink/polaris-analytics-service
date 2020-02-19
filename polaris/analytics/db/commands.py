@@ -12,6 +12,7 @@ from polaris.common import db
 from polaris.analytics.db import impl
 from sqlalchemy.exc import SQLAlchemyError
 
+
 from .api import success
 
 

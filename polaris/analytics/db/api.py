@@ -150,6 +150,21 @@ def import_project(organization_key, project_summary):
         return db.failure_message('Import Project', e)
 
 
+def update_project_work_items_source_state_mappings(project_state_mappings):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.update_project_work_items_source_state_mappings(
+                    session,
+                    project_state_mappings
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Update project work items source state mappings", exc)
+    except Exception as e:
+        return db.failure_message('Update project work items source state mappings', e)
+
+
 def import_repositories(organization_key, repository_summaries):
     try:
         with db.orm_session() as session:
@@ -164,3 +179,5 @@ def import_repositories(organization_key, repository_summaries):
         return db.process_exception("Imported Repositories", exc)
     except Exception as e:
         return db.failure_message('', e)
+
+

@@ -128,6 +128,7 @@ def commits_fixture(org_repo_fixture, cleanup):
 @pytest.yield_fixture()
 def cleanup():
     yield
+    db.connection().execute("delete from analytics.feature_flag_enablements")
     db.connection().execute("delete from analytics.feature_flags")
     db.connection().execute("delete from analytics.work_items_source_state_map")
     db.connection().execute("delete from analytics.work_items_commits")

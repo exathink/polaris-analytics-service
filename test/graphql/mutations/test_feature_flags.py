@@ -92,6 +92,7 @@ class TestCreateFeatureFlag:
 
 
 class TestEnableFeatureFlag:
+
     def it_enables_feature_flag(self):
         with db.orm_session() as session:
             feature_flag = FeatureFlag.create("Feature1")

@@ -32,16 +32,16 @@ class TestCreateFeatureFlag:
         client = Client(schema)
 
         response = client.execute("""
-                    mutation CreateFeatureFlag($createFeatureFlag: CreateFeatureFlagInput!) {
-                        createFeatureFlag(createFeatureFlagInput:$CreateFeatureFlagInput) {
-                            name
-                        }
+                    mutation CreateFeatureFlag($createFeatureFlagInput: CreateFeatureFlagInput!) {
+                        createFeatureFlag(createFeatureFlagInput:$createFeatureFlagInput) 
                         {
                         success
-                        key
-                        name
-                        id
                         errorMessage
+                        featureFlag {
+                                id
+                                name
+                                key
+                            }
                         }
                     }
                 """, variable_values=dict(
@@ -49,7 +49,9 @@ class TestCreateFeatureFlag:
                 name=name
             )
         ))
-        assert response['data']['createFeatureFlag']['name'] == name
+        assert response['data']
+        assert response['data']['createFeatureFlag']['success']
+        assert response['data']['createFeatureFlag']['featureFlag']['name'] == name
         assert db.connection().execute(
             f"select key from analytics.feature_flags where name='{name}'"
         ).scalar()
@@ -59,16 +61,16 @@ class TestCreateFeatureFlag:
         client = Client(schema)
 
         response = client.execute("""
-                            mutation CreateFeatureFlag($createFeatureFlag: CreateFeatureFlagInput!) {
-                                createFeatureFlag(createFeatureFlagInput:$CreateFeatureFlagInput) {
-                                    name
-                                }
+                            mutation CreateFeatureFlag($createFeatureFlagInput: CreateFeatureFlagInput!) {
+                                createFeatureFlag(createFeatureFlagInput:$createFeatureFlagInput)
                                 {
-                                success
-                                key
-                                name
-                                id
-                                errorMessage
+                                    success
+                                    errorMessage
+                                    featureFlag {
+                                        id
+                                        name
+                                        key
+                                    }
                                 }
                             }
                         """, variable_values=dict(
@@ -76,5 +78,6 @@ class TestCreateFeatureFlag:
                 name=name
             )
         ))
+        assert response['data']
         assert not response['data']['createFeatureFlag']['success']
         assert response['data']['createFeatureFlag']['errorMessage'] == f'Feature flag {name} already exists'

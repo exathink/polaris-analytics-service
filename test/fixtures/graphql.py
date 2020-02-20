@@ -128,6 +128,7 @@ def commits_fixture(org_repo_fixture, cleanup):
 @pytest.yield_fixture()
 def cleanup():
     yield
+    db.connection().execute("delete from analytics.feature_flags")
     db.connection().execute("delete from analytics.work_items_source_state_map")
     db.connection().execute("delete from analytics.work_items_commits")
     db.connection().execute("delete from analytics.work_items")
@@ -872,10 +873,11 @@ def pivotal_work_items_source_work_items_states_fixture(org_repo_fixture, cleanu
 
 
 @pytest.yield_fixture()
-def create_feature_flag_fixture():
+def create_feature_flag_fixture(cleanup):
     test_feature_flag_name = 'Test Feature Flag'
     with db.orm_session() as session:
+        session.expire_on_commit = False
         feature_flag = FeatureFlag.create("Test Feature Flag")
         session.add(feature_flag)
-    yield test_feature_flag_name, feature_flag
+    yield test_feature_flag_name
 

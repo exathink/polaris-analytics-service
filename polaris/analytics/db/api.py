@@ -8,13 +8,16 @@
 
 # Author: Krishna Kumar
 
+import logging
+
 from polaris.common import db
 from polaris.analytics.db import impl
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from .model import WorkItemsSourceStateMap
 import uuid
 from polaris.utils.collections import dict_select
 
+logger = logging.getLogger('polaris.analytics.db.impl')
 
 def success(result):
     return dict(success=True, **result)
@@ -172,13 +175,18 @@ def create_feature_flag(create_feature_flag_input):
             return success(
                 impl.create_feature_flag(
                     session,
-                    create_feature_flag_input
+                    create_feature_flag_input.name
                 )
             )
+    # Adding Integrity error explicitly, to send a clear message to client,  with reason for failure
+    except IntegrityError as exc:
+        return db.process_exception(f'Feature flag {create_feature_flag_input.name} already exists', exc)
     except SQLAlchemyError as exc:
-        return db.process_exception("Create Feature Flag", exc)
+        logger.info(f'create feature flag failed {exc}')
+        return db.process_exception("Create Feature Flag failed", exc)
     except Exception as e:
-        return db.failure_message('Create Feature Flag', e)
+        logger.info(f'create feature flag failed 2 {e}')
+        return db.failure_message('Create Feature Flag failed', e)
 
 def add_feature_flag_enablements(feature_flag_enablements_input):
     try:

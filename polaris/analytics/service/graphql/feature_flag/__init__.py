@@ -11,16 +11,23 @@
 import graphene
 
 from polaris.graphql.selectable import Selectable
+from polaris.graphql.interfaces import NamedNode
+from .selectable import FeatureFlagNode
+from ..interface_mixins import NamedNodeResolverMixin
 
 
 class FeatureFlag(
+    #Interface Mixins
+    NamedNodeResolverMixin,
+
     Selectable
 ):
     class Meta:
-        interfaces = ()
+        interfaces = (NamedNode,)
+        named_node_resolver = FeatureFlagNode
         interface_resolvers = {}
 
     @classmethod
-    def Field(cls, **kwargs):
-        return super().Field(key_is_required=False, **kwargs)
+    def resolve_field(cls, info, **kwargs):
+        return cls.resolve_instance(**kwargs)
 

@@ -724,6 +724,9 @@ class FeatureFlag(Base):
         )
         return feature_flag
 
+    @classmethod
+    def find_by_key(cls, session, key):
+        return session.query(cls).filter(cls.key == key).first()
 
 feature_flags = FeatureFlag.__table__
 
@@ -732,7 +735,7 @@ class FeatureFlagEnablement(Base):
     __tablename__ = 'feature_flag_enablements'
 
     scope = Column(String(256), nullable=False)
-    scope_key = Column(UUID(as_uuid=True), nullable=False, unique=True)
+    scope_key = Column(UUID(as_uuid=True), nullable=False, primary_key=True)
     enabled = Column(Boolean, nullable=False, default=False, server_default='FALSE')
 
     # Feature flags relationship

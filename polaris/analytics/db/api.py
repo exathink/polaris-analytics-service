@@ -179,3 +179,18 @@ def create_feature_flag(create_feature_flag_input):
         return db.process_exception("Create Feature Flag", exc)
     except Exception as e:
         return db.failure_message('Create Feature Flag', e)
+
+def add_feature_flag_enablements(feature_flag_enablements_input):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.add_feature_flag_enablements(
+                    session,
+                    feature_flag_enablements_input.feature_flag_key,
+                    feature_flag_enablements_input.feature_flag_enablements
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Add Feature Flag Enablements", exc)
+    except Exception as e:
+        return db.failure_message('Add Feature Flag Enablements', e)

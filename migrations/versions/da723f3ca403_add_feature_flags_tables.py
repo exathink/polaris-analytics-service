@@ -38,8 +38,7 @@ def upgrade():
     sa.Column('enabled', sa.Boolean(), server_default='FALSE', nullable=False),
     sa.Column('feature_flag_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['feature_flag_id'], ['analytics.feature_flags.id'], ),
-    sa.PrimaryKeyConstraint('feature_flag_id'),
-    sa.UniqueConstraint('scope_key'),
+    sa.PrimaryKeyConstraint('feature_flag_id', 'scope_key'),
     schema='analytics'
     )
 

@@ -12,34 +12,38 @@ import logging
 import graphene
 
 from polaris.analytics.db import api as db_api
+from polaris.analytics.db.enums import FeatureFlagScope
+from ..feature_flag_enablement import FeatureFlagEnablement
+
 
 logger = logging.getLogger('polaris.analytics.graphql')
 
-class FeatureFlagEnablement(graphene.InputObjectType):
-    scope = graphene.String(required=True)
+FeatureFlagScope = graphene.Enum.from_enum(FeatureFlagScope)
+
+class EnableFeatureFlagModel(graphene.InputObjectType):
+    scope = FeatureFlagScope(required=True)
     scope_key = graphene.String(required=True)
     enabled = graphene.Boolean(required=True)
 
-class CreateFeatureFlagEnablementInput(graphene.InputObjectType):
+class EnableFeatureFlagInput(graphene.InputObjectType):
     feature_flag_key = graphene.String(required=True)
-    feature_flag_enablements = graphene.List(FeatureFlagEnablement)
+    enablements = graphene.List(EnableFeatureFlagModel)
 
-class CreateFeatureFlagEnablement(graphene.Mutation):
+class EnableFeatureFlag(graphene.Mutation):
 
     class Arguments:
-        create_feature_flag_enablements_input = CreateFeatureFlagEnablementInput(required=True)
+        enable_feature_flag_input = EnableFeatureFlagInput(required=True)
 
     success = graphene.Boolean()
     error_message = graphene.String()
 
-    def mutate(self, info, create_feature_flag_enablements_input):
-        result = db_api.add_feature_flag_enablements(create_feature_flag_enablements_input)
-        logger.info(result)
-        return CreateFeatureFlagEnablement(
+    def mutate(self, info, enable_feature_flag_input):
+        result = db_api.enable_feature_flag(enable_feature_flag_input)
+        return EnableFeatureFlag(
             success=result['success'],
-            error_message=result.get('exception')
+            error_message=result.get('message')
         )
 
 
 class FeatureFlagEnablementMutationsMixin:
-    create_feature_flag_enablement = CreateFeatureFlagEnablement.Field()
+    enable_feature_flag = EnableFeatureFlag.Field()

@@ -10,6 +10,9 @@
 
 import pytest
 import uuid
+
+from sqlalchemy import true, false
+
 from polaris.common import db
 from polaris.analytics.db.model import FeatureFlag
 from graphene.test import Client
@@ -24,6 +27,11 @@ test_feature_flags = [
     dict(name='Test Feature Flag 2')
 ]
 
+enablements = [
+    dict(scope="user", scopeKey=uuid.uuid4(), enabled=true),
+    dict(scope="user", scopeKey=uuid.uuid4(), enabled=false),
+    dict(scope="account", scopeKey=uuid.uuid4(), enabled=false)
+]
 
 class TestCreateFeatureFlag:
 
@@ -78,3 +86,56 @@ class TestCreateFeatureFlag:
         ))
         assert not response['data']['createFeatureFlag']['success']
         assert response['data']['createFeatureFlag']['errorMessage'] == f'Feature flag {name} already exists'
+
+
+class TestEnableFeatureFlag:
+    def it_enables_feature_flag(self):
+        with db.orm_session() as session:
+            feature_flag = FeatureFlag.create("Feature1")
+            session.add(feature_flag)
+        client = Client(schema)
+        feature_flag_key = feature_flag.key
+
+        query = """
+                    mutation enableFeatureFlag($enableFeatureFlagInput: EnableFeatureFlagInput! ){
+                        enableFeatureFlag(
+                            enableFeatureFlagInput: $enableFeatureFlagInput
+                        ){
+                            success,
+                            errorMessage
+                        }
+                    }
+                """
+        response = client.execute(query, variable_values=dict(
+            enableFeatureFlagInput=dict(
+                featureFlagKey=feature_flag_key,
+                enablements=enablements
+            )
+        ))
+        assert 'data' in response
+        assert response['data']['enableFeatureFlag']['success']
+
+    def it_returns_error_message_for_invalid_feature_flag(self):
+        client = Client(schema)
+        feature_flag_key = uuid.uuid4()
+
+        query = """
+                    mutation enableFeatureFlag($enableFeatureFlagInput: EnableFeatureFlagInput! ){
+                        enableFeatureFlag(
+                            enableFeatureFlagInput: $enableFeatureFlagInput
+                        ){
+                            success,
+                            errorMessage
+                        }
+                    }
+                """
+        response = client.execute(query, variable_values=dict(
+            enableFeatureFlagInput=dict(
+                featureFlagKey=feature_flag_key,
+                enablements=enablements
+            )
+        ))
+        assert 'data' in response
+        assert response['data']['enableFeatureFlag']['errorMessage'] == "Failed to enable feature flag"
+
+

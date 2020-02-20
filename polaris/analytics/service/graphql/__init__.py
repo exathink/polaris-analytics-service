@@ -36,7 +36,6 @@ from .feature_flag import FeatureFlag
 from .summarizers import *
 
 
-
 class Query(graphene.ObjectType):
     node = NamedNode.Field()
 
@@ -89,7 +88,6 @@ class Query(graphene.ObjectType):
 
     def resolve_all_accounts(self, info, **kwargs):
         return Account.resolve_all_accounts(info, **kwargs)
-
 
 class Mutations(
     graphene.ObjectType,

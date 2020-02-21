@@ -23,11 +23,15 @@ def create_feature_flag(session, name):
     try:
         feature_flag = FeatureFlag.create(name=name)
         session.add(feature_flag)
+
+        return dict(
+            name=name,
+            key=feature_flag.key
+        )
+
     except IntegrityError:
         raise ProcessingException(f'Feature Flag {name} already exists')
-    return dict(
-        feature_flag=feature_flag,
-    )
+
 
 def enable_feature_flag(session, feature_flag_key, enable_feature_flag_input):
     logger.info("Inside enable_feature_flag")

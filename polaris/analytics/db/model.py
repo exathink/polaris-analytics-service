@@ -601,7 +601,7 @@ class WorkItemsSource(Base):
         ]
 
     def get_state_type(self, state):
-        state_map = find(self.state_maps, lambda sm: sm.state == state)
+        state_map = find(self.state_maps, lambda sm: sm.state.lower() == state.lower())
         if state_map is not None:
             return state_map.state_type
 

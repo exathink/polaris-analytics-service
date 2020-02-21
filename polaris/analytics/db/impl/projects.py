@@ -1,0 +1,73 @@
+# -*- coding: utf-8 -*-
+
+# Copyright: © Exathink, LLC (2011-2018) All Rights Reserved
+
+# Unauthorized use or copying of this file and its contents, via any medium
+# is strictly prohibited. The work product in this file is proprietary and
+# confidential.
+
+# Author: Krishna Kumar
+import logging
+
+from sqlalchemy.sql.expression import and_
+
+from polaris.analytics.db.model import Project, WorkItemsSource, work_items, work_items_source_state_map
+from polaris.utils.collections import find
+from polaris.utils.exceptions import ProcessingException
+
+logger = logging.getLogger('polaris.analytics.db.impl')
+
+
+def update_work_items_computed_state_types(session, work_items_source_id):
+    updated = session.execute(
+        work_items.update().values(
+            state_type=None
+        ).where(
+            work_items.c.work_items_source_id == work_items_source_id
+        )
+    )
+    session.execute(
+        work_items.update().values(
+            state_type=work_items_source_state_map.c.state_type
+        ).where(
+            and_(
+                work_items.c.state == work_items_source_state_map.c.state,
+                work_items.c.work_items_source_id == work_items_source_id
+            )
+        )
+    )
+    return updated
+
+
+def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings):
+    work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+    if work_items_source is not None:
+        work_items_source.init_state_map(state_mappings)
+        session.flush()
+        update_work_items_computed_state_types(session, work_items_source.id)
+
+
+def update_project_work_items_source_state_mappings(session, project_state_maps):
+    logger.info("Inside update_project_work_items_state_mappings")
+    updated = []
+    # Check if project exists. Not sure if this is required
+    project = Project.find_by_project_key(session, project_state_maps.project_key)
+    if project is not None:
+        # Find and update corresponding work items source state maps
+        for work_items_source_map in project_state_maps.work_items_source_state_maps:
+            source_key = work_items_source_map.work_items_source_key
+            if find(project.work_items_sources,
+                                     lambda work_item_source: str(work_item_source.key) == str(source_key)):
+                update_work_items_source_state_mapping(session, source_key, work_items_source_map.state_maps)
+                updated.append(source_key)
+
+            else:
+                raise ProcessingException(f'Work Items Source with key {source_key} does not belong to project')
+
+    else:
+        raise ProcessingException(f'Could not find project with key {project_state_maps.project_key}')
+
+    return dict(
+        project_key=project_state_maps.project_key,
+        work_items_sources=updated
+    )

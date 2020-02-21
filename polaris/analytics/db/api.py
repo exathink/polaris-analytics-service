@@ -19,6 +19,7 @@ from polaris.utils.collections import dict_select
 
 logger = logging.getLogger('polaris.analytics.db.impl')
 
+
 def success(result):
     return dict(success=True, **result)
 
@@ -153,6 +154,21 @@ def import_project(organization_key, project_summary):
         return db.failure_message('Import Project', e)
 
 
+def update_project_work_items_source_state_mappings(project_state_mappings):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.update_project_work_items_source_state_mappings(
+                    session,
+                    project_state_mappings
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Update project work items source state mappings", exc)
+    except Exception as e:
+        return db.failure_message('Update project work items source state mappings', e)
+
+
 def import_repositories(organization_key, repository_summaries):
     try:
         with db.orm_session() as session:
@@ -182,11 +198,10 @@ def create_feature_flag(create_feature_flag_input):
     except IntegrityError as exc:
         return db.process_exception(f'Feature flag {create_feature_flag_input.name} already exists', exc)
     except SQLAlchemyError as exc:
-        logger.info(f'create feature flag failed {exc}')
         return db.process_exception("Create Feature Flag failed", exc)
     except Exception as e:
-        logger.info(f'create feature flag failed 2 {e}')
         return db.failure_message('Create Feature Flag failed', e)
+
 
 def enable_feature_flag(enable_feature_flag_input):
     try:

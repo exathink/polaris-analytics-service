@@ -34,6 +34,8 @@ from ..interfaces import CommitSummary, UserInfo, \
     ContributorCount, CommitCount, AccountInfo, \
     OwnerInfo, ScopedRole, FeatureFlagEnablementInfo
 
+from ..feature_flag.sql_expressions import feature_flag_enablement_info_columns
+
 from polaris.graphql.base_classes import NamedNodeResolver, ConnectionResolver, InterfaceResolver
 
 
@@ -137,9 +139,7 @@ class AccountFeatureFlagsNodes(ConnectionResolver):
             feature_flags.c.id,
             feature_flags.c.key,
             feature_flags.c.name,
-            feature_flag_enablements.c.enabled,
-            feature_flag_enablements.c.scope_key,
-            feature_flag_enablements.c.scope
+            *feature_flag_enablement_info_columns(feature_flag_enablements)
         ]).select_from(
             feature_flags.join(
                 feature_flag_enablements

@@ -50,5 +50,5 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
                 feature_flag_enablements, feature_flag_enablements.c.feature_flag_id == feature_flag_nodes.c.id
             )
         ).where(
-            feature_flag_nodes.c.enable_all == False
+            feature_flag_nodes.c.key == bindparam('key')
         )

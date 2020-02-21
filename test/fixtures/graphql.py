@@ -880,4 +880,4 @@ def create_feature_flag_fixture(cleanup):
         session.expire_on_commit = False
         feature_flag = FeatureFlag.create("Test Feature Flag")
         session.add(feature_flag)
-    yield test_feature_flag_name
+    yield feature_flag, session

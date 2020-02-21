@@ -14,10 +14,8 @@ import uuid
 from sqlalchemy import true, false
 
 from polaris.common import db
-from polaris.analytics.db.model import FeatureFlag
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
-
 
 from test.fixtures.graphql import *
 from test.constants import *
@@ -33,10 +31,13 @@ enablements = [
     dict(scope="account", scopeKey=uuid.uuid4(), enabled=false)
 ]
 
+
 class TestCreateFeatureFlag:
 
-    def it_create_a_new_feature_flag_given_name(self):
+    def it_creates_a_new_feature_flag_given_name(self, create_feature_flag_fixture):
         name = test_feature_flags[0].get('name')
+        # Using fixture just to get existing session
+        _, session = create_feature_flag_fixture
         client = Client(schema)
 
         response = client.execute("""
@@ -60,12 +61,13 @@ class TestCreateFeatureFlag:
         assert response['data']
         assert response['data']['createFeatureFlag']['success']
         assert response['data']['createFeatureFlag']['featureFlag']['name'] == name
-        assert db.connection().execute(
+        assert session.execute(
             f"select key from analytics.feature_flags where name='{name}'"
         ).scalar()
 
     def it_returns_error_message_when_feature_flag_already_exists(self, create_feature_flag_fixture):
-        name = create_feature_flag_fixture
+        feature_flag,_ = create_feature_flag_fixture
+        name = feature_flag.name
         client = Client(schema)
 
         response = client.execute("""
@@ -93,10 +95,8 @@ class TestCreateFeatureFlag:
 
 class TestEnableFeatureFlag:
 
-    def it_enables_feature_flag(self):
-        with db.orm_session() as session:
-            feature_flag = FeatureFlag.create("Feature1")
-            session.add(feature_flag)
+    def it_enables_feature_flag(self, create_feature_flag_fixture):
+        feature_flag, _ = create_feature_flag_fixture
         client = Client(schema)
         feature_flag_key = feature_flag.key
 
@@ -141,5 +141,3 @@ class TestEnableFeatureFlag:
         ))
         assert 'data' in response
         assert response['data']['enableFeatureFlag']['errorMessage'] == "Failed to enable feature flag"
-
-

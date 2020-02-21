@@ -20,17 +20,15 @@ logger = logging.getLogger('polaris.analytics.db.impl')
 
 def create_feature_flag(session, name):
     logger.info("Inside create_feature_flag")
-    try:
-        feature_flag = FeatureFlag.create(name=name)
-        session.add(feature_flag)
 
-        return dict(
-            name=name,
-            key=feature_flag.key
-        )
+    feature_flag = FeatureFlag.create(name=name)
+    session.add(feature_flag)
 
-    except IntegrityError:
-        raise ProcessingException(f'Feature Flag {name} already exists')
+    return dict(
+        name=name,
+        key=feature_flag.key
+    )
+
 
 
 def enable_feature_flag(session, feature_flag_key, enable_feature_flag_input):

@@ -28,10 +28,17 @@ class EnableFeatureFlagModel(graphene.InputObjectType):
     scope_key = graphene.String(required=True)
     enabled = graphene.Boolean(required=True)
 
+class UpdateEnablementModel(graphene.InputObjectType):
+    scope_key = graphene.String(required=True)
+    enabled = graphene.Boolean(required=True)
 
 class EnableFeatureFlagInput(graphene.InputObjectType):
     feature_flag_key = graphene.String(required=True)
     enablements = graphene.List(EnableFeatureFlagModel)
+
+class UpdateEnablementsStatusInput(graphene.InputObjectType):
+    feature_flag_key = graphene.String(required=True)
+    enablements = graphene.List(UpdateEnablementModel)
 
 
 class CreateFeatureFlag(graphene.Mutation):
@@ -68,7 +75,22 @@ class EnableFeatureFlag(graphene.Mutation):
             error_message=result.get('message')
         )
 
+class UpdateEnablementsStatus(graphene.Mutation):
+    class Arguments:
+        update_enablements_status_input = UpdateEnablementsStatusInput(required=True)
+
+    success = graphene.Boolean()
+    error_message = graphene.String()
+
+    def mutate(self, info, update_enablements_status_input):
+        result = db_api.update_enablements_status(update_enablements_status_input)
+        return UpdateEnablementsStatus(
+            success=result['success'],
+            error_message=result.get('message')
+        )
+
 
 class FeatureFlagMutationsMixin:
     create_feature_flag = CreateFeatureFlag.Field()
     enable_feature_flag = EnableFeatureFlag.Field()
+    update_enablements_status = UpdateEnablementsStatus.Field()

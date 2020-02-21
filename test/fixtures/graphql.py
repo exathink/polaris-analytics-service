@@ -11,10 +11,12 @@ import uuid
 from datetime import datetime
 
 import pytest
+from sqlalchemy import true, false
 
 from polaris.analytics.db import api
-from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, commits, \
-    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag
+from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
+    commits, \
+    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag, FeatureFlagEnablement
 from polaris.common import db
 from polaris.utils.collections import find
 from polaris.common.enums import WorkTrackingIntegrationType
@@ -27,6 +29,12 @@ test_repositories = ['alpha', 'beta', 'gamma', 'delta']
 test_projects = ['mercury', 'venus']
 test_contributor_name = 'Joe Blow'
 
+test_scope_key = uuid.uuid4()
+enablements = [
+    dict(scope="user", scope_key=test_scope_key, enabled=True),
+    dict(scope="user", scope_key=uuid.uuid4(), enabled=False),
+    dict(scope="account", scope_key=uuid.uuid4(), enabled=False)
+]
 
 def getRepository(name):
     with db.orm_session() as session:
@@ -879,5 +887,17 @@ def create_feature_flag_fixture(cleanup):
     with db.orm_session() as session:
         session.expire_on_commit = False
         feature_flag = FeatureFlag.create("Test Feature Flag")
+        session.add(feature_flag)
+    yield feature_flag, session
+
+@pytest.yield_fixture()
+def create_feature_flag_enablement_fixture(cleanup):
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        feature_flag = FeatureFlag.create("Feature1")
+        feature_flag.enablements.extend([
+            FeatureFlagEnablement(**item)
+            for item in enablements
+        ])
         session.add(feature_flag)
     yield feature_flag, session

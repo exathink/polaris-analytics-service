@@ -742,7 +742,6 @@ class FeatureFlagEnablement(Base):
     feature_flag_id = Column(Integer, ForeignKey('feature_flags.id'), primary_key=True)
     feature_flags = relationship('FeatureFlag', back_populates='enablements')
 
-
 feature_flag_enablements = FeatureFlagEnablement.__table__
 
 

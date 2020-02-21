@@ -25,12 +25,12 @@ test_feature_flags = [
     dict(name='Test Feature Flag 2')
 ]
 
+testScopeKey = uuid.uuid4()
 enablements = [
-    dict(scope="user", scopeKey=uuid.uuid4(), enabled=true),
+    dict(scope="user", scopeKey=testScopeKey, enabled=true),
     dict(scope="user", scopeKey=uuid.uuid4(), enabled=false),
     dict(scope="account", scopeKey=uuid.uuid4(), enabled=false)
 ]
-
 
 class TestCreateFeatureFlag:
 
@@ -141,3 +141,31 @@ class TestEnableFeatureFlag:
         ))
         assert 'data' in response
         assert response['data']['enableFeatureFlag']['errorMessage'] == "Failed to enable feature flag"
+
+class TestUpdateEnablementsStatus:
+
+    def it_updates_enablements_status(self, create_feature_flag_enablement_fixture):
+        feature_flag, _ = create_feature_flag_enablement_fixture
+        client = Client(schema)
+        feature_flag_key = feature_flag.key
+
+        enablement =  [dict(scopeKey=testScopeKey, enabled=false)]
+
+        query = """
+                    mutation updateEnablementsStatus($updateEnablementsStatusInput: UpdateEnablementsStatusInput! ){
+                        updateEnablementsStatus(
+                            updateEnablementsStatusInput: $updateEnablementsStatusInput
+                        ){
+                            success,
+                            errorMessage
+                        }
+                    }
+                """
+        response = client.execute(query, variable_values=dict(
+            updateEnablementsStatusInput=dict(
+                featureFlagKey=feature_flag_key,
+                enablements=enablement
+            )
+        ))
+        assert 'data' in response
+        assert response['data']['updateEnablementsStatus']['success']

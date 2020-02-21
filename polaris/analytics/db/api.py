@@ -217,3 +217,18 @@ def enable_feature_flag(enable_feature_flag_input):
         return db.process_exception("Failed to enable feature flag", exc)
     except Exception as e:
         return db.failure_message('Failed to enable feature flag', e)
+
+def update_enablements_status(update_enablements_status_input):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.update_enablements_status(
+                    session,
+                    update_enablements_status_input.feature_flag_key,
+                    update_enablements_status_input.enablements
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Failed to update enablement", exc)
+    except Exception as e:
+        return db.failure_message('Failed to update enablement', e)

@@ -25,7 +25,6 @@ from .organization import Organization
 from .project import Project
 from .project.mutations import ProjectMutationsMixin
 from .feature_flag.mutations import FeatureFlagMutationsMixin
-from .feature_flag_enablement.mutations import FeatureFlagEnablementMutationsMixin
 
 from .repository import Repository
 from .contributor import Contributor, ContributorMutationsMixin
@@ -96,8 +95,7 @@ class Mutations(
     ViewerMutationsMixin,
     UseMutationsMixin,
     ProjectMutationsMixin,
-    FeatureFlagMutationsMixin,
-    FeatureFlagEnablementMutationsMixin
+    FeatureFlagMutationsMixin
 ):
     pass
 

@@ -12,13 +12,26 @@ import logging
 import graphene
 
 from polaris.analytics.db import api as db_api
+from polaris.analytics.db.enums import FeatureFlagScope
 from ..feature_flag import FeatureFlag
 
 logger = logging.getLogger('polaris.analytics.graphql')
+FeatureFlagScope = graphene.Enum.from_enum(FeatureFlagScope)
 
 
 class CreateFeatureFlagInput(graphene.InputObjectType):
     name = graphene.String(required=True)
+
+
+class EnableFeatureFlagModel(graphene.InputObjectType):
+    scope = FeatureFlagScope(required=True)
+    scope_key = graphene.String(required=True)
+    enabled = graphene.Boolean(required=True)
+
+
+class EnableFeatureFlagInput(graphene.InputObjectType):
+    feature_flag_key = graphene.String(required=True)
+    enablements = graphene.List(EnableFeatureFlagModel)
 
 
 class CreateFeatureFlag(graphene.Mutation):
@@ -41,5 +54,21 @@ class CreateFeatureFlag(graphene.Mutation):
         return resolved
 
 
+class EnableFeatureFlag(graphene.Mutation):
+    class Arguments:
+        enable_feature_flag_input = EnableFeatureFlagInput(required=True)
+
+    success = graphene.Boolean()
+    error_message = graphene.String()
+
+    def mutate(self, info, enable_feature_flag_input):
+        result = db_api.enable_feature_flag(enable_feature_flag_input)
+        return EnableFeatureFlag(
+            success=result['success'],
+            error_message=result.get('message')
+        )
+
+
 class FeatureFlagMutationsMixin:
     create_feature_flag = CreateFeatureFlag.Field()
+    enable_feature_flag = EnableFeatureFlag.Field()

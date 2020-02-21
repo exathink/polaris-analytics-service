@@ -169,3 +169,9 @@ class ArchivedStatus(graphene.Interface):
 
 class Describable(graphene.Interface):
     description = graphene.String(required=False)
+
+
+class FeatureFlagEnablementInfo(graphene.Interface):
+    enabled = graphene.Boolean(required=True)
+    scope = graphene.String(required=True)
+    scope_key = graphene.String(required=True)

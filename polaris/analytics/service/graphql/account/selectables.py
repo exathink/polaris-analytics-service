@@ -25,13 +25,14 @@ from polaris.graphql.interfaces import NamedNode, KeyIdNode
 from polaris.analytics.db.model import organizations, accounts_organizations, accounts, \
     projects, repositories, projects_repositories, contributors, commits, \
     repositories_contributor_aliases, \
-    work_items_sources, account_members
+    work_items_sources, account_members, \
+    feature_flags, feature_flag_enablements
 
 from polaris.auth.db.model import users
 
 from ..interfaces import CommitSummary, UserInfo, \
     ContributorCount, CommitCount, AccountInfo, \
-    OwnerInfo, ScopedRole
+    OwnerInfo, ScopedRole, FeatureFlagEnablementInfo
 
 from polaris.graphql.base_classes import NamedNodeResolver, ConnectionResolver, InterfaceResolver
 
@@ -125,6 +126,27 @@ class AccountRecentlyActiveOrganizationsNodes(ConnectionResolver):
     @staticmethod
     def sort_order(account_recently_active_organizations, **kwargs):
         return [account_recently_active_organizations.c.commit_count.desc()]
+
+
+class AccountFeatureFlagsNodes(ConnectionResolver):
+    interfaces = (NamedNode, FeatureFlagEnablementInfo)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        return select([
+            feature_flags.c.id,
+            feature_flags.c.key,
+            feature_flags.c.name,
+            feature_flag_enablements.c.enabled,
+            feature_flag_enablements.c.scope_key,
+            feature_flag_enablements.c.scope
+        ]).select_from(
+            feature_flags.join(
+                feature_flag_enablements
+            ).outerjoin(
+                accounts, feature_flag_enablements.c.scope_key == accounts.c.key
+            )
+        ).where(accounts.c.key == bindparam('key'))
 
 
 class AccountProjectsNodes(ConnectionResolver):

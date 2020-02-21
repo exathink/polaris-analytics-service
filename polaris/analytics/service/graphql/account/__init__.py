@@ -14,10 +14,11 @@ import os
 from polaris.graphql.exceptions import AccessDeniedException
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
-from .selectables import AccountNode, AccountCommitSummary, AccountUserInfo, AccountContributorCount, AccountOrganizationsNodes, \
-    AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes, AccountRecentlyActiveRepositoriesNodes,\
+from .selectables import AccountNode, AccountCommitSummary, AccountUserInfo, AccountContributorCount, \
+    AccountOrganizationsNodes, \
+    AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes, AccountRecentlyActiveRepositoriesNodes, \
     AccountRecentlyActiveProjectsNodes, AccountRecentlyActiveOrganizationsNodes, AccountWorkItemsSourcesNodes, \
-    AllAccountNodes, AccountUserNodes
+    AllAccountNodes, AccountUserNodes, AccountFeatureFlagsNodes
 
 from ..contributor import ContributorsConnectionMixin
 from ..interface_mixins import NamedNodeResolverMixin
@@ -27,6 +28,8 @@ from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionM
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 from ..work_items_source import WorkItemsSourcesConnectionMixin
 from ..user import UsersConnectionMixin
+from ..feature_flag import FeatureFlagsConnectionMixin
+
 
 class Account(
     # Interface Mixins
@@ -42,11 +45,13 @@ class Account(
     ContributorsConnectionMixin,
     WorkItemsSourcesConnectionMixin,
     UsersConnectionMixin,
+    FeatureFlagsConnectionMixin,
+
     #
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, OwnerInfo,  UserInfo, AccountInfo, CommitSummary, ContributorCount)
+        interfaces = (NamedNode, OwnerInfo, UserInfo, AccountInfo, CommitSummary, ContributorCount)
         named_node_resolver = AccountNode
         connection_class = lambda: Accounts
 
@@ -64,7 +69,8 @@ class Account(
             'recently_active_projects': AccountRecentlyActiveProjectsNodes,
             'recently_active_organizations': AccountRecentlyActiveOrganizationsNodes,
             'contributors': AccountContributorNodes,
-            'users': AccountUserNodes
+            'users': AccountUserNodes,
+            'feature_flags': AccountFeatureFlagsNodes,
         }
 
     @classmethod
@@ -76,7 +82,7 @@ class Account(
         return key == str(current_user.account_key) or 'admin' in current_user.role_names
 
     @classmethod
-    def resolve_field(cls, info,  key=None, **kwargs):
+    def resolve_field(cls, info, key=None, **kwargs):
         if key is None:
             key = str(current_user.account_key)
 
@@ -106,7 +112,6 @@ class Accounts(
 
 
 class AccountsConnectionMixin(ConnectionResolverMixin):
-
     accounts = Account.ConnectionField()
 
     def resolve_accounts(self, info, **kwargs):

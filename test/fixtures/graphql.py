@@ -14,7 +14,7 @@ import pytest
 
 from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, commits, \
-    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit
+    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag
 from polaris.common import db
 from polaris.utils.collections import find
 from polaris.common.enums import WorkTrackingIntegrationType
@@ -128,6 +128,8 @@ def commits_fixture(org_repo_fixture, cleanup):
 @pytest.yield_fixture()
 def cleanup():
     yield
+    db.connection().execute("delete from analytics.feature_flag_enablements")
+    db.connection().execute("delete from analytics.feature_flags")
     db.connection().execute("delete from analytics.work_items_source_state_map")
     db.connection().execute("delete from analytics.work_items_commits")
     db.connection().execute("delete from analytics.work_items")
@@ -869,3 +871,6 @@ def pivotal_work_items_source_work_items_states_fixture(org_repo_fixture, cleanu
         work_items_sources['pivotal'].init_state_map()
         session.add_all(work_items_sources.values())
     yield pivotal_source_key, work_items_sources
+
+
+

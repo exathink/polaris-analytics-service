@@ -8,12 +8,16 @@
 
 # Author: Krishna Kumar
 
+import logging
+
 from polaris.common import db
 from polaris.analytics.db import impl
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from .model import WorkItemsSourceStateMap
 import uuid
 from polaris.utils.collections import dict_select
+
+logger = logging.getLogger('polaris.analytics.db.impl')
 
 
 def success(result):
@@ -181,3 +185,35 @@ def import_repositories(organization_key, repository_summaries):
         return db.failure_message('', e)
 
 
+def create_feature_flag(create_feature_flag_input):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.create_feature_flag(
+                    session,
+                    create_feature_flag_input.name
+                )
+            )
+    # Adding Integrity error explicitly, to send a clear message to client,  with reason for failure
+    except IntegrityError as exc:
+        return db.process_exception(f'Feature flag {create_feature_flag_input.name} already exists', exc)
+    except SQLAlchemyError as exc:
+        return db.process_exception("Create Feature Flag failed", exc)
+    except Exception as e:
+        return db.failure_message('Create Feature Flag failed', e)
+
+
+def enable_feature_flag(enable_feature_flag_input):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.enable_feature_flag(
+                    session,
+                    enable_feature_flag_input.feature_flag_key,
+                    enable_feature_flag_input.enablements
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Failed to enable feature flag", exc)
+    except Exception as e:
+        return db.failure_message('Failed to enable feature flag', e)

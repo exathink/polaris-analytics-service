@@ -36,8 +36,7 @@ class TestCreateFeatureFlag:
 
     def it_creates_a_new_feature_flag_given_name(self, create_feature_flag_fixture):
         name = test_feature_flags[0].get('name')
-        # Using fixture just to get existing session
-        _, session = create_feature_flag_fixture
+
         client = Client(schema)
 
         response = client.execute("""
@@ -61,12 +60,12 @@ class TestCreateFeatureFlag:
         assert response['data']
         assert response['data']['createFeatureFlag']['success']
         assert response['data']['createFeatureFlag']['featureFlag']['name'] == name
-        assert session.execute(
+        assert db.connection().execute(
             f"select key from analytics.feature_flags where name='{name}'"
         ).scalar()
 
     def it_returns_error_message_when_feature_flag_already_exists(self, create_feature_flag_fixture):
-        feature_flag,_ = create_feature_flag_fixture
+        feature_flag = create_feature_flag_fixture
         name = feature_flag.name
         client = Client(schema)
 
@@ -93,10 +92,18 @@ class TestCreateFeatureFlag:
         assert response['data']['createFeatureFlag']['errorMessage'] == f'Feature flag {name} already exists'
 
 
+@pytest.yield_fixture()
+def create_feature_flag_fixture(cleanup):
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        feature_flag = FeatureFlag.create("Test Feature Flag")
+        session.add(feature_flag)
+    yield feature_flag
+
 class TestEnableFeatureFlag:
 
     def it_enables_feature_flag(self, create_feature_flag_fixture):
-        feature_flag, _ = create_feature_flag_fixture
+        feature_flag = create_feature_flag_fixture
         client = Client(schema)
         feature_flag_key = feature_flag.key
 

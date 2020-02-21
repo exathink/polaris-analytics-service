@@ -19,6 +19,8 @@ from ..interface_mixins import NamedNodeResolverMixin
 class FeatureFlag(
     # Interface Mixins
     NamedNodeResolverMixin,
+
+    Selectable
 ):
     class Meta:
         interfaces = (NamedNode,)

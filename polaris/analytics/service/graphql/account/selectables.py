@@ -18,7 +18,7 @@
 
 # Author: Krishna Kumar
 from datetime import datetime, timedelta
-from sqlalchemy import select, func, bindparam, and_, distinct, between, cast, Text
+from sqlalchemy import select, func, bindparam, and_, distinct, between, cast, Text, or_
 
 from polaris.utils.datetime_utils import time_window
 from polaris.graphql.interfaces import NamedNode, KeyIdNode
@@ -33,8 +33,6 @@ from polaris.auth.db.model import users
 from ..interfaces import CommitSummary, UserInfo, \
     ContributorCount, CommitCount, AccountInfo, \
     OwnerInfo, ScopedRole, FeatureFlagEnablementInfo
-
-from ..feature_flag.sql_expressions import feature_flag_enablement_info_columns
 
 from polaris.graphql.base_classes import NamedNodeResolver, ConnectionResolver, InterfaceResolver
 
@@ -139,14 +137,21 @@ class AccountFeatureFlagsNodes(ConnectionResolver):
             feature_flags.c.id,
             feature_flags.c.key,
             feature_flags.c.name,
-            *feature_flag_enablement_info_columns(feature_flag_enablements)
+            feature_flags.c.enable_all,
+            func.coalesce(feature_flag_enablements.c.enabled, \
+                          feature_flags.c.enable_all).label('enabled'),
+            feature_flag_enablements.c.scope_key,
+            feature_flag_enablements.c.scope
         ]).select_from(
-            feature_flags.join(
+            feature_flags.outerjoin(
                 feature_flag_enablements
-            ).outerjoin(
-                accounts, feature_flag_enablements.c.scope_key == accounts.c.key
             )
-        ).where(accounts.c.key == bindparam('key'))
+        ).where(
+            or_(
+                feature_flag_enablements.c.scope_key == accounts.c.key,
+                feature_flags.c.enable_all == True
+            )
+        ).distinct()
 
 
 class AccountProjectsNodes(ConnectionResolver):

@@ -12,7 +12,9 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.db.model import feature_flags
 
 from sqlalchemy import select, bindparam
-#from ..interfaces import FeatureFlagInfo
+
+
+# from ..interfaces import FeatureFlagInfo
 
 
 class FeatureFlagNode:

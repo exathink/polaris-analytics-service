@@ -17,10 +17,8 @@ from ..interface_mixins import NamedNodeResolverMixin
 
 
 class FeatureFlag(
-    #Interface Mixins
+    # Interface Mixins
     NamedNodeResolverMixin,
-
-    Selectable
 ):
     class Meta:
         interfaces = (NamedNode,)
@@ -30,4 +28,3 @@ class FeatureFlag(
     @classmethod
     def resolve_field(cls, info, **kwargs):
         return cls.resolve_instance(**kwargs)
-

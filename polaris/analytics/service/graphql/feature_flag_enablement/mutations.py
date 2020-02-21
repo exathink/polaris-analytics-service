@@ -15,22 +15,23 @@ from polaris.analytics.db import api as db_api
 from polaris.analytics.db.enums import FeatureFlagScope
 from ..feature_flag_enablement import FeatureFlagEnablement
 
-
 logger = logging.getLogger('polaris.analytics.graphql')
 
 FeatureFlagScope = graphene.Enum.from_enum(FeatureFlagScope)
+
 
 class EnableFeatureFlagModel(graphene.InputObjectType):
     scope = FeatureFlagScope(required=True)
     scope_key = graphene.String(required=True)
     enabled = graphene.Boolean(required=True)
 
+
 class EnableFeatureFlagInput(graphene.InputObjectType):
     feature_flag_key = graphene.String(required=True)
     enablements = graphene.List(EnableFeatureFlagModel)
 
-class EnableFeatureFlag(graphene.Mutation):
 
+class EnableFeatureFlag(graphene.Mutation):
     class Arguments:
         enable_feature_flag_input = EnableFeatureFlagInput(required=True)
 

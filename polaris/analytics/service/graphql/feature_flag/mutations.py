@@ -22,17 +22,17 @@ class CreateFeatureFlagInput(graphene.InputObjectType):
 
 
 class CreateFeatureFlag(graphene.Mutation):
-
     class Arguments:
         create_feature_flag_input = CreateFeatureFlagInput(required=True)
 
-    success=graphene.Boolean()
-    error_message=  graphene.String()
+    success = graphene.Boolean()
+    error_message = graphene.String()
     feature_flag = FeatureFlag.Field(key_is_required=False)
 
     def mutate(self, info, create_feature_flag_input):
         result = db_api.create_feature_flag(create_feature_flag_input)
-        feature_flag = FeatureFlag.resolve_field(info, key=result.get('feature_flag').key) if result['success'] else None
+        feature_flag = FeatureFlag.resolve_field(info, key=result.get('feature_flag').key) if result[
+            'success'] else None
         resolved = CreateFeatureFlag(
             success=result['success'],
             error_message=result.get('message'),

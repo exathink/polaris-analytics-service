@@ -23,4 +23,3 @@ class FeatureFlagEnablement(
     @classmethod
     def Field(cls, **kwargs):
         return super().Field(key_is_required=False, **kwargs)
-

@@ -7,6 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
+import graphene
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
@@ -44,8 +45,9 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
             feature_flag_nodes.c.id,
             feature_flag_enablements.c.scope,
             feature_flag_enablements.c.scope_key,
-            func.coalesce(feature_flag_enablements.c.enabled, \
-                          feature_flag_nodes.c.enable_all).label('enabled'),
+            func.coalesce(feature_flag_enablements.c.enabled,\
+                          feature_flag_nodes.c.enable_all,\
+                          False).label('enabled')
         ]).select_from(
             feature_flag_nodes.outerjoin(
                 feature_flag_enablements, feature_flag_enablements.c.feature_flag_id == feature_flag_nodes.c.id

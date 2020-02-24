@@ -13,7 +13,8 @@ from sqlalchemy import select, bindparam
 from ..interfaces import NamedNode, ScopedRole
 from polaris.analytics.db.model import \
     accounts, account_members, \
-    organizations, organization_members
+    organizations, organization_members, feature_flags
+from polaris.graphql.base_classes import ConnectionResolver
 
 
 class ViewerAccountRoles:
@@ -44,3 +45,17 @@ class ViewerOrganizationRoles:
         ]).select_from(
             organizations.join(organization_members, organizations.c.id == organization_members.c.organization_id)
         ).where(organization_members.c.user_key == bindparam('key'))
+
+
+class ViewerFeatureFlagsNodes(ConnectionResolver):
+    interface = NamedNode
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        return select([
+            feature_flags.c.id,
+            feature_flags.c.key,
+            feature_flags.c.name,
+            feature_flags.c.enable_all,
+        ]).select_from(
+            feature_flags)

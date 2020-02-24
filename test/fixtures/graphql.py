@@ -873,11 +873,4 @@ def pivotal_work_items_source_work_items_states_fixture(org_repo_fixture, cleanu
     yield pivotal_source_key, work_items_sources
 
 
-@pytest.yield_fixture()
-def create_feature_flag_fixture(cleanup):
-    test_feature_flag_name = 'Test Feature Flag'
-    with db.orm_session() as session:
-        session.expire_on_commit = False
-        feature_flag = FeatureFlag.create("Test Feature Flag")
-        session.add(feature_flag)
-    yield feature_flag, session
+

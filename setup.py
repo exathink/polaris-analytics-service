@@ -51,6 +51,7 @@ setup(
         'polaris.analytics.service.graphql.contributor',
         'polaris.analytics.service.graphql.work_item',
         'polaris.analytics.service.graphql.work_items_source',
+        'polaris.analytics.service.graphql.feature_flag',
         'polaris.analytics.service.graphql.summarizers',
 
     ],

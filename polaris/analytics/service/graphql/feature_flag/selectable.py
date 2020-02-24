@@ -13,7 +13,7 @@ from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
 from polaris.analytics.db.model import feature_flags, feature_flag_enablements
 from ..interfaces import FeatureFlagEnablementInfo
 
-from sqlalchemy import select, bindparam
+from sqlalchemy import select, bindparam, func, or_
 
 
 # from ..interfaces import FeatureFlagInfo
@@ -42,13 +42,17 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
     def interface_selector(feature_flag_nodes, **kwargs):
         return select([
             feature_flag_nodes.c.id,
-            feature_flag_enablements.c.enabled,
             feature_flag_enablements.c.scope,
-            feature_flag_enablements.c.scope_key
+            feature_flag_enablements.c.scope_key,
+            func.coalesce(feature_flag_enablements.c.enabled, \
+                          feature_flag_nodes.c.enable_all).label('enabled'),
         ]).select_from(
             feature_flag_nodes.outerjoin(
                 feature_flag_enablements, feature_flag_enablements.c.feature_flag_id == feature_flag_nodes.c.id
             )
         ).where(
-            feature_flag_nodes.c.key == bindparam('key')
+            or_(
+                feature_flag_enablements.c.scope_key == bindparam('key'),
+                feature_flag_nodes.c.enable_all == True
+            )
         )

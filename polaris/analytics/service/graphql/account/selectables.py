@@ -18,8 +18,7 @@
 
 # Author: Krishna Kumar
 from datetime import datetime, timedelta
-from sqlalchemy import select, func, bindparam, and_, distinct, between, cast, Text, or_
-
+from sqlalchemy import select, func, bindparam, and_, distinct, between, cast, Text
 from polaris.utils.datetime_utils import time_window
 from polaris.graphql.interfaces import NamedNode, KeyIdNode
 from polaris.analytics.db.model import organizations, accounts_organizations, accounts, \
@@ -129,7 +128,7 @@ class AccountRecentlyActiveOrganizationsNodes(ConnectionResolver):
 
 
 class AccountFeatureFlagsNodes(ConnectionResolver):
-    interfaces = (NamedNode, FeatureFlagEnablementInfo)
+    interface = NamedNode
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
@@ -138,20 +137,8 @@ class AccountFeatureFlagsNodes(ConnectionResolver):
             feature_flags.c.key,
             feature_flags.c.name,
             feature_flags.c.enable_all,
-            func.coalesce(feature_flag_enablements.c.enabled, \
-                          feature_flags.c.enable_all).label('enabled'),
-            feature_flag_enablements.c.scope_key,
-            feature_flag_enablements.c.scope
         ]).select_from(
-            feature_flags.outerjoin(
-                feature_flag_enablements
-            )
-        ).where(
-            or_(
-                feature_flag_enablements.c.scope_key == accounts.c.key,
-                feature_flags.c.enable_all == True
-            )
-        ).distinct()
+            feature_flags)
 
 
 class AccountProjectsNodes(ConnectionResolver):

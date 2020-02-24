@@ -879,25 +879,3 @@ def pivotal_work_items_source_work_items_states_fixture(org_repo_fixture, cleanu
         work_items_sources['pivotal'].init_state_map()
         session.add_all(work_items_sources.values())
     yield pivotal_source_key, work_items_sources
-
-
-@pytest.yield_fixture()
-def create_feature_flag_fixture(cleanup):
-    test_feature_flag_name = 'Test Feature Flag'
-    with db.orm_session() as session:
-        session.expire_on_commit = False
-        feature_flag = FeatureFlag.create("Test Feature Flag")
-        session.add(feature_flag)
-    yield feature_flag, session
-
-@pytest.yield_fixture()
-def create_feature_flag_enablement_fixture(cleanup):
-    with db.orm_session() as session:
-        session.expire_on_commit = False
-        feature_flag = FeatureFlag.create("Feature1")
-        feature_flag.enablements.extend([
-            FeatureFlagEnablement(**item)
-            for item in enablements
-        ])
-        session.add(feature_flag)
-    yield feature_flag, session

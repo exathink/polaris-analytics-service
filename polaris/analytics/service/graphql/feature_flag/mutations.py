@@ -51,12 +51,10 @@ class CreateFeatureFlag(graphene.Mutation):
 
     def mutate(self, info, create_feature_flag_input):
         result = db_api.create_feature_flag(create_feature_flag_input)
-        feature_flag = FeatureFlag.resolve_field(info, key=result.get('feature_flag').key) if result[
-            'success'] else None
         resolved = CreateFeatureFlag(
             success=result['success'],
             error_message=result.get('message'),
-            feature_flag=feature_flag
+            feature_flag=FeatureFlag.resolve_field(info, key=result.get('key')) if result['success'] else None
         )
         return resolved
 

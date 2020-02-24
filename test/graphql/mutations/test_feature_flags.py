@@ -100,6 +100,19 @@ def create_feature_flag_fixture(cleanup):
         session.add(feature_flag)
     yield feature_flag
 
+@pytest.yield_fixture()
+def create_feature_flag_enablement_fixture(cleanup):
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        feature_flag = FeatureFlag.create("New Feature")
+        feature_flag.enablements.extend([
+            FeatureFlagEnablement(**item)
+            for item in enablements
+        ])
+        session.add(feature_flag)
+    yield feature_flag
+
+
 class TestEnableFeatureFlag:
 
     def it_enables_feature_flag(self, create_feature_flag_fixture):

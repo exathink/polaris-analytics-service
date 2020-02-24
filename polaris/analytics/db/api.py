@@ -243,6 +243,6 @@ def enable_feature_flag(enable_feature_flag_input):
                 )
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Enable Feature Flag failed", exc)
+        return db.process_exception("Failed to enable feature flag", exc)
     except Exception as e:
-        return db.failure_message('Enable Feature Flag failed', e)
+        return db.failure_message(f'Failed to enable feature flag due to: {e}', e)

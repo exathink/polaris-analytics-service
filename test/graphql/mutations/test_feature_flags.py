@@ -196,3 +196,76 @@ class TestUpdateEnablementsStatus:
         ))
         assert 'data' in response
         assert response['data']['updateEnablementsStatus']['success']
+
+    def it_returns_error_for_invalid_enablement(self, create_feature_flag_enablement_fixture):
+        feature_flag = create_feature_flag_enablement_fixture
+        client = Client(schema)
+        feature_flag_key = feature_flag.key
+
+        enablement = [dict(scopeKey=uuid.uuid4(), enabled=false)]
+
+        query = """
+                    mutation updateEnablementsStatus($updateEnablementsStatusInput: UpdateEnablementsStatusInput! ){
+                        updateEnablementsStatus(
+                            updateEnablementsStatusInput: $updateEnablementsStatusInput
+                        ){
+                            success,
+                            errorMessage
+                        }
+                    }
+                """
+        response = client.execute(query, variable_values=dict(
+            updateEnablementsStatusInput=dict(
+                featureFlagKey=feature_flag_key,
+                enablements=enablement
+            )
+        ))
+        assert 'data' in response
+        assert response['data']['updateEnablementsStatus']['errorMessage'] == f'Failed to update enablement(s) due to: Could not find enablement for scope_key: {enablement[0]["scopeKey"]} associated with feature key: {feature_flag_key}'
+
+class TestEnableFeatureFlag:
+
+    def it_enables_feature_flag(self, create_feature_flag_fixture):
+        feature_flag = create_feature_flag_fixture
+        client = Client(schema)
+        feature_flag_key = feature_flag.key
+
+        query = """
+                    mutation enableFeatureFlag($enableFeatureFlagInput: EnableFeatureFlagInput! ){
+                        enableFeatureFlag(
+                            enableFeatureFlagInput: $enableFeatureFlagInput
+                        ){
+                            success,
+                            errorMessage
+                        }
+                    }
+                """
+        response = client.execute(query, variable_values=dict(
+            enableFeatureFlagInput=dict(
+                featureFlagKey=feature_flag_key
+            )
+        ))
+        assert 'data' in response
+        assert response['data']['enableFeatureFlag']['success']
+
+    def it_returns_error_for_invalid_feature_flag(self):
+        client = Client(schema)
+        feature_flag_key = uuid.uuid4()
+
+        query = """
+                    mutation enableFeatureFlag($enableFeatureFlagInput: EnableFeatureFlagInput! ){
+                        enableFeatureFlag(
+                            enableFeatureFlagInput: $enableFeatureFlagInput
+                        ){
+                            success,
+                            errorMessage
+                        }
+                    }
+                """
+        response = client.execute(query, variable_values=dict(
+            enableFeatureFlagInput=dict(
+                featureFlagKey=feature_flag_key
+            )
+        ))
+        assert 'data' in response
+        assert response['data']['enableFeatureFlag']['errorMessage'] == f'Failed to enable feature flag due to: Could not find feature flag with key: {feature_flag_key}'

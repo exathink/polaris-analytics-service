@@ -86,11 +86,13 @@ def update_enablements_status(session, feature_flag_key, update_enablements_stat
 
 def enable_feature_flag(session, feature_flag_key):
     logger.info("Inside enable_feature_flag")
-    logger.info('------------------ ' + feature_flag_key)
     feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
-    feature_flag.enable_all = True
-    feature_flag.enable_all_date = datetime.utcnow()
-    session.add(feature_flag)
+    if feature_flag is not None:
+        feature_flag.enable_all = True
+        feature_flag.enable_all_date = datetime.utcnow()
+        session.add(feature_flag)
+    else:
+        raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")
 
     return dict(
         key=feature_flag_key

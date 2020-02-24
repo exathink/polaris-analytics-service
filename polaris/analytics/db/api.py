@@ -247,3 +247,17 @@ def update_feature_flag_status(update_feature_flag_status_input):
         return db.process_exception("Failed to enable feature flag", exc)
     except Exception as e:
         return db.failure_message(f'Failed to enable feature flag due to: {e}', e)
+
+def deactivate_feature_flag (deactivate_feature_flag_input):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.deactivate_feature_flag(
+                    session,
+                    deactivate_feature_flag_input.feature_flag_key
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Failed to deactivate feature flag", exc)
+    except Exception as e:
+        return db.failure_message(f'Failed to deactivate feature flag due to: {e}', e)

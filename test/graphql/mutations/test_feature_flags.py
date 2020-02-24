@@ -305,3 +305,32 @@ class TestEnableFeatureFlag:
         ))
         assert 'data' in response
         assert response['data']['updateFeatureFlagStatus']['errorMessage'] == f'Failed to enable feature flag due to: Could not find feature flag with key: {feature_flag_key}'
+
+class TestDeactivateFeatureFlag:
+
+    def it_deactivates_feature_flag(self, create_feature_flag_fixture):
+        feature_flag = create_feature_flag_fixture
+        client = Client(schema)
+        feature_flag_key = feature_flag.key
+
+        query = """
+                    mutation deactivateFeatureFlag($deactivateFeatureFlagInput: DeactivateFeatureFlagInput! ){
+                        deactivateFeatureFlag(
+                            deactivateFeatureFlagInput: $deactivateFeatureFlagInput
+                        ){
+                            success,
+                            errorMessage
+                        }
+                    }
+                """
+        response = client.execute(query, variable_values=dict(
+            deactivateFeatureFlagInput=dict(
+                featureFlagKey=feature_flag_key
+            )
+        ))
+        assert 'data' in response
+        assert response['data']['deactivateFeatureFlag']['success']
+        featureFlag = db.connection().execute(
+            f"select * from analytics.feature_flags where key='{feature_flag_key}'"
+        ).fetchone()
+        assert not featureFlag.active

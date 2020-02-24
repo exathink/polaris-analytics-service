@@ -44,6 +44,9 @@ class UpdateFeatureFlagStatusInput(graphene.InputObjectType):
     feature_flag_key = graphene.String(required=True)
     enable_all = graphene.Boolean(required=True)
 
+class DeactivateFeatureFlagInput(graphene.InputObjectType):
+    feature_flag_key = graphene.String(required=True)
+
 class CreateFeatureFlag(graphene.Mutation):
     class Arguments:
         create_feature_flag_input = CreateFeatureFlagInput(required=True)
@@ -104,9 +107,24 @@ class UpdateFeatureFlagStatus(graphene.Mutation):
             error_message=result.get('message')
         )
 
+class DeactivateFeatureFlag(graphene.Mutation):
+    class Arguments:
+        deactivate_feature_flag_input = DeactivateFeatureFlagInput(required=True)
+
+    success = graphene.Boolean()
+    error_message = graphene.String()
+
+    def mutate(self, info, deactivate_feature_flag_input):
+        result = db_api.deactivate_feature_flag(deactivate_feature_flag_input)
+        return DeactivateFeatureFlag(
+            success=result['success'],
+            error_message=result.get('message')
+        )
+
 
 class FeatureFlagMutationsMixin:
     create_feature_flag = CreateFeatureFlag.Field()
     feature_flag_enablement = FeatureFlagEnablement.Field()
     update_enablements_status = UpdateEnablementsStatus.Field()
     update_feature_flag_status = UpdateFeatureFlagStatus.Field()
+    deactivate_feature_flag = DeactivateFeatureFlag.Field()

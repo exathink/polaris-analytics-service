@@ -89,10 +89,26 @@ def update_feature_flag_status(session, feature_flag_key, enable_all):
     feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
     if feature_flag is not None:
         feature_flag.enable_all = enable_all
+        feature_flag.updated = datetime.utcnow()
         if enable_all:
             feature_flag.enable_all_date = datetime.utcnow()
         else:
             feature_flag.enable_all_date = None
+        session.add(feature_flag)
+    else:
+        raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")
+
+    return dict(
+        key=feature_flag_key
+    )
+
+def deactivate_feature_flag(session, feature_flag_key):
+    logger.info("Inside deactivate_feature_flag")
+    feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
+    if feature_flag is not None:
+        feature_flag.active = False
+        feature_flag.deactivated_date = datetime.utcnow()
+        feature_flag.updated = datetime.utcnow()
         session.add(feature_flag)
     else:
         raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")

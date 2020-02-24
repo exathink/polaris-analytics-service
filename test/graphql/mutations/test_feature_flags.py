@@ -32,6 +32,13 @@ enablements = [
     dict(scope="account", scopeKey=uuid.uuid4(), enabled=false)
 ]
 
+test_scope_key = uuid.uuid4()
+enablementsInput = [
+    dict(scope="user", scope_key=test_scope_key, enabled=True),
+    dict(scope="user", scope_key=uuid.uuid4(), enabled=False),
+    dict(scope="account", scope_key=uuid.uuid4(), enabled=False)
+]
+
 class TestCreateFeatureFlag:
 
     def it_creates_a_new_feature_flag_given_name(self, create_feature_flag_fixture):
@@ -107,23 +114,23 @@ def create_feature_flag_enablement_fixture(cleanup):
         feature_flag = FeatureFlag.create("New Feature")
         feature_flag.enablements.extend([
             FeatureFlagEnablement(**item)
-            for item in enablements
+            for item in enablementsInput
         ])
         session.add(feature_flag)
     yield feature_flag
 
 
-class TestEnableFeatureFlag:
+class TestCreateFeatureFlagEnablement:
 
-    def it_enables_feature_flag(self, create_feature_flag_fixture):
+    def it_creates_feature_flag_enablement(self, create_feature_flag_fixture):
         feature_flag = create_feature_flag_fixture
         client = Client(schema)
         feature_flag_key = feature_flag.key
 
         query = """
-                    mutation enableFeatureFlag($enableFeatureFlagInput: EnableFeatureFlagInput! ){
-                        enableFeatureFlag(
-                            enableFeatureFlagInput: $enableFeatureFlagInput
+                    mutation featureFlagEnablement($featureFlagEnablementInput: FeatureFlagEnablementInput! ){
+                        featureFlagEnablement(
+                            featureFlagEnablementInput: $featureFlagEnablementInput
                         ){
                             success,
                             errorMessage
@@ -131,22 +138,22 @@ class TestEnableFeatureFlag:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            enableFeatureFlagInput=dict(
+            featureFlagEnablementInput=dict(
                 featureFlagKey=feature_flag_key,
                 enablements=enablements
             )
         ))
         assert 'data' in response
-        assert response['data']['enableFeatureFlag']['success']
+        assert response['data']['featureFlagEnablement']['success']
 
     def it_returns_error_message_for_invalid_feature_flag(self):
         client = Client(schema)
         feature_flag_key = uuid.uuid4()
 
         query = """
-                    mutation enableFeatureFlag($enableFeatureFlagInput: EnableFeatureFlagInput! ){
-                        enableFeatureFlag(
-                            enableFeatureFlagInput: $enableFeatureFlagInput
+                    mutation featureFlagEnablement($featureFlagEnablementInput: FeatureFlagEnablementInput! ){
+                        featureFlagEnablement(
+                            featureFlagEnablementInput: $featureFlagEnablementInput
                         ){
                             success,
                             errorMessage
@@ -154,22 +161,22 @@ class TestEnableFeatureFlag:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            enableFeatureFlagInput=dict(
+            featureFlagEnablementInput=dict(
                 featureFlagKey=feature_flag_key,
                 enablements=enablements
             )
         ))
         assert 'data' in response
-        assert response['data']['enableFeatureFlag']['errorMessage'] == "Failed to enable feature flag"
+        assert response['data']['featureFlagEnablement']['errorMessage'] == "Failed to create feature flag enablement"
 
 class TestUpdateEnablementsStatus:
 
     def it_updates_enablements_status(self, create_feature_flag_enablement_fixture):
-        feature_flag, _ = create_feature_flag_enablement_fixture
+        feature_flag = create_feature_flag_enablement_fixture
         client = Client(schema)
         feature_flag_key = feature_flag.key
 
-        enablement =  [dict(scopeKey=testScopeKey, enabled=false)]
+        enablement =  [dict(scopeKey=test_scope_key, enabled=False)]
 
         query = """
                     mutation updateEnablementsStatus($updateEnablementsStatusInput: UpdateEnablementsStatusInput! ){
@@ -179,7 +186,7 @@ class TestUpdateEnablementsStatus:
                             success,
                             errorMessage
                         }
-                    }
+                    }  
                 """
         response = client.execute(query, variable_values=dict(
             updateEnablementsStatusInput=dict(

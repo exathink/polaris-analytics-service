@@ -29,13 +29,6 @@ test_repositories = ['alpha', 'beta', 'gamma', 'delta']
 test_projects = ['mercury', 'venus']
 test_contributor_name = 'Joe Blow'
 
-test_scope_key = uuid.uuid4()
-enablements = [
-    dict(scope="user", scope_key=test_scope_key, enabled=True),
-    dict(scope="user", scope_key=uuid.uuid4(), enabled=False),
-    dict(scope="account", scope_key=uuid.uuid4(), enabled=False)
-]
-
 def getRepository(name):
     with db.orm_session() as session:
         organization = Organization.find_by_organization_key(session, test_organization_key)

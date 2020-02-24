@@ -229,9 +229,9 @@ def update_enablements_status(update_enablements_status_input):
                 )
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Failed to update enablement", exc)
+        return db.process_exception("Failed to update enablement(s)", exc)
     except Exception as e:
-        return db.failure_message('Failed to update enablement', e)
+        return db.failure_message(f"Failed to update enablement(s) due to: {e}", e)
 
 def enable_feature_flag(enable_feature_flag_input):
     try:

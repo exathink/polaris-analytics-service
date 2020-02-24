@@ -84,12 +84,15 @@ def update_enablements_status(session, feature_flag_key, update_enablements_stat
         raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")
 
 
-def enable_feature_flag(session, feature_flag_key):
+def update_feature_flag_status(session, feature_flag_key, enable_all):
     logger.info("Inside enable_feature_flag")
     feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
     if feature_flag is not None:
-        feature_flag.enable_all = True
-        feature_flag.enable_all_date = datetime.utcnow()
+        feature_flag.enable_all = enable_all
+        if enable_all:
+            feature_flag.enable_all_date = datetime.utcnow()
+        else:
+            feature_flag.enable_all_date = None
         session.add(feature_flag)
     else:
         raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")

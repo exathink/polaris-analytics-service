@@ -233,13 +233,14 @@ def update_enablements_status(update_enablements_status_input):
     except Exception as e:
         return db.failure_message(f"Failed to update enablement(s) due to: {e}", e)
 
-def enable_feature_flag(enable_feature_flag_input):
+def update_feature_flag_status(update_feature_flag_status_input):
     try:
         with db.orm_session() as session:
             return success(
-                impl.enable_feature_flag(
+                impl.update_feature_flag_status(
                     session,
-                    enable_feature_flag_input.feature_flag_key
+                    update_feature_flag_status_input.feature_flag_key,
+                    update_feature_flag_status_input.enable_all
                 )
             )
     except SQLAlchemyError as exc:

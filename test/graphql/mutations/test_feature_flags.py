@@ -231,9 +231,9 @@ class TestEnableFeatureFlag:
         feature_flag_key = feature_flag.key
 
         query = """
-                    mutation enableFeatureFlag($enableFeatureFlagInput: EnableFeatureFlagInput! ){
-                        enableFeatureFlag(
-                            enableFeatureFlagInput: $enableFeatureFlagInput
+                    mutation updateFeatureFlagStatus($updateFeatureFlagStatusInput: UpdateFeatureFlagStatusInput! ){
+                        updateFeatureFlagStatus(
+                            updateFeatureFlagStatusInput: $updateFeatureFlagStatusInput
                         ){
                             success,
                             errorMessage
@@ -241,21 +241,54 @@ class TestEnableFeatureFlag:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            enableFeatureFlagInput=dict(
-                featureFlagKey=feature_flag_key
+            updateFeatureFlagStatusInput=dict(
+                featureFlagKey=feature_flag_key,
+                enableAll=True
             )
         ))
         assert 'data' in response
-        assert response['data']['enableFeatureFlag']['success']
+        assert response['data']['updateFeatureFlagStatus']['success']
+        featureFlag = db.connection().execute(
+            f"select * from analytics.feature_flags where key='{feature_flag_key}'"
+        ).fetchone()
+        assert featureFlag.enable_all
+
+    def it_disables_feature_flag(self, create_feature_flag_fixture):
+        feature_flag = create_feature_flag_fixture
+        client = Client(schema)
+        feature_flag_key = feature_flag.key
+
+        query = """
+                    mutation updateFeatureFlagStatus($updateFeatureFlagStatusInput: UpdateFeatureFlagStatusInput! ){
+                        updateFeatureFlagStatus(
+                            updateFeatureFlagStatusInput: $updateFeatureFlagStatusInput
+                        ){
+                            success,
+                            errorMessage
+                        }
+                    }
+                """
+        response = client.execute(query, variable_values=dict(
+            updateFeatureFlagStatusInput=dict(
+                featureFlagKey=feature_flag_key,
+                enableAll=False
+            )
+        ))
+        assert 'data' in response
+        assert response['data']['updateFeatureFlagStatus']['success']
+        featureFlag = db.connection().execute(
+            f"select * from analytics.feature_flags where key='{feature_flag_key}'"
+        ).fetchone()
+        assert not featureFlag.enable_all
 
     def it_returns_error_for_invalid_feature_flag(self):
         client = Client(schema)
         feature_flag_key = uuid.uuid4()
 
         query = """
-                    mutation enableFeatureFlag($enableFeatureFlagInput: EnableFeatureFlagInput! ){
-                        enableFeatureFlag(
-                            enableFeatureFlagInput: $enableFeatureFlagInput
+                    mutation updateFeatureFlagStatus($updateFeatureFlagStatusInput: UpdateFeatureFlagStatusInput! ){
+                        updateFeatureFlagStatus(
+                            updateFeatureFlagStatusInput: $updateFeatureFlagStatusInput
                         ){
                             success,
                             errorMessage
@@ -263,9 +296,10 @@ class TestEnableFeatureFlag:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            enableFeatureFlagInput=dict(
-                featureFlagKey=feature_flag_key
+            updateFeatureFlagStatusInput=dict(
+                featureFlagKey=feature_flag_key,
+                enableAll = True
             )
         ))
         assert 'data' in response
-        assert response['data']['enableFeatureFlag']['errorMessage'] == f'Failed to enable feature flag due to: Could not find feature flag with key: {feature_flag_key}'
+        assert response['data']['updateFeatureFlagStatus']['errorMessage'] == f'Failed to enable feature flag due to: Could not find feature flag with key: {feature_flag_key}'

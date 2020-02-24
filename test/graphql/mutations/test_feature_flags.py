@@ -252,6 +252,7 @@ class TestEnableFeatureFlag:
             f"select * from analytics.feature_flags where key='{feature_flag_key}'"
         ).fetchone()
         assert featureFlag.enable_all
+        assert featureFlag.enable_all_date is not None
 
     def it_disables_feature_flag(self, create_feature_flag_fixture):
         feature_flag = create_feature_flag_fixture
@@ -280,6 +281,7 @@ class TestEnableFeatureFlag:
             f"select * from analytics.feature_flags where key='{feature_flag_key}'"
         ).fetchone()
         assert not featureFlag.enable_all
+        assert featureFlag.enable_all_date is None
 
     def it_returns_error_for_invalid_feature_flag(self):
         client = Client(schema)

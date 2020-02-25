@@ -39,6 +39,28 @@ enablementsInput = [
     dict(scope="account", scope_key=uuid.uuid4(), enabled=False)
 ]
 
+
+@pytest.yield_fixture()
+def create_feature_flag_fixture(cleanup):
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        feature_flag = FeatureFlag.create("Test Feature Flag")
+        session.add(feature_flag)
+    yield feature_flag
+
+@pytest.yield_fixture()
+def create_feature_flag_enablement_fixture(cleanup):
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        feature_flag = FeatureFlag.create("New Feature")
+        feature_flag.enablements.extend([
+            FeatureFlagEnablement(**item)
+            for item in enablementsInput
+        ])
+        session.add(feature_flag)
+    yield feature_flag
+
+
 class TestCreateFeatureFlag:
 
     def it_creates_a_new_feature_flag_given_name(self, create_feature_flag_fixture):
@@ -98,26 +120,6 @@ class TestCreateFeatureFlag:
         assert not response['data']['createFeatureFlag']['success']
         assert response['data']['createFeatureFlag']['errorMessage'] == f'Feature flag {name} already exists'
 
-
-@pytest.yield_fixture()
-def create_feature_flag_fixture(cleanup):
-    with db.orm_session() as session:
-        session.expire_on_commit = False
-        feature_flag = FeatureFlag.create("Test Feature Flag")
-        session.add(feature_flag)
-    yield feature_flag
-
-@pytest.yield_fixture()
-def create_feature_flag_enablement_fixture(cleanup):
-    with db.orm_session() as session:
-        session.expire_on_commit = False
-        feature_flag = FeatureFlag.create("New Feature")
-        feature_flag.enablements.extend([
-            FeatureFlagEnablement(**item)
-            for item in enablementsInput
-        ])
-        session.add(feature_flag)
-    yield feature_flag
 
 
 class TestCreateFeatureFlagEnablement:

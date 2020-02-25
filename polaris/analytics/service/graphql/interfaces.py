@@ -172,6 +172,6 @@ class Describable(graphene.Interface):
 
 
 class FeatureFlagEnablementInfo(graphene.Interface):
-    enabled = graphene.Boolean(required=True)
+    enabled = graphene.Boolean(required=False)
     scope = graphene.String(required=True)
     scope_key = graphene.String(required=True)

@@ -19,7 +19,6 @@
 
 from polaris.analytics.db import api
 
-
 from test.fixtures.work_item_commit_resolution import *
 
 
@@ -70,7 +69,6 @@ class TestRepoScope:
         assert result['resolved'][0]['repository_key'] == str(test_repo.key)
 
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
-
 
     def it_returns_a_valid_map_when_there_are_multiple_matching_commits_and_work_items(self, commits_fixture):
         organization, _, repositories, _ = commits_fixture
@@ -193,12 +191,10 @@ class TestOrgScope:
 
 class TestProjectScope:
 
-
     def it_matches_work_items_attached_at_project_scope(self, commits_fixture):
         organization, projects, repositories, _ = commits_fixture
         mercury = projects['mercury']
         alpha = repositories['alpha']
-
 
         new_key = uuid.uuid4()
         new_work_items = [
@@ -238,7 +234,7 @@ class TestProjectScope:
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
 
     def it_matches_across_work_items_across_multiple_projects_when_the_repo_belongs_to_multiple_projects(
-            self,commits_fixture
+            self, commits_fixture
     ):
         organization, projects, repositories, _ = commits_fixture
         mercury = projects['mercury']

@@ -137,6 +137,8 @@ class AccountFeatureFlagsNodes(ConnectionResolver):
             feature_flags.c.key,
             feature_flags.c.name,
             feature_flags.c.enable_all,
+            feature_flags.c.active,
+            bindparam('key').label('scope_key')
         ]).select_from(
             feature_flags)
 

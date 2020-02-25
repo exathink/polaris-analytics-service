@@ -213,8 +213,6 @@ feature_flags_input = [
 ]
 feature_flags_enablements_input = [
     dict(scope="account", scope_key=test_account_key, enabled=True),
-    dict(scope="user", scope_key=uuid.uuid4(), enabled=False),
-    dict(scope="account", scope_key=uuid.uuid4(), enabled=False)
 ]
 
 @pytest.yield_fixture()

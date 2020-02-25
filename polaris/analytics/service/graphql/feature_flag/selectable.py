@@ -14,7 +14,7 @@ from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
 from polaris.analytics.db.model import feature_flags, feature_flag_enablements
 from ..interfaces import FeatureFlagEnablementInfo
 
-from sqlalchemy import select, bindparam, func, or_
+from sqlalchemy import select, bindparam, func, or_, and_
 
 
 # from ..interfaces import FeatureFlagInfo
@@ -45,16 +45,20 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
             feature_flag_nodes.c.id,
             feature_flag_enablements.c.scope,
             feature_flag_enablements.c.scope_key,
-            func.coalesce(func.coalesce(feature_flag_enablements.c.enabled, \
-                                        feature_flag_nodes.c.enable_all), False).label('enabled'),
+            func.coalesce(feature_flag_nodes.c.enable_all, feature_flag_enablements.c.enabled).label('enabled'),
         ]).select_from(
             feature_flag_nodes.outerjoin(
                 feature_flag_enablements, feature_flag_enablements.c.feature_flag_id == feature_flag_nodes.c.id
             )
         ).where(
-            or_(
-                feature_flag_enablements.c.scope_key == bindparam('key'),
-                feature_flag_nodes.c.enable_all == True,
-                feature_flag_nodes.c.active == True
+            and_(
+                feature_flag_nodes.c.active == True,
+                or_(
+                    or_(
+                        feature_flag_enablements.c.scope_key == bindparam('key'),
+                        feature_flag_enablements.c.scope_key == feature_flag_nodes.c.scope_key,
+                        ),
+                    feature_flag_nodes.c.enable_all == True
+                )
             )
         )

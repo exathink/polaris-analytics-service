@@ -52,10 +52,21 @@ class ViewerFeatureFlagsNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
+        account_key_select_stmt = select([
+            accounts.c.key
+        ]).select_from(
+            accounts.join(
+                account_members,
+                accounts.c.id == account_members.c.account_id
+            )
+        ).where(account_members.c.user_key == bindparam('key'))
+
         return select([
             feature_flags.c.id,
             feature_flags.c.key,
             feature_flags.c.name,
             feature_flags.c.enable_all,
+            feature_flags.c.active,
+            account_key_select_stmt.label('scope_key')
         ]).select_from(
             feature_flags)

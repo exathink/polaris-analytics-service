@@ -43,9 +43,10 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
     def interface_selector(feature_flag_nodes, **kwargs):
         return select([
             feature_flag_nodes.c.id,
-            feature_flag_enablements.c.scope,
-            feature_flag_enablements.c.scope_key,
-            func.coalesce(feature_flag_nodes.c.enable_all, feature_flag_enablements.c.enabled).label('enabled'),
+            feature_flag_nodes.c.name,
+            func.coalesce(feature_flag_enablements.c.scope, 'account').label('scope'),
+            func.coalesce(feature_flag_enablements.c.scope_key, feature_flag_nodes.c.scope_key).label('scope_key'),
+            func.coalesce(feature_flag_nodes.c.enable_all, feature_flag_enablements.c.enabled, False).label('enabled'),
         ]).select_from(
             feature_flag_nodes.outerjoin(
                 feature_flag_enablements, feature_flag_enablements.c.feature_flag_id == feature_flag_nodes.c.id
@@ -54,10 +55,8 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
             and_(
                 feature_flag_nodes.c.active == True,
                 or_(
-                    or_(
-                        feature_flag_enablements.c.scope_key == bindparam('key'),
-                        feature_flag_enablements.c.scope_key == feature_flag_nodes.c.scope_key,
-                        ),
+                    feature_flag_enablements.c.scope_key == bindparam('key'),
+                    feature_flag_enablements.c.scope_key == feature_flag_nodes.c.scope_key,
                     feature_flag_nodes.c.enable_all == True
                 )
             )

@@ -8,7 +8,7 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam
+from sqlalchemy import select, func, bindparam
 
 from ..interfaces import NamedNode, ScopedRole
 from polaris.analytics.db.model import \
@@ -52,21 +52,21 @@ class ViewerFeatureFlagsNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
-        account_key_select_stmt = select([
+        account_key = (select([
             accounts.c.key
         ]).select_from(
             accounts.join(
                 account_members,
                 accounts.c.id == account_members.c.account_id
             )
-        ).where(account_members.c.user_key == bindparam('key'))
+        ).where(account_members.c.user_key == bindparam('key'))).as_scalar()
 
         return select([
             feature_flags.c.id,
             feature_flags.c.key,
             feature_flags.c.name,
-            feature_flags.c.enable_all,
+            func.coalesce(feature_flags.c.enable_all, False).label('enable_all'),
             feature_flags.c.active,
-            account_key_select_stmt.label('scope_key')
+            account_key.label('scope_key')
         ]).select_from(
             feature_flags)

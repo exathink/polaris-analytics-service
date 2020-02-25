@@ -109,6 +109,8 @@ def deactivate_feature_flag(session, feature_flag_key):
         feature_flag.active = False
         feature_flag.deactivated_date = datetime.utcnow()
         feature_flag.updated = datetime.utcnow()
+        feature_flag.enable_all = False
+        feature_flag.enable_all_date = None
         session.add(feature_flag)
     else:
         raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")

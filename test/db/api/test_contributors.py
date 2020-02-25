@@ -28,7 +28,6 @@ class TestUpdateContributorForContributorAliases:
             joe_alt = ContributorAlias.find_by_contributor_alias_key(session, joe_alt_contributor_key)
             assert joe_alt.contributor.key.hex == joe_contributor_key
 
-
     def it_attributes_all_commits_authored_by_the_alias_to_the_new_contributor(
             self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
@@ -42,7 +41,7 @@ class TestUpdateContributorForContributorAliases:
         ).scalar() == 2
 
     def it_removes_attributions_for_all_commits_authored_by_the_alias_to_the_old_contributor(
-            self,setup_commits_for_contributor_updates):
+            self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
             rails_organization_key,
             joe_contributor_key,
@@ -52,7 +51,6 @@ class TestUpdateContributorForContributorAliases:
         assert db.connection().execute(
             f"select count(id) from analytics.commits where author_contributor_key='{joe_alt_contributor_key}'"
         ).scalar() == 0
-
 
     def it_attributes_all_commits_committed_by_the_alias_to_the_new_contributor(
             self, setup_commits_for_contributor_updates):
@@ -67,7 +65,7 @@ class TestUpdateContributorForContributorAliases:
         ).scalar() == 2
 
     def it_removes_attributions_for_all_commits_committed_by_the_alias_to_the_old_contributor(
-            self,setup_commits_for_contributor_updates):
+            self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
             rails_organization_key,
             joe_contributor_key,

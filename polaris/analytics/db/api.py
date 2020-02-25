@@ -218,6 +218,7 @@ def feature_flag_enablement(feature_flag_enablement_input):
     except Exception as e:
         return db.failure_message('Failed to create feature flag enablement', e)
 
+
 def update_enablements_status(update_enablements_status_input):
     try:
         with db.orm_session() as session:
@@ -232,6 +233,7 @@ def update_enablements_status(update_enablements_status_input):
         return db.process_exception("Failed to update enablement(s)", exc)
     except Exception as e:
         return db.failure_message(f"Failed to update enablement(s) due to: {e}", e)
+
 
 def update_feature_flag_status(update_feature_flag_status_input):
     try:
@@ -248,7 +250,8 @@ def update_feature_flag_status(update_feature_flag_status_input):
     except Exception as e:
         return db.failure_message(f'Failed to enable feature flag due to: {e}', e)
 
-def deactivate_feature_flag (deactivate_feature_flag_input):
+
+def deactivate_feature_flag(deactivate_feature_flag_input):
     try:
         with db.orm_session() as session:
             return success(

@@ -728,6 +728,10 @@ class FeatureFlag(Base):
     def find_by_key(cls, session, key):
         return session.query(cls).filter(cls.key == key).first()
 
+    @classmethod
+    def find_by_name(cls, session, name):
+        return session.query(cls).filter(cls.name == name).first()
+
 feature_flags = FeatureFlag.__table__
 
 

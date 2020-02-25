@@ -12,21 +12,24 @@ from polaris.analytics.db import api, model
 from polaris.common import db
 import uuid
 
+
 class objectview(object):
     def __init__(self, d):
         self.__dict__ = d
+
 
 class TestCreateFeatureFlag:
     def it_creates_feature_flag(self):
         name = 'Test feature flag'
         feature_flag = model.FeatureFlag(
-            name = name
+            name=name
         )
         result = api.create_feature_flag(feature_flag)
         assert result['success']
         assert db.connection().execute(
             f"select key from analytics.feature_flags where name='{name}'"
         ).scalar()
+
 
 class TestCreateFeatureFlagEnablement:
     def it_creates_feature_flag_enablement(self):
@@ -36,8 +39,8 @@ class TestCreateFeatureFlagEnablement:
         ).fetchone()
 
         feature_flag_enablement_input = dict(
-            feature_flag_key = feature_flag.key,
-            enablements = [
+            feature_flag_key=feature_flag.key,
+            enablements=[
                 dict(
                     scope="user",
                     scope_key=uuid.uuid4(),
@@ -58,4 +61,3 @@ class TestCreateFeatureFlagEnablement:
         assert db.connection().execute(
             f"select count(*) from analytics.feature_flag_enablements where feature_flag_id='{feature_flag.id}'"
         ).scalar() == 2
-

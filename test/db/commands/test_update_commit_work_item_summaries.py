@@ -9,7 +9,6 @@
 # Author: Krishna Kumar
 
 
-
 from polaris.analytics.db import commands
 from test.fixtures.work_item_commit_resolution import *
 
@@ -60,7 +59,8 @@ class TestUpdateCommitWorkItemSummaries:
         ]
         resolved = commands.update_commit_work_item_summaries(organization.key, work_items_commits)
         assert resolved['success']
-        saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
+        saved = db.connection().execute(
+            f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
         assert saved.work_items_summaries == [
             dict(
                 key=work_item_key.hex,
@@ -126,7 +126,8 @@ class TestUpdateCommitWorkItemSummaries:
         ]
         resolved = commands.update_commit_work_item_summaries(organization.key, work_items_commits)
         assert resolved['success']
-        saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
+        saved = db.connection().execute(
+            f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
         assert saved.work_items_summaries == [
             dict(
                 key=work_item_key1.hex,
@@ -203,7 +204,8 @@ class TestUpdateCommitWorkItemSummaries:
         ]
         resolved = commands.update_commit_work_item_summaries(organization.key, work_items_commits)
         assert resolved['success']
-        saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key in ('{test_commit_key1}', '{test_commit_key2}')").fetchall()
+        saved = db.connection().execute(
+            f"select work_items_summaries from analytics.commits where key in ('{test_commit_key1}', '{test_commit_key2}')").fetchall()
         assert saved[0].work_items_summaries == [
             dict(
                 key=work_item_key.hex,
@@ -270,7 +272,8 @@ class TestUpdateCommitWorkItemSummaries:
         # update again
         resolved = commands.update_commit_work_item_summaries(organization.key, work_items_commits)
         assert resolved['success']
-        saved = db.connection().execute(f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
+        saved = db.connection().execute(
+            f"select work_items_summaries from analytics.commits where key='{test_commit_key}'").first()
         assert saved.work_items_summaries == [
             dict(
                 key=work_item_key.hex,

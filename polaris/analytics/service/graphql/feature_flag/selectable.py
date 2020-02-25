@@ -45,9 +45,8 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
             feature_flag_nodes.c.id,
             feature_flag_enablements.c.scope,
             feature_flag_enablements.c.scope_key,
-            func.coalesce(feature_flag_enablements.c.enabled,\
-                          feature_flag_nodes.c.enable_all,\
-                          False).label('enabled')
+            func.coalesce(func.coalesce(feature_flag_enablements.c.enabled, \
+                                        feature_flag_nodes.c.enable_all), False).label('enabled'),
         ]).select_from(
             feature_flag_nodes.outerjoin(
                 feature_flag_enablements, feature_flag_enablements.c.feature_flag_id == feature_flag_nodes.c.id
@@ -55,6 +54,7 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
         ).where(
             or_(
                 feature_flag_enablements.c.scope_key == bindparam('key'),
-                feature_flag_nodes.c.enable_all == True
+                feature_flag_nodes.c.enable_all == True,
+                feature_flag_nodes.c.active == True
             )
         )

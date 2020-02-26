@@ -50,6 +50,9 @@ class Account(
     #
     Selectable
 ):
+    def resolve_feature_flags(self, info, **kwargs):
+        return super().resolve_feature_flags(info, scope='account', scope_key=self.key, **kwargs)
+
     class Meta:
         interfaces = (NamedNode, OwnerInfo, UserInfo, AccountInfo, CommitSummary, ContributorCount)
         named_node_resolver = AccountNode

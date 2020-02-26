@@ -119,6 +119,9 @@ class Viewer (
     def resolve_account(self, info, **kwargs):
         return Account.resolve_field(info, **kwargs)
 
+    def resolve_feature_flags(self, info, **kwargs):
+        return super().resolve_feature_flags(info, scope='user', scope_key=self.key, **kwargs)
+
     @classmethod
     def is_account_owner(cls, account_key):
         for account in cls.get_viewer().resolve_account_roles(info={}):

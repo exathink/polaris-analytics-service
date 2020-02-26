@@ -34,6 +34,8 @@ class TestImportRepositories:
         assert result['success']
         assert result['imported'] == 1
 
+
+
     def it_is_idempotent(self, setup_org):
         organization = setup_org
         repositories = [
@@ -78,3 +80,4 @@ class TestImportRepositories:
         assert db.connection().execute(
             f"Select name from analytics.repositories where key = '{rails_repository_key}'"
         ).scalar() == '$$$'
+

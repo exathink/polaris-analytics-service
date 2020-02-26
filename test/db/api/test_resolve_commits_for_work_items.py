@@ -23,7 +23,6 @@ from polaris.analytics.db.model import work_items as work_items_impl
 from test.fixtures.work_item_commit_resolution import *
 from polaris.utils.collections import dict_merge
 
-
 class TestSingleRepo:
 
     def it_returns_a_match_when_there_is_a_commit_matching_the_work_item(self, commits_fixture):

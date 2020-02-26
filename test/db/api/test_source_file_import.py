@@ -12,7 +12,6 @@ from test.constants import *
 from test.fixtures.commit_details import *
 from polaris.analytics.db import api
 
-
 class TestSourceFileImport:
 
     def it_registers_source_files(self, import_commit_details_fixture):

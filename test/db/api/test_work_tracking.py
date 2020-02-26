@@ -15,8 +15,6 @@ from polaris.analytics.db import api, model
 from polaris.common import db
 from polaris.common.enums import WorkTrackingIntegrationType
 from polaris.utils.collections import dict_merge
-
-
 class TestRegisterWorkItemsSource:
 
     def it_registers_a_work_item_source(self, setup_org):
@@ -32,7 +30,7 @@ class TestRegisterWorkItemsSource:
                 commit_mapping_scope='organization',
                 commit_mapping_scope_key=organization.key,
                 source_id=rails_work_items_source_id
-            ))
+        ))
 
         assert result['created']
         assert db.connection().execute(
@@ -71,7 +69,6 @@ class TestRegisterWorkItemsSource:
             f"select count(id) from analytics.work_items_sources where key='{source_key}'"
         ).scalar() == 1
 
-
 class TestImportWorkItems:
 
     def it_imports_new_work_items(self, work_items_setup):
@@ -88,6 +85,7 @@ class TestImportWorkItems:
         ])
         assert result['success']
         assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 10
+
 
     def it_is_idempotent(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -107,6 +105,7 @@ class TestImportWorkItems:
         assert result['success']
         assert result['insert_count'] == 0
         assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 10
+
 
     def it_only_creates_new_items(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -177,6 +176,7 @@ class TestImportWorkItems:
         assert db.connection().execute(
             "select name from analytics.work_items where state_type='complete'").scalar() == 'beta'
 
+
     def it_updates_completion_dates_for_added_items(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
 
@@ -219,7 +219,6 @@ class TestImportWorkItems:
         assert db.connection().execute(
             "select completed_at from analytics.work_items where name='beta'").scalar()
 
-
 class TestUpdateWorkItems:
 
     def it_updates_name(self, update_work_items_setup):
@@ -246,8 +245,7 @@ class TestUpdateWorkItems:
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute(
-            "select count(id) from analytics.work_items where description='foo'").scalar() == 2
+        assert db.connection().execute("select count(id) from analytics.work_items where description='foo'").scalar() == 2
 
     def it_updates_url(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -273,8 +271,7 @@ class TestUpdateWorkItems:
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute(
-            "select count(id) from analytics.work_items where tags='{\"foo\"}'").scalar() == 2
+        assert db.connection().execute("select count(id) from analytics.work_items where tags='{\"foo\"}'").scalar() == 2
 
     def it_updates_state(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -300,8 +297,7 @@ class TestUpdateWorkItems:
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute(
-            "select count(id) from analytics.work_items where state_type = 'complete'").scalar() == 2
+        assert db.connection().execute("select count(id) from analytics.work_items where state_type = 'complete'").scalar() == 2
 
     def it_updates_completed_at(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -314,8 +310,8 @@ class TestUpdateWorkItems:
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute(
-            "select count(id) from analytics.work_items where completed_at is not null").scalar() == 2
+        assert db.connection().execute("select count(id) from analytics.work_items where completed_at is not null").scalar() == 2
+
 
     def it_resets_completion_date_for_transition_from_complete_back_to_open(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -335,8 +331,8 @@ class TestUpdateWorkItems:
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute(
-            "select count(id) from analytics.work_items where completed_at is not null").scalar() == 0
+        assert db.connection().execute("select count(id) from analytics.work_items where completed_at is not null").scalar() == 0
+
 
     def it_saves_the_state_change_histories(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -350,6 +346,7 @@ class TestUpdateWorkItems:
         ])
         assert result['success']
         assert db.connection().execute("select count(*) from analytics.work_item_state_transitions").scalar() == 2
+
 
     def it_returns_state_changes(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -371,64 +368,64 @@ class TestUpdateWorkItems:
             )
         )
 
-
 class TestStateTransitionSequence:
 
     def it_saves_an_initial_state_transition_for_new_items(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_item = dict(
-            key=uuid.uuid4().hex,
-            name='bar',
-            display_id='1000',
-            **work_items_common()
-        )
+                key=uuid.uuid4().hex,
+                name='bar',
+                display_id='1000',
+                **work_items_common()
+            )
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
         assert result['success']
         assert db.row_proxies_to_dict(
-            db.connection().execute(
-                "select seq_no, previous_state, state, created_at from analytics.work_item_state_transitions").fetchall()
+            db.connection().execute("select seq_no, previous_state, state, created_at from analytics.work_item_state_transitions").fetchall()
         ) == [
-                   dict(
-                       seq_no=0,
-                       previous_state=None,
-                       state='created',
-                       created_at=work_item['created_at']
-                   ),
-                   dict(
-                       seq_no=1,
-                       previous_state='created',
-                       state=work_item['state'],
-                       created_at=work_item['updated_at']
-                   )
-               ]
+            dict(
+                seq_no=0,
+                previous_state=None,
+                state='created',
+                created_at=work_item['created_at']
+            ),
+            dict(
+                seq_no=1,
+                previous_state='created',
+                state=work_item['state'],
+                created_at=work_item['updated_at']
+            )
+        ]
+
 
     def it_initializes_the_next_state_seq_no_for_the_new_item(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
-        work_item_key = uuid.uuid4().hex
+        work_item_key=uuid.uuid4().hex
         work_item = dict(
-            key=work_item_key,
-            name='bar',
-            display_id='1000',
-            **work_items_common()
-        )
+                key=work_item_key,
+                name='bar',
+                display_id='1000',
+                **work_items_common()
+            )
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
         assert result['success']
-        assert db.connection().execute(
-            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
+        assert db.connection().execute(f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
+
+
 
     def it_saves_the_next_state_when_there_is_an_update_with_a_state_change(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_item_key = uuid.uuid4().hex
         work_item = dict(
-            key=work_item_key,
-            name='bar',
-            display_id='1000',
-            **work_items_common()
-        )
+                key=work_item_key,
+                name='bar',
+                display_id='1000',
+                **work_items_common()
+            )
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -446,35 +443,36 @@ class TestStateTransitionSequence:
             db.connection().execute(
                 "select seq_no, previous_state, state, created_at from analytics.work_item_state_transitions order by seq_no").fetchall()
         ) == [
-                   dict(
-                       seq_no=0,
-                       previous_state=None,
-                       state='created',
-                       created_at=work_item['created_at']
-                   ),
-                   dict(
-                       seq_no=1,
-                       previous_state='created',
-                       state=work_item['state'],
-                       created_at=work_item['updated_at']
-                   ),
-                   dict(
-                       seq_no=2,
-                       previous_state=work_item['state'],
-                       state='closed',
-                       created_at=work_item['updated_at']
-                   )
-               ]
+            dict(
+                seq_no=0,
+                previous_state=None,
+                state='created',
+                created_at=work_item['created_at']
+            ),
+            dict(
+                seq_no=1,
+                previous_state='created',
+                state=work_item['state'],
+                created_at=work_item['updated_at']
+            ),
+            dict(
+                seq_no=2,
+                previous_state=work_item['state'],
+                state='closed',
+                created_at=work_item['updated_at']
+            )
+        ]
+
 
     def it_updates_the_next_state_seq_no_after_the_update(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_item_key = uuid.uuid4().hex
         work_item = dict(
-            key=work_item_key,
-            name='bar',
-            display_id='1000',
-            **work_items_common()
-        )
+                key=work_item_key,
+                name='bar',
+                display_id='1000',
+                **work_items_common()
+            )
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -491,15 +489,16 @@ class TestStateTransitionSequence:
         assert db.connection().execute(
             f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 3
 
+
     def it_saves_the_next_state_correctly_after_a_subsequent_update(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_item_key = uuid.uuid4().hex
         work_item = dict(
-            key=work_item_key,
-            name='bar',
-            display_id='1000',
-            **work_items_common()
-        )
+                key=work_item_key,
+                name='bar',
+                display_id='1000',
+                **work_items_common()
+            )
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -528,41 +527,41 @@ class TestStateTransitionSequence:
             db.connection().execute(
                 "select seq_no, previous_state, state, created_at from analytics.work_item_state_transitions order by seq_no").fetchall()
         ) == [
-                   dict(
-                       seq_no=0,
-                       previous_state=None,
-                       state='created',
-                       created_at=work_item['created_at']
-                   ),
-                   dict(
-                       seq_no=1,
-                       previous_state='created',
-                       state='open',
-                       created_at=work_item['updated_at']
-                   ),
-                   dict(
-                       seq_no=2,
-                       previous_state=work_item['state'],
-                       state='closed',
-                       created_at=work_item['updated_at']
-                   ),
-                   dict(
-                       seq_no=3,
-                       previous_state='closed',
-                       state='delivered',
-                       created_at=work_item['updated_at']
-                   )
-               ]
+            dict(
+                seq_no=0,
+                previous_state=None,
+                state='created',
+                created_at=work_item['created_at']
+            ),
+            dict(
+                seq_no=1,
+                previous_state='created',
+                state='open',
+                created_at=work_item['updated_at']
+            ),
+            dict(
+                seq_no=2,
+                previous_state=work_item['state'],
+                state='closed',
+                created_at=work_item['updated_at']
+            ),
+            dict(
+                seq_no=3,
+                previous_state='closed',
+                state='delivered',
+                created_at=work_item['updated_at']
+            )
+        ]
 
     def it_creates_a_state_transition_only_if_the_state_has_changed(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_item_key = uuid.uuid4().hex
         work_item = dict(
-            key=work_item_key,
-            name='bar',
-            display_id='1000',
-            **work_items_common()
-        )
+                key=work_item_key,
+                name='bar',
+                display_id='1000',
+                **work_items_common()
+            )
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -575,29 +574,29 @@ class TestStateTransitionSequence:
             db.connection().execute(
                 "select seq_no, previous_state, state, created_at from analytics.work_item_state_transitions order by seq_no").fetchall()
         ) == [
-                   dict(
-                       seq_no=0,
-                       previous_state=None,
-                       state='created',
-                       created_at=work_item['created_at']
-                   ),
-                   dict(
-                       seq_no=1,
-                       previous_state='created',
-                       state=work_item['state'],
-                       created_at=work_item['updated_at']
-                   )
-               ]
+            dict(
+                seq_no=0,
+                previous_state=None,
+                state='created',
+                created_at=work_item['created_at']
+            ),
+            dict(
+                seq_no=1,
+                previous_state='created',
+                state=work_item['state'],
+                created_at=work_item['updated_at']
+            )
+        ]
 
     def it_updates_the_next_state_seq_no_only_if_the_state_has_changed(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
-        work_item_key = uuid.uuid4().hex
+        work_item_key=uuid.uuid4().hex
         work_item = dict(
-            key=work_item_key,
-            name='bar',
-            display_id='1000',
-            **work_items_common()
-        )
+                key=work_item_key,
+                name='bar',
+                display_id='1000',
+                **work_items_common()
+            )
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -607,8 +606,7 @@ class TestStateTransitionSequence:
         ])
 
         assert result['success']
-        assert db.connection().execute(
-            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
+        assert db.connection().execute(f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
 
 
 class TestImportProject:
@@ -620,23 +618,23 @@ class TestImportProject:
         source_key = uuid.uuid4()
 
         project_summary = dict(
-            key=project_key,
-            name='foo',
-            organization_key=organization.key,
-            work_items_sources=[
-                dict(
-                    name='a source',
-                    key=source_key,
-                    integration_type='github',
-                    commit_mapping_scope='organization',
-                    commit_mapping_scope_key=organization.key,
-                    description='A new remote project',
-                    work_items_source_type='repository_issues',
-                    source_id=str(uuid.uuid4())
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type='github',
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
 
-                )
-            ]
-        )
+                    )
+                ]
+            )
 
         result = api.import_project(organization_key, project_summary)
         assert result['success']
@@ -651,22 +649,22 @@ class TestImportProject:
         source_key = uuid.uuid4()
 
         project_summary = dict(
-            key=project_key,
-            name='foo',
-            organization_key=organization.key,
-            work_items_sources=[
-                dict(
-                    name='a source',
-                    key=source_key,
-                    integration_type='github',
-                    commit_mapping_scope='organization',
-                    commit_mapping_scope_key=organization.key,
-                    description='A new remote project',
-                    work_items_source_type='repository_issues',
-                    source_id=str(uuid.uuid4())
-                )
-            ]
-        )
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type='github',
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
+                    )
+                ]
+            )
 
         result = api.import_project(organization_key, project_summary)
         assert result['success']
@@ -675,6 +673,7 @@ class TestImportProject:
             f" on projects.id = work_items_sources.project_id where projects.key='{project_key}'"
         ).scalar() == source_key
 
+
     def it_initializes_default_state_map_for_new_github_work_item_sources(self, setup_org):
         organization = setup_org
         organization_key = organization.key
@@ -682,22 +681,22 @@ class TestImportProject:
         source_key = uuid.uuid4()
 
         project_summary = dict(
-            key=project_key,
-            name='foo',
-            organization_key=organization.key,
-            work_items_sources=[
-                dict(
-                    name='a source',
-                    key=source_key,
-                    integration_type=WorkTrackingIntegrationType.github.value,
-                    commit_mapping_scope='organization',
-                    commit_mapping_scope_key=organization.key,
-                    description='A new remote project',
-                    work_items_source_type='repository_issues',
-                    source_id=str(uuid.uuid4())
-                )
-            ]
-        )
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type=WorkTrackingIntegrationType.github.value,
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
+                    )
+                ]
+            )
 
         result = api.import_project(organization_key, project_summary)
         assert result['success']
@@ -715,22 +714,22 @@ class TestImportProject:
         source_key = uuid.uuid4()
 
         project_summary = dict(
-            key=project_key,
-            name='foo',
-            organization_key=organization.key,
-            work_items_sources=[
-                dict(
-                    name='a source',
-                    key=source_key,
-                    integration_type=WorkTrackingIntegrationType.pivotal.value,
-                    commit_mapping_scope='organization',
-                    commit_mapping_scope_key=organization.key,
-                    description='A new remote project',
-                    work_items_source_type='repository_issues',
-                    source_id=str(uuid.uuid4())
-                )
-            ]
-        )
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type=WorkTrackingIntegrationType.pivotal.value,
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
+                    )
+                ]
+            )
 
         result = api.import_project(organization_key, project_summary)
         assert result['success']
@@ -748,22 +747,22 @@ class TestImportProject:
         source_key = uuid.uuid4()
 
         project_summary = dict(
-            key=project_key,
-            name='foo',
-            organization_key=organization.key,
-            work_items_sources=[
-                dict(
-                    name='a source',
-                    key=source_key,
-                    integration_type=WorkTrackingIntegrationType.pivotal.value,
-                    commit_mapping_scope='organization',
-                    commit_mapping_scope_key=organization.key,
-                    description='A new remote project',
-                    work_items_source_type='repository_issues',
-                    source_id=str(uuid.uuid4())
-                )
-            ]
-        )
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type=WorkTrackingIntegrationType.pivotal.value,
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
+                    )
+                ]
+            )
 
         result = api.import_project(organization_key, project_summary)
         assert result['success']
@@ -790,22 +789,22 @@ class TestImportProject:
         source_key = uuid.uuid4()
 
         project_summary = dict(
-            key=project_key,
-            name='foo',
-            organization_key=organization.key,
-            work_items_sources=[
-                dict(
-                    name='a source',
-                    key=source_key,
-                    integration_type=WorkTrackingIntegrationType.jira.value,
-                    commit_mapping_scope='organization',
-                    commit_mapping_scope_key=organization.key,
-                    description='A new remote project',
-                    work_items_source_type='repository_issues',
-                    source_id=str(uuid.uuid4())
-                )
-            ]
-        )
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type=WorkTrackingIntegrationType.jira.value,
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
+                    )
+                ]
+            )
 
         result = api.import_project(organization_key, project_summary)
         assert result['success']
@@ -816,6 +815,8 @@ class TestImportProject:
             f" where projects.key='{project_key}'"
         ).scalar() == 0
 
+
+
     def it_returns_new_work_items_sources(self, setup_org):
         organization = setup_org
         organization_key = organization.key
@@ -823,22 +824,22 @@ class TestImportProject:
         source_key = uuid.uuid4()
 
         project_summary = dict(
-            key=project_key,
-            name='foo',
-            organization_key=organization.key,
-            work_items_sources=[
-                dict(
-                    name='a source',
-                    key=source_key,
-                    integration_type='github',
-                    commit_mapping_scope='organization',
-                    commit_mapping_scope_key=organization.key,
-                    description='A new remote project',
-                    work_items_source_type='repository_issues',
-                    source_id=str(uuid.uuid4())
-                )
-            ]
-        )
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type='github',
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
+                    )
+                ]
+            )
 
         result = api.import_project(organization_key, project_summary)
         assert result['success']
@@ -851,22 +852,22 @@ class TestImportProject:
         source_key = uuid.uuid4()
 
         project_summary = dict(
-            key=project_key,
-            name='foo',
-            organization_key=organization.key,
-            work_items_sources=[
-                dict(
-                    name='a source',
-                    key=source_key,
-                    integration_type='github',
-                    commit_mapping_scope='organization',
-                    commit_mapping_scope_key=organization.key,
-                    description='A new remote project',
-                    work_items_source_type='repository_issues',
-                    source_id=str(uuid.uuid4())
-                )
-            ]
-        )
+                key=project_key,
+                name='foo',
+                organization_key=organization.key,
+                work_items_sources=[
+                    dict(
+                        name='a source',
+                        key=source_key,
+                        integration_type='github',
+                        commit_mapping_scope='organization',
+                        commit_mapping_scope_key=organization.key,
+                        description='A new remote project',
+                        work_items_source_type='repository_issues',
+                        source_id=str(uuid.uuid4())
+                    )
+                ]
+            )
         # import once
         api.import_project(organization_key, project_summary)
         # import again
@@ -875,3 +876,4 @@ class TestImportProject:
         assert db.connection().execute(
             f"select count(id) from analytics.projects where key='{project_key}'"
         ).scalar() == 1
+

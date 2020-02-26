@@ -468,6 +468,8 @@ class TestImportCommitDetails:
         assert find(updated.source_file_actions_summary, lambda s: s['action'] == 'A')['count'] == 2
         assert find(updated.source_file_actions_summary, lambda s: s['action'] == 'U')['count'] == 1
 
+
+
     def it_updates_commit_details_for_multiple_commits(self, import_commit_details_fixture):
         keys = import_commit_details_fixture
         payload = dict(
@@ -519,3 +521,5 @@ class TestImportCommitDetails:
         assert updated.parents == ['99', '100']
         assert updated.stats
         assert updated.num_parents == 2
+
+

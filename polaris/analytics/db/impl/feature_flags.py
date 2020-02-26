@@ -32,8 +32,6 @@ def create_feature_flag(session, name):
         key=feature_flag.key
     )
 
-
-
 def feature_flag_enablement(session, feature_flag_key, feature_flag_enablement_input):
     logger.info("Inside feature_flag_enablement")
     feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
@@ -115,6 +113,72 @@ def deactivate_feature_flag(session, feature_flag_key):
     else:
         raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")
 
+    return dict(
+        key=feature_flag_key
+    )
+
+def create_feature_flag_enablement(session, feature_flag_id, enablement):
+    logger.info("Inside create_feature_flag_enablement")
+    enablements = insert(feature_flag_enablements).values([
+        dict(
+            feature_flag_id=feature_flag_id,
+            **enablement
+        )
+    ])
+    inserted = session.connection().execute(
+        enablements
+    ).rowcount
+    return dict(
+        imported=inserted
+    )
+
+
+def update_enablements(session, feature_flag_key, update_enablements_input):
+    logger.info(f"Inside update_enablements_status {update_enablements_input}")
+    feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
+    logger.info(f'Feature flag {feature_flag.name}')
+    updated = []
+    if feature_flag is not None:
+        for enablement in update_enablements_input:
+            logger.info(f"Enablement {enablement.scope_key}, {feature_flag.enablements[0].scope_key}")
+            if find(feature_flag.enablements, lambda e: str(e.scope_key) == enablement.scope_key):
+                updated.append(session.execute(
+                    feature_flag_enablements.update().values(
+                        enabled=enablement.enabled
+                    ).where(
+                        and_(
+                            feature_flag_enablements.c.scope_key == enablement.scope_key,
+                            feature_flag_enablements.c.feature_flag_id == feature_flag.id
+                        )
+                    )
+                ))
+            else:
+                create_feature_flag_enablement(session, feature_flag.id, enablement)
+        return dict(
+            updated=updated
+        )
+    else:
+        raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")
+
+def update_feature_flag(session, feature_flag_key, active, enable_all, enablements):
+    logger.info("Inside update_feature_flag")
+    feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
+    if feature_flag is not None:
+        feature_flag.active = active
+        if not active:
+            feature_flag.deactivated_date = datetime.now()
+            feature_flag.enable_all = False
+            feature_flag.enable_all_date = None
+        if enable_all:
+            feature_flag.enable_all_date = datetime.now()
+        else:
+            feature_flag.enable_all_date = None
+        feature_flag.enable_all = enable_all
+        feature_flag.updated = datetime.utcnow()
+        update_enablements(session, feature_flag_key, enablements)
+        session.add(feature_flag)
+    else:
+        raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")
     return dict(
         key=feature_flag_key
     )

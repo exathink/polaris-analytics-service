@@ -706,7 +706,7 @@ class TestUserFeatureFlags:
         assert result
         assert result['id']
         feature_flag_enablements = result['featureFlags']['edges']
-        assert len(feature_flag_enablements) == 1
+        assert len(feature_flag_enablements) == 2
         e1 = feature_flag_enablements[0]['node']
         assert not e1['enabled']
         assert e1['key'] == str(feature_flag2.key)

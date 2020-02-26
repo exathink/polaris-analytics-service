@@ -18,6 +18,9 @@ class objectview(object):
         self.__dict__ = d
 
 
+test_scope_key = uuid.uuid4()
+
+
 class TestCreateFeatureFlag:
     def it_creates_feature_flag(self):
         name = 'Test feature flag'
@@ -43,7 +46,7 @@ class TestCreateFeatureFlagEnablement:
             enablements=[
                 dict(
                     scope="user",
-                    scope_key=uuid.uuid4(),
+                    scope_key=test_scope_key,
                     enabled=True
                 ),
                 dict(
@@ -61,3 +64,46 @@ class TestCreateFeatureFlagEnablement:
         assert db.connection().execute(
             f"select count(*) from analytics.feature_flag_enablements where feature_flag_id='{feature_flag.id}'"
         ).scalar() == 2
+
+
+class TestUpdateFeatureFlagStatus:
+
+    def it_updates_feature_flag_status(self):
+        name = 'Test feature flag'
+        feature_flag = db.connection().execute(
+            f"select * from analytics.feature_flags where name='{name}'"
+        ).fetchone()
+
+        update_feature_flag_status_input = dict(
+            feature_flag_key=feature_flag.key,
+            enable_all=True
+        )
+
+        result = api.update_feature_flag_status(objectview(update_feature_flag_status_input))
+
+        assert result['success']
+        enabled_status = db.connection().execute(
+            f"select enable_all from analytics.feature_flags where key='{feature_flag.key}'"
+        ).scalar()
+        assert enabled_status == True
+
+
+class TestDeactivateFeatureFlag:
+
+    def it_deactivates_feature_flag(self):
+        name = 'Test feature flag'
+        feature_flag = db.connection().execute(
+            f"select * from analytics.feature_flags where name='{name}'"
+        ).fetchone()
+
+        deactivate_feature_flag_input = dict(
+            feature_flag_key=feature_flag.key
+        )
+
+        result = api.deactivate_feature_flag(objectview(deactivate_feature_flag_input))
+
+        assert result['success']
+        active_flag = db.connection().execute(
+            f"select active from analytics.feature_flags where key='{feature_flag.key}'"
+        ).scalar()
+        assert active_flag == False

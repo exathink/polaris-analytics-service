@@ -139,7 +139,11 @@ class AccountFeatureFlagsNodes(ConnectionResolver):
             feature_flags.c.enable_all,
             feature_flags.c.active
 
-        ]).where(
+        ]).select_from(
+            feature_flags.outerjoin(
+                feature_flag_enablements, feature_flag_enablements.c.feature_flag_id==feature_flags.c.id
+            )
+        ).where(
             and_(
                 feature_flags.c.active,
                 or_(

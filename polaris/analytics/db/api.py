@@ -202,69 +202,6 @@ def create_feature_flag(create_feature_flag_input):
     except Exception as e:
         return db.failure_message('Create Feature Flag failed', e)
 
-
-def feature_flag_enablement(feature_flag_enablement_input):
-    try:
-        with db.orm_session() as session:
-            return success(
-                impl.feature_flag_enablement(
-                    session,
-                    feature_flag_enablement_input.feature_flag_key,
-                    feature_flag_enablement_input.enablements
-                )
-            )
-    except SQLAlchemyError as exc:
-        return db.process_exception("Failed to create feature flag enablement", exc)
-    except Exception as e:
-        return db.failure_message('Failed to create feature flag enablement', e)
-
-
-def update_enablements_status(update_enablements_status_input):
-    try:
-        with db.orm_session() as session:
-            return success(
-                impl.update_enablements_status(
-                    session,
-                    update_enablements_status_input.feature_flag_key,
-                    update_enablements_status_input.enablements
-                )
-            )
-    except SQLAlchemyError as exc:
-        return db.process_exception("Failed to update enablement(s)", exc)
-    except Exception as e:
-        return db.failure_message(f"Failed to update enablement(s) due to: {e}", e)
-
-
-def update_feature_flag_status(update_feature_flag_status_input):
-    try:
-        with db.orm_session() as session:
-            return success(
-                impl.update_feature_flag_status(
-                    session,
-                    update_feature_flag_status_input.feature_flag_key,
-                    update_feature_flag_status_input.enable_all
-                )
-            )
-    except SQLAlchemyError as exc:
-        return db.process_exception("Failed to enable feature flag", exc)
-    except Exception as e:
-        return db.failure_message(f'Failed to enable feature flag due to: {e}', e)
-
-
-def deactivate_feature_flag(deactivate_feature_flag_input):
-    try:
-        with db.orm_session() as session:
-            return success(
-                impl.deactivate_feature_flag(
-                    session,
-                    deactivate_feature_flag_input.feature_flag_key
-                )
-            )
-    except SQLAlchemyError as exc:
-        return db.process_exception("Failed to deactivate feature flag", exc)
-    except Exception as e:
-        return db.failure_message(f'Failed to deactivate feature flag due to: {e}', e)
-
 def update_feature_flag(update_feature_flag_input):
     try:
         with db.orm_session() as session:

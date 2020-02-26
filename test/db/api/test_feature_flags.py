@@ -42,7 +42,9 @@ class TestCreateFeatureFlagEnablement:
         ).fetchone()
 
         feature_flag_enablement_input = dict(
-            feature_flag_key=feature_flag.key,
+            key=feature_flag.key,
+            active=True,
+            enable_all=False,
             enablements=[
                 dict(
                     scope="user",
@@ -57,14 +59,13 @@ class TestCreateFeatureFlagEnablement:
             ]
         )
 
-        result = api.feature_flag_enablement(
+        result = api.update_feature_flag(
             objectview(feature_flag_enablement_input)
         )
         assert result['success']
         assert db.connection().execute(
             f"select count(*) from analytics.feature_flag_enablements where feature_flag_id='{feature_flag.id}'"
         ).scalar() == 2
-
 
 class TestUpdateFeatureFlagStatus:
 
@@ -75,11 +76,13 @@ class TestUpdateFeatureFlagStatus:
         ).fetchone()
 
         update_feature_flag_status_input = dict(
-            feature_flag_key=feature_flag.key,
-            enable_all=True
+            key=feature_flag.key,
+            enable_all=True,
+            active=True,
+            enablements=None
         )
 
-        result = api.update_feature_flag_status(objectview(update_feature_flag_status_input))
+        result = api.update_feature_flag(objectview(update_feature_flag_status_input))
 
         assert result['success']
         enabled_status = db.connection().execute(
@@ -97,10 +100,13 @@ class TestDeactivateFeatureFlag:
         ).fetchone()
 
         deactivate_feature_flag_input = dict(
-            feature_flag_key=feature_flag.key
+            key=feature_flag.key,
+            enable_all=False,
+            active=False,
+            enablements=None
         )
 
-        result = api.deactivate_feature_flag(objectview(deactivate_feature_flag_input))
+        result = api.update_feature_flag(objectview(deactivate_feature_flag_input))
 
         assert result['success']
         active_flag = db.connection().execute(

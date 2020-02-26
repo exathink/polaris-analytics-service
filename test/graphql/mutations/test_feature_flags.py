@@ -39,6 +39,7 @@ enablementsInput = [
     dict(scope="account", scope_key=uuid.uuid4(), enabled=False)
 ]
 
+
 class TestCreateFeatureFlag:
 
     def it_creates_a_new_feature_flag_given_name(self, create_feature_flag_fixture):
@@ -107,6 +108,7 @@ def create_feature_flag_fixture(cleanup):
         session.add(feature_flag)
     yield feature_flag
 
+
 @pytest.yield_fixture()
 def create_feature_flag_enablement_fixture(cleanup):
     with db.orm_session() as session:
@@ -128,9 +130,9 @@ class TestCreateFeatureFlagEnablement:
         feature_flag_key = feature_flag.key
 
         query = """
-                    mutation featureFlagEnablement($featureFlagEnablementInput: FeatureFlagEnablementInput! ){
-                        featureFlagEnablement(
-                            featureFlagEnablementInput: $featureFlagEnablementInput
+                    mutation updateFeatureFlag($updateFeatureFlagInput: UpdateFeatureFlagInput! ){
+                        updateFeatureFlag(
+                            updateFeatureFlagInput: $updateFeatureFlagInput
                         ){
                             success,
                             errorMessage
@@ -138,22 +140,24 @@ class TestCreateFeatureFlagEnablement:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            featureFlagEnablementInput=dict(
-                featureFlagKey=feature_flag_key,
+            updateFeatureFlagInput=dict(
+                key=feature_flag_key,
+                active=True,
+                enableAll=False,
                 enablements=enablements
             )
         ))
         assert 'data' in response
-        assert response['data']['featureFlagEnablement']['success']
+        assert response['data']['updateFeatureFlag']['success']
 
     def it_returns_error_message_for_invalid_feature_flag(self):
         client = Client(schema)
         feature_flag_key = uuid.uuid4()
 
         query = """
-                    mutation featureFlagEnablement($featureFlagEnablementInput: FeatureFlagEnablementInput! ){
-                        featureFlagEnablement(
-                            featureFlagEnablementInput: $featureFlagEnablementInput
+                    mutation updateFeatureFlag($updateFeatureFlagInput: UpdateFeatureFlagInput! ){
+                        updateFeatureFlag(
+                            updateFeatureFlagInput: $updateFeatureFlagInput
                         ){
                             success,
                             errorMessage
@@ -161,13 +165,16 @@ class TestCreateFeatureFlagEnablement:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            featureFlagEnablementInput=dict(
-                featureFlagKey=feature_flag_key,
+            updateFeatureFlagInput=dict(
+                key=feature_flag_key,
+                active=True,
+                enableAll=False,
                 enablements=enablements
             )
         ))
         assert 'data' in response
-        assert response['data']['featureFlagEnablement']['errorMessage'] == "Failed to create feature flag enablement"
+        assert response['data']['updateFeatureFlag']['errorMessage']
+
 
 class TestUpdateEnablementsStatus:
 
@@ -176,38 +183,12 @@ class TestUpdateEnablementsStatus:
         client = Client(schema)
         feature_flag_key = feature_flag.key
 
-        enablement =  [dict(scopeKey=test_scope_key, enabled=False)]
+        enablement = [dict(scope="user", scopeKey=test_scope_key, enabled=false)]
 
         query = """
-                    mutation updateEnablementsStatus($updateEnablementsStatusInput: UpdateEnablementsStatusInput! ){
-                        updateEnablementsStatus(
-                            updateEnablementsStatusInput: $updateEnablementsStatusInput
-                        ){
-                            success,
-                            errorMessage
-                        }
-                    }  
-                """
-        response = client.execute(query, variable_values=dict(
-            updateEnablementsStatusInput=dict(
-                featureFlagKey=feature_flag_key,
-                enablements=enablement
-            )
-        ))
-        assert 'data' in response
-        assert response['data']['updateEnablementsStatus']['success']
-
-    def it_returns_error_for_invalid_enablement(self, create_feature_flag_enablement_fixture):
-        feature_flag = create_feature_flag_enablement_fixture
-        client = Client(schema)
-        feature_flag_key = feature_flag.key
-
-        enablement = [dict(scopeKey=uuid.uuid4(), enabled=false)]
-
-        query = """
-                    mutation updateEnablementsStatus($updateEnablementsStatusInput: UpdateEnablementsStatusInput! ){
-                        updateEnablementsStatus(
-                            updateEnablementsStatusInput: $updateEnablementsStatusInput
+                    mutation updateFeatureFlag($updateFeatureFlagInput: UpdateFeatureFlagInput! ){
+                        updateFeatureFlag(
+                            updateFeatureFlagInput: $updateFeatureFlagInput
                         ){
                             success,
                             errorMessage
@@ -215,13 +196,16 @@ class TestUpdateEnablementsStatus:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            updateEnablementsStatusInput=dict(
-                featureFlagKey=feature_flag_key,
+            updateFeatureFlagInput=dict(
+                key=feature_flag_key,
+                active=True,
+                enableAll=False,
                 enablements=enablement
             )
         ))
         assert 'data' in response
-        assert response['data']['updateEnablementsStatus']['errorMessage'] == f'Failed to update enablement(s) due to: Could not find enablement for scope_key: {enablement[0]["scopeKey"]} associated with feature key: {feature_flag_key}'
+        assert response['data']['updateFeatureFlag']['success']
+
 
 class TestEnableFeatureFlag:
 
@@ -231,9 +215,9 @@ class TestEnableFeatureFlag:
         feature_flag_key = feature_flag.key
 
         query = """
-                    mutation updateFeatureFlagStatus($updateFeatureFlagStatusInput: UpdateFeatureFlagStatusInput! ){
-                        updateFeatureFlagStatus(
-                            updateFeatureFlagStatusInput: $updateFeatureFlagStatusInput
+                    mutation updateFeatureFlag($updateFeatureFlagInput: UpdateFeatureFlagInput! ){
+                        updateFeatureFlag(
+                            updateFeatureFlagInput: $updateFeatureFlagInput
                         ){
                             success,
                             errorMessage
@@ -241,13 +225,15 @@ class TestEnableFeatureFlag:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            updateFeatureFlagStatusInput=dict(
-                featureFlagKey=feature_flag_key,
-                enableAll=True
+            updateFeatureFlagInput=dict(
+                key=feature_flag_key,
+                enableAll=True,
+                active=True,
+                enablements=None
             )
         ))
         assert 'data' in response
-        assert response['data']['updateFeatureFlagStatus']['success']
+        assert response['data']['updateFeatureFlag']['success']
         featureFlag = db.connection().execute(
             f"select * from analytics.feature_flags where key='{feature_flag_key}'"
         ).fetchone()
@@ -260,9 +246,9 @@ class TestEnableFeatureFlag:
         feature_flag_key = feature_flag.key
 
         query = """
-                    mutation updateFeatureFlagStatus($updateFeatureFlagStatusInput: UpdateFeatureFlagStatusInput! ){
-                        updateFeatureFlagStatus(
-                            updateFeatureFlagStatusInput: $updateFeatureFlagStatusInput
+                    mutation updateFeatureFlag($updateFeatureFlagInput: UpdateFeatureFlagInput! ){
+                        updateFeatureFlag(
+                            updateFeatureFlagInput: $updateFeatureFlagInput
                         ){
                             success,
                             errorMessage
@@ -270,13 +256,15 @@ class TestEnableFeatureFlag:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            updateFeatureFlagStatusInput=dict(
-                featureFlagKey=feature_flag_key,
-                enableAll=False
+            updateFeatureFlagInput=dict(
+                key=feature_flag_key,
+                enableAll=False,
+                active=False,
+                enablements=None
             )
         ))
         assert 'data' in response
-        assert response['data']['updateFeatureFlagStatus']['success']
+        assert response['data']['updateFeatureFlag']['success']
         featureFlag = db.connection().execute(
             f"select * from analytics.feature_flags where key='{feature_flag_key}'"
         ).fetchone()
@@ -288,9 +276,9 @@ class TestEnableFeatureFlag:
         feature_flag_key = uuid.uuid4()
 
         query = """
-                    mutation updateFeatureFlagStatus($updateFeatureFlagStatusInput: UpdateFeatureFlagStatusInput! ){
-                        updateFeatureFlagStatus(
-                            updateFeatureFlagStatusInput: $updateFeatureFlagStatusInput
+                    mutation updateFeatureFlag($updateFeatureFlagInput: UpdateFeatureFlagInput! ){
+                        updateFeatureFlag(
+                            updateFeatureFlagInput: $updateFeatureFlagInput
                         ){
                             success,
                             errorMessage
@@ -298,13 +286,16 @@ class TestEnableFeatureFlag:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            updateFeatureFlagStatusInput=dict(
-                featureFlagKey=feature_flag_key,
-                enableAll = True
+            updateFeatureFlagInput=dict(
+                key=feature_flag_key,
+                enableAll=True,
+                active=True,
+                enablements=None
             )
         ))
         assert 'data' in response
-        assert response['data']['updateFeatureFlagStatus']['errorMessage'] == f'Failed to enable feature flag due to: Could not find feature flag with key: {feature_flag_key}'
+        assert response['data']['updateFeatureFlag']['errorMessage']
+
 
 class TestDeactivateFeatureFlag:
 
@@ -314,9 +305,9 @@ class TestDeactivateFeatureFlag:
         feature_flag_key = feature_flag.key
 
         query = """
-                    mutation deactivateFeatureFlag($deactivateFeatureFlagInput: DeactivateFeatureFlagInput! ){
-                        deactivateFeatureFlag(
-                            deactivateFeatureFlagInput: $deactivateFeatureFlagInput
+                    mutation updateFeatureFlag($updateFeatureFlagInput: UpdateFeatureFlagInput! ){
+                        updateFeatureFlag(
+                            updateFeatureFlagInput: $updateFeatureFlagInput
                         ){
                             success,
                             errorMessage
@@ -324,12 +315,15 @@ class TestDeactivateFeatureFlag:
                     }
                 """
         response = client.execute(query, variable_values=dict(
-            deactivateFeatureFlagInput=dict(
-                featureFlagKey=feature_flag_key
+            updateFeatureFlagInput=dict(
+                key=feature_flag_key,
+                active=False,
+                enableAll=False,
+                enablements=None
             )
         ))
         assert 'data' in response
-        assert response['data']['deactivateFeatureFlag']['success']
+        assert response['data']['updateFeatureFlag']['success']
         featureFlag = db.connection().execute(
             f"select * from analytics.feature_flags where key='{feature_flag_key}'"
         ).fetchone()

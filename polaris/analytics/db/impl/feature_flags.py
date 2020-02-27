@@ -19,6 +19,7 @@ from polaris.utils.exceptions import ProcessingException
 
 logger = logging.getLogger('polaris.analytics.db.impl')
 
+
 def create_feature_flag(session, name):
     logger.info("Inside create_feature_flag")
 
@@ -30,50 +31,13 @@ def create_feature_flag(session, name):
         key=feature_flag.key
     )
 
-def create_feature_flag_enablement(session, feature_flag_id, enablement):
-    logger.info("Inside create_feature_flag_enablement")
-    enablements = insert(feature_flag_enablements).values([
-        dict(
-            feature_flag_id=feature_flag_id,
-            **enablement
-        )
-    ])
-    inserted = session.connection().execute(
-        enablements
-    ).rowcount
-    return dict(
-        imported=inserted
-    )
 
-
-def update_enablements(session, feature_flag_key, update_enablements_input):
-    logger.info(f"Inside update_enablements_status {update_enablements_input}")
-    feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
-    logger.info(f'Feature flag {feature_flag.name}')
-    updated = []
-    if feature_flag is not None:
-        for enablement in update_enablements_input:
-            if feature_flag.enablements is not None and find(feature_flag.enablements, lambda e: str(e.scope_key) == enablement.scope_key):
-                updated.append(session.execute(
-                    feature_flag_enablements.update().values(
-                        enabled=enablement.enabled
-                    ).where(
-                        and_(
-                            feature_flag_enablements.c.scope_key == enablement.scope_key,
-                            feature_flag_enablements.c.feature_flag_id == feature_flag.id
-                        )
-                    )
-                ))
-            else:
-                create_feature_flag_enablement(session, feature_flag.id, enablement)
-        return dict(
-            updated=updated
-        )
-    else:
-        raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")
-
-def update_feature_flag(session, feature_flag_key, active, enable_all, enablements):
+def update_feature_flag(session, update_feature_flag_input):
     logger.info("Inside update_feature_flag")
+    feature_flag_key = update_feature_flag_input.key
+    active = update_feature_flag_input.active
+    enable_all = update_feature_flag_input.enable_all
+    enablements = update_feature_flag_input.enablements
     feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
     if feature_flag is not None:
         if active is not None:
@@ -97,3 +61,30 @@ def update_feature_flag(session, feature_flag_key, active, enable_all, enablemen
     return dict(
         key=feature_flag_key
     )
+
+
+def update_enablements(session, feature_flag_key, update_enablements_input):
+    logger.info(f"Inside update_enablements_data {update_enablements_input}")
+    feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
+    logger.info(f'Feature flag {feature_flag.name}')
+    if feature_flag is not None:
+        upsert = insert(feature_flag_enablements).values([
+            dict(
+                feature_flag_id=feature_flag.id,
+                **enablement
+            )
+            for enablement in update_enablements_input
+        ])
+        inserted = session.connection().execute(
+            upsert.on_conflict_do_update(
+                index_elements=['feature_flag_id', 'scope_key'],
+                set_=dict(
+                    enabled=upsert.excluded.enabled
+                )
+            )
+        ).rowcount
+        return dict(
+            imported=inserted
+        )
+    else:
+        raise ProcessingException(f"Could not find feature flag with key: {feature_flag_key}")

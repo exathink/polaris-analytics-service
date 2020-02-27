@@ -67,6 +67,7 @@ class TestCreateFeatureFlagEnablement:
             f"select count(*) from analytics.feature_flag_enablements where feature_flag_id='{feature_flag.id}'"
         ).scalar() == 2
 
+
 class TestUpdateFeatureFlagStatus:
 
     def it_updates_feature_flag_status(self):

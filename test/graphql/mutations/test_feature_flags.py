@@ -39,6 +39,7 @@ enablementsInput = [
     dict(scope="account", scope_key=uuid.uuid4(), enabled=False)
 ]
 
+
 @pytest.yield_fixture()
 def create_feature_flag_fixture(cleanup):
     with db.orm_session() as session:
@@ -46,6 +47,7 @@ def create_feature_flag_fixture(cleanup):
         feature_flag = FeatureFlag.create("Test Feature Flag")
         session.add(feature_flag)
     yield feature_flag
+
 
 @pytest.yield_fixture()
 def create_feature_flag_enablement_fixture(cleanup):
@@ -58,6 +60,7 @@ def create_feature_flag_enablement_fixture(cleanup):
         ])
         session.add(feature_flag)
     yield feature_flag
+
 
 class TestCreateFeatureFlag:
 
@@ -118,6 +121,7 @@ class TestCreateFeatureFlag:
         assert not response['data']['createFeatureFlag']['success']
         assert response['data']['createFeatureFlag']['errorMessage'] == f'Feature flag {name} already exists'
 
+
 class TestCreateFeatureFlagEnablement:
 
     def it_creates_feature_flag_enablement(self, create_feature_flag_fixture):
@@ -138,8 +142,6 @@ class TestCreateFeatureFlagEnablement:
         response = client.execute(query, variable_values=dict(
             updateFeatureFlagInput=dict(
                 key=feature_flag_key,
-                active=True,
-                enableAll=False,
                 enablements=enablements
             )
         ))
@@ -194,8 +196,6 @@ class TestUpdateEnablementsStatus:
         response = client.execute(query, variable_values=dict(
             updateFeatureFlagInput=dict(
                 key=feature_flag_key,
-                active=True,
-                enableAll=False,
                 enablements=enablement
             )
         ))
@@ -223,9 +223,7 @@ class TestEnableFeatureFlag:
         response = client.execute(query, variable_values=dict(
             updateFeatureFlagInput=dict(
                 key=feature_flag_key,
-                enableAll=True,
-                active=True,
-                enablements=None
+                enableAll=True
             )
         ))
         assert 'data' in response
@@ -254,9 +252,7 @@ class TestEnableFeatureFlag:
         response = client.execute(query, variable_values=dict(
             updateFeatureFlagInput=dict(
                 key=feature_flag_key,
-                enableAll=False,
-                active=False,
-                enablements=None
+                active=False
             )
         ))
         assert 'data' in response
@@ -285,8 +281,7 @@ class TestEnableFeatureFlag:
             updateFeatureFlagInput=dict(
                 key=feature_flag_key,
                 enableAll=True,
-                active=True,
-                enablements=None
+                active=True
             )
         ))
         assert 'data' in response
@@ -313,9 +308,7 @@ class TestDeactivateFeatureFlag:
         response = client.execute(query, variable_values=dict(
             updateFeatureFlagInput=dict(
                 key=feature_flag_key,
-                active=False,
-                enableAll=False,
-                enablements=None
+                active=False
             )
         ))
         assert 'data' in response

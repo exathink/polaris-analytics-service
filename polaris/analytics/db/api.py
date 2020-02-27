@@ -208,10 +208,7 @@ def update_feature_flag(update_feature_flag_input):
             return success(
                 impl.update_feature_flag(
                     session,
-                    update_feature_flag_input.key,
-                    update_feature_flag_input.active,
-                    update_feature_flag_input.enable_all,
-                    update_feature_flag_input.enablements
+                    update_feature_flag_input
                 )
             )
     except SQLAlchemyError as exc:

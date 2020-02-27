@@ -29,9 +29,9 @@ class FeatureFlagEnablementModel(graphene.InputObjectType):
 
 class UpdateFeatureFlagInput(graphene.InputObjectType):
     key = graphene.String(required=True)
-    active = graphene.Boolean(required=True)
-    enable_all = graphene.Boolean(required=True)
-    enablements = graphene.List(FeatureFlagEnablementModel)
+    active = graphene.Boolean(required=False)
+    enable_all = graphene.Boolean(required=False)
+    enablements = graphene.List(FeatureFlagEnablementModel, required=False)
 
 class CreateFeatureFlag(graphene.Mutation):
     class Arguments:

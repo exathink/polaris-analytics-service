@@ -10,11 +10,9 @@
 import logging
 from datetime import datetime
 
-from sqlalchemy import and_
 from sqlalchemy.dialects.postgresql import insert
 
 from polaris.analytics.db.model import FeatureFlag, feature_flag_enablements
-from polaris.utils.collections import find
 from polaris.utils.exceptions import ProcessingException
 
 logger = logging.getLogger('polaris.analytics.db.impl')

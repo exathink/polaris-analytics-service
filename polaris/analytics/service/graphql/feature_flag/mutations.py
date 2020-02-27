@@ -22,16 +22,19 @@ FeatureFlagScope = graphene.Enum.from_enum(FeatureFlagScope)
 class CreateFeatureFlagInput(graphene.InputObjectType):
     name = graphene.String(required=True)
 
+
 class FeatureFlagEnablementModel(graphene.InputObjectType):
     scope = FeatureFlagScope(required=True)
     scope_key = graphene.String(required=True)
     enabled = graphene.Boolean(required=True)
+
 
 class UpdateFeatureFlagInput(graphene.InputObjectType):
     key = graphene.String(required=True)
     active = graphene.Boolean(required=False)
     enable_all = graphene.Boolean(required=False)
     enablements = graphene.List(FeatureFlagEnablementModel, required=False)
+
 
 class CreateFeatureFlag(graphene.Mutation):
     class Arguments:
@@ -49,6 +52,7 @@ class CreateFeatureFlag(graphene.Mutation):
             feature_flag=FeatureFlag.resolve_field(info, key=result.get('key')) if result['success'] else None
         )
         return resolved
+
 
 class UpdateFeatureFlag(graphene.Mutation):
     class Arguments:

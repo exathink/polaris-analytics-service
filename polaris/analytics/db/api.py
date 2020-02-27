@@ -202,6 +202,7 @@ def create_feature_flag(create_feature_flag_input):
     except Exception as e:
         return db.failure_message('Create Feature Flag failed', e)
 
+
 def update_feature_flag(update_feature_flag_input):
     try:
         with db.orm_session() as session:

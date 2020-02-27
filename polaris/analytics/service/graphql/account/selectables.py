@@ -146,13 +146,12 @@ class AccountFeatureFlagsNodes(ConnectionResolver):
         ).where(
             and_(
                 feature_flags.c.active,
-                or_(
-                    feature_flags.c.enable_all,
+
                     and_(
-                        feature_flag_enablements.c.scope == kwargs.get('scope'),
-                        feature_flag_enablements.c.scope_key == kwargs.get('scope_key')
+                        or_(feature_flag_enablements.c.scope == kwargs.get('scope'), feature_flag_enablements.c.scope == None),
+                        or_(feature_flag_enablements.c.scope_key == kwargs.get('scope_key'), feature_flag_enablements.c.scope_key == None)
                     )
-                )
+
             )
         )
 

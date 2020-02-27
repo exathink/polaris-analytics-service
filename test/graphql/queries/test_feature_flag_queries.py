@@ -363,7 +363,7 @@ class TestAccountFeatureFlags:
 
     def it_returns_feature_flag_enablement_when_enable_all_false_enabled_null(self,
                                                                               account_user_feature_flag_fixture_enable_all_false_enabled_null):
-        _ = account_user_feature_flag_fixture_enable_all_false_enabled_null
+        feature_flag = account_user_feature_flag_fixture_enable_all_false_enabled_null
         client = Client(schema)
 
         with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
@@ -390,11 +390,14 @@ class TestAccountFeatureFlags:
         assert result
         assert result['id']
         feature_flag_enablements = result['featureFlags']['edges']
-        assert len(feature_flag_enablements) == 0
+        assert len(feature_flag_enablements) == 1
+        e1 = feature_flag_enablements[0]['node']
+        assert not e1['enabled']
+        assert e1['key'] == str(feature_flag.key)
 
     def it_returns_feature_flag_enablement_when_feature_flag_inactive(self,
                                                                       account_user_feature_flag_fixture_inactive_feature):
-        _ = account_user_feature_flag_fixture_inactive_feature
+        feature_flag = account_user_feature_flag_fixture_inactive_feature
         client = Client(schema)
 
         with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
@@ -422,6 +425,39 @@ class TestAccountFeatureFlags:
         assert result['id']
         feature_flag_enablements = result['featureFlags']['edges']
         assert len(feature_flag_enablements) == 0
+
+    def it_returns_feature_flag_enablement_when_multiple_feature_flags(self, account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
+        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+        client = Client(schema)
+
+        with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
+            response = client.execute("""
+                        query getAccountFeatureFlagEnablements($account_key:String!) {
+                            account(key: $account_key) {
+                                id
+                                featureFlags(interfaces: [NamedNode, FeatureFlagEnablementInfo]) {
+                                    edges {
+                                        node {
+                                            enabled
+                                            name
+                                            key
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    """, variable_values=dict(account_key=test_account_key)
+                                      )
+        assert 'data' in response
+        result = response['data']['account']
+        assert result
+        assert result['id']
+        feature_flag_enablements = result['featureFlags']['edges']
+        assert len(feature_flag_enablements) == 1
+        e1 = feature_flag_enablements[0]['node']
+        assert not e1['enabled']
+        assert e1['key'] == str(feature_flag2.key)
+
 
 
 current_user = dict(
@@ -460,8 +496,8 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """, variable_values=dict(account_key=test_user_key)
-                                      )
+                    """
+            )
 
         assert 'data' in response
         result = response['data']['viewer']
@@ -481,22 +517,22 @@ class TestUserFeatureFlags:
         with patch('polaris.analytics.service.graphql.viewer.Viewer.get_viewer',
                    return_value=Viewer(objectview(current_user))):
             response = client.execute("""
-                        query getUserFeatureFlagEnablements {
-                            viewer {
-                                id
-                                featureFlags(interfaces: [NamedNode, FeatureFlagEnablementInfo]) {
-                                    edges {
-                                        node {
-                                            enabled
-                                            name
-                                            key
+                                    query getUserFeatureFlagEnablements {
+                                        viewer {
+                                            id
+                                            featureFlags(interfaces: [NamedNode, FeatureFlagEnablementInfo]) {
+                                                edges {
+                                                    node {
+                                                        enabled
+                                                        name
+                                                        key
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
-                                }
-                            }
-                        }
-                    """, variable_values=dict(account_key=test_user_key)
-                                      )
+                                """
+            )
 
         assert 'data' in response
         result = response['data']['viewer']
@@ -530,8 +566,8 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """, variable_values=dict(account_key=test_user_key)
-                                      )
+                    """
+            )
 
         assert 'data' in response
         result = response['data']['viewer']
@@ -565,7 +601,7 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """, variable_values=dict(account_key=test_user_key)
+                    """
                                       )
 
         assert 'data' in response
@@ -600,7 +636,7 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """, variable_values=dict(account_key=test_user_key)
+                    """
                                       )
 
         assert 'data' in response
@@ -635,7 +671,7 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """, variable_values=dict(account_key=test_user_key)
+                    """
                                       )
 
         assert 'data' in response
@@ -643,7 +679,9 @@ class TestUserFeatureFlags:
         assert result
         assert result['id']
         feature_flag_enablements = result['featureFlags']['edges']
-        assert len(feature_flag_enablements) == 0
+        assert len(feature_flag_enablements) == 1
+        e1 = feature_flag_enablements[0]['node']
+        assert not e1['enabled']
 
     def it_returns_feature_flag_enablement_when_feature_flag_inactive(self,
                                                                       account_user_feature_flag_fixture_inactive_feature):
@@ -667,7 +705,7 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """, variable_values=dict(account_key=test_user_key)
+                    """
                                       )
 
         assert 'data' in response
@@ -693,12 +731,14 @@ class TestUserFeatureFlags:
                                                     enabled
                                                     name
                                                     key
+                                                    scope
+                                                    scopeKey
                                                 }
                                             }
                                         }
                                     }
                                 }
-                            """, variable_values=dict(account_key=test_user_key)
+                            """
                                       )
 
         assert 'data' in response
@@ -706,7 +746,7 @@ class TestUserFeatureFlags:
         assert result
         assert result['id']
         feature_flag_enablements = result['featureFlags']['edges']
-        assert len(feature_flag_enablements) == 2
+        assert len(feature_flag_enablements) == 1
         e1 = feature_flag_enablements[0]['node']
-        assert not e1['enabled']
+        assert e1['enabled']
         assert e1['key'] == str(feature_flag2.key)

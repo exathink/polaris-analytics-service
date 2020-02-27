@@ -8,14 +8,15 @@
 
 # Author: Krishna Kumar
 
-import graphene
+from flask_security import current_user
 
+from polaris.graphql.exceptions import AccessDeniedException
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
-from .selectable import FeatureFlagNode, FeatureFlagEnablementNodeInfo
+from .selectable import FeatureFlagNode, FeatureFlagEnablementNodeInfo, FeatureFlagScopeRefInfo, AllFeatureFlagNodes
 from ..interface_mixins import NamedNodeResolverMixin, KeyIdResolverMixin
 from polaris.graphql.connection_utils import CountableConnection
-from ..interfaces import FeatureFlagEnablementInfo
+from ..interfaces import FeatureFlagEnablementInfo, FeatureFlagScopeRef
 
 
 class FeatureFlag(
@@ -25,16 +26,29 @@ class FeatureFlag(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, FeatureFlagEnablementInfo)
+        interfaces = (NamedNode, FeatureFlagEnablementInfo, FeatureFlagScopeRef)
         named_node_resolver = FeatureFlagNode
         interface_resolvers = {
-            'FeatureFlagEnablementInfo': FeatureFlagEnablementNodeInfo
+            'FeatureFlagEnablementInfo': FeatureFlagEnablementNodeInfo,
+            'FeatureFlagScopeRef': FeatureFlagScopeRefInfo
         }
         connection_class = lambda: FeatureFlags
 
     @classmethod
     def resolve_field(cls, info, **kwargs):
         return cls.resolve_instance(**kwargs)
+
+    @classmethod
+    def resolve_all_feature_flags(cls, info, **kwargs):
+        if 'admin' in current_user.role_names:
+            return cls.resolve_connection(
+                'all_feature_flags',
+                AllFeatureFlagNodes,
+                params=None,
+                **kwargs
+            )
+        else:
+            raise AccessDeniedException('Access Denied')
 
 
 class FeatureFlags(

@@ -12,12 +12,10 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
 from polaris.analytics.db.model import feature_flags, feature_flag_enablements
-from ..interfaces import FeatureFlagEnablementInfo
+from ..interfaces import FeatureFlagEnablementInfo, FeatureFlagScopeRef
+from polaris.graphql.base_classes import ConnectionResolver
 
 from sqlalchemy import select, bindparam, func, case, and_
-
-
-# from ..interfaces import FeatureFlagInfo
 
 
 class FeatureFlagNode(NamedNodeResolver):
@@ -61,3 +59,24 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
                 )
             )
         )
+
+
+class FeatureFlagScopeRefInfo(InterfaceResolver):
+    interface = FeatureFlagScopeRef
+
+    @staticmethod
+    def interface_selector(all_feature_flag_nodes, **kwargs):
+        return select([])
+
+
+class AllFeatureFlagNodes(ConnectionResolver):
+    interfaces = (FeatureFlagEnablementInfo, FeatureFlagScopeRef)
+
+    @staticmethod
+    def named_node_selector(**kwargs):
+        return select([
+        ])
+
+    @staticmethod
+    def sort_order(all_feature_flag_nodes, **kwargs):
+        return [all_feature_flag_nodes.c.created.desc().nullslast()]

@@ -179,4 +179,4 @@ class FeatureFlagEnablementInfo(graphene.Interface):
 
 class FeatureFlagScopeRef(graphene.Interface):
     scope_key = graphene.String(required=True)
-    scope_ref_name = graphene.String(required=True)
+    #scope_ref_name = graphene.String(required=True)

@@ -73,9 +73,24 @@ class AllFeatureFlagNodes(ConnectionResolver):
     interfaces = (FeatureFlagEnablementInfo, FeatureFlagScopeRef)
 
     @staticmethod
-    def named_node_selector(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
-        ])
+            feature_flags.c.id,
+            feature_flags.c.key,
+            feature_flags.c.name,
+            feature_flags.c.enable_all,
+            feature_flags.c.active,
+            feature_flags.c.created,
+            feature_flag_enablements.c.enabled,
+            feature_flag_enablements.c.scope_key,
+            feature_flag_enablements.c.scope,
+
+
+        ]).select_from(
+            feature_flags.outerjoin(
+                feature_flag_enablements, feature_flag_enablements.c.feature_flag_id == feature_flags.c.id
+            )
+        )
 
     @staticmethod
     def sort_order(all_feature_flag_nodes, **kwargs):

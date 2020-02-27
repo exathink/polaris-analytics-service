@@ -31,7 +31,7 @@ from polaris.auth.db.model import users
 
 from ..interfaces import CommitSummary, UserInfo, \
     ContributorCount, CommitCount, AccountInfo, \
-    OwnerInfo, ScopedRole, FeatureFlagEnablementInfo
+    OwnerInfo, ScopedRole
 
 from polaris.graphql.base_classes import NamedNodeResolver, ConnectionResolver, InterfaceResolver
 

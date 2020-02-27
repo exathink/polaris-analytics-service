@@ -33,9 +33,24 @@ class TestCreateFeatureFlag:
             f"select key from analytics.feature_flags where name='{name}'"
         ).scalar()
 
+    def it_does_an_idempotent_create(self):
+        name = 'Test feature flag'
+        feature_flag = model.FeatureFlag(
+            name=name
+        )
+        api.create_feature_flag(feature_flag)
+        # create again.
+        result = api.create_feature_flag(feature_flag)
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(id) from analytics.feature_flags where name='{name}'"
+        ).scalar() == 1
 
-class TestCreateFeatureFlagEnablement:
-    def it_creates_feature_flag_enablement(self):
+
+
+
+class TestUpdateFeatureFlag:
+    def it_updates_a_feature_flag(self):
         name = 'Test feature flag'
         feature_flag = db.connection().execute(
             f"select * from analytics.feature_flags where name='{name}'"
@@ -59,6 +74,42 @@ class TestCreateFeatureFlagEnablement:
             ]
         )
 
+        result = api.update_feature_flag(
+            objectview(feature_flag_enablement_input)
+        )
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(*) from analytics.feature_flag_enablements where feature_flag_id='{feature_flag.id}'"
+        ).scalar() == 2
+
+    def it_is_an_idempotent_update(self):
+        name = 'Test feature flag'
+        feature_flag = db.connection().execute(
+            f"select * from analytics.feature_flags where name='{name}'"
+        ).fetchone()
+
+        feature_flag_enablement_input = dict(
+            key=feature_flag.key,
+            active=True,
+            enable_all=False,
+            enablements=[
+                dict(
+                    scope="user",
+                    scope_key=test_scope_key,
+                    enabled=True
+                ),
+                dict(
+                    scope="account",
+                    scope_key=uuid.uuid4(),
+                    enabled=True
+                )
+            ]
+        )
+
+        api.update_feature_flag(
+            objectview(feature_flag_enablement_input)
+        )
+        # update again
         result = api.update_feature_flag(
             objectview(feature_flag_enablement_input)
         )

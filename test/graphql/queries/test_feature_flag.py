@@ -811,3 +811,105 @@ class TestAllFeatureFlags:
         result_vals = [(r['node']['enableAll'], r['node']['scope'], r['node']['enabled']) for r in result]
         expected_vals = [(True, 'user', False), (True, 'account', True), (False, 'user', True), (False, 'account', False)]
         assert set(result_vals) == set(expected_vals)
+
+    def it_returns_all_feature_flag_scopeRefs(self,
+                                               account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
+        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+        client = Client(schema)
+        response = client.execute("""
+                                query getAllFeatureFlags {
+                                    allFeatureFlags(interfaces: [FeatureFlagScopeRef]) {
+                                        edges {
+                                            node {
+                                                id
+                                                name
+                                                key
+                                                enableAll
+                                                ... on FeatureFlagScopeRef {
+                                                    scopeKey 
+                                                    scopeRefName   
+                                                }
+                                                }
+                                            }
+                                        }    
+                                    }
+
+                            """
+                                  )
+        assert 'data' in response
+        result = response['data']['allFeatureFlags']['edges']
+        assert len(result) == 4
+        result_vals = [(r['node']['enableAll'], r['node']['scopeRefName'], r['node']['scopeKey']) for r in result]
+        expected_vals = [(True, 'user', 'Polaris Dev'), (True, 'account', ''), (False, 'user', 'Polaris Dev'), (False, 'account', '')]
+        assert set(result_vals) == set(expected_vals)
+
+    def it_returns_all_feature_flags_node_enablement_scopeRef_info(self, account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
+        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+        client = Client(schema)
+        response = client.execute("""
+                                        query getAllFeatureFlags {
+                                            allFeatureFlags(interfaces: [FeatureFlagEnablementInfo, FeatureFlagScopeRef]) {
+                                                edges {
+                                                    node {
+                                                        id
+                                                        name
+                                                        key
+                                                        enableAll
+                                                        ... on FeatureFlagEnablementInfo {
+                                                            enabled
+                                                            scope
+                                                            scopeKey
+                                                        }
+                                                        ... on FeatureFlagScopeRef {
+                                                            scopeKey 
+                                                            scopeRefName   
+                                                        }
+                                                        }
+                                                    }
+                                                }    
+                                            }
+
+                                    """
+                                  )
+        assert 'data' in response
+        result = response['data']['allFeatureFlags']['edges']
+        assert len(result) == 4
+        result_vals = [(r['node']['enableAll'], r['node']['enabled'], r['node']['scope'], r['node']['scopeRefName']) for r in result]
+        expected_vals = [(True, False, 'user', 'Polaris Dev'), (True, True, 'account', ''), (False, True, 'user', 'Polaris Dev'),
+                         (False, False, 'account', '')]
+        assert set(result_vals) == set(expected_vals)
+
+    def it_returns_all_feature_flags_node_enablement_scopeRef_info_activeOnly_true(self, account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
+        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+        client = Client(schema)
+        response = client.execute("""
+                                        query getAllFeatureFlags($activeOnly: Boolean) {
+                                            allFeatureFlags(activeOnly: $active_only, interfaces: [FeatureFlagEnablementInfo, FeatureFlagScopeRef]) {
+                                                edges {
+                                                    node {
+                                                        id
+                                                        name
+                                                        key
+                                                        enableAll
+                                                        ... on FeatureFlagEnablementInfo {
+                                                            enabled
+                                                            scope
+                                                            scopeKey
+                                                        }
+                                                        ... on FeatureFlagScopeRef {
+                                                            scopeKey
+                                                            scopeRefName
+                                                        }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                    """, variable_values=dict(active_only=True)
+                                  )
+        assert 'data' in response
+        result = response['data']['allFeatureFlags']['edges']
+        assert len(result) == 2
+        result_vals = [(r['node']['enableAll'], r['node']['enabled'], r['node']['scope'], r['node']['scopeRefName']) for r in result]
+        expected_vals = [(False, True, 'user', 'Polaris Dev'), (False, False, 'account', '')]
+        assert set(result_vals) == set(expected_vals)

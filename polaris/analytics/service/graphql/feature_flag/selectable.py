@@ -110,14 +110,25 @@ class AllFeatureFlagNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
-        return select([
-            feature_flags.c.id,
-            feature_flags.c.key,
-            feature_flags.c.name,
-            feature_flags.c.enable_all,
-            feature_flags.c.active,
-            feature_flags.c.created
-        ])
+        if kwargs.get('active_only') is True:
+            return select([
+                feature_flags.c.id,
+                feature_flags.c.key,
+                feature_flags.c.name,
+                feature_flags.c.enable_all,
+                feature_flags.c.active,
+                feature_flags.c.created
+            ]).where(feature_flags.c.active==True)
+        else:
+            return select([
+                feature_flags.c.id,
+                feature_flags.c.key,
+                feature_flags.c.name,
+                feature_flags.c.enable_all,
+                feature_flags.c.active,
+                feature_flags.c.created
+            ])
+
     # @staticmethod
     # def sort_order(all_feature_flag_nodes, **kwargs):
     #     return [all_feature_flag_nodes.c.created.desc().nullslast()]

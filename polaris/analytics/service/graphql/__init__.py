@@ -51,7 +51,7 @@ class Query(graphene.ObjectType):
     feature_flag = FeatureFlag.Field()
 
     all_accounts = Account.ConnectionField()
-    all_feature_flags = FeatureFlag.ConnectionField()
+    all_feature_flags = FeatureFlag.ConnectionField(active_only=graphene.Boolean(required=False))
 
     def resolve_viewer(self, info, **kwargs):
         return Viewer.resolve_field(info, **kwargs)

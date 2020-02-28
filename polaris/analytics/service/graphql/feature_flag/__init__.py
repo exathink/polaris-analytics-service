@@ -16,7 +16,7 @@ from polaris.graphql.interfaces import NamedNode
 from .selectable import FeatureFlagNode, FeatureFlagEnablementNodeInfo, FeatureFlagScopeRefInfo, AllFeatureFlagNodes
 from ..interface_mixins import NamedNodeResolverMixin, KeyIdResolverMixin
 from polaris.graphql.connection_utils import CountableConnection
-from ..interfaces import FeatureFlagEnablementInfo, FeatureFlagScopeRef
+from ..interfaces import FeatureFlagInfo, FeatureFlagEnablementInfo, FeatureFlagScopeRef
 
 
 class FeatureFlag(
@@ -26,7 +26,7 @@ class FeatureFlag(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, FeatureFlagEnablementInfo, FeatureFlagScopeRef)
+        interfaces = (NamedNode, FeatureFlagInfo, FeatureFlagEnablementInfo, FeatureFlagScopeRef)
         named_node_resolver = FeatureFlagNode
         interface_resolvers = {
             'FeatureFlagEnablementInfo': FeatureFlagEnablementNodeInfo,

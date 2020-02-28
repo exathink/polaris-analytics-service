@@ -7,7 +7,6 @@
 # confidential.
 
 # Author: Krishna Kumar
-import graphene
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
@@ -82,7 +81,7 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
                 feature_flag_enablements.c.scope_key,
                 feature_flag_enablements.c.enabled
             ]).select_from(
-                feature_flag_enablements.outerjoin(
+                feature_flag_enablements.join(
                     feature_flag_nodes, feature_flag_nodes.c.id == feature_flag_enablements.c.feature_flag_id
                 )
             )
@@ -92,17 +91,17 @@ class FeatureFlagScopeRefInfo(InterfaceResolver):
     interface = FeatureFlagScopeRef
 
     @staticmethod
-    def interface_selector(all_feature_flag_nodes, **kwargs):
+    def interface_selector(feature_flag_nodes, **kwargs):
         return select([
-            users.c.email,
+            feature_flag_nodes.c.id,
             func.concat(users.c.first_name, ' ', users.c.last_name).label('scope_ref_name'),
             users.c.first_name,
-            users.c.last_name
-
+            users.c.last_name,
+            feature_flag_enablements.c.scope_key
         ]).select_from(
-            users.join(
-                feature_flag_enablements, feature_flag_enablements.c.scope_key==users.c.key
-            )
+            feature_flag_enablements.outerjoin(users, feature_flag_enablements.c.scope_key == users.c.key)
+        ).where(
+            feature_flag_nodes.c.id == feature_flag_enablements.c.feature_flag_id
         )
 
 

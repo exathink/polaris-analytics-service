@@ -750,3 +750,64 @@ class TestUserFeatureFlags:
         e1 = feature_flag_enablements[0]['node']
         assert e1['enabled']
         assert e1['key'] == str(feature_flag2.key)
+
+
+class TestAllFeatureFlags:
+    def it_returns_all_feature_flag_nodes_info(self, account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
+        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+        client = Client(schema)
+        response = client.execute("""
+                                query getAllFeatureFlags {
+                                    allFeatureFlags {
+                                        edges {
+                                            node {
+                                                id
+                                                name
+                                                key
+                                                enableAll
+                                                }
+                                            }
+                                        }    
+                                    }
+                                
+                            """
+                                     )
+        assert 'data' in response
+        result = response['data']['allFeatureFlags']['edges']
+        assert len(result) == 2
+        assert any([result[0]['node']['enableAll'], result[1]['node']['enableAll']])
+        assert str(feature_flag1.key) in [r['node']['key'] for r in result]
+        assert str(feature_flag2.key) in [r['node']['key'] for r in result]
+
+
+    def it_returns_all_feature_flag_enablements_info(self,
+                                               account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
+        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+        client = Client(schema)
+        response = client.execute("""
+                                query getAllFeatureFlags {
+                                    allFeatureFlags(interfaces: [FeatureFlagEnablementInfo]) {
+                                        edges {
+                                            node {
+                                                id
+                                                name
+                                                key
+                                                enableAll
+                                                ... on FeatureFlagEnablementInfo {
+                                                    enabled
+                                                    scope
+                                                    scopeKey    
+                                                }
+                                                }
+                                            }
+                                        }    
+                                    }
+
+                            """
+                                  )
+        assert 'data' in response
+        result = response['data']['allFeatureFlags']['edges']
+        assert len(result) == 4
+        result_vals = [(r['node']['enableAll'], r['node']['scope'], r['node']['enabled']) for r in result]
+        expected_vals = [(True, 'user', False), (True, 'account', True), (False, 'user', True), (False, 'account', False)]
+        assert set(result_vals) == set(expected_vals)

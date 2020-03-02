@@ -36,17 +36,6 @@ class FeatureFlagNode(NamedNodeResolver):
             feature_flags.c.key == bindparam('key')
         )
 
-# class FeatureFlagNodeInfo(InterfaceResolver):
-#     interface = FeatureFlagInfo
-#
-#     @staticmethod
-#     def interface_selector(feature_flag_nodes, **kwargs):
-#         return select([
-#             feature_flag_nodes.c.enable_all,
-#             feature_flag_nodes.c.created,
-#             feature_flag_nodes.c.updated
-#         ])
-
 
 class FeatureFlagEnablementNodeInfo(InterfaceResolver):
     interface = FeatureFlagEnablementInfo
@@ -148,6 +137,6 @@ class AllFeatureFlagNodes(ConnectionResolver):
                 feature_flags.c.created
             ])
 
-    # @staticmethod
-    # def sort_order(all_feature_flag_nodes, **kwargs):
-    #     return [all_feature_flag_nodes.c.created.desc().nullslast()]
+    @staticmethod
+    def sort_order(all_feature_flag_nodes, **kwargs):
+        return [all_feature_flag_nodes.c.created.desc().nullslast()]

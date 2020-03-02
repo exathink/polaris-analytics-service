@@ -10,11 +10,12 @@
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
-from polaris.analytics.db.model import feature_flags, feature_flag_enablements
+from polaris.analytics.db.model import feature_flags, feature_flag_enablements, accounts
 from ..interfaces import FeatureFlagInfo, FeatureFlagEnablementInfo, FeatureFlagScopeRef
 from polaris.graphql.base_classes import ConnectionResolver
+from polaris.analytics.db.enums import FeatureFlagScope
 
-from sqlalchemy import select, bindparam, func, case, and_
+from sqlalchemy import select, bindparam, func, case, and_, union, alias
 
 from polaris.auth.db.model import users
 
@@ -81,8 +82,8 @@ class FeatureFlagEnablementNodeInfo(InterfaceResolver):
                 feature_flag_enablements.c.scope_key,
                 feature_flag_enablements.c.enabled
             ]).select_from(
-                feature_flag_enablements.join(
-                    feature_flag_nodes, feature_flag_nodes.c.id == feature_flag_enablements.c.feature_flag_id
+                feature_flag_nodes.outerjoin(
+                    feature_flag_enablements, feature_flag_nodes.c.id == feature_flag_enablements.c.feature_flag_id
                 )
             )
 
@@ -92,16 +93,34 @@ class FeatureFlagScopeRefInfo(InterfaceResolver):
 
     @staticmethod
     def interface_selector(feature_flag_nodes, **kwargs):
+        s1 = select([
+            feature_flag_enablements.c.feature_flag_id,
+            feature_flag_enablements.c.scope_key,
+            func.concat(users.c.first_name, ' ', users.c.last_name).label('scope_ref_name'),
+        ]).select_from(
+            feature_flag_enablements.outerjoin(
+                users, users.c.key == feature_flag_enablements.c.scope_key
+            )
+        ).where(feature_flag_enablements.c.scope == FeatureFlagScope.user.value)
+
+        s2 = select([
+            feature_flag_enablements.c.feature_flag_id,
+            feature_flag_enablements.c.scope_key,
+            accounts.c.name.label('scope_ref_name')
+        ]).select_from(
+            feature_flag_enablements.outerjoin(
+                accounts, accounts.c.key == feature_flag_enablements.c.scope_key
+            )
+        ).where(feature_flag_enablements.c.scope == FeatureFlagScope.account.value)
+
+        union_q_aliased = union(s1, s2).alias()
         return select([
             feature_flag_nodes.c.id,
-            func.concat(users.c.first_name, ' ', users.c.last_name).label('scope_ref_name'),
-            users.c.first_name,
-            users.c.last_name,
-            feature_flag_enablements.c.scope_key
+            union_q_aliased.c.scope_key,
+            union_q_aliased.c.scope_ref_name
         ]).select_from(
-            feature_flag_enablements.outerjoin(users, feature_flag_enablements.c.scope_key == users.c.key)
-        ).where(
-            feature_flag_nodes.c.id == feature_flag_enablements.c.feature_flag_id
+            feature_flag_nodes.outerjoin(
+                union_q_aliased, feature_flag_nodes.c.id == union_q_aliased.c.feature_flag_id)
         )
 
 
@@ -118,7 +137,7 @@ class AllFeatureFlagNodes(ConnectionResolver):
                 feature_flags.c.enable_all,
                 feature_flags.c.active,
                 feature_flags.c.created
-            ]).where(feature_flags.c.active==True)
+            ]).where(feature_flags.c.active == True)
         else:
             return select([
                 feature_flags.c.id,

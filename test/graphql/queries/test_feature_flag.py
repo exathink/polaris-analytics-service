@@ -190,6 +190,30 @@ def account_user_feature_flag_fixture_multiple_features_multiple_enablements_ran
     yield feature_flag1, feature_flag2
 
 
+@pytest.yield_fixture()
+def all_feature_flag_fixture_multiple_features_multiple_enablements(user_fixture, cleanup):
+    _, _, _, user = user_fixture
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        feature_flags = []
+        # Feature flag 1
+        feature_flag1 = FeatureFlag.create(name=feature_flags_input[0]['name'])
+        feature_flag1.enable_all = True
+        feature_flag1.enable_all_date = datetime.utcnow()
+        feature_flag1.active = False
+        feature_flag1.deactivated_date = datetime.utcnow()
+        feature_flag1.enablements.extend([FeatureFlagEnablement(**feature_flag_enablements_input[0])])
+        feature_flag1.enablements.extend([FeatureFlagEnablement(**feature_flag_enablements_input[3])])
+        feature_flags.append(feature_flag1)
+        # Feature flag 2
+        feature_flag2 = FeatureFlag.create(name=feature_flags_input[1]['name'])
+        feature_flag2.enablements.extend([FeatureFlagEnablement(**feature_flag_enablements_input[1])])
+        feature_flag2.enablements.extend([FeatureFlagEnablement(**feature_flag_enablements_input[2])])
+        feature_flags.append(feature_flag2)
+        session.add_all(feature_flags)
+    yield feature_flag1, feature_flag2, user
+
+
 class TestAccountFeatureFlags:
     def it_returns_feature_flag_enablement_when_enable_all_true_enabled_true(self,
                                                                              account_feature_flag_fixture_enable_all_true_enabled_true):
@@ -813,8 +837,8 @@ class TestAllFeatureFlags:
         assert set(result_vals) == set(expected_vals)
 
     def it_returns_all_feature_flag_scopeRefs(self,
-                                               account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
-        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+                                               all_feature_flag_fixture_multiple_features_multiple_enablements):
+        feature_flag1, feature_flag2, user = all_feature_flag_fixture_multiple_features_multiple_enablements
         client = Client(schema)
         response = client.execute("""
                                 query getAllFeatureFlags {
@@ -840,11 +864,11 @@ class TestAllFeatureFlags:
         result = response['data']['allFeatureFlags']['edges']
         assert len(result) == 4
         result_vals = [(r['node']['enableAll'], r['node']['scopeRefName'], r['node']['scopeKey']) for r in result]
-        expected_vals = [(True, 'user', 'Polaris Dev'), (True, 'account', ''), (False, 'user', 'Polaris Dev'), (False, 'account', '')]
+        expected_vals = [(True, 'Test User', str(test_user_key)), (True, 'test-account', str(test_account_key)), (False, 'Test User', str(test_user_key)), (False, 'test-account', str(test_account_key))]
         assert set(result_vals) == set(expected_vals)
 
-    def it_returns_all_feature_flags_node_enablement_scopeRef_info(self, account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
-        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+    def it_returns_all_feature_flags_node_enablement_scopeRef_info(self, all_feature_flag_fixture_multiple_features_multiple_enablements):
+        feature_flag1, feature_flag2, user = all_feature_flag_fixture_multiple_features_multiple_enablements
         client = Client(schema)
         response = client.execute("""
                                         query getAllFeatureFlags {
@@ -879,12 +903,12 @@ class TestAllFeatureFlags:
                          (False, False, 'account', '')]
         assert set(result_vals) == set(expected_vals)
 
-    def it_returns_all_feature_flags_node_enablement_scopeRef_info_activeOnly_true(self, account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
-        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+    def it_returns_all_feature_flags_node_enablement_scopeRef_info_activeOnly_true(self, all_feature_flag_fixture_multiple_features_multiple_enablements):
+        feature_flag1, feature_flag2, user = all_feature_flag_fixture_multiple_features_multiple_enablements
         client = Client(schema)
         response = client.execute("""
                                         query getAllFeatureFlags($activeOnly: Boolean) {
-                                            allFeatureFlags(activeOnly: $active_only, interfaces: [FeatureFlagEnablementInfo, FeatureFlagScopeRef]) {
+                                            allFeatureFlags(activeOnly: $activeOnly, interfaces: [FeatureFlagEnablementInfo, FeatureFlagScopeRef]) {
                                                 edges {
                                                     node {
                                                         id

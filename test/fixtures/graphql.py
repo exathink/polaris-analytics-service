@@ -160,7 +160,6 @@ def cleanup():
     db.connection().execute("delete from analytics.contributor_aliases")
     db.connection().execute("delete from analytics.contributors")
 
-
 def commits_common_fields(commits_fixture):
     _, _, _, contributor = commits_fixture
 

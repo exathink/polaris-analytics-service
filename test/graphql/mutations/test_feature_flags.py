@@ -118,8 +118,7 @@ class TestCreateFeatureFlag:
             )
         ))
         assert response['data']
-        assert not response['data']['createFeatureFlag']['success']
-        assert response['data']['createFeatureFlag']['errorMessage'] == f'Feature flag {name} already exists'
+        assert response['data']['createFeatureFlag']['success']
 
 
 class TestCreateFeatureFlagEnablement:

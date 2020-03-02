@@ -21,8 +21,10 @@ logger = logging.getLogger('polaris.analytics.db.impl')
 def create_feature_flag(session, name):
     logger.info("Inside create_feature_flag")
 
-    feature_flag = FeatureFlag.create(name=name)
-    session.add(feature_flag)
+    feature_flag = FeatureFlag.find_by_name(session, name)
+    if feature_flag is None:
+        feature_flag = FeatureFlag.create(name=name)
+        session.add(feature_flag)
 
     return dict(
         name=name,
@@ -31,25 +33,24 @@ def create_feature_flag(session, name):
 
 
 def update_feature_flag(session, update_feature_flag_input):
-    logger.info("Inside update_feature_flag")
     feature_flag_key = update_feature_flag_input.key
-    active = update_feature_flag_input.active
-    enable_all = update_feature_flag_input.enable_all
     enablements = update_feature_flag_input.enablements
     feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
     if feature_flag is not None:
-        if active is not None:
-            feature_flag.active = active
-            if not active:
-                feature_flag.deactivated_date = datetime.now()
-                feature_flag.enable_all = False
-                feature_flag.enable_all_date = None
-        if enable_all is not None:
-            if enable_all:
-                feature_flag.enable_all_date = datetime.now()
-            else:
-                feature_flag.enable_all_date = None
-            feature_flag.enable_all = enable_all
+        if update_feature_flag_input.active is not None:
+            if feature_flag.active != update_feature_flag_input.active:
+                feature_flag.active = update_feature_flag_input.active
+                if not feature_flag.active:
+                    feature_flag.deactivated_date = datetime.now()
+
+        if update_feature_flag_input.enable_all is not None:
+            if update_feature_flag_input.enable_all != feature_flag.enable_all:
+                feature_flag.enable_all = update_feature_flag_input.enable_all
+                if feature_flag.enable_all:
+                    feature_flag.enable_all_date = datetime.now()
+                else:
+                    feature_flag.enable_all_date = datetime.now()
+
         feature_flag.updated = datetime.utcnow()
         if enablements is not None:
             update_enablements(session, feature_flag_key, enablements)
@@ -62,9 +63,7 @@ def update_feature_flag(session, update_feature_flag_input):
 
 
 def update_enablements(session, feature_flag_key, update_enablements_input):
-    logger.info(f"Inside update_enablements_data {update_enablements_input}")
     feature_flag = FeatureFlag.find_by_key(session, feature_flag_key)
-    logger.info(f'Feature flag {feature_flag.name}')
     if feature_flag is not None:
         upsert = insert(feature_flag_enablements).values([
             dict(

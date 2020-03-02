@@ -21,6 +21,12 @@ logger = logging.getLogger('polaris.analytics.db.impl')
 def create_feature_flag(session, name):
     logger.info("Inside create_feature_flag")
 
+    existing_feature_flag = FeatureFlag.find_by_name(session, name)
+    if existing_feature_flag is not None:
+        return dict(
+            name=name,
+            key=existing_feature_flag.key
+        )
     feature_flag = FeatureFlag.create(name=name)
     session.add(feature_flag)
 

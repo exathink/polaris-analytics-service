@@ -29,13 +29,6 @@ test_repositories = ['alpha', 'beta', 'gamma', 'delta']
 test_projects = ['mercury', 'venus']
 test_contributor_name = 'Joe Blow'
 
-test_scope_key = uuid.uuid4()
-enablementsInput = [
-    dict(scope="user", scope_key=test_scope_key, enabled=True),
-    dict(scope="user", scope_key=uuid.uuid4(), enabled=False),
-    dict(scope="account", scope_key=uuid.uuid4(), enabled=False)
-]
-
 def getRepository(name):
     with db.orm_session() as session:
         organization = Organization.find_by_organization_key(session, test_organization_key)
@@ -146,28 +139,6 @@ def cleanup():
     db.connection().execute("delete from analytics.commits")
     db.connection().execute("delete from analytics.contributor_aliases")
     db.connection().execute("delete from analytics.contributors")
-
-@pytest.yield_fixture()
-def create_feature_flag_fixture(cleanup):
-    with db.orm_session() as session:
-        session.expire_on_commit = False
-        feature_flag = FeatureFlag.create("Test Feature Flag")
-        session.add(feature_flag)
-    yield feature_flag
-
-
-@pytest.yield_fixture()
-def create_feature_flag_enablement_fixture(cleanup):
-    with db.orm_session() as session:
-        session.expire_on_commit = False
-        feature_flag = FeatureFlag.create("New Feature")
-        feature_flag.enablements.extend([
-            FeatureFlagEnablement(**item)
-            for item in enablementsInput
-        ])
-        session.add(feature_flag)
-    yield feature_flag
-
 
 def commits_common_fields(commits_fixture):
     _, _, _, contributor = commits_fixture

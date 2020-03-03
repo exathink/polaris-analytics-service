@@ -15,9 +15,11 @@ from polaris.graphql.selectable import Selectable
 from polaris.common.enums import AccountRoles
 from ..account import Account
 from ..interfaces import ScopedRole
-from .selectables import ViewerAccountRoles, ViewerOrganizationRoles
+from .selectables import ViewerAccountRoles, ViewerOrganizationRoles, \
+    ViewerFeatureFlagsNodes
 
 from ..selectable_field_mixins import SelectablePropertyResolverMixin
+from ..feature_flag import FeatureFlagsConnectionMixin
 
 
 class ScopedRoleField(graphene.ObjectType):
@@ -26,8 +28,12 @@ class ScopedRoleField(graphene.ObjectType):
 
 
 class Viewer (
+    # ConnectionMixins
+    FeatureFlagsConnectionMixin,
+
     SelectablePropertyResolverMixin,
     Selectable,
+
     graphene.ObjectType
 ):
 
@@ -40,6 +46,10 @@ class Viewer (
         to the user. 
                 """
         interfaces = (NamedNode, )
+
+        connection_node_resolvers = {
+            'feature_flags': ViewerFeatureFlagsNodes
+        }
         selectable_field_resolvers = {
             'account_roles': ViewerAccountRoles,
             'organization_roles': ViewerOrganizationRoles
@@ -108,6 +118,9 @@ class Viewer (
 
     def resolve_account(self, info, **kwargs):
         return Account.resolve_field(info, **kwargs)
+
+    def resolve_feature_flags(self, info, **kwargs):
+        return super().resolve_feature_flags(info, scope='user', scope_key=self.key, **kwargs)
 
     @classmethod
     def is_account_owner(cls, account_key):

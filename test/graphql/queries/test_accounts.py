@@ -13,7 +13,7 @@ import pytest
 from test.fixtures.graphql import *
 from test.constants import *
 from unittest.mock import patch
-
+from polaris.common import db
 
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
@@ -205,3 +205,5 @@ class TestAccount:
         assert len(projects) == 2
         for project in projects:
             assert project['node']['repositoryCount'] == 2
+
+

@@ -18,20 +18,20 @@
 
 # Author: Krishna Kumar
 from datetime import datetime, timedelta
-from sqlalchemy import select, func, bindparam, and_, distinct, between, cast, Text
-
+from sqlalchemy import select, func, bindparam, and_, distinct, between, cast, Text, or_
 from polaris.utils.datetime_utils import time_window
 from polaris.graphql.interfaces import NamedNode, KeyIdNode
 from polaris.analytics.db.model import organizations, accounts_organizations, accounts, \
     projects, repositories, projects_repositories, contributors, commits, \
     repositories_contributor_aliases, \
-    work_items_sources, account_members
+    work_items_sources, account_members, \
+    feature_flags, feature_flag_enablements
 
 from polaris.auth.db.model import users
 
 from ..interfaces import CommitSummary, UserInfo, \
     ContributorCount, CommitCount, AccountInfo, \
-    OwnerInfo, ScopedRole
+    OwnerInfo, ScopedRole, FeatureFlagEnablementInfo
 
 from polaris.graphql.base_classes import NamedNodeResolver, ConnectionResolver, InterfaceResolver
 
@@ -125,6 +125,35 @@ class AccountRecentlyActiveOrganizationsNodes(ConnectionResolver):
     @staticmethod
     def sort_order(account_recently_active_organizations, **kwargs):
         return [account_recently_active_organizations.c.commit_count.desc()]
+
+
+class AccountFeatureFlagsNodes(ConnectionResolver):
+    interface = NamedNode
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        return select([
+            feature_flags.c.id,
+            feature_flags.c.key,
+            feature_flags.c.name,
+            feature_flags.c.enable_all,
+            feature_flags.c.active
+
+        ]).select_from(
+            feature_flags.outerjoin(
+                feature_flag_enablements, feature_flag_enablements.c.feature_flag_id==feature_flags.c.id
+            )
+        ).where(
+            and_(
+                feature_flags.c.active,
+
+                    and_(
+                        or_(feature_flag_enablements.c.scope == kwargs.get('scope'), feature_flag_enablements.c.scope == None),
+                        or_(feature_flag_enablements.c.scope_key == kwargs.get('scope_key'), feature_flag_enablements.c.scope_key == None)
+                    )
+
+            )
+        )
 
 
 class AccountProjectsNodes(ConnectionResolver):

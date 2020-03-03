@@ -8,12 +8,13 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam
+from sqlalchemy import select, func, bindparam, and_, or_
 
 from ..interfaces import NamedNode, ScopedRole
 from polaris.analytics.db.model import \
     accounts, account_members, \
-    organizations, organization_members
+    organizations, organization_members, feature_flags, feature_flag_enablements
+from polaris.graphql.base_classes import ConnectionResolver
 
 
 class ViewerAccountRoles:
@@ -44,3 +45,33 @@ class ViewerOrganizationRoles:
         ]).select_from(
             organizations.join(organization_members, organizations.c.id == organization_members.c.organization_id)
         ).where(organization_members.c.user_key == bindparam('key'))
+
+
+class ViewerFeatureFlagsNodes(ConnectionResolver):
+    interface = NamedNode
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+
+        return select([
+            feature_flags.c.id,
+            feature_flags.c.key,
+            feature_flags.c.name,
+            feature_flags.c.enable_all,
+            feature_flags.c.active
+
+        ]).select_from(
+            feature_flags.outerjoin(
+                feature_flag_enablements, feature_flag_enablements.c.feature_flag_id==feature_flags.c.id
+            )
+        ).where(
+            and_(
+                feature_flags.c.active,
+
+                    and_(
+                        or_(feature_flag_enablements.c.scope == kwargs.get('scope'), feature_flag_enablements.c.scope == None),
+                        or_(feature_flag_enablements.c.scope_key == kwargs.get('scope_key'), feature_flag_enablements.c.scope_key == None)
+                    )
+
+            )
+        )

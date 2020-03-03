@@ -203,17 +203,16 @@ def create_feature_flag(create_feature_flag_input):
         return db.failure_message('Create Feature Flag failed', e)
 
 
-def enable_feature_flag(enable_feature_flag_input):
+def update_feature_flag(update_feature_flag_input):
     try:
         with db.orm_session() as session:
             return success(
-                impl.enable_feature_flag(
+                impl.update_feature_flag(
                     session,
-                    enable_feature_flag_input.feature_flag_key,
-                    enable_feature_flag_input.enablements
+                    update_feature_flag_input
                 )
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Failed to enable feature flag", exc)
+        return db.process_exception("Failed to update feature flag", exc)
     except Exception as e:
-        return db.failure_message('Failed to enable feature flag', e)
+        return db.failure_message(f'Failed to update feature flag due to: {e}', e)

@@ -10,10 +10,12 @@
 
 import graphene
 
-from polaris.graphql.selectable import Selectable
+from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
-from .selectable import FeatureFlagNode
-from ..interface_mixins import NamedNodeResolverMixin
+from .selectable import FeatureFlagNode, FeatureFlagEnablementNodeInfo
+from ..interface_mixins import NamedNodeResolverMixin, KeyIdResolverMixin
+from polaris.graphql.connection_utils import CountableConnection
+from ..interfaces import FeatureFlagEnablementInfo
 
 
 class FeatureFlag(
@@ -23,10 +25,32 @@ class FeatureFlag(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode,)
+        interfaces = (NamedNode, FeatureFlagEnablementInfo)
         named_node_resolver = FeatureFlagNode
-        interface_resolvers = {}
+        interface_resolvers = {
+            'FeatureFlagEnablementInfo': FeatureFlagEnablementNodeInfo
+        }
+        connection_class = lambda: FeatureFlags
 
     @classmethod
     def resolve_field(cls, info, **kwargs):
         return cls.resolve_instance(**kwargs)
+
+
+class FeatureFlags(
+    CountableConnection
+):
+    class Meta:
+        node = FeatureFlag
+
+
+class FeatureFlagsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
+    feature_flags = FeatureFlag.ConnectionField()
+
+    def resolve_feature_flags(self, info, **kwargs):
+        return FeatureFlag.resolve_connection(
+            self.get_connection_resolver_context('feature_flags'),
+            self.get_connection_node_resolver('feature_flags'),
+            self.get_instance_query_params(),
+            **kwargs
+        )

@@ -11,10 +11,12 @@ import uuid
 from datetime import datetime
 
 import pytest
+from sqlalchemy import true, false
 
 from polaris.analytics.db import api
-from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, commits, \
-    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag
+from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
+    commits, \
+    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag, FeatureFlagEnablement
 from polaris.common import db
 from polaris.utils.collections import find
 from polaris.common.enums import WorkTrackingIntegrationType
@@ -26,7 +28,6 @@ test_contributor_key = uuid.uuid4().hex
 test_repositories = ['alpha', 'beta', 'gamma', 'delta']
 test_projects = ['mercury', 'venus']
 test_contributor_name = 'Joe Blow'
-
 
 def getRepository(name):
     with db.orm_session() as session:
@@ -138,7 +139,6 @@ def cleanup():
     db.connection().execute("delete from analytics.commits")
     db.connection().execute("delete from analytics.contributor_aliases")
     db.connection().execute("delete from analytics.contributors")
-
 
 def commits_common_fields(commits_fixture):
     _, _, _, contributor = commits_fixture
@@ -871,6 +871,3 @@ def pivotal_work_items_source_work_items_states_fixture(org_repo_fixture, cleanu
         work_items_sources['pivotal'].init_state_map()
         session.add_all(work_items_sources.values())
     yield pivotal_source_key, work_items_sources
-
-
-

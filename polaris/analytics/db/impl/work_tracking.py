@@ -263,7 +263,7 @@ def update_work_item_calculated_fields(work_items_source, work_item_summaries):
         dict(
             state_type=work_items_source.get_state_type(work_item['state']),
             completed_at=work_item['updated_at']
-            if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.complete.value else None,
+            if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.complete.value or work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.closed.value else None,
             **work_item
         )
         for work_item in work_item_summaries

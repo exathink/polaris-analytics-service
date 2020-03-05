@@ -171,16 +171,24 @@ class Describable(graphene.Interface):
     description = graphene.String(required=False)
 
 
+class Enablement(graphene.Interface):
+    enabled = graphene.Boolean(required=False)
+
+
 class FeatureFlagInfo(graphene.Interface):
     enable_all = graphene.Boolean(required=True)
     active = graphene.Boolean(required=True)
     created = graphene.DateTime(required=True)
 
 
-class FeatureFlagEnablementInfo(graphene.Interface):
+class FeatureFlagEnablementDetail(graphene.ObjectType):
     enabled = graphene.Boolean(required=False)
     scope = graphene.String(required=False)
     scope_key = graphene.String(required=False)
+
+
+class FeatureFlagEnablements(graphene.Interface):
+    enablements = graphene.List(FeatureFlagEnablementDetail, required=False)
 
 
 class FeatureFlagScopeRef(graphene.Interface):

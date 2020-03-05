@@ -7,17 +7,20 @@
 # confidential.
 
 # Author: Krishna Kumar
-
+from polaris.analytics.service.graphql.interfaces import FeatureFlagInfo
 from polaris.graphql.interfaces import NamedNode
-from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
+from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from polaris.analytics.db.model import feature_flags, feature_flag_enablements, accounts
-from ..interfaces import FeatureFlagInfo, FeatureFlagEnablementInfo, FeatureFlagScopeRef
+from ..interfaces import \
+    FeatureFlagInfo, FeatureFlagEnablementDetail, FeatureFlagEnablements, FeatureFlagScopeRef, \
+    Enablement
 from polaris.graphql.base_classes import ConnectionResolver
 from polaris.analytics.db.enums import FeatureFlagScope
 
 from sqlalchemy import select, bindparam, func, case, and_, union, alias
 
 from polaris.auth.db.model import users
+from polaris.utils.exceptions import ProcessingException
 
 
 class FeatureFlagNode(NamedNodeResolver):
@@ -37,44 +40,34 @@ class FeatureFlagNode(NamedNodeResolver):
         )
 
 
-class FeatureFlagEnablementNodeInfo(InterfaceResolver):
-    interface = FeatureFlagEnablementInfo
+class FeatureFlagFeatureFlagEnablements(InterfaceResolver):
+    interface = FeatureFlagEnablements
 
     @staticmethod
     def interface_selector(feature_flag_nodes, **kwargs):
-        if kwargs.get('scope_key') is not None:
-            return select([
-                feature_flag_nodes.c.id,
-                func.coalesce(feature_flag_enablements.c.scope, kwargs.get('scope')).label('scope'),
-                func.coalesce(feature_flag_enablements.c.scope_key, kwargs.get('scope_key')).label('scope_key'),
-                case(
-                    [
-                        (feature_flag_nodes.c.enable_all, True),
-                    ],
-                    else_=func.coalesce(feature_flag_enablements.c.enabled, False)
-                ).label('enabled')
-            ]).select_from(
-                feature_flag_nodes.outerjoin(
-                    feature_flag_enablements,
-                    and_(
-                        feature_flag_enablements.c.feature_flag_id == feature_flag_nodes.c.id,
-                        feature_flag_enablements.c.scope == kwargs.get('scope'),
-                        feature_flag_enablements.c.scope_key == kwargs.get('scope_key')
+        return select([
+            feature_flag_nodes.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'scope_key', feature_flag_enablements.c.scope_key,
+                    'scope', feature_flag_enablements.c.scope,
+                    'enabled', case(
+                        [
+                            (feature_flag_nodes.c.active == False, False),
+                            (feature_flag_nodes.c.enable_all == True, True)
+                        ],
+                        else_=feature_flag_enablements.c.enabled
                     )
                 )
+            ).label('enablements')
+        ]).select_from(
+            feature_flag_nodes.outerjoin(
+                feature_flag_enablements, feature_flag_nodes.c.id == feature_flag_enablements.c.feature_flag_id
             )
-        else:
-            return select([
-                feature_flag_nodes.c.id,
-                feature_flag_nodes.c.enable_all,
-                feature_flag_enablements.c.scope,
-                feature_flag_enablements.c.scope_key,
-                feature_flag_enablements.c.enabled
-            ]).select_from(
-                feature_flag_nodes.outerjoin(
-                    feature_flag_enablements, feature_flag_nodes.c.id == feature_flag_enablements.c.feature_flag_id
-                )
-            )
+        ).group_by(
+            feature_flag_nodes.c.id
+        )
+
 
 
 class FeatureFlagScopeRefInfo(InterfaceResolver):
@@ -113,6 +106,8 @@ class FeatureFlagScopeRefInfo(InterfaceResolver):
         )
 
 
+
+
 class AllFeatureFlagNodes(ConnectionResolver):
     interfaces = (NamedNode, FeatureFlagInfo)
 
@@ -140,3 +135,40 @@ class AllFeatureFlagNodes(ConnectionResolver):
     @staticmethod
     def sort_order(all_feature_flag_nodes, **kwargs):
         return [all_feature_flag_nodes.c.created.desc().nullslast()]
+
+
+class ScopedFeatureFlagsNodes(ConnectionResolver):
+    interfaces = (NamedNode, FeatureFlagInfo, Enablement)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        if kwargs.get('scope_key'):
+            return select(
+                [
+                    feature_flags.c.id,
+                    feature_flags.c.key,
+                    feature_flags.c.name,
+                    feature_flags.c.active,
+                    feature_flags.c.created,
+                    feature_flags.c.enable_all,
+                    case(
+                        [
+                            (feature_flags.c.enable_all, True),
+                            (feature_flag_enablements.c.enabled == None, None)
+                        ],
+                        else_=feature_flag_enablements.c.enabled
+                    ).label('enabled')
+                ]
+            ).select_from(
+                feature_flags.outerjoin(
+                    feature_flag_enablements,
+                    and_(
+                        feature_flag_enablements.c.feature_flag_id == feature_flags.c.id,
+                        feature_flag_enablements.c.scope_key == kwargs.get('scope_key')
+                    )
+                )
+            ).where(
+                feature_flags.c.active
+            )
+        else:
+            raise ProcessingException('ScopedFeatureFlagNodes requires the scope_key keyword arg to be provided.')

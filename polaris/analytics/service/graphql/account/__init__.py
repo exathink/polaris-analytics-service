@@ -18,7 +18,8 @@ from .selectables import AccountNode, AccountCommitSummary, AccountUserInfo, Acc
     AccountOrganizationsNodes, \
     AccountProjectsNodes, AccountRepositoriesNodes, AccountContributorNodes, AccountRecentlyActiveRepositoriesNodes, \
     AccountRecentlyActiveProjectsNodes, AccountRecentlyActiveOrganizationsNodes, AccountWorkItemsSourcesNodes, \
-    AllAccountNodes, AccountUserNodes, AccountFeatureFlagsNodes
+    AllAccountNodes, AccountUserNodes
+from polaris.analytics.service.graphql.feature_flag.selectable import ScopedFeatureFlagsNodes
 
 from ..contributor import ContributorsConnectionMixin
 from ..interface_mixins import NamedNodeResolverMixin
@@ -73,7 +74,7 @@ class Account(
             'recently_active_organizations': AccountRecentlyActiveOrganizationsNodes,
             'contributors': AccountContributorNodes,
             'users': AccountUserNodes,
-            'feature_flags': AccountFeatureFlagsNodes,
+            'feature_flags': ScopedFeatureFlagsNodes,
         }
 
     @classmethod

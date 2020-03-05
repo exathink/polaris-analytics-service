@@ -13,26 +13,30 @@ from flask_security import current_user
 from polaris.graphql.exceptions import AccessDeniedException
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
-from .selectable import FeatureFlagNode, FeatureFlagEnablementNodeInfo, FeatureFlagScopeRefInfo, AllFeatureFlagNodes
+from .selectable import FeatureFlagNode, FeatureFlagFeatureFlagEnablements, FeatureFlagScopeRefInfo, \
+    ScopedFeatureFlagsNodes, AllFeatureFlagNodes
 from ..interface_mixins import NamedNodeResolverMixin, KeyIdResolverMixin
 from polaris.graphql.connection_utils import CountableConnection
-from ..interfaces import FeatureFlagInfo, FeatureFlagEnablementInfo, FeatureFlagScopeRef
+from ..interfaces import FeatureFlagInfo, FeatureFlagEnablements, Enablement, FeatureFlagEnablementDetail
 
 
 class FeatureFlag(
     # Interface Mixins
     NamedNodeResolverMixin,
-
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, FeatureFlagInfo, FeatureFlagEnablementInfo, FeatureFlagScopeRef)
+        interfaces = (NamedNode, FeatureFlagInfo, Enablement, FeatureFlagEnablements)
         named_node_resolver = FeatureFlagNode
         interface_resolvers = {
-            'FeatureFlagEnablementInfo': FeatureFlagEnablementNodeInfo,
+            'FeatureFlagEnablements': FeatureFlagFeatureFlagEnablements,
             'FeatureFlagScopeRef': FeatureFlagScopeRefInfo
         }
         connection_class = lambda: FeatureFlags
+
+    def __init__(self, *args, **kwargs):
+        self.enablements = None
+        super().__init__(*args, **kwargs)
 
     @classmethod
     def resolve_field(cls, info, **kwargs):
@@ -40,16 +44,15 @@ class FeatureFlag(
 
     @classmethod
     def resolve_all_feature_flags(cls, info, **kwargs):
-        #if 'admin' in current_user.role_names:
-        if True:
-            return cls.resolve_connection(
-                'all_feature_flags',
-                AllFeatureFlagNodes,
-                params=None,
-                **kwargs
-            )
-        else:
-            raise AccessDeniedException('Access Denied')
+        return cls.resolve_connection(
+            'all_feature_flags',
+            AllFeatureFlagNodes,
+            params=None,
+            **kwargs
+        )
+
+    def resolve_enablements(self, info, **kwargs):
+        return [FeatureFlagEnablementDetail(**enablement) for enablement in self.enablements]
 
 
 class FeatureFlags(

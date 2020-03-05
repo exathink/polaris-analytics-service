@@ -498,29 +498,31 @@ class objectview(object):
 
 class TestUserFeatureFlags:
 
-    def it_returns_feature_flag_enablement_when_enable_all_true_enabled_true(self,
-                                                                             user_feature_flag_fixture_enable_all_true_enabled_true):
-        feature_flag = user_feature_flag_fixture_enable_all_true_enabled_true
+    def verify_feature_flag_is_enabled_when_enable_all_true_and_no_user_enablement_is_present(self,
+                                                                                                 feature_flag_fixture):
+        feature_flag = FeatureFlag.create(name="Feature 1")
+        feature_flag.enable_all = True
+        create_feature_flags([feature_flag])
         client = Client(schema)
 
         with patch('polaris.analytics.service.graphql.viewer.Viewer.get_viewer',
                    return_value=Viewer(objectview(current_user))):
             response = client.execute("""
-                        query getUserFeatureFlagEnablements {
-                            viewer {
-                                id
-                                featureFlags(interfaces: [NamedNode, Enablement]) {
-                                    edges {
-                                        node {
-                                            enabled
-                                            name
-                                            key
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    """
+                         query getViewerFeatureFlagEnablements {
+                             viewer {
+                                 id
+                                 featureFlags(interfaces: [NamedNode, Enablement]) {
+                                     edges {
+                                         node {
+                                             name
+                                             key
+                                             enabled
+                                         }
+                                     }
+                                 }
+                             }
+                         }
+                     """, variable_values=dict(account_key=test_account_key)
                                       )
 
         assert 'data' in response
@@ -529,33 +531,39 @@ class TestUserFeatureFlags:
         assert result['id']
         feature_flag_nodes = result['featureFlags']['edges']
         assert len(feature_flag_nodes) == 1
-        e1 = feature_flag_nodes[0]['node']
-        assert e1['enabled']
-        assert e1['key'] == str(feature_flag.key)
+        assert feature_flag_nodes[0]['node']['key'] == str(feature_flag.key)
+        assert feature_flag_nodes[0]['node']['enabled']
 
-    def it_returns_feature_flag_enablement_when_enable_all_true_enabled_false(self,
-                                                                              user_feature_flag_fixture_enable_all_true_enabled_false):
-        feature_flag = user_feature_flag_fixture_enable_all_true_enabled_false
+    def verify_feature_flag_is_enabled_when_enable_all_is_true_and_user_enabled_is_true(self,
+                                                                                           feature_flag_fixture):
+        feature_flag = FeatureFlag.create(name="Feature 1")
+        feature_flag.enable_all = True
+        feature_flag.enablements.extend([
+            FeatureFlagEnablement(scope="user", scope_key=test_user_key, enabled=True)
+        ])
+        create_feature_flags([feature_flag])
+
         client = Client(schema)
 
         with patch('polaris.analytics.service.graphql.viewer.Viewer.get_viewer',
                    return_value=Viewer(objectview(current_user))):
             response = client.execute("""
-                                    query getUserFeatureFlagEnablements {
-                                        viewer {
+                        query getViewerFeatureFlagEnablements {
+                            viewer {
+                                id
+                                featureFlags(interfaces: [NamedNode, Enablement]) {
+                                    edges {
+                                        node {
                                             id
-                                            featureFlags(interfaces: [NamedNode, Enablement]) {
-                                                edges {
-                                                    node {
-                                                        enabled
-                                                        name
-                                                        key
-                                                    }
-                                                }
-                                            }
+                                            name
+                                            key
+                                            enabled
                                         }
                                     }
-                                """
+                                }
+                            }
+                        }
+                    """, variable_values=dict(account_key=test_account_key)
                                       )
 
         assert 'data' in response
@@ -564,19 +572,65 @@ class TestUserFeatureFlags:
         assert result['id']
         feature_flag_nodes = result['featureFlags']['edges']
         assert len(feature_flag_nodes) == 1
-        e1 = feature_flag_nodes[0]['node']
-        assert e1['enabled']
-        assert e1['key'] == str(feature_flag.key)
+        assert feature_flag_nodes[0]['node']['key'] == str(feature_flag.key)
+        assert feature_flag_nodes[0]['node']['enabled']
 
-    def it_returns_feature_flag_enablement_when_enable_all_true_enabled_null(self,
-                                                                             account_user_feature_flag_fixture_enable_all_true_enabled_null):
-        feature_flag = account_user_feature_flag_fixture_enable_all_true_enabled_null
+    def verify_feature_flag_is_enabled_when_enable_all_is_true_and_user_enabled_is_false(self,
+                                                                                            feature_flag_fixture):
+        feature_flag = FeatureFlag.create(name="Feature 1")
+        feature_flag.enable_all = True
+        feature_flag.enablements.extend([
+            FeatureFlagEnablement(scope="user", scope_key=test_user_key, enabled=False)
+        ])
+        create_feature_flags([feature_flag])
+
         client = Client(schema)
 
         with patch('polaris.analytics.service.graphql.viewer.Viewer.get_viewer',
                    return_value=Viewer(objectview(current_user))):
             response = client.execute("""
-                        query getUserFeatureFlagEnablements {
+                        query getViewerFeatureFlagEnablements {
+                            viewer {
+                                id
+                                featureFlags(interfaces: [NamedNode, Enablement]) {
+                                    edges {
+                                        node {
+                                            name
+                                            key
+                                            enabled
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    """, variable_values=dict(account_key=test_account_key)
+                                      )
+
+        assert 'data' in response
+        result = response['data']['viewer']
+        assert result
+        assert result['id']
+        feature_flag_nodes = result['featureFlags']['edges']
+
+        assert len(feature_flag_nodes) == 1
+        assert feature_flag_nodes[0]['node']['key'] == str(feature_flag.key)
+        assert feature_flag_nodes[0]['node']['enabled']
+
+    def verify_feature_flag_is_enabled_when_enable_all_is_false_and_account_enabled_is_true(self,
+                                                                                            feature_flag_fixture):
+        feature_flag = FeatureFlag.create(name="Feature 1")
+        feature_flag.enable_all = False
+        feature_flag.enablements.extend([
+            FeatureFlagEnablement(scope="user", scope_key=test_user_key, enabled=True)
+        ])
+        create_feature_flags([feature_flag])
+
+        client = Client(schema)
+
+        with patch('polaris.analytics.service.graphql.viewer.Viewer.get_viewer',
+                   return_value=Viewer(objectview(current_user))):
+            response = client.execute("""
+                        query getViewerFeatureFlagEnablements {
                             viewer {
                                 id
                                 featureFlags(interfaces: [NamedNode, Enablement]) {
@@ -590,28 +644,32 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """
+                    """, variable_values=dict(account_key=test_account_key)
                                       )
 
         assert 'data' in response
         result = response['data']['viewer']
         assert result
-        assert result['id']
         feature_flag_nodes = result['featureFlags']['edges']
         assert len(feature_flag_nodes) == 1
-        e1 = feature_flag_nodes[0]['node']
-        assert e1['enabled']
-        assert e1['key'] == str(feature_flag.key)
+        assert feature_flag_nodes[0]['node']['key'] == str(feature_flag.key)
+        assert feature_flag_nodes[0]['node']['enabled']
 
-    def it_returns_feature_flag_enablement_when_enable_all_false_enabled_true(self,
-                                                                              user_feature_flag_fixture_enable_all_false_enabled_true):
-        feature_flag = user_feature_flag_fixture_enable_all_false_enabled_true
+    def verify_feature_flag_is_not_enabled_when_enable_all_is_false_and_account_enabled_is_false(self,
+                                                                                                 feature_flag_fixture):
+        feature_flag = FeatureFlag.create(name="Feature 1")
+        feature_flag.enable_all = False
+        feature_flag.enablements.extend([
+            FeatureFlagEnablement(scope="user", scope_key=test_user_key, enabled=False)
+        ])
+        create_feature_flags([feature_flag])
+
         client = Client(schema)
 
         with patch('polaris.analytics.service.graphql.viewer.Viewer.get_viewer',
                    return_value=Viewer(objectview(current_user))):
             response = client.execute("""
-                        query getUserFeatureFlagEnablements {
+                        query getViewerFeatureFlagEnablements {
                             viewer {
                                 id
                                 featureFlags(interfaces: [NamedNode, Enablement]) {
@@ -625,28 +683,29 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """
+                    """, variable_values=dict(account_key=test_account_key)
                                       )
 
         assert 'data' in response
         result = response['data']['viewer']
         assert result
-        assert result['id']
         feature_flag_nodes = result['featureFlags']['edges']
         assert len(feature_flag_nodes) == 1
-        e1 = feature_flag_nodes[0]['node']
-        assert e1['enabled']
-        assert e1['key'] == str(feature_flag.key)
+        assert feature_flag_nodes[0]['node']['key'] == str(feature_flag.key)
+        assert not feature_flag_nodes[0]['node']['enabled']
 
-    def it_returns_feature_flag_enablement_when_enable_all_false_enabled_false(self,
-                                                                               user_feature_flag_fixture_enable_all_false_enabled_false):
-        feature_flag = user_feature_flag_fixture_enable_all_false_enabled_false
+    def verify_feature_flag_enabled_is_null_when_enable_all_is_false_and_there_is_no_account_enablement_record(self,
+                                                                                                               feature_flag_fixture):
+        feature_flag = FeatureFlag.create(name="Feature 1")
+        feature_flag.enable_all = False
+        create_feature_flags([feature_flag])
+
         client = Client(schema)
 
         with patch('polaris.analytics.service.graphql.viewer.Viewer.get_viewer',
                    return_value=Viewer(objectview(current_user))):
             response = client.execute("""
-                        query getUserFeatureFlagEnablements {
+                        query getViewerFeatureFlagEnablements {
                             viewer {
                                 id
                                 featureFlags(interfaces: [NamedNode, Enablement]) {
@@ -660,7 +719,7 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """
+                    """, variable_values=dict(account_key=test_account_key)
                                       )
 
         assert 'data' in response
@@ -669,19 +728,24 @@ class TestUserFeatureFlags:
         assert result['id']
         feature_flag_nodes = result['featureFlags']['edges']
         assert len(feature_flag_nodes) == 1
-        e1 = feature_flag_nodes[0]['node']
-        assert not e1['enabled']
-        assert e1['key'] == str(feature_flag.key)
+        assert feature_flag_nodes[0]['node']['key'] == str(feature_flag.key)
+        assert feature_flag_nodes[0]['node']['enabled'] is None
 
-    def it_returns_feature_flag_enablement_when_enable_all_false_enabled_null(self,
-                                                                              account_user_feature_flag_fixture_enable_all_false_enabled_null):
-        feature_flag = account_user_feature_flag_fixture_enable_all_false_enabled_null
+    def verify_that_inactive_feature_flags_are_not_returned(self, feature_flag_fixture):
+        feature_flag_0 = FeatureFlag.create(name="Feature 1")
+        feature_flag_0.active = True
+
+        feature_flag_1 = FeatureFlag.create(name="Feature 2")
+        feature_flag_1.active = False
+
+        create_feature_flags([feature_flag_0, feature_flag_1])
+
         client = Client(schema)
 
         with patch('polaris.analytics.service.graphql.viewer.Viewer.get_viewer',
                    return_value=Viewer(objectview(current_user))):
             response = client.execute("""
-                        query getUserFeatureFlagEnablements {
+                        query getViewerFeatureFlagEnablements {
                             viewer {
                                 id
                                 featureFlags(interfaces: [NamedNode, Enablement]) {
@@ -695,7 +759,7 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """
+                    """, variable_values=dict(account_key=test_account_key)
                                       )
 
         assert 'data' in response
@@ -704,18 +768,27 @@ class TestUserFeatureFlags:
         assert result['id']
         feature_flag_nodes = result['featureFlags']['edges']
         assert len(feature_flag_nodes) == 1
-        e1 = feature_flag_nodes[0]['node']
-        assert not e1['enabled']
+        assert feature_flag_nodes[0]['node']['key'] == str(feature_flag_0.key)
 
-    def it_returns_feature_flag_enablement_when_feature_flag_inactive(self,
-                                                                      account_user_feature_flag_fixture_inactive_feature):
-        feature_flag = account_user_feature_flag_fixture_inactive_feature
+    def verify_that_the_correct_feature_flags_are_enabled_when_there_are_multiple_feature_flags(self,
+                                                                                                feature_flag_fixture):
+        feature_flag_0 = FeatureFlag.create(name="Feature 1")
+        feature_flag_0.enable_all = True
+
+        feature_flag_1 = FeatureFlag.create(name="Feature 2")
+        feature_flag_1.enable_all = False
+        feature_flag_1.enablements.extend([
+            FeatureFlagEnablement(scope="user", scope_key=test_user_key, enabled=False)
+        ])
+
+        create_feature_flags([feature_flag_0, feature_flag_1])
+
         client = Client(schema)
 
         with patch('polaris.analytics.service.graphql.viewer.Viewer.get_viewer',
                    return_value=Viewer(objectview(current_user))):
             response = client.execute("""
-                        query getUserFeatureFlagEnablements {
+                        query getViewerFeatureFlagEnablements {
                             viewer {
                                 id
                                 featureFlags(interfaces: [NamedNode, Enablement]) {
@@ -729,56 +802,33 @@ class TestUserFeatureFlags:
                                 }
                             }
                         }
-                    """
+                    """, variable_values=dict(account_key=test_account_key)
                                       )
-
         assert 'data' in response
         result = response['data']['viewer']
         assert result
-        assert result['id']
-        feature_flag_enablements = result['featureFlags']['edges']
-        assert len(feature_flag_enablements) == 0
+        feature_flag_nodes = result['featureFlags']['edges']
+        assert len(feature_flag_nodes) == 2
+        assert {(edge['node']['key'], edge['node']['enabled']) for edge in feature_flag_nodes} == {
+            (str(feature_flag_0.key), True),
+            (str(feature_flag_1.key), False)
+        }
 
-    def it_returns_feature_flag_enablement_when_multiple_feature_flags(self,
-                                                                       account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
-        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
-        client = Client(schema)
-
-        with patch('polaris.analytics.service.graphql.viewer.Viewer.get_viewer',
-                   return_value=Viewer(objectview(current_user))):
-            response = client.execute("""
-                                query getUserFeatureFlagEnablements {
-                                    viewer {
-                                        id
-                                        featureFlags(interfaces: [NamedNode, Enablement]) {
-                                            edges {
-                                                node {
-                                                    enabled
-                                                    name
-                                                    key
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            """
-                                      )
-
-        assert 'data' in response
-        result = response['data']['viewer']
-        assert result
-        assert result['id']
-        feature_flag_enablements = result['featureFlags']['edges']
-        assert len(feature_flag_enablements) == 1
-        e1 = feature_flag_enablements[0]['node']
-        assert e1['enabled']
-        assert e1['key'] == str(feature_flag2.key)
 
 
 class TestAllFeatureFlags:
     def it_returns_all_feature_flag_nodes_info(self,
-                                               account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
-        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+                                               feature_flag_fixture):
+        feature_flag_0 = FeatureFlag.create(name="Feature 1")
+        feature_flag_0.enable_all = True
+
+        feature_flag_1 = FeatureFlag.create(name="Feature 2")
+        feature_flag_1.enable_all = False
+        feature_flag_1.enablements.extend([
+            FeatureFlagEnablement(scope="user", scope_key=test_user_key, enabled=False)
+        ])
+
+        create_feature_flags([feature_flag_0, feature_flag_1])
         client = Client(schema)
         response = client.execute("""
                                 query getAllFeatureFlags {
@@ -800,12 +850,25 @@ class TestAllFeatureFlags:
         result = response['data']['allFeatureFlags']['edges']
         assert len(result) == 2
         assert any([result[0]['node']['enableAll'], result[1]['node']['enableAll']])
-        assert str(feature_flag1.key) in [r['node']['key'] for r in result]
-        assert str(feature_flag2.key) in [r['node']['key'] for r in result]
+        assert str(feature_flag_0.key) in [r['node']['key'] for r in result]
+        assert str(feature_flag_1.key) in [r['node']['key'] for r in result]
 
     def it_returns_all_feature_flag_enablements_info(self,
-                                                     account_user_feature_flag_fixture_multiple_features_multiple_enablements_random):
-        feature_flag1, feature_flag2 = account_user_feature_flag_fixture_multiple_features_multiple_enablements_random
+                                                     feature_flag_fixture):
+        feature_flag_0 = FeatureFlag.create(name="Feature 1")
+        feature_flag_0.enablements.extend([
+            FeatureFlagEnablement(scope="account", scope_key=test_account_key, enabled=False),
+            FeatureFlagEnablement(scope="user", scope_key=test_user_key, enabled=False)
+        ])
+        feature_flag_0.enable_all = True
+
+        feature_flag_1 = FeatureFlag.create(name="Feature 2")
+        feature_flag_1.enable_all = False
+        feature_flag_1.enablements.extend([
+            FeatureFlagEnablement(scope="user", scope_key=test_user_key, enabled=False)
+        ])
+        create_feature_flags([feature_flag_0, feature_flag_1])
+
         client = Client(schema)
         response = client.execute("""
                                 query getAllFeatureFlags {
@@ -828,9 +891,12 @@ class TestAllFeatureFlags:
                             """
                                   )
         assert 'data' in response
-        result = response['data']['allFeatureFlags']['edges']
-        assert len(result) == 2
-        result_vals = [(edge['node']['enableAll'], edge['node']['scope'], r['node']['enabled']) for edge in result]
-        expected_vals = [(True, 'user', False), (True, 'account', True), (False, 'user', True),
-                         (False, 'account', False)]
-        assert set(result_vals) == set(expected_vals)
+        edges = response['data']['allFeatureFlags']['edges']
+        assert len(edges) == 2
+        ff0 = find(edges, lambda edge: edge['node']['key'] == str(feature_flag_0.key))
+        assert len(ff0['node']['enablements']) == 2
+
+        ff0 = find(edges, lambda edge: edge['node']['key'] == str(feature_flag_1.key))
+        assert len(ff0['node']['enablements']) == 1
+
+

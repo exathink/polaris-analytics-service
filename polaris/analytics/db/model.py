@@ -713,7 +713,7 @@ class WorkItemDeliveryCycles(Base):
 
     # Work Items relationship
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
-    work_item = relationship('WorkItems', back_populates='current_delivery_cycle_id')
+    work_item = relationship('WorkItem', back_populates='current_delivery_cycle_id')
 
 
 work_item_delivery_cycles = WorkItemDeliveryCycles.__table__

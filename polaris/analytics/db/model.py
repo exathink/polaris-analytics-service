@@ -723,7 +723,7 @@ class WorkItemDeliveryCycleDurations(Base):
     __tablename__ = 'work_item_delivery_cycle_durations'
 
     state = Column(String, primary_key=True)
-    cumulative_time_in_state = Column(String, nullable=True)
+    cumulative_time_in_state = Column(Integer, nullable=True)
 
     # Work Item Delivery Cycles relationship
     delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), \

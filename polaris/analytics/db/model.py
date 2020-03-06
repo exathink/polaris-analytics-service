@@ -627,6 +627,7 @@ class WorkItem(Base):
     tags = Column(ARRAY(String), nullable=False, default=[], server_default='{}')
     state = Column(String, nullable=True)
     url = Column(String, nullable=True)
+    current_delivery_cycle_id = Column(Integer, nullable=True)
     # The id of the entity in a remote system that this is mapped to.
     source_id = Column(String, nullable=True)
     created_at = Column(DateTime)
@@ -652,7 +653,6 @@ class WorkItem(Base):
     state_transitions = relationship("WorkItemStateTransition")
 
     # Work Items Delivery Cycles Relationship
-    current_delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), nullable=True)
     current_delivery_cycle = relationship('WorkItemDeliveryCycles', uselist=False, back_populates="work_item")
     delivery_cycles = relationship('WorkItemDeliveryCycles', cascade='all, delete-orphan')
 

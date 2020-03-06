@@ -570,20 +570,20 @@ class WorkItemsSource(Base):
     def get_default_state_map(self):
         if self.integration_type == WorkTrackingIntegrationType.github.value:
             return [
-                dict(state='created', state_type=WorkItemsStateType.open.value),
+                dict(state='created', state_type=WorkItemsStateType.backlog.value),
                 dict(state='open', state_type=WorkItemsStateType.open.value),
-                dict(state='closed', state_type=WorkItemsStateType.complete.value)
+                dict(state='closed', state_type=WorkItemsStateType.closed.value)
             ]
         elif self.integration_type == WorkTrackingIntegrationType.pivotal.value:
             return [
-                dict(state='created', state_type=WorkItemsStateType.open.value),
+                dict(state='created', state_type=WorkItemsStateType.backlog.value),
                 dict(state='unscheduled', state_type=WorkItemsStateType.open.value),
                 dict(state='unstarted', state_type=WorkItemsStateType.open.value),
                 dict(state='planned', state_type=WorkItemsStateType.open.value),
                 dict(state='started', state_type=WorkItemsStateType.wip.value),
-                dict(state='finished', state_type=WorkItemsStateType.wip.value),
-                dict(state='delivered', state_type=WorkItemsStateType.wip.value),
-                dict(state='accepted', state_type=WorkItemsStateType.complete.value)
+                dict(state='finished', state_type=WorkItemsStateType.complete.value),
+                dict(state='delivered', state_type=WorkItemsStateType.complete.value),
+                dict(state='accepted', state_type=WorkItemsStateType.closed.value)
             ]
         else:
             return []
@@ -713,7 +713,7 @@ class WorkItemDeliveryCycles(Base):
 
     # Work Items relationship
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
-    work_item = relationship('WorkItems', back_populates='current_delivery_cycle_id')
+    work_item = relationship('WorkItem', back_populates='current_delivery_cycle_id')
 
 
 work_item_delivery_cycles = WorkItemDeliveryCycles.__table__

@@ -111,9 +111,11 @@ class TestUpdateProjectStateMaps:
                     dict(
                         workItemsSourceKey=work_items_source_key,
                         stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.backlog.value),
                             dict(state="todo", stateType=WorkItemsStateType.open.value),
                             dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                            dict(state="done", stateType=WorkItemsStateType.complete.value)
+                            dict(state="done", stateType=WorkItemsStateType.complete.value),
+                            dict(state="closed", stateType=WorkItemsStateType.closed.value)
                         ]
                     )
                 ]

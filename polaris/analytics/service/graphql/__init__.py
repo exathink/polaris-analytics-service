@@ -51,6 +51,7 @@ class Query(graphene.ObjectType):
     feature_flag = FeatureFlag.Field()
 
     all_accounts = Account.ConnectionField()
+    all_feature_flags = FeatureFlag.ConnectionField(active_only=graphene.Boolean(required=False))
 
     def resolve_viewer(self, info, **kwargs):
         return Viewer.resolve_field(info, **kwargs)
@@ -87,6 +88,9 @@ class Query(graphene.ObjectType):
 
     def resolve_all_accounts(self, info, **kwargs):
         return Account.resolve_all_accounts(info, **kwargs)
+
+    def resolve_all_feature_flags(self, info, **kwargs):
+        return FeatureFlag.resolve_all_feature_flags(info, **kwargs)
 
 class Mutations(
     graphene.ObjectType,

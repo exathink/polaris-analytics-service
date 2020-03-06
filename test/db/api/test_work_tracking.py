@@ -174,7 +174,7 @@ class TestImportWorkItems:
         ).scalar() == 'alpha'
         # beta should be closed
         assert db.connection().execute(
-            "select name from analytics.work_items where state_type='complete'").scalar() == 'beta'
+            "select name from analytics.work_items where state_type='closed'").scalar() == 'beta'
 
 
     def it_updates_completion_dates_for_added_items(self, work_items_setup):
@@ -297,7 +297,7 @@ class TestUpdateWorkItems:
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute("select count(id) from analytics.work_items where state_type = 'complete'").scalar() == 2
+        assert db.connection().execute("select count(id) from analytics.work_items where state_type = 'closed'").scalar() == 2
 
     def it_updates_completed_at(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup

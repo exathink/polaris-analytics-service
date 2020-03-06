@@ -14,6 +14,7 @@ from datetime import datetime
 from polaris.common.test_support import dbtest_addoption
 from polaris.common.test_support import init_db
 from polaris.analytics.db import model
+from polaris.auth.db import model as auth_model
 from polaris.common import db
 from test.constants import *
 
@@ -30,6 +31,9 @@ def setup_schema(db_up):
     model.recreate_all(db.engine())
 
 
+@pytest.fixture(scope='session')
+def setup_auth_schema(db_up):
+    auth_model.recreate_all(db.engine())
 
 
 

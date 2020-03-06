@@ -13,7 +13,7 @@ from flask_security import current_user
 from polaris.graphql.exceptions import AccessDeniedException
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
-from .selectable import FeatureFlagNode, FeatureFlagFeatureFlagEnablements, FeatureFlagScopeRefInfo, \
+from .selectable import FeatureFlagNode, FeatureFlagFeatureFlagEnablements,  \
     ScopedFeatureFlagsNodes, AllFeatureFlagNodes
 from ..interface_mixins import NamedNodeResolverMixin, KeyIdResolverMixin
 from polaris.graphql.connection_utils import CountableConnection
@@ -30,7 +30,6 @@ class FeatureFlag(
         named_node_resolver = FeatureFlagNode
         interface_resolvers = {
             'FeatureFlagEnablements': FeatureFlagFeatureFlagEnablements,
-            'FeatureFlagScopeRef': FeatureFlagScopeRefInfo
         }
         connection_class = lambda: FeatureFlags
 

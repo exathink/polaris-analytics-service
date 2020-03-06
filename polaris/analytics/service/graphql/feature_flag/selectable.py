@@ -12,7 +12,7 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from polaris.analytics.db.model import feature_flags, feature_flag_enablements, accounts
 from ..interfaces import \
-    FeatureFlagInfo, FeatureFlagEnablementDetail, FeatureFlagEnablements, FeatureFlagScopeRef, \
+    FeatureFlagInfo, FeatureFlagEnablementDetail, FeatureFlagEnablements, \
     Enablement
 from polaris.graphql.base_classes import ConnectionResolver
 from polaris.analytics.db.enums import FeatureFlagScope
@@ -45,6 +45,28 @@ class FeatureFlagFeatureFlagEnablements(InterfaceResolver):
 
     @staticmethod
     def interface_selector(feature_flag_nodes, **kwargs):
+        user_enablements = select([
+            feature_flag_enablements.c.feature_flag_id,
+            feature_flag_enablements.c.scope_key,
+            func.concat(users.c.first_name, ' ', users.c.last_name).label('scope_ref_name'),
+        ]).select_from(
+            feature_flag_enablements.outerjoin(
+                users, users.c.key == feature_flag_enablements.c.scope_key
+            )
+        ).where(feature_flag_enablements.c.scope == FeatureFlagScope.user.value)
+
+        account_enablements = select([
+            feature_flag_enablements.c.feature_flag_id,
+            feature_flag_enablements.c.scope_key,
+            accounts.c.name.label('scope_ref_name')
+        ]).select_from(
+            feature_flag_enablements.outerjoin(
+                accounts, accounts.c.key == feature_flag_enablements.c.scope_key
+            )
+        ).where(feature_flag_enablements.c.scope == FeatureFlagScope.account.value)
+
+        enablement_scope_refs = union(user_enablements, account_enablements).alias()
+
         return select([
             feature_flag_nodes.c.id,
             func.json_agg(
@@ -57,12 +79,19 @@ class FeatureFlagFeatureFlagEnablements(InterfaceResolver):
                             (feature_flag_nodes.c.enable_all == True, True)
                         ],
                         else_=feature_flag_enablements.c.enabled
-                    )
+                    ),
+                    'scope_ref_name', enablement_scope_refs.c.scope_ref_name
                 )
             ).label('enablements')
+
         ]).select_from(
             feature_flag_nodes.outerjoin(
                 feature_flag_enablements, feature_flag_nodes.c.id == feature_flag_enablements.c.feature_flag_id
+            ).outerjoin(
+                enablement_scope_refs, and_(
+                    enablement_scope_refs.c.feature_flag_id == feature_flag_enablements.c.feature_flag_id,
+                    enablement_scope_refs.c.scope_key == feature_flag_enablements.c.scope_key
+                )
             )
         ).group_by(
             feature_flag_nodes.c.id
@@ -70,40 +99,6 @@ class FeatureFlagFeatureFlagEnablements(InterfaceResolver):
 
 
 
-class FeatureFlagScopeRefInfo(InterfaceResolver):
-    interface = FeatureFlagScopeRef
-
-    @staticmethod
-    def interface_selector(feature_flag_nodes, **kwargs):
-        s1 = select([
-            feature_flag_enablements.c.feature_flag_id,
-            feature_flag_enablements.c.scope_key,
-            func.concat(users.c.first_name, ' ', users.c.last_name).label('scope_ref_name'),
-        ]).select_from(
-            feature_flag_enablements.outerjoin(
-                users, users.c.key == feature_flag_enablements.c.scope_key
-            )
-        ).where(feature_flag_enablements.c.scope == FeatureFlagScope.user.value)
-
-        s2 = select([
-            feature_flag_enablements.c.feature_flag_id,
-            feature_flag_enablements.c.scope_key,
-            accounts.c.name.label('scope_ref_name')
-        ]).select_from(
-            feature_flag_enablements.outerjoin(
-                accounts, accounts.c.key == feature_flag_enablements.c.scope_key
-            )
-        ).where(feature_flag_enablements.c.scope == FeatureFlagScope.account.value)
-
-        union_q_aliased = union(s1, s2).alias()
-        return select([
-            feature_flag_nodes.c.id,
-            union_q_aliased.c.scope_key,
-            union_q_aliased.c.scope_ref_name
-        ]).select_from(
-            feature_flag_nodes.outerjoin(
-                union_q_aliased, feature_flag_nodes.c.id == union_q_aliased.c.feature_flag_id)
-        )
 
 
 

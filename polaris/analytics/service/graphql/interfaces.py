@@ -185,6 +185,7 @@ class FeatureFlagEnablementDetail(graphene.ObjectType):
     enabled = graphene.Boolean(required=False)
     scope = graphene.String(required=False)
     scope_key = graphene.String(required=False)
+    scope_ref_name = graphene.String(required=False)
 
 
 class FeatureFlagEnablements(graphene.Interface):

@@ -38,7 +38,7 @@ def create_feature_flags(feature_flags):
 
 
 @pytest.yield_fixture()
-def feature_flag_fixture(org_repo_fixture, cleanup):
+def feature_flag_fixture(org_repo_fixture, user_fixture,  cleanup):
     yield
 
 
@@ -883,6 +883,7 @@ class TestAllFeatureFlags:
                                                     scope
                                                     scopeKey
                                                     enabled
+                                                    scopeRefName
                                                 }
                                             }
                                         }    
@@ -894,9 +895,15 @@ class TestAllFeatureFlags:
         edges = response['data']['allFeatureFlags']['edges']
         assert len(edges) == 2
         ff0 = find(edges, lambda edge: edge['node']['key'] == str(feature_flag_0.key))
-        assert len(ff0['node']['enablements']) == 2
 
-        ff0 = find(edges, lambda edge: edge['node']['key'] == str(feature_flag_1.key))
-        assert len(ff0['node']['enablements']) == 1
+        assert dict(ff0['node']['enablements'][0]) == dict(scope='account', scopeKey=str(uuid.UUID(test_account_key)),
+                                                     enabled=True, scopeRefName='test-account')
+        assert dict(ff0['node']['enablements'][1]) == dict(scope='user', scopeKey=str(uuid.UUID(test_user_key)),
+                                                           enabled=True, scopeRefName='Test User')
+
+
+        ff1 = find(edges, lambda edge: edge['node']['key'] == str(feature_flag_1.key))
+        assert dict(ff1['node']['enablements'][0]) == dict(scope='user', scopeKey=str(uuid.UUID(test_user_key)),
+                                                           enabled=False, scopeRefName='Test User')
 
 

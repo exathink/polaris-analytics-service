@@ -20,6 +20,7 @@ from polaris.analytics.db.model import Account, Organization, Repository, Projec
 from polaris.common import db
 from polaris.utils.collections import find
 from polaris.common.enums import WorkTrackingIntegrationType
+from polaris.auth.db.model import User
 
 test_user_key = uuid.uuid4().hex
 test_account_key = uuid.uuid4().hex
@@ -94,6 +95,25 @@ def org_repo_fixture(setup_schema):
     db.connection().execute("delete from analytics.accounts_organizations")
     db.connection().execute("delete from analytics.organizations")
     db.connection().execute("delete from analytics.accounts")
+
+
+@pytest.yield_fixture()
+def user_fixture(setup_auth_schema, org_repo_fixture):
+    organization, projects, repositories = org_repo_fixture
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        user = User(
+            key=test_user_key,
+            user_name='Test User 1',
+            email='testuser@exathink.com',
+            first_name='Test',
+            last_name='User',
+            account_key=test_account_key
+        )
+        session.add(user)
+    yield organization, projects, repositories, user
+
+    db.connection().execute("delete from auth.users")
 
 
 @pytest.yield_fixture()

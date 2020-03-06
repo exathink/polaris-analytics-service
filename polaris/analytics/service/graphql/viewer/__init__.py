@@ -20,7 +20,7 @@ from .selectables import ViewerAccountRoles, ViewerOrganizationRoles, \
 
 from ..selectable_field_mixins import SelectablePropertyResolverMixin
 from ..feature_flag import FeatureFlagsConnectionMixin
-
+from ..feature_flag.selectable import ScopedFeatureFlagsNodes
 
 class ScopedRoleField(graphene.ObjectType):
     class Meta:
@@ -48,7 +48,7 @@ class Viewer (
         interfaces = (NamedNode, )
 
         connection_node_resolvers = {
-            'feature_flags': ViewerFeatureFlagsNodes
+            'feature_flags': ScopedFeatureFlagsNodes
         }
         selectable_field_resolvers = {
             'account_roles': ViewerAccountRoles,

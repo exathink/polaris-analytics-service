@@ -651,7 +651,10 @@ class WorkItem(Base):
 
     state_transitions = relationship("WorkItemStateTransition")
 
-    current_delivery_cycle_id = relationship('WorkItemDeliveryCycles', uselist=False, back_populates="work_item")
+    # Work Items Delivery Cycles Relationship
+    current_delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), nullable=True)
+    current_delivery_cycle = relationship('WorkItemDeliveryCycles', uselist=False, back_populates="work_item")
+    delivery_cycles = relationship('WorkItemDeliveryCycles', cascade='all, delete-orphan')
 
     @classmethod
     def find_by_work_item_key(cls, session, work_item_key):
@@ -709,11 +712,13 @@ class WorkItemDeliveryCycles(Base):
     delivery_cycle_id = Column(Integer, primary_key=True)
     start_seq_no = Column(Integer, nullable=False)
     end_seq_no = Column(Integer, nullable=True)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=True)
     lead_time = Column(Integer, nullable=True)
 
     # Work Items relationship
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
-    work_item = relationship('WorkItem', back_populates='current_delivery_cycle_id')
+    work_item = relationship('WorkItem', back_populates='current_delivery_cycle')
 
 
 work_item_delivery_cycles = WorkItemDeliveryCycles.__table__

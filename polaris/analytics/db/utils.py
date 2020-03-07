@@ -10,7 +10,7 @@
 
 import uuid
 from polaris.common import db
-from polaris.analytics.db.model import Account, Organization
+from polaris.analytics.db.model import Account, Organization, FeatureFlag, FeatureFlagEnablement
 
 
 def find_account(account_key, join_this=None):
@@ -32,3 +32,35 @@ def find_or_create_account_for_user(user, account_name, organization_name, sessi
             session.add(account)
 
         return account
+
+
+# Feature flag migration utilities
+
+default_feature_flag_enablements = [
+    # ----  staging --------------------
+
+    # Exathink
+    dict(scope='account', scope_key="3a0480a3-2eb8-4728-987f-674cbe3cf48c", enabled=True),
+
+    # ------ dev -----------------------
+
+
+    # Polaris-Dev
+    dict(scope='account', scope_key="24347f28-0020-4025-8801-dbc627f9415d", enabled=True)
+]
+
+
+def create_feature_flag_with_default_enablements(feature_flag_name, enablements=default_feature_flag_enablements, join_this=None):
+    with db.orm_session(join_this) as session:
+        feature_flag = FeatureFlag.create(name=feature_flag_name)
+        feature_flag.enablements.extend([
+            FeatureFlagEnablement(**enablement) for enablement in enablements
+        ])
+        session.add(feature_flag)
+
+
+def delete_feature_flag(feature_flag_name, join_this=None):
+    with db.orm_session(join_this) as session:
+        feature_flag = FeatureFlag.find_by_name(session, feature_flag_name)
+        if feature_flag is not None:
+            session.delete(feature_flag)

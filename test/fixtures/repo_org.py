@@ -17,6 +17,8 @@ from test.constants import rails_organization_key, rails_repository_key
 @pytest.yield_fixture
 def cleanup(setup_schema):
     yield
+    db.connection().execute("delete from analytics.work_item_delivery_cycle_durations")
+    db.connection().execute("delete from analytics.work_item_delivery_cycles")
     db.connection().execute("delete from analytics.work_items_source_state_map")
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")

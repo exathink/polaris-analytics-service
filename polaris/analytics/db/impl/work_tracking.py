@@ -250,6 +250,37 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                 )
             )
 
+            session.connection().execute(
+                work_item_delivery_cycles.insert().from_select([
+                    'work_item_id',
+                    'start_seq_no',
+                    'start_date',
+                    ],
+                    select([
+                        work_items.c.id.label('work_item_id'),
+                        literal('0').label('start_seq_no'),
+                        work_items_temp.c.created_at.label('start_date'),
+                    ]).where(
+                        and_(
+                            work_items_temp.c.key == work_items.c.key,
+                            work_items_temp.c.work_item_id == None,
+                            or_(
+                                work_items_temp.c.state_type == WorkItemsStateType.backlog.value,
+                                work_items_temp.c.state_type == WorkItemsStateType.open.value
+                            )
+                        )
+                    )
+                )
+            )
+        # delivery_cycle_fields = (work_item_id, start_seq_no, end_seq_no, start_date, end_date, lead_time, delivery_cycle_id)
+        # work_item_id = work_items_temp.work_item_id
+        # start_seq_no = literal('0') or work_items_state_transitions.c.seq_no where previous_state = closed and state_type = backlog/open
+        # start_date = created_at
+        # end_seq_no = work_item_state_transitions.seq_no when work_items_temp.state_type == 'closed'
+        # end_date = work_items_temp.updated_at when work_items_temp.state_type == 'complete' or 'closed'
+        # lead_time = end_date - start_date when work_items_temp.state_type == 'complete' or 'closed'
+        # create delivery cycles
+        # update work_items.current_delivery_cycle_id
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")
 
@@ -259,12 +290,14 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
 
 
 def update_work_item_calculated_fields(work_items_source, work_item_summaries):
-
+    # In the context of lead time, completed_at should be the 'closed'/'accepted' state only
+    # Github equivalent 'closed', pivotal equivalent 'accepted', common jira equivalent 'closed'
+    # state_type='closed'
     return [
         dict(
             state_type=work_items_source.get_state_type(work_item['state']),
             completed_at=work_item['updated_at']
-            if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.complete.value or work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.closed.value else None,
+            if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.closed.value else None,
             **work_item
         )
         for work_item in work_item_summaries

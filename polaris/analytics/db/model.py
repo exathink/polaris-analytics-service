@@ -736,6 +736,8 @@ class WorkItemDeliveryCycleDurations(Base):
                                primary_key=True, nullable=False)
 
 
+work_item_delivery_cycle_durations = WorkItemDeliveryCycleDurations.__table__
+
 class FeatureFlag(Base):
     __tablename__ = 'feature_flags'
 

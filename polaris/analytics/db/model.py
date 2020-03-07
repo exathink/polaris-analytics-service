@@ -656,6 +656,7 @@ class WorkItem(Base):
     current_delivery_cycle = relationship('WorkItemDeliveryCycles', uselist=False, back_populates="work_item")
     delivery_cycles = relationship('WorkItemDeliveryCycles', cascade='all, delete-orphan')
 
+
     @classmethod
     def find_by_work_item_key(cls, session, work_item_key):
         return session.query(cls).filter(cls.key == work_item_key).first()
@@ -733,9 +734,6 @@ class WorkItemDeliveryCycleDurations(Base):
     # Work Item Delivery Cycles relationship
     delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), \
                                primary_key=True, nullable=False)
-
-
-work_item_delivery_cycle_durations = WorkItemDeliveryCycleDurations.__table__
 
 
 class FeatureFlag(Base):

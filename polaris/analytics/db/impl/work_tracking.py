@@ -21,7 +21,8 @@ from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
-    Commit, WorkItem, work_item_state_transitions, Project, work_items_sources
+    Commit, WorkItem, work_item_state_transitions, Project, work_items_sources, \
+    work_item_delivery_cycles, work_item_delivery_cycle_durations
 
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 

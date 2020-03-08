@@ -118,7 +118,8 @@ class TestCreateFeatureFlag:
             )
         ))
         assert response['data']
-        assert response['data']['createFeatureFlag']['success']
+        assert not response['data']['createFeatureFlag']['success']
+        assert response['data']['createFeatureFlag']['errorMessage']
 
 
 class TestCreateFeatureFlagEnablement:

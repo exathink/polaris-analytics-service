@@ -86,6 +86,7 @@ class TestImportWorkItems:
         assert result['success']
         assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 10
         assert db.connection().execute('select count(delivery_cycle_id) from analytics.work_item_delivery_cycles').scalar() == 10
+        assert db.connection().execute('select count(current_delivery_cycle_id) from analytics.work_items where current_delivery_cycle_id is not null').scalar() == 10
 
 
     def it_is_idempotent(self, work_items_setup):

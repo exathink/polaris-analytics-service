@@ -13,7 +13,7 @@ from polaris.common import db
 from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
-from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, desc
+from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, desc, case, extract
 from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType
@@ -250,24 +250,52 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                 )
             )
 
+            # add new delivery cycles
             session.connection().execute(
                 work_item_delivery_cycles.insert().from_select([
                     'work_item_id',
                     'start_seq_no',
                     'start_date',
+                    'end_seq_no',
+                    'end_date',
+                    'lead_time'
                     ],
                     select([
                         work_items.c.id.label('work_item_id'),
                         literal('0').label('start_seq_no'),
                         work_items_temp.c.created_at.label('start_date'),
+                        case(
+                            [
+                                (
+                                    work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                                    1
+                                )
+                            ],
+                            else_=None
+                        ).label('end_seq_no'),
+                        case(
+                            [
+                                (
+                                    work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                                    work_items_temp.c.updated_at.label('end_date')
+                                )
+                            ],
+                            else_=None
+                        ),
+                        case(
+                            [
+                                (
+                                    work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                                    func.trunc((extract('epoch', work_items_temp.c.updated_at) - \
+                                                extract('epoch', work_items_temp.c.created_at))/(24*3600)).label('lead_time')
+                                )
+                            ],
+                            else_=None
+                        )
                     ]).where(
                         and_(
                             work_items_temp.c.key == work_items.c.key,
                             work_items_temp.c.work_item_id == None,
-                            or_(
-                                work_items_temp.c.state_type == WorkItemsStateType.backlog.value,
-                                work_items_temp.c.state_type == WorkItemsStateType.open.value
-                            )
                         )
                     )
                 )

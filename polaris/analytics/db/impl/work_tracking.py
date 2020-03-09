@@ -272,20 +272,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     )
                 )
             )
-            session.flush()
             # update work_items current_delivery_cycle_id
-
-            # updated = session.connection().execute(
-            #     work_items.update().values(
-            #         current_delivery_cycle_id=work_item_delivery_cycles.c.delivery_cycle_id
-            #     ).where(
-            #                 work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-            #         )
-            #
-            # ).rowcount
-
-            # using work_items_temp as intermediate, which makes it 2 queries instead of 1
-            # assuming this is going to be more efficient as join is with smaller table
             updated = session.connection().execute(
                 work_items.update().values(
                     current_delivery_cycle_id=select([
@@ -295,15 +282,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     ).order_by(desc(work_item_delivery_cycles.c.start_date)).limit(1).as_scalar()
                 )
             ).rowcount
-            # updated = session.connection().execute(
-            #     work_items.update().values(
-            #         current_delivery_cycle_id=select([
-            #             work_items_temp.c.current_delivery_cycle_id.label('current_delivery_cycle_id')
-            #         ]).where(
-            #                 work_items_temp.c.work_item_id == work_items.c.id,
-            #         ).limit(1).as_scalar()
-            #     )
-            # )
+
 
         # delivery_cycle_fields = (work_item_id, start_seq_no, end_seq_no, start_date, end_date, lead_time, delivery_cycle_id)
         # work_item_id = work_items_temp.work_item_id

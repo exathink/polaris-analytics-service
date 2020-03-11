@@ -62,7 +62,7 @@ class TestCreateFeatureFlag:
             f"select key from analytics.feature_flags where name='{name}'"
         ).scalar()
 
-    def it_does_an_idempotent_create(self):
+    def it_is_not_an_idempotent_create(self):
         name = 'Test feature flag'
         feature_flag = model.FeatureFlag(
             name=name
@@ -70,7 +70,7 @@ class TestCreateFeatureFlag:
         api.create_feature_flag(feature_flag)
         # create again.
         result = api.create_feature_flag(feature_flag)
-        assert result['success']
+        assert not result['success']
         assert db.connection().execute(
             f"select count(id) from analytics.feature_flags where name='{name}'"
         ).scalar() == 1

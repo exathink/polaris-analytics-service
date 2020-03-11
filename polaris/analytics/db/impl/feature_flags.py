@@ -26,10 +26,15 @@ def create_feature_flag(session, name):
         feature_flag = FeatureFlag.create(name=name)
         session.add(feature_flag)
 
-    return dict(
-        name=name,
-        key=feature_flag.key
-    )
+        return dict(
+            name=name,
+            key=feature_flag.key
+        )
+
+    else:
+        raise ProcessingException(f'Feature flag with name {name} already exists.')
+
+
 
 
 def update_feature_flag(session, update_feature_flag_input):

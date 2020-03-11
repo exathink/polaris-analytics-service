@@ -13,7 +13,8 @@ from polaris.common import db
 from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
-from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, desc, case, extract
+from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, desc, case, \
+    extract
 from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType
@@ -259,7 +260,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     'end_seq_no',
                     'end_date',
                     'lead_time'
-                    ],
+                ],
                     select([
                         work_items.c.id.label('work_item_id'),
                         literal('0').label('start_seq_no'),
@@ -287,7 +288,8 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                                 (
                                     work_items_temp.c.state_type == WorkItemsStateType.closed.value,
                                     func.trunc((extract('epoch', work_items_temp.c.updated_at) - \
-                                                extract('epoch', work_items_temp.c.created_at))/(24*3600)).label('lead_time')
+                                                extract('epoch', work_items_temp.c.created_at)) / (24 * 3600)).label(
+                                        'lead_time')
                                 )
                             ],
                             else_=None
@@ -303,20 +305,16 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
             # update work_items current_delivery_cycle_id
             updated = session.connection().execute(
                 work_items.update().values(
-                    current_delivery_cycle_id=select([
-                        work_item_delivery_cycles.c.delivery_cycle_id.label('current_delivery_cycle_id')
-                    ]).select_from(
-                        work_items_temp.join(
-                            work_items, work_items_temp.c.key == work_items.c.key
-                        )
-                    ).where(
-                        and_(
-                            work_items_temp.c.work_item_id == None,
-                            work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-                        )
-                    ).order_by(desc(work_item_delivery_cycles.c.start_date)).limit(1).as_scalar()
+                    current_delivery_cycle_id=work_item_delivery_cycles.c.delivery_cycle_id
+                ).where(
+                    and_(
+                        work_items.c.key == work_items_temp.c.key,
+                        work_items_temp.c.work_item_id == None,
+                        work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                    )
                 )
             ).rowcount
+
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")
 

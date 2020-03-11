@@ -930,8 +930,42 @@ class TestWorkItemDeliveryCycles:
 
         result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
         assert result['success']
+        assert result['updated'] == 10
+        # we do distinct check here to make sure that we have assigned the 10 new delivery cycles
+        # to different work items.
         assert db.connection().execute(
-            'select count(current_delivery_cycle_id) from analytics.work_items where current_delivery_cycle_id is not null').scalar() == 10
+            'select count(DISTINCT current_delivery_cycle_id) from analytics.work_items').scalar() == 10
+
+    def it_only_updates_current_delivery_cycle_id_for_work_items_in_the_current_import_set(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = []
+        work_items.extend([
+            dict(
+                key=uuid.uuid4().hex,
+                name=str(i),
+                display_id=str(i),
+                **work_items_common()
+            )
+            for i in range(0, 5)]
+        )
+        # import the first five
+        api.import_new_work_items(organization_key, work_items_source_key, work_items)
+        # now import the old items again with the new items
+        work_items.extend([
+            dict(
+                key=uuid.uuid4().hex,
+                name=str(i),
+                display_id=str(i),
+                **work_items_closed()
+            )
+            for i in range(5, 10)]
+        )
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+        assert result['success']
+        assert result['updated'] == 5
+        assert db.connection().execute(
+            'select count(DISTINCT current_delivery_cycle_id) from analytics.work_items').scalar() == 10
 
     def it_calculates_lead_time_for_work_items_imported_in_closed_state(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup

@@ -305,22 +305,18 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                 work_items.update().values(
                     current_delivery_cycle_id=select([
                         work_item_delivery_cycles.c.delivery_cycle_id.label('current_delivery_cycle_id')
-                    ]).where(
+                    ]).select_from(
+                        work_items_temp.join(
+                            work_items, work_items_temp.c.key == work_items.c.key
+                        )
+                    ).where(
+                        and_(
+                            work_items_temp.c.work_item_id == None,
                             work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                        )
                     ).order_by(desc(work_item_delivery_cycles.c.start_date)).limit(1).as_scalar()
                 )
             ).rowcount
-
-
-        # delivery_cycle_fields = (work_item_id, start_seq_no, end_seq_no, start_date, end_date, lead_time, delivery_cycle_id)
-        # work_item_id = work_items_temp.work_item_id
-        # start_seq_no = literal('0') or work_items_state_transitions.c.seq_no where previous_state = closed and state_type = backlog/open
-        # start_date = created_at
-        # end_seq_no = work_item_state_transitions.seq_no when work_items_temp.state_type == 'closed'
-        # end_date = work_items_temp.updated_at when work_items_temp.state_type == 'complete' or 'closed'
-        # lead_time = end_date - start_date when work_items_temp.state_type == 'complete' or 'closed'
-        # create delivery cycles
-        # update work_items.current_delivery_cycle_id
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")
 

@@ -936,7 +936,8 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                             and_(
                                 work_items_temp.c.key == work_items.c.key,
                                 work_items.c.state != work_items_temp.c.state,
-                                work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                                work_items.c.state_type == WorkItemsStateType.closed.value,
+                                work_items_temp.c.state_type != WorkItemsStateType.closed.value,
                                 work_item_delivery_cycles.c.work_item_id == work_items.c.id
                             )
                         )
@@ -967,7 +968,20 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     state=work_items_temp.c.state,
                     state_type=work_items_temp.c.state_type,
                     updated_at=work_items_temp.c.updated_at,
-                    completed_at=work_items_temp.c.completed_at
+                    completed_at=work_items_temp.c.completed_at,
+                    current_delivery_cycle_id=select([
+                        work_item_delivery_cycles.c.delivery_cycle_id.label('current_delivery_cycle_id')
+                    ]).select_from(
+                        work_items_temp.join(
+                            work_items, work_items_temp.c.key == work_items.c.key
+                        )
+                    ).where(
+                        and_(
+                            work_items_temp.c.state_type != WorkItemsStateType.closed.value,
+                            work_items.c.state_type == WorkItemsStateType.closed.value,
+                            work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                        )
+                    ).order_by(desc(work_item_delivery_cycles.c.start_date)).limit(1).as_scalar()
                 ).where(
                     work_items_temp.c.key == work_items.c.key
                 )

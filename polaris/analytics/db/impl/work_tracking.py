@@ -902,6 +902,46 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     ]
                     )
                 )
+
+                # update delivery cycles for work_items transitioning to closed state_type
+                session.connection().execute(
+                    work_item_delivery_cycles.update().values(
+                        end_seq_no=work_items.c.next_state_seq_no,
+                        end_date=work_items_temp.c.updated_at,
+                        lead_time=func.trunc((extract('epoch', work_items_temp.c.updated_at) - \
+                                              extract('epoch', work_items_temp.c.created_at)) / (24 * 3600))
+                    ).where(
+                        and_(
+                            work_items_temp.c.key == work_items.c.key,
+                            work_items.c.state != work_items_temp.c.state,
+                            work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                            work_items_temp.c.state_type == WorkItemsStateType.closed.value
+                        )
+                    )
+                )
+
+                # create new delivery cycle when previous state_type is closed and new is non-closed
+                # add new delivery cycles
+                session.connection().execute(
+                    work_item_delivery_cycles.insert().from_select([
+                        'work_item_id',
+                        'start_seq_no',
+                        'start_date',
+                    ],
+                        select([
+                            work_items.c.id.label('work_item_id'),
+                            work_items.c.next_state_seq_no.label('start_seq_no'),
+                            work_items_temp.c.updated_at.label('start_date'),
+                        ]).where(
+                            and_(
+                                work_items_temp.c.key == work_items.c.key,
+                                work_items.c.state != work_items_temp.c.state,
+                                work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                                work_item_delivery_cycles.c.work_item_id == work_items.c.id
+                            )
+                        )
+                    )
+                )
                 # Update the next_state_seq_no counter for all rows that have state changes.
                 session.connection().execute(
                     work_items.update().values(
@@ -913,6 +953,8 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                         )
                     )
                 )
+
+
 
             # finally do the update of the changed rows.
             updated = session.connection().execute(

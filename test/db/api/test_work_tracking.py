@@ -999,3 +999,38 @@ class TestWorkItemDeliveryCycles:
             'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where end_seq_no is NULL').scalar() == 5
         assert db.connection().execute(
             'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where end_seq_no=1').scalar() == 5
+
+
+class TestUpdateWorkItemsDeliveryCycles:
+
+    def it_creates_new_delivery_cycle_when_state_type_changes_from_closed_to_non_closed(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_item_key = uuid.uuid4().hex
+        work_items = []
+        work_items.extend([
+            dict(
+                key=work_item_key,
+                name=str(i),
+                display_id=str(i),
+                **work_items_closed()
+            )
+            for i in range(0, 1)]
+        )
+        work_items.extend([
+            dict(
+                key=uuid.uuid4().hex,
+                name=str(i),
+                display_id=str(i),
+                **work_items_common()
+            )
+            for i in range(1, 2)]
+        )
+        result1 = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+        assert result1['success']
+        assert db.connection().execute('select count(delivery_cycle_id) from analytics.work_item_delivery_cycles').scalar() == 2
+        work_items[0]['state'] = 'open'
+        work_items[1]['state'] = 'open'
+        result2 = api.update_work_items(organization_key, work_items_source_key, work_items)
+        assert result2['success']
+        assert db.connection().execute(
+            'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles').scalar() == 4

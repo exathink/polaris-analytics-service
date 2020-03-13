@@ -1021,7 +1021,7 @@ class TestUpdateWorkItemsDeliveryCycles:
                 key=uuid.uuid4().hex,
                 name=str(i),
                 display_id=str(i),
-                **work_items_common()
+                **work_items_closed()
             )
             for i in range(1, 2)]
         )
@@ -1034,3 +1034,6 @@ class TestUpdateWorkItemsDeliveryCycles:
         assert result2['success']
         assert db.connection().execute(
             'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles').scalar() == 4
+        assert db.connection().execute('select count(DISTINCT current_delivery_cycle_id) from analytics.work_items\
+         join analytics.work_item_delivery_cycles on work_items.id=work_item_delivery_cycles.work_item_id \
+         where work_items.current_delivery_cycle_id > work_item_delivery_cycles.delivery_cycle_id').scalar() == 2

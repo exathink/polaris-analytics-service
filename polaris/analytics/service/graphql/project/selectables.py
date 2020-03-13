@@ -24,8 +24,10 @@ from ..interfaces import \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
-from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns,\
+from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_time_window_filters
+
+from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 
 
 class ProjectNode:
@@ -289,7 +291,7 @@ class ProjectsContributorCount:
 
     @staticmethod
     def selectable(project_nodes, **kwargs):
-        return select([
+        select_stmt = select([
             project_nodes.c.id,
             func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
         ]).select_from(
@@ -302,7 +304,10 @@ class ProjectsContributorCount:
             )
         ).where(
             repositories_contributor_aliases.c.robot == False
-        ).group_by(project_nodes.c.id)
+        )
+        select_stmt = contributor_count_apply_contributor_days_filter(select_stmt, **kwargs)
+
+        return select_stmt.group_by(project_nodes.c.id)
 
 
 class ProjectsRepositoryCount:

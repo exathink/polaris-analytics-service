@@ -12,3 +12,11 @@ from polaris.graphql.mixins import *
 
 from polaris.graphql.utils import init_tuple, create_tuple
 
+
+class ContributorCountResolverMixin(KeyIdResolverMixin):
+    def __init__(self, *args, **kwargs):
+        self.contributor_count = None
+        super().__init__(*args, **kwargs)
+
+    def resolve_contributor_count(self, info, **kwargs):
+        return 0 if self.contributor_count is None else self.contributor_count

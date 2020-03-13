@@ -287,8 +287,8 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             [
                                 (
                                     work_items_temp.c.state_type == WorkItemsStateType.closed.value,
-                                    func.trunc((extract('epoch', work_items_temp.c.updated_at) - \
-                                                extract('epoch', work_items_temp.c.created_at)) / (24 * 3600)).label(
+                                    func.trunc((extract('epoch', work_items_temp.c.updated_at) -
+                                                extract('epoch', work_items_temp.c.created_at))).label(
                                         'lead_time')
                                 )
                             ],
@@ -907,7 +907,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                         end_seq_no=work_items.c.next_state_seq_no,
                         end_date=work_items_temp.c.updated_at,
                         lead_time=func.trunc((extract('epoch', work_items_temp.c.updated_at) - \
-                                                extract('epoch', work_items_temp.c.created_at)) / (24 * 3600))
+                                                extract('epoch', work_items.c.created_at)))
                     ).where(
                         and_(
                             work_items_temp.c.key == work_items.c.key,

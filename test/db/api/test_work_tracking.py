@@ -992,7 +992,7 @@ class TestWorkItemDeliveryCycles:
         result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
         assert result['success']
         assert db.connection().execute(
-            'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where lead_time=7').scalar() == 5
+            'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where lead_time is not NULL').scalar() == 5
         assert db.connection().execute(
             'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where lead_time is NULL').scalar() == 5
         assert db.connection().execute(

@@ -13,7 +13,8 @@ from polaris.common import db
 from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
-from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_
+from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, desc, case, \
+    extract
 from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType
@@ -21,7 +22,8 @@ from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
-    Commit, WorkItem, work_item_state_transitions, Project, work_items_sources
+    Commit, WorkItem, work_item_state_transitions, Project, work_items_sources, \
+    work_item_delivery_cycles, work_item_delivery_cycle_durations
 
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
@@ -249,21 +251,88 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                 )
             )
 
+            # add new delivery cycles
+            session.connection().execute(
+                work_item_delivery_cycles.insert().from_select([
+                    'work_item_id',
+                    'start_seq_no',
+                    'start_date',
+                    'end_seq_no',
+                    'end_date',
+                    'lead_time'
+                ],
+                    select([
+                        work_items.c.id.label('work_item_id'),
+                        literal('0').label('start_seq_no'),
+                        work_items_temp.c.created_at.label('start_date'),
+                        case(
+                            [
+                                (
+                                    work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                                    1
+                                )
+                            ],
+                            else_=None
+                        ).label('end_seq_no'),
+                        case(
+                            [
+                                (
+                                    work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                                    work_items_temp.c.updated_at.label('end_date')
+                                )
+                            ],
+                            else_=None
+                        ),
+                        case(
+                            [
+                                (
+                                    work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                                    func.trunc((extract('epoch', work_items_temp.c.updated_at) -
+                                                extract('epoch', work_items_temp.c.created_at))).label(
+                                        'lead_time')
+                                )
+                            ],
+                            else_=None
+                        )
+                    ]).where(
+                        and_(
+                            work_items_temp.c.key == work_items.c.key,
+                            work_items_temp.c.work_item_id == None,
+                        )
+                    )
+                )
+            )
+            # update work_items current_delivery_cycle_id
+            updated = session.connection().execute(
+                work_items.update().values(
+                    current_delivery_cycle_id=work_item_delivery_cycles.c.delivery_cycle_id
+                ).where(
+                    and_(
+                        work_items.c.key == work_items_temp.c.key,
+                        work_items_temp.c.work_item_id == None,
+                        work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                    )
+                )
+            ).rowcount
+
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")
 
     return dict(
-        insert_count=inserted
+        insert_count=inserted,
+        updated=updated
     )
 
 
 def update_work_item_calculated_fields(work_items_source, work_item_summaries):
-
+    # In the context of lead time, completed_at should be the 'closed'/'accepted' state only
+    # Github equivalent 'closed', pivotal equivalent 'accepted', common jira equivalent 'closed'
+    # state_type='closed'
     return [
         dict(
             state_type=work_items_source.get_state_type(work_item['state']),
             completed_at=work_item['updated_at']
-            if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.complete.value or work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.closed.value else None,
+            if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.closed.value else None,
             **work_item
         )
         for work_item in work_item_summaries
@@ -831,6 +900,47 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     ]
                     )
                 )
+
+                # update delivery cycles for work_items transitioning to closed state_type
+                session.connection().execute(
+                    work_item_delivery_cycles.update().values(
+                        end_seq_no=work_items.c.next_state_seq_no,
+                        end_date=work_items_temp.c.updated_at,
+                        lead_time=func.trunc((extract('epoch', work_items_temp.c.updated_at) - \
+                                                extract('epoch', work_items.c.created_at)))
+                    ).where(
+                        and_(
+                            work_items_temp.c.key == work_items.c.key,
+                            work_items.c.state != work_items_temp.c.state,
+                            work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                            work_items_temp.c.state_type == WorkItemsStateType.closed.value
+                        )
+                    )
+                )
+
+                # create new delivery cycle when previous state_type is closed and new is non-closed
+                # add new delivery cycles
+                session.connection().execute(
+                    work_item_delivery_cycles.insert().from_select([
+                        'work_item_id',
+                        'start_seq_no',
+                        'start_date',
+                    ],
+                        select([
+                            work_items.c.id.label('work_item_id'),
+                            work_items.c.next_state_seq_no.label('start_seq_no'),
+                            work_items_temp.c.updated_at.label('start_date'),
+                        ]).where(
+                            and_(
+                                work_items_temp.c.key == work_items.c.key,
+                                work_items.c.state != work_items_temp.c.state,
+                                work_items.c.state_type == WorkItemsStateType.closed.value,
+                                work_items_temp.c.state_type != WorkItemsStateType.closed.value,
+                                work_item_delivery_cycles.c.work_item_id == work_items.c.id
+                            )
+                        )
+                    )
+                )
                 # Update the next_state_seq_no counter for all rows that have state changes.
                 session.connection().execute(
                     work_items.update().values(
@@ -839,6 +949,17 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                         and_(
                             work_items_temp.c.key == work_items.c.key,
                             work_items.c.state != work_items_temp.c.state
+                        )
+                    )
+                )
+                session.connection().execute(
+                    work_items.update().values(
+                        current_delivery_cycle_id=work_item_delivery_cycles.c.delivery_cycle_id
+                    ).where(
+                        and_(
+                            work_items.c.key == work_items_temp.c.key,
+                            work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                            work_item_delivery_cycles.c.delivery_cycle_id > work_items.c.current_delivery_cycle_id
                         )
                     )
                 )
@@ -854,9 +975,9 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     state=work_items_temp.c.state,
                     state_type=work_items_temp.c.state_type,
                     updated_at=work_items_temp.c.updated_at,
-                    completed_at=work_items_temp.c.completed_at
+                    completed_at=work_items_temp.c.completed_at,
                 ).where(
-                    work_items_temp.c.key == work_items.c.key
+                    work_items_temp.c.key == work_items.c.key,
                 )
             ).rowcount
 

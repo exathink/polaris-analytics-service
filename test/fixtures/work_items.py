@@ -20,7 +20,7 @@ from test.fixtures.repo_org import *
 
 from polaris.common import db
 from polaris.analytics.db.model import WorkItemsSource
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def work_items_common():
@@ -36,6 +36,18 @@ def work_items_common():
         source_id=str(uuid.uuid4())
     )
 
+def work_items_closed():
+    return dict(
+        work_item_type='issue',
+        is_bug=True,
+        url='http://foo.com',
+        tags=['ares2'],
+        description='An issue here',
+        created_at=datetime.utcnow()-timedelta(days=7),
+        updated_at=datetime.utcnow(),
+        state='closed',
+        source_id=str(uuid.uuid4())
+    )
 
 def work_item_source_common():
     return dict(
@@ -65,6 +77,8 @@ def work_items_setup(setup_repo_org):
 
     yield rails_organization_key, rails_work_items_source_key
 
+    db.connection().execute("delete from analytics.work_item_delivery_cycle_durations")
+    db.connection().execute("delete from analytics.work_item_delivery_cycles")
     db.connection().execute("delete from analytics.work_items_source_state_map")
     db.connection().execute("delete from analytics.work_item_state_transitions")
     db.connection().execute("delete from analytics.work_items")

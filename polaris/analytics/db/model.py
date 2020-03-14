@@ -627,6 +627,7 @@ class WorkItem(Base):
     tags = Column(ARRAY(String), nullable=False, default=[], server_default='{}')
     state = Column(String, nullable=True)
     url = Column(String, nullable=True)
+    current_delivery_cycle_id = Column(Integer, nullable=True)
     # The id of the entity in a remote system that this is mapped to.
     source_id = Column(String, nullable=True)
     created_at = Column(DateTime)
@@ -651,6 +652,9 @@ class WorkItem(Base):
 
     state_transitions = relationship("WorkItemStateTransition")
 
+    # Work Items Delivery Cycles Relationship
+    current_delivery_cycle = relationship('WorkItemDeliveryCycles', uselist=False, back_populates="work_item")
+    delivery_cycles = relationship('WorkItemDeliveryCycles', cascade='all, delete-orphan')
 
 
     @classmethod
@@ -703,8 +707,36 @@ class WorkItemsSourceStateMap(Base):
 work_items_source_state_map = WorkItemsSourceStateMap.__table__
 
 
+class WorkItemDeliveryCycles(Base):
+    __tablename__ = 'work_item_delivery_cycles'
+
+    delivery_cycle_id = Column(Integer, primary_key=True)
+    start_seq_no = Column(Integer, nullable=False)
+    end_seq_no = Column(Integer, nullable=True)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=True)
+    lead_time = Column(Integer, nullable=True)
+
+    # Work Items relationship
+    work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
+    work_item = relationship('WorkItem', back_populates='current_delivery_cycle')
 
 
+work_item_delivery_cycles = WorkItemDeliveryCycles.__table__
+
+
+class WorkItemDeliveryCycleDurations(Base):
+    __tablename__ = 'work_item_delivery_cycle_durations'
+
+    state = Column(String, primary_key=True)
+    cumulative_time_in_state = Column(Integer, nullable=True)
+
+    # Work Item Delivery Cycles relationship
+    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), \
+                               primary_key=True, nullable=False)
+
+
+work_item_delivery_cycle_durations = WorkItemDeliveryCycleDurations.__table__
 
 class FeatureFlag(Base):
     __tablename__ = 'feature_flags'

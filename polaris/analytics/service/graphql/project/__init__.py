@@ -15,7 +15,7 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan
-from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
+from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, ContributorCountResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -54,11 +54,10 @@ from .selectables import ProjectNode, \
 from polaris.graphql.connection_utils import CountableConnection
 
 
-
 class Project(
     # interface mixins
     NamedNodeResolverMixin,
-
+    ContributorCountResolverMixin,
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
@@ -119,7 +118,18 @@ Implicit Interfaces: ArchivedStatus
         }
         connection_class = lambda: Projects
 
-
+    @classmethod
+    def Field(cls, key_is_required=True, **kwargs):
+        return super().Field(
+            key_is_required,
+            contributor_count_days=graphene.Argument(
+                graphene.Int,
+                required=False,
+                description="When evaluating contributor count "
+                            "return only contributors that have committed code to the project in this many days"
+            ),
+            **kwargs
+        )
 
     @classmethod
     def resolve_field(cls, parent, info, project_key, **kwargs):
@@ -138,7 +148,15 @@ class Projects(
 
 class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
-    projects = Project.ConnectionField()
+    projects = Project.ConnectionField(
+        contributor_count_days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            default_value=30,
+            description="When evaluating contributor count "
+                        "return only contributors that have committed code to the project in this many days"
+        )
+    )
 
     def resolve_projects(self, info, **kwargs):
         return Project.resolve_connection(

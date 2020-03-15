@@ -37,18 +37,19 @@ def upgrade():
             seq_no as start_seq_no,
             created_at as start_date
         from
-            analytics.work_item_state_transitions where previous_state in ('closed', 'accepted')
+            analytics.work_item_state_transitions where previous_state in ('closed', 'Closed', 'accepted')
     """)
 
     # Compute the end date and lead time for delivery cycles that have closed.
     op.execute("""
         update analytics.work_item_delivery_cycles
         set end_date=analytics.work_item_state_transitions.created_at,
+            end_seq_no=analytics.work_item_state_transitions.seq_no,
             lead_time=extract(epoch from analytics.work_item_state_transitions.created_at) - extract(epoch from analytics.work_item_delivery_cycles.start_date)
         from analytics.work_item_delivery_cycles as wid, analytics.work_item_state_transitions
         where
               work_item_delivery_cycles.work_item_id = work_item_state_transitions.work_item_id and
-              work_item_state_transitions.state in ('accepted', 'closed')  and
+              work_item_state_transitions.state in ('accepted', 'closed', 'Closed')  and
               wid.start_date < work_item_state_transitions.created_at
     """)
 

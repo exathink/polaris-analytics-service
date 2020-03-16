@@ -259,6 +259,40 @@ class TestUpdateProjectStateMaps:
         message = response['errors'][0]['message']
         assert 'got invalid value' in message
 
+    def it_validates_duplicate_closed_state(self, setup_work_items_sources):
+        client = Client(schema)
+        project = setup_work_items_sources
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        response = client.execute("""
+            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                        success
+                    }
+                }
+        """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.backlog.value),
+                            dict(state="todo", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                            dict(state="closed", stateType=WorkItemsStateType.closed.value)
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert not result['success']
+
 
 @pytest.yield_fixture()
 def setup_work_items(setup_projects):

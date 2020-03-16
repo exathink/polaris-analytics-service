@@ -11,6 +11,7 @@ import logging
 
 from sqlalchemy.sql.expression import and_
 
+from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import Project, WorkItemsSource, work_items, work_items_source_state_map
 from polaris.utils.collections import find
 from polaris.utils.exceptions import ProcessingException
@@ -56,13 +57,17 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
         # Find and update corresponding work items source state maps
         for work_items_source_map in project_state_maps.work_items_source_state_maps:
             source_key = work_items_source_map.work_items_source_key
-            if find(project.work_items_sources,
-                                     lambda work_item_source: str(work_item_source.key) == str(source_key)):
-                update_work_items_source_state_mapping(session, source_key, work_items_source_map.state_maps)
-                updated.append(source_key)
-
+            closed = [i for i, state_map in enumerate(work_items_source_map.state_maps) if state_map.state_type == WorkItemsStateType.closed.value]
+            if len(closed) > 1:
+                raise ProcessingException(f'Work Items Source can have only one closed state')
             else:
-                raise ProcessingException(f'Work Items Source with key {source_key} does not belong to project')
+                if find(project.work_items_sources,
+                                         lambda work_item_source: str(work_item_source.key) == str(source_key)):
+                    update_work_items_source_state_mapping(session, source_key, work_items_source_map.state_maps)
+                    updated.append(source_key)
+
+                else:
+                    raise ProcessingException(f'Work Items Source with key {source_key} does not belong to project')
 
     else:
         raise ProcessingException(f'Could not find project with key {project_state_maps.project_key}')

@@ -472,5 +472,15 @@ class ProjectWorkInProgress(InterfaceResolver):
     interface = WorkInProgress
 
     @staticmethod
-    def interface_selector(named_node_cte, **kwargs):
-        pass
+    def interface_selector(project_nodes, **kwargs):
+        return select([
+            project_nodes.c.id,
+            func.count(work_items.c.id).label('work_in_progress')
+        ]).select_from(
+            project_nodes.outerjoin(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
+            ).outerjoin(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            )
+        ).group_by(project_nodes.c.id)
+

@@ -4,7 +4,7 @@ from graphene.test import Client
 
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
-
+from polaris.analytics.db.enums import WorkItemsStateType
 
 @pytest.yield_fixture
 def projects_import_commits_fixture(org_repo_fixture, cleanup):
@@ -237,3 +237,135 @@ class TestProjectWorkItems:
             assert node['earliestCommit'] == get_date("2020-01-29").isoformat()
             assert node['latestCommit'] == get_date("2020-02-05").isoformat()
             assert node['commitCount'] == 2
+
+
+@pytest.yield_fixture
+def api_work_items_import_fixture(org_repo_fixture):
+    organization, projects, _ = org_repo_fixture
+
+    project = projects['mercury']
+    work_items_source = WorkItemsSource(
+        key=uuid.uuid4(),
+        organization_key=organization.key,
+        integration_type='jira',
+        commit_mapping_scope='repository',
+        commit_mapping_scope_key=None,
+        project_id=project.id,
+        **work_items_source_common
+    )
+    work_items_source.init_state_map(
+        [
+            dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
+            dict(state='upnext', state_type=WorkItemsStateType.open.value),
+            dict(state='doing', state_type=WorkItemsStateType.wip.value),
+            dict(state='done', state_type=WorkItemsStateType.complete.value),
+            dict(state='closed', state_type=WorkItemsStateType.closed.value),
+        ]
+    )
+
+    with db.orm_session() as session:
+        session.add(organization)
+        organization.work_items_sources.append(work_items_source)
+
+    work_items_common = dict(
+        is_bug=True,
+        work_item_type='issue',
+        url='http://foo.com',
+        tags=['ares2'],
+        description='foo',
+        source_id=str(uuid.uuid4()),
+        created_at=get_date("2018-12-02"),
+        updated_at=get_date("2018-12-03"),
+
+    )
+
+    yield organization, project, work_items_source, work_items_common
+
+    db.connection().execute("delete  from analytics.work_item_state_transitions")
+    db.connection().execute("delete  from analytics.work_item_delivery_cycles")
+    db.connection().execute("delete  from analytics.work_items")
+    db.connection().execute("delete  from analytics.work_items_source_state_map")
+    db.connection().execute("delete  from analytics.work_items_sources")
+
+
+
+class TestProjectWorkItemStateTypeCounts:
+
+    def it_returns_cumulative_counts_of_all_state_type_for_work_items_in_the_project(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+
+        api.import_new_work_items(
+            organization_key=organization.key,
+            work_item_source_key=work_items_source.key,
+            work_item_summaries=[
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 2',
+                    display_id='1001',
+                    state='upnext',
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 3',
+                    display_id='1002',
+                    state='upnext',
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 4',
+                    display_id='1004',
+                    state='doing',
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 5',
+                    display_id='1005',
+                    state='doing',
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 6',
+                    display_id='1006',
+                    state='closed',
+                    **work_items_common
+                ),
+
+
+            ]
+        )
+
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemStateTypeCounts($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeCounts]) {
+                            workItemStateTypeCounts {
+                                backlog
+                                open
+                                wip
+                                complete
+                                closed
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        assert state_type_counts['backlog'] == 1
+        assert state_type_counts['open'] == 2
+        assert state_type_counts['wip'] == 2
+        assert state_type_counts['closed'] == 1
+        assert state_type_counts['complete'] is None
+

@@ -197,5 +197,13 @@ class FeatureFlagScopeRef(graphene.Interface):
     scope_ref_name = graphene.String(required=False)
 
 
-class WorkInProgress(graphene.Interface):
-    work_in_progress = graphene.Int(required=False)
+class StateTypeAggregateMeasure(graphene.ObjectType):
+    backlog = graphene.Float(required=False)
+    open = graphene.Float(required=False)
+    wip = graphene.Float(required=False)
+    complete = graphene.Float(required=False)
+    closed = graphene.Float(required=False)
+
+
+class WorkItemStateTypeCounts(graphene.Interface):
+    work_item_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=True)

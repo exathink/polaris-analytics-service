@@ -661,6 +661,10 @@ class WorkItem(Base):
     def find_by_work_item_key(cls, session, work_item_key):
         return session.query(cls).filter(cls.key == work_item_key).first()
 
+    @classmethod
+    def find_by_work_item_source_key(cls, session, work_items_source_id):
+        return session.query(cls).filter(cls.work_items_source_id == work_items_source_id)
+
     def get_summary(self):
         return dict(
             key=self.key.hex,

@@ -116,6 +116,8 @@ def update_work_items_computed_state_types(session, work_items_source_id, update
         )
 
         # update delivery cycles for work_items transitioning to closed state_type
+
+        #logger.info('---new_closed_state.state----' + new_closed_state.state)
         session.execute(
             work_item_delivery_cycles.update().values(
                 end_seq_no=work_item_state_transitions.c.seq_no,
@@ -166,11 +168,12 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
                                             lambda w: str(w.state_type) == str(WorkItemsStateType.closed.value))
                     new_closed_state = find(work_items_source_map.state_maps,
                                             lambda w: str(w.state_type) == str(WorkItemsStateType.closed.value))
-                    logger.info("-----------------------++++" + str(work_item_source.state_maps))
-                    logger.info(f'-----old_closed_state----{old_closed_state.state}, {old_closed_state.state_type}')
-                    logger.info(f'-----new_closed_state----{new_closed_state.state}, {new_closed_state.state_type}')
-                    if old_closed_state.state != new_closed_state.state:
-                        update_work_items_source_state_mapping(session, source_key, work_items_source_map.state_maps,
+                    #logger.info("-----------------------++++" + str(work_item_source.state_maps))
+                    #logger.info(f'-----old_closed_state----{old_closed_state.state}, {old_closed_state.state_type}')
+                    #logger.info(f'-----new_closed_state----{new_closed_state.state}, {new_closed_state.state_type}')
+                    if new_closed_state is not None:
+                        if old_closed_state is None or old_closed_state.state != new_closed_state.state:
+                            update_work_items_source_state_mapping(session, source_key, work_items_source_map.state_maps,
                                                                True, new_closed_state)
                     else:
                         update_work_items_source_state_mapping(session, source_key, work_items_source_map.state_maps,

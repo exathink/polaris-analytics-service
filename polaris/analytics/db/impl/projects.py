@@ -23,8 +23,6 @@ logger = logging.getLogger('polaris.analytics.db.impl')
 
 
 def update_work_items_computed_state_types(session, work_items_source_id, update_delivery_cycle, new_closed_state):
-    logger.info('--update_delivery_cycle-------- ' + str(update_delivery_cycle))
-    logger.info('----' + str(work_items_source_id))
     updated = session.execute(
         work_items.update().values(
             state_type=None
@@ -116,8 +114,6 @@ def update_work_items_computed_state_types(session, work_items_source_id, update
         )
 
         # update delivery cycles for work_items transitioning to closed state_type
-
-        #logger.info('---new_closed_state.state----' + new_closed_state.state)
         session.execute(
             work_item_delivery_cycles.update().values(
                 end_seq_no=work_item_state_transitions.c.seq_no,
@@ -132,17 +128,28 @@ def update_work_items_computed_state_types(session, work_items_source_id, update
                 )
             )
         )
+
+        session.execute(
+            work_items.update().values(
+                current_delivery_cycle_id=work_item_delivery_cycles.c.delivery_cycle_id
+            ).where(
+                and_(
+                    work_items.c.state == work_items_source_state_map.c.state,
+                    work_items.c.work_items_source_id == work_items_source_id,
+                    work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                    work_item_delivery_cycles.c.delivery_cycle_id > work_items.c.current_delivery_cycle_id
+                )
+            )
+        )
     return updated
 
 
 def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings, update_delivery_cycle,
                                            new_closed_state):
-    logger.info('*************')
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if work_items_source is not None:
         work_items_source.init_state_map(state_mappings)
         session.flush()
-        logger.info('*************')
         update_work_items_computed_state_types(session, work_items_source.id, update_delivery_cycle, new_closed_state)
 
 
@@ -157,7 +164,6 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
             source_key = work_items_source_map.work_items_source_key
             closed = [i for i, state_map in enumerate(work_items_source_map.state_maps) if
                       state_map.state_type == WorkItemsStateType.closed.value]
-            logger.info("-----------------------")
             if len(closed) > 1:
                 raise ProcessingException(f'Work Items Source can have only one closed state')
             else:
@@ -168,9 +174,6 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
                                             lambda w: str(w.state_type) == str(WorkItemsStateType.closed.value))
                     new_closed_state = find(work_items_source_map.state_maps,
                                             lambda w: str(w.state_type) == str(WorkItemsStateType.closed.value))
-                    #logger.info("-----------------------++++" + str(work_item_source.state_maps))
-                    #logger.info(f'-----old_closed_state----{old_closed_state.state}, {old_closed_state.state_type}')
-                    #logger.info(f'-----new_closed_state----{new_closed_state.state}, {new_closed_state.state_type}')
                     if new_closed_state is not None:
                         if old_closed_state is None or old_closed_state.state != new_closed_state.state:
                             update_work_items_source_state_mapping(session, source_key, work_items_source_map.state_maps,

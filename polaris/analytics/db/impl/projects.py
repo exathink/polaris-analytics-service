@@ -58,15 +58,15 @@ def update_work_items_computed_state_types(session, work_items_source_id, update
 
         session.execute(
             work_item_delivery_cycles.delete().where(
-                    and_(
-                        work_items_sources.c.id == work_items.c.work_items_source_id,
-                        work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-                        work_items.c.work_items_source_id == work_items_source_id
-                    )
+                and_(
+                    work_items_sources.c.id == work_items.c.work_items_source_id,
+                    work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                    work_items.c.work_items_source_id == work_items_source_id
                 )
+            )
         )
 
-        #insert new delivery cycles
+        # insert new delivery cycles
         session.execute(
             insert(work_item_delivery_cycles).from_select(
                 [
@@ -82,7 +82,7 @@ def update_work_items_computed_state_types(session, work_items_source_id, update
                     work_item_state_transitions.join(
                         work_items, work_items.c.id == work_item_state_transitions.c.work_item_id
                     )
-                ).where (
+                ).where(
                     and_(
                         work_item_state_transitions.c.seq_no == 0,
                         work_items.c.work_items_source_id == work_items_source_id
@@ -115,20 +115,17 @@ def update_work_items_computed_state_types(session, work_items_source_id, update
             )
         )
 
-        # update delivery cycles for work_items transitioning to losed state_type
+        # update delivery cycles for work_items transitioning to closed state_type
         session.execute(
             work_item_delivery_cycles.update().values(
                 end_seq_no=work_item_state_transitions.c.seq_no,
                 end_date=work_item_state_transitions.c.created_at,
                 lead_time=func.trunc((extract('epoch', work_item_state_transitions.c.created_at) - \
                                       extract('epoch', work_item_delivery_cycles.c.start_date)))
-            ).select_from(
-                work_item_state_transitions.join(
-                    work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_item_state_transitions.c.work_item_id,
-                )
             ).where(
                 and_(
-                    work_item_delivery_cycles.c.state == new_closed_state.state,
+                    work_item_delivery_cycles.c.work_item_id == work_item_state_transitions.c.work_item_id,
+                    work_item_state_transitions.c.state == new_closed_state.state,
                     work_item_delivery_cycles.c.start_date < work_item_state_transitions.c.created_at
                 )
             )
@@ -136,7 +133,8 @@ def update_work_items_computed_state_types(session, work_items_source_id, update
     return updated
 
 
-def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings, update_delivery_cycle, new_closed_state):
+def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings, update_delivery_cycle,
+                                           new_closed_state):
     logger.info('*************')
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if work_items_source is not None:
@@ -144,6 +142,7 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         session.flush()
         logger.info('*************')
         update_work_items_computed_state_types(session, work_items_source.id, update_delivery_cycle, new_closed_state)
+
 
 def update_project_work_items_source_state_mappings(session, project_state_maps):
     logger.info("Inside update_project_work_items_state_mappings")
@@ -154,23 +153,25 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
         # Find and update corresponding work items source state maps
         for work_items_source_map in project_state_maps.work_items_source_state_maps:
             source_key = work_items_source_map.work_items_source_key
-            closed = [i for i, state_map in enumerate(work_items_source_map.state_maps) if state_map.state_type == WorkItemsStateType.closed.value]
+            closed = [i for i, state_map in enumerate(work_items_source_map.state_maps) if
+                      state_map.state_type == WorkItemsStateType.closed.value]
             logger.info("-----------------------")
             if len(closed) > 1:
                 raise ProcessingException(f'Work Items Source can have only one closed state')
             else:
                 work_item_source = find(project.work_items_sources,
-                                         lambda work_item_source: str(work_item_source.key) == str(source_key))
+                                        lambda work_item_source: str(work_item_source.key) == str(source_key))
                 if work_item_source:
                     old_closed_state = find(work_item_source.state_maps,
                                             lambda w: str(w.state_type) == str(WorkItemsStateType.closed.value))
                     new_closed_state = find(work_items_source_map.state_maps,
                                             lambda w: str(w.state_type) == str(WorkItemsStateType.closed.value))
                     logger.info("-----------------------++++" + str(work_item_source.state_maps))
-                    logger.info('-----old_closed_state----' + str(old_closed_state))
-                    logger.info('-----new_closed_state----' + str(new_closed_state))
+                    logger.info(f'-----old_closed_state----{old_closed_state.state}, {old_closed_state.state_type}')
+                    logger.info(f'-----new_closed_state----{new_closed_state.state}, {new_closed_state.state_type}')
                     if old_closed_state.state != new_closed_state.state:
-                        update_work_items_source_state_mapping(session, source_key, work_items_source_map.state_maps, True, new_closed_state)
+                        update_work_items_source_state_mapping(session, source_key, work_items_source_map.state_maps,
+                                                               True, new_closed_state)
                     else:
                         update_work_items_source_state_mapping(session, source_key, work_items_source_map.state_maps,
                                                                False, new_closed_state)

@@ -14,8 +14,9 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
-    OrganizationRef, ArchivedStatus, WorkItemEventSpan
-from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, ContributorCountResolverMixin
+    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts
+from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
+    ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -48,7 +49,8 @@ from .selectables import ProjectNode, \
     ProjectWorkItemEventSpan, \
     ProjectWorkItemNodes, \
     ProjectWorkItemEventNodes, \
-    ProjectWorkItemCommitNodes
+    ProjectWorkItemCommitNodes, \
+    ProjectWorkItemStateTypeCounts
 
 
 from polaris.graphql.connection_utils import CountableConnection
@@ -58,6 +60,7 @@ class Project(
     # interface mixins
     NamedNodeResolverMixin,
     ContributorCountResolverMixin,
+    WorkItemStateTypeSummaryResolverMixin,
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
@@ -92,6 +95,7 @@ Implicit Interfaces: ArchivedStatus
             RepositoryCount,
             OrganizationRef,
             WorkItemEventSpan,
+            WorkItemStateTypeCounts,
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -99,7 +103,8 @@ Implicit Interfaces: ArchivedStatus
             'ContributorCount': ProjectsContributorCount,
             'RepositoryCount': ProjectsRepositoryCount,
             'OrganizationRef': ProjectsOrganizationRef,
-            'WorkItemEventSpan': ProjectWorkItemEventSpan
+            'WorkItemEventSpan': ProjectWorkItemEventSpan,
+            'WorkItemStateTypeCounts': ProjectWorkItemStateTypeCounts,
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -134,6 +139,8 @@ Implicit Interfaces: ArchivedStatus
     @classmethod
     def resolve_field(cls, parent, info, project_key, **kwargs):
         return cls.resolve_instance(key=project_key, **kwargs)
+
+
 
 
 class Projects(

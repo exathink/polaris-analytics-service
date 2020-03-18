@@ -10,7 +10,7 @@
 
 from polaris.graphql.mixins import *
 
-from polaris.graphql.utils import init_tuple, create_tuple
+from .interfaces import StateTypeAggregateMeasure
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -20,3 +20,15 @@ class ContributorCountResolverMixin(KeyIdResolverMixin):
 
     def resolve_contributor_count(self, info, **kwargs):
         return 0 if self.contributor_count is None else self.contributor_count
+
+
+class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):
+    def __init__(self, *args, **kwargs):
+        self.work_item_state_type_counts = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_work_item_state_type_counts(self, info, **kwargs):
+        return StateTypeAggregateMeasure(**{
+            result['state_type']: result['count']
+            for result in self.work_item_state_type_counts
+        })

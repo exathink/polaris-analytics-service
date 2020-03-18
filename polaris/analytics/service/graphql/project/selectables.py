@@ -26,7 +26,7 @@ from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkInProgress
+    WorkItemStateTypeCounts
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_time_window_filters
 
@@ -468,9 +468,39 @@ class ProjectWorkItemEventSpan(InterfaceResolver):
         ).group_by(project_nodes.c.id)
 
 
-class ProjectWorkInProgress(InterfaceResolver):
-    interface = WorkInProgress
+class ProjectWorkItemStateTypeCounts(InterfaceResolver):
+    interface = WorkItemStateTypeCounts
 
     @staticmethod
-    def interface_selector(named_node_cte, **kwargs):
-        pass
+    def interface_selector(project_nodes, **kwargs):
+        state_types_count = select([
+            project_nodes.c.id,
+            work_items.c.state_type,
+            func.count(work_items.c.id).label('count')
+        ]).select_from(
+            project_nodes.join(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            )
+        ).group_by(
+            project_nodes.c.id,
+            work_items.c.state_type
+        ).alias()
+
+        return select([
+            project_nodes.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'state_type', state_types_count.c.state_type,
+                    'count', state_types_count.c.count
+                )
+            ).label('work_item_state_type_counts')
+
+        ]).select_from(
+            project_nodes.outerjoin(
+                state_types_count, project_nodes.c.id == state_types_count.c.id
+            )
+        ).group_by(
+            project_nodes.c.id
+        )

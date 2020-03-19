@@ -12,7 +12,7 @@ import pytest
 import uuid
 from datetime import datetime
 from polaris.common import db
-from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem
+from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem, WorkItemDeliveryCycles
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
 from polaris.utils.collections import find
@@ -311,6 +311,13 @@ def setup_work_items(setup_projects):
         description='foo',
         source_id=str(uuid.uuid4()),
     )
+
+    delivery_cycles = [
+        dict(
+            start_seq_no=0,
+            start_date=get_date("2020-03-19")
+        )
+    ]
     # open state_type of this new work item should be updated to complete after the test
     new_work_items = [
         dict(
@@ -350,6 +357,11 @@ def setup_work_items(setup_projects):
             WorkItem(**item)
             for item in new_work_items
         ])
+
+        project.work_items_sources[0].work_items[0].delivery_cycles.extend([
+            WorkItemDeliveryCycles(**cycle)
+            for cycle in delivery_cycles
+        ])
     yield project
 
 
@@ -376,7 +388,8 @@ class TestUpdateComputedWorkItemsStateTypes:
                         stateMaps=[
                             dict(state="todo", stateType=WorkItemsStateType.open.value),
                             dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                            dict(state="done", stateType=WorkItemsStateType.complete.value)
+                            dict(state="done", stateType=WorkItemsStateType.complete.value),
+                            dict(state="accepted", stateType=WorkItemsStateType.closed.value)
                         ]
                     )
                 ]
@@ -499,3 +512,39 @@ class TestUpdateComputedWorkItemsStateTypes:
                    ('doing', None),
                    ('done', WorkItemsStateType.complete.value)
                }
+
+class TestUpdateDeliveryCycles:
+
+    def it_updates_delivery_cycles(self, setup_work_items):
+        client = Client(schema)
+        project = setup_work_items
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_key = project.work_items_sources[0].work_items[0].key
+        response = client.execute("""
+                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                success
+                            }
+                        }
+                """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="todo", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.complete.value),
+                            dict(state="accepted", stateType=WorkItemsStateType.closed.value)
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']

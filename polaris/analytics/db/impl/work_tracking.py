@@ -252,56 +252,8 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
             )
 
             # add new delivery cycles
-            session.connection().execute(
-                work_item_delivery_cycles.insert().from_select([
-                    'work_item_id',
-                    'start_seq_no',
-                    'start_date',
-                    'end_seq_no',
-                    'end_date',
-                    'lead_time'
-                ],
-                    select([
-                        work_items.c.id.label('work_item_id'),
-                        literal('0').label('start_seq_no'),
-                        work_items_temp.c.created_at.label('start_date'),
-                        case(
-                            [
-                                (
-                                    work_items_temp.c.state_type == WorkItemsStateType.closed.value,
-                                    1
-                                )
-                            ],
-                            else_=None
-                        ).label('end_seq_no'),
-                        case(
-                            [
-                                (
-                                    work_items_temp.c.state_type == WorkItemsStateType.closed.value,
-                                    work_items_temp.c.updated_at.label('end_date')
-                                )
-                            ],
-                            else_=None
-                        ),
-                        case(
-                            [
-                                (
-                                    work_items_temp.c.state_type == WorkItemsStateType.closed.value,
-                                    func.trunc((extract('epoch', work_items_temp.c.updated_at) -
-                                                extract('epoch', work_items_temp.c.created_at))).label(
-                                        'lead_time')
-                                )
-                            ],
-                            else_=None
-                        )
-                    ]).where(
-                        and_(
-                            work_items_temp.c.key == work_items.c.key,
-                            work_items_temp.c.work_item_id == None,
-                        )
-                    )
-                )
-            )
+            initialize_work_item_delivery_cycles(session, work_items_temp)
+
             # update work_items current_delivery_cycle_id
             updated = session.connection().execute(
                 work_items.update().values(
@@ -314,6 +266,10 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     )
                 )
             ).rowcount
+
+            # Populate work_item_delivery_cycle_durations
+            initialize_work_item_delivery_cycle_durations(session, work_items_temp)
+
 
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")
@@ -337,6 +293,111 @@ def update_work_item_calculated_fields(work_items_source, work_item_summaries):
         )
         for work_item in work_item_summaries
     ]
+
+
+def initialize_work_item_delivery_cycles(session, work_items_temp):
+    session.connection().execute(
+        work_item_delivery_cycles.insert().from_select([
+            'work_item_id',
+            'start_seq_no',
+            'start_date',
+            'end_seq_no',
+            'end_date',
+            'lead_time'
+        ],
+            select([
+                work_items.c.id.label('work_item_id'),
+                literal('0').label('start_seq_no'),
+                work_items_temp.c.created_at.label('start_date'),
+                case(
+                    [
+                        (
+                            work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                            1
+                        )
+                    ],
+                    else_=None
+                ).label('end_seq_no'),
+                case(
+                    [
+                        (
+                            work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                            work_items_temp.c.updated_at.label('end_date')
+                        )
+                    ],
+                    else_=None
+                ),
+                case(
+                    [
+                        (
+                            work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                            func.trunc((extract('epoch', work_items_temp.c.updated_at) -
+                                        extract('epoch', work_items_temp.c.created_at))).label(
+                                'lead_time')
+                        )
+                    ],
+                    else_=None
+                )
+            ]).where(
+                and_(
+                    work_items_temp.c.key == work_items.c.key,
+                    work_items_temp.c.work_item_id == None,
+                )
+            )
+        )
+    )
+
+
+def initialize_work_item_delivery_cycle_durations(session, work_items_temp):
+    # Calculate the start and end date of each state transition from the state transitions table.
+    work_items_state_time_spans = select([
+        work_items.c.current_delivery_cycle_id,
+        work_item_state_transitions.c.state,
+        work_item_state_transitions.c.created_at.label('start_time'),
+        work_item_state_transitions.c.seq_no,
+        (func.lead(work_item_state_transitions.c.created_at).over(
+            partition_by=work_item_state_transitions.c.work_item_id,
+            order_by=work_item_state_transitions.c.seq_no
+        )).label('end_time')
+    ]).select_from(
+        work_items_temp.join(
+            work_items, work_items_temp.c.key == work_items.c.key
+        ).join(
+            work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
+        )
+    ).where(
+        work_items_temp.c.work_item_id == None
+    ).alias()
+
+    # compute the duration in each state from the time_span in each state.
+    work_items_duration_in_state = select([
+        work_items_state_time_spans.c.current_delivery_cycle_id,
+        work_items_state_time_spans.c.state,
+        work_items_state_time_spans.c.start_time,
+        work_items_state_time_spans.c.end_time,
+        (func.trunc(extract('epoch', work_items_state_time_spans.c.end_time) -
+                    extract('epoch', work_items_state_time_spans.c.start_time))).label('duration')
+    ]).select_from(
+        work_items_state_time_spans
+    ).alias()
+
+    # aggregate the cumulative time in each state and insert into the delivery cycle durations table.
+    session.connection().execute(
+        work_item_delivery_cycle_durations.insert().from_select([
+            'delivery_cycle_id',
+            'state',
+            'cumulative_time_in_state'
+        ],
+
+            select([
+                (func.min(work_items_duration_in_state.c.current_delivery_cycle_id)).label('delivery_cycle_id'),
+                work_items_duration_in_state.c.state.label('state'),
+                (func.sum(work_items_duration_in_state.c.duration)).label('cumulative_time_in_state')
+            ]).select_from(
+                work_items_duration_in_state
+            ).group_by(work_items_duration_in_state.c.current_delivery_cycle_id, work_items_duration_in_state.c.state)
+        )
+    )
 
 
 # ---------------------------
@@ -902,45 +963,9 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                 )
 
                 # update delivery cycles for work_items transitioning to closed state_type
-                session.connection().execute(
-                    work_item_delivery_cycles.update().values(
-                        end_seq_no=work_items.c.next_state_seq_no,
-                        end_date=work_items_temp.c.updated_at,
-                        lead_time=func.trunc((extract('epoch', work_items_temp.c.updated_at) - \
-                                                extract('epoch', work_items.c.created_at)))
-                    ).where(
-                        and_(
-                            work_items_temp.c.key == work_items.c.key,
-                            work_items.c.state != work_items_temp.c.state,
-                            work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-                            work_items_temp.c.state_type == WorkItemsStateType.closed.value
-                        )
-                    )
-                )
+                # add new delivery cycles for reopened work_items
+                update_work_item_delivery_cycles(session, work_items_temp)
 
-                # create new delivery cycle when previous state_type is closed and new is non-closed
-                # add new delivery cycles
-                session.connection().execute(
-                    work_item_delivery_cycles.insert().from_select([
-                        'work_item_id',
-                        'start_seq_no',
-                        'start_date',
-                    ],
-                        select([
-                            work_items.c.id.label('work_item_id'),
-                            work_items.c.next_state_seq_no.label('start_seq_no'),
-                            work_items_temp.c.updated_at.label('start_date'),
-                        ]).where(
-                            and_(
-                                work_items_temp.c.key == work_items.c.key,
-                                work_items.c.state != work_items_temp.c.state,
-                                work_items.c.state_type == WorkItemsStateType.closed.value,
-                                work_items_temp.c.state_type != WorkItemsStateType.closed.value,
-                                work_item_delivery_cycles.c.work_item_id == work_items.c.id
-                            )
-                        )
-                    )
-                )
                 # Update the next_state_seq_no counter for all rows that have state changes.
                 session.connection().execute(
                     work_items.update().values(
@@ -952,6 +977,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                         )
                     )
                 )
+                # Update current_delivery_cycle_id for all those transitioned from closed to non-closed state
                 session.connection().execute(
                     work_items.update().values(
                         current_delivery_cycle_id=work_item_delivery_cycles.c.delivery_cycle_id
@@ -959,10 +985,16 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                         and_(
                             work_items.c.key == work_items_temp.c.key,
                             work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-                            work_item_delivery_cycles.c.delivery_cycle_id > work_items.c.current_delivery_cycle_id
+                            or_(
+                                work_item_delivery_cycles.c.delivery_cycle_id > work_items.c.current_delivery_cycle_id,
+                                work_items.c.current_delivery_cycle_id == None  # Not an expected condition
+                            )
                         )
                     )
                 )
+
+                # Update delivery_cycle_durations for all work items with state changes
+                update_work_item_delivery_cycle_durations(session, work_items_temp)
 
             # finally do the update of the changed rows.
             updated = session.connection().execute(
@@ -990,6 +1022,110 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
             update_count=updated,
             state_changes=state_changes
         )
+
+
+def update_work_item_delivery_cycles(session, work_items_temp):
+    # Update end_date and lead_time in delivery cycles for work items transitioning to closed state
+    session.connection().execute(
+        work_item_delivery_cycles.update().values(
+            end_seq_no=work_items.c.next_state_seq_no,
+            end_date=work_items_temp.c.updated_at,
+            lead_time=func.trunc((extract('epoch', work_items_temp.c.updated_at) - \
+                                  extract('epoch', work_items.c.created_at)))
+        ).where(
+            and_(
+                work_items_temp.c.key == work_items.c.key,
+                work_items.c.state != work_items_temp.c.state,
+                work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                work_items_temp.c.state_type == WorkItemsStateType.closed.value
+            )
+        )
+    )
+
+    # create new delivery cycle when previous state_type is closed and new is non-closed
+    session.connection().execute(
+        work_item_delivery_cycles.insert().from_select([
+            'work_item_id',
+            'start_seq_no',
+            'start_date',
+        ],
+            select([
+                work_items.c.id.label('work_item_id'),
+                work_items.c.next_state_seq_no.label('start_seq_no'),
+                work_items_temp.c.updated_at.label('start_date'),
+            ]).where(
+                and_(
+                    work_items_temp.c.key == work_items.c.key,
+                    work_items.c.state != work_items_temp.c.state,
+                    work_items.c.state_type == WorkItemsStateType.closed.value,
+                    work_items_temp.c.state_type != WorkItemsStateType.closed.value,
+                )
+            )
+        )
+    )
+
+
+def update_work_item_delivery_cycle_durations(session, work_items_temp):
+    # For each work item that has a state transition, we recompute the
+    # total time spent in each state during the current delivery cycle
+    # and insert (or update) the rows in the delivery_cycle_durations table
+    # for the current delivery cycle for those work items.
+
+    # for the work items where the new state is not equal to current state
+    # we need to recompute the time spans for each state transition.
+    work_items_state_time_spans = select([
+        work_items.c.current_delivery_cycle_id,
+        work_item_state_transitions.c.state,
+        work_item_state_transitions.c.created_at.label('start_time'),
+        work_item_state_transitions.c.seq_no,
+        (func.lead(work_item_state_transitions.c.created_at).over(
+            partition_by=work_item_state_transitions.c.work_item_id,
+            order_by=work_item_state_transitions.c.seq_no
+        )).label('end_time')
+    ]).select_from(
+        work_items_temp.join(
+            work_items, work_items_temp.c.key == work_items.c.key
+        ).join(
+            work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
+        )
+    ).where(
+        work_items_temp.c.state != work_items.c.state
+    ).alias()
+
+    # aggregate the total duration in each state
+    work_items_durations_in_state = select([
+        work_items_state_time_spans.c.current_delivery_cycle_id,
+        work_items_state_time_spans.c.state,
+        (
+                extract('epoch', work_items_state_time_spans.c.end_time) -
+                extract('epoch', work_items_state_time_spans.c.start_time)
+        ).label('duration')
+    ]).select_from(
+        work_items_state_time_spans
+    ).alias()
+
+    # Insert or update rows in the delivery cycle durations table.
+    upsert_stmt = insert(work_item_delivery_cycle_durations).from_select(
+        [
+            'delivery_cycle_id',
+            'state',
+            'cumulative_time_in_state'
+        ],
+        select([
+            (func.min(work_items_durations_in_state.c.current_delivery_cycle_id)).label('delivery_cycle_id'),
+            work_items_durations_in_state.c.state.label('state'),
+            (func.sum(work_items_durations_in_state.c.duration)).label('cumulative_time_in_state')
+        ]).select_from(
+            work_items_durations_in_state
+        ).group_by(work_items_durations_in_state.c.current_delivery_cycle_id, work_items_durations_in_state.c.state)
+    )
+    # Insert or update the existing durations.
+    session.connection().execute(
+        upsert_stmt.on_conflict_do_update(
+            index_elements=['state', 'delivery_cycle_id'],
+            set_=dict(cumulative_time_in_state=upsert_stmt.excluded.cumulative_time_in_state)
+        )
+    )
 
 
 def import_project(session, organization_key, project_summary):

@@ -349,7 +349,7 @@ class TestUpdateWorkItems:
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute("select count(*) from analytics.work_item_state_transitions").scalar() == 2
+        assert db.connection().execute("select count(*) from analytics.work_item_state_transitions").scalar() == 6
 
     def it_returns_state_changes(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -1003,7 +1003,93 @@ class TestWorkItemDeliveryCycles:
 
 class TestUpdateWorkItemsDeliveryCycles:
 
-    def it_updates_lead_time_and_end_date_for_closed_work_items(self, work_items_setup):
+    def it_updates_lead_time_and_end_date_for_closed_work_items(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items_list = update_work_items_setup
+        work_items_list[0]['state'] = 'closed'
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list)
+        assert result['success']
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycles \
+            where lead_time is not NULL and end_date is not NULL").scalar() == 1
+
+    def it_creates_new_delivery_cycle_when_state_type_changes_from_closed_to_non_closed(self, update_closed_work_items_setup):
+        organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
+        work_items_list[0]['state'] = 'open'
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list)
+        assert result['success']
+        assert db.connection().execute(
+            'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles').scalar() == 3
+        assert db.connection().execute('select count(DISTINCT current_delivery_cycle_id) from analytics.work_items\
+         join analytics.work_item_delivery_cycles on work_items.id=work_item_delivery_cycles.work_item_id \
+         where work_items.current_delivery_cycle_id > work_item_delivery_cycles.delivery_cycle_id').scalar() == 1
+
+    def it_does_not_update_delivery_cycle_when_transition_does_not_involve_closed_state(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items_list = update_work_items_setup
+        # check count before update
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycles \
+            where lead_time is NULL and end_date is NULL").scalar() == 2
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list)
+        assert result['success']
+        assert db.connection().execute(
+            "select count(*) from analytics.work_item_delivery_cycles").scalar() == 2
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycles \
+            where lead_time is NULL and end_date is NULL").scalar() == 2
+
+class TestWorkItemDeliveryCycleDurations:
+
+    def it_calculates_delivery_cycle_durations_for_new_work_items(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = []
+        work_items.extend([
+            dict(
+                key=uuid.uuid4().hex,
+                name=str(i),
+                display_id=str(i),
+                **work_items_common()
+            )
+            for i in range(0, 10)]
+        )
+        work_items[0]['state'] = 'closed'
+        work_items[0]['created_at'] = datetime.utcnow() - timedelta(days=7)
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+        assert result['success']
+        assert db.connection().execute(
+            'select count(*) from analytics.work_item_delivery_cycle_durations').scalar() == 20
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations \
+                where state='closed' and cumulative_time_in_state is NULL"
+        ).scalar() == 1
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations \
+                where cumulative_time_in_state>0 and state='created'"
+        ).scalar() == 10
+
+    def it_updates_delivery_cycle_durations_for_updated_work_items(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items_list = update_work_items_setup
+        work_items_list[0]['state'] = 'wip'
+        work_items_list[0]['updated_at'] = datetime.utcnow()
+        work_items_list[1]['state'] = 'closed'
+        work_items_list[1]['updated_at'] = datetime.utcnow()
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list)
+        assert result['success']
+        assert db.connection().execute(
+            'select count(*) from analytics.work_item_delivery_cycle_durations').scalar() == 6
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations \
+                where state='closed' and cumulative_time_in_state is NULL"
+        ).scalar() == 1
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations \
+                where state='wip' and cumulative_time_in_state is NULL"
+        ).scalar() == 1
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations \
+                where cumulative_time_in_state>0 and state='created'"
+        ).scalar() == 2
+
+    def it_updates_delivery_cycles_durations_for_work_item_transitioning_from_created_to_closed_through_different_states(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_items = []
         work_items.extend([
@@ -1015,46 +1101,108 @@ class TestUpdateWorkItemsDeliveryCycles:
             )
             for i in range(0, 5)]
         )
-        work_items[0]['created_at'] = datetime.utcnow()-timedelta(days=7)
-        api.import_new_work_items(organization_key, work_items_source_key, work_items)
-        work_items[0]['state'] = 'closed'
-        work_items[0]['updated_at'] = datetime.utcnow()
+        # import all work items first
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+        assert result['success']
+        assert db.connection().execute(
+            'select count(*) from analytics.work_item_delivery_cycle_durations').scalar() == 10
+
+        # work_item 1 changes state to 'wip'
+        work_items[0]['state'] = 'wip'
+        # work_item 2 changes state to 'backlog'
+        work_items[1]['state'] = 'backlog'
+        # work_item 3 changes state to 'complete'
+        work_items[2]['state'] = 'complete'
         result = api.update_work_items(organization_key, work_items_source_key, work_items)
         assert result['success']
         assert db.connection().execute(
-            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycles \
-            where lead_time is not NULL and end_date is not NULL").scalar() == 1
+            "select count(*) from analytics.work_item_delivery_cycle_durations").scalar() == 13
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations where state='open' and cumulative_time_in_state is not NULL").scalar() == 3
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations \
+                where state in ('wip', 'backlog', 'complete') and cumulative_time_in_state is NULL"
+        ).scalar() == 3
 
+        # work_item 1 changes state to 'complete'
+        work_items[0]['state'] = 'complete'
+        # work_item 2 changes state to 'ready for development'
+        work_items[1]['state'] = 'ready for development'
+        # work_item 3 changes state to 'closed'
+        work_items[2]['state'] = 'closed'
+        # update again
+        result = api.update_work_items(organization_key, work_items_source_key, work_items)
+        assert result['success']
+        assert db.connection().execute(
+            "select count(*) from analytics.work_item_delivery_cycle_durations").scalar() == 16
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations \
+                where state in ('wip', 'backlog', 'complete') and cumulative_time_in_state is not NULL").scalar() == 3
+        assert db.connection().execute(
+            "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations \
+                where state in ('complete', 'ready for development', 'closed') and cumulative_time_in_state is NULL"
+        ).scalar() == 3
 
-    def it_creates_new_delivery_cycle_when_state_type_changes_from_closed_to_non_closed(self, work_items_setup):
+    def it_validates_cumulative_time_in_a_state_is_updated_when_state_is_revisited(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
-        work_item_key = uuid.uuid4().hex
         work_items = []
-        work_items.extend([
-            dict(
-                key=work_item_key,
-                name=str(i),
-                display_id=str(i),
-                **work_items_closed()
-            )
-            for i in range(0, 1)]
-        )
         work_items.extend([
             dict(
                 key=uuid.uuid4().hex,
                 name=str(i),
                 display_id=str(i),
-                **work_items_closed()
+                **work_items_common()
             )
-            for i in range(1, 2)]
+            for i in range(0, 5)]
         )
-        api.import_new_work_items(organization_key, work_items_source_key, work_items)
-        work_items[0]['state'] = 'open'
-        work_items[1]['state'] = 'open'
+        work_items[0]['updated_at'] = work_items[0]['created_at'] + timedelta(days=1)
+        # import all work items first
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+        assert result['success']
+
+        # work_item 1 changes state to 'wip'
+        work_items[0]['state'] = 'wip'
+        work_items[0]['updated_at'] = work_items[0]['updated_at'] + timedelta(days=1)
+
         result = api.update_work_items(organization_key, work_items_source_key, work_items)
         assert result['success']
         assert db.connection().execute(
-            'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles').scalar() == 4
-        assert db.connection().execute('select count(DISTINCT current_delivery_cycle_id) from analytics.work_items\
-         join analytics.work_item_delivery_cycles on work_items.id=work_item_delivery_cycles.work_item_id \
-         where work_items.current_delivery_cycle_id > work_item_delivery_cycles.delivery_cycle_id').scalar() == 2
+            "select count(*) from analytics.work_item_delivery_cycle_durations").scalar() == 11
+
+
+        # work_item 1 changes state to 'complete'
+        work_items[0]['state'] = 'complete'
+        work_items[0]['updated_at'] = work_items[0]['updated_at'] + timedelta(days=1)
+        # update again
+        result = api.update_work_items(organization_key, work_items_source_key, work_items)
+        assert result['success']
+        assert db.connection().execute(
+            "select count(*) from analytics.work_item_delivery_cycle_durations").scalar() == 12
+
+        cumulative_time_in_wip = db.connection().execute(
+            "select cumulative_time_in_state from analytics.work_item_delivery_cycle_durations where state='wip'").fetchall()[0][0]
+
+        # work item 1 moves to 'wip' again, no change expected in cumulative time yet
+        work_items[0]['state'] = 'wip'
+        work_items[0]['updated_at'] = work_items[0]['updated_at'] + timedelta(days=1)
+        result = api.update_work_items(organization_key, work_items_source_key, work_items)
+        assert result['success']
+        # check there is still only one row with state 'wip'
+        assert db.connection().execute(
+            "select count(cumulative_time_in_state) from analytics.work_item_delivery_cycle_durations where state='wip'").scalar() == 1
+        updated_cumulative_time_in_wip = db.connection().execute(
+            "select cumulative_time_in_state from analytics.work_item_delivery_cycle_durations where state='wip'").fetchall()[0][0]
+        assert updated_cumulative_time_in_wip == cumulative_time_in_wip
+
+        # Changing state again so that 'wip' state has more time to be added
+        work_items[0]['state'] = 'complete'
+        work_items[0]['updated_at'] = work_items[0]['updated_at'] + timedelta(days=1)
+        result = api.update_work_items(organization_key, work_items_source_key, work_items)
+        assert result['success']
+        # check there is still only one row with state 'wip'
+        assert db.connection().execute(
+            "select count(cumulative_time_in_state) from analytics.work_item_delivery_cycle_durations where state='wip'").scalar() == 1
+        updated_cumulative_time_in_wip = db.connection().execute(
+            "select cumulative_time_in_state from analytics.work_item_delivery_cycle_durations where state='wip'").fetchall()[
+            0][0]
+        assert updated_cumulative_time_in_wip > cumulative_time_in_wip

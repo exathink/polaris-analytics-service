@@ -282,6 +282,7 @@ def api_work_items_import_fixture(org_repo_fixture):
     yield organization, project, work_items_source, work_items_common
 
     db.connection().execute("delete  from analytics.work_item_state_transitions")
+    db.connection().execute("delete  from analytics.work_item_delivery_cycle_durations")
     db.connection().execute("delete  from analytics.work_item_delivery_cycles")
     db.connection().execute("delete  from analytics.work_items")
     db.connection().execute("delete  from analytics.work_items_source_state_map")

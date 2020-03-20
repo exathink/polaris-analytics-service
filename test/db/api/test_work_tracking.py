@@ -1143,7 +1143,7 @@ class TestWorkItemDeliveryCycleDurations:
                 where state in ('complete', 'ready for development', 'closed') and cumulative_time_in_state is NULL"
         ).scalar() == 3
 
-    def it_validates_cumulative_time_in_a_state_is_updated_when_state_is_revisited(self, work_items_setup):
+    def it_recomputes_cumulative_time_in_a_state_when_state_is_revisited(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_items = []
         work_items.extend([

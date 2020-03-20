@@ -513,9 +513,14 @@ class TestUpdateComputedWorkItemsStateTypes:
                    ('done', WorkItemsStateType.complete.value)
                }
 
+
 class TestUpdateDeliveryCycles:
 
-    def it_updates_delivery_cycles(self, setup_work_items):
+    def it_updates_delivery_cycles_when_closed_state_mapping_changes(self, setup_work_items):
+        # example case to tests:
+        # when there was a work item in state done (mapped to complete)
+        # corresponding delivery cycle would have lead time and end_date as null
+        # when done is mapped to closed in new mapping, the delivery cycle should have a lead time calculated and end_date set
         client = Client(schema)
         project = setup_work_items
         project_key = str(project.key)
@@ -548,3 +553,17 @@ class TestUpdateDeliveryCycles:
         result = response['data']['updateProjectStateMaps']
         assert result
         assert result['success']
+
+    def it_does_not_update_delivery_cycle_when_closed_state_mapping_is_unchanged(self):
+        pass
+
+    def it_is_idempotent(self):
+        # call twice with same inputs. Query both times to find same results in delivery cycle table
+        # just to ensure there are no attempts to create duplicate entries or updates on lead time or end_date
+        pass
+
+
+class TestUpdateDeliveryCycleDurations:
+
+    def it_recomputes_delivery_cycle_durations_when_closed_state_type_mapping_changes(self):
+        pass

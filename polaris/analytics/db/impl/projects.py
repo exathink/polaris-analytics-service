@@ -55,20 +55,7 @@ def update_work_items_delivery_cycles(session, work_items_source_id):
     )
 
     # delete all delivery cycle durations for given work items source
-    session.execute(
-        work_item_delivery_cycle_durations.delete().where(
-            work_item_delivery_cycle_durations.c.delivery_cycle_id.in_(select([
-                work_item_delivery_cycles.c.delivery_cycle_id
-            ]).where(
-                and_(
-                    work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id,
-                    work_items.c.id == work_item_delivery_cycles.c.work_item_id,
-                    work_items.c.work_items_source_id == work_items_source_id
-                )
-                )
-            )
-        )
-    )
+    delete_work_item_delivery_cycle_durations(session, work_items_source_id)
 
     # delete all delivery cycles for given work items source
 
@@ -167,11 +154,31 @@ def update_work_items_delivery_cycles(session, work_items_source_id):
         )
     )
 
+    # Recompute and insert the deleted delivery cycle durations, based on new delivery cycles
+    recompute_work_items_delivery_cycle_durations(session, work_items_source_id)
+
     return updated
 
 
-def update_work_items_delivery_cycle_durations(session, work_items_source_id):
-    # recreate delivery cycle durations as already deleted in update_work_item_delivery_cycles
+def delete_work_item_delivery_cycle_durations(session, work_items_source_id):
+    session.execute(
+        work_item_delivery_cycle_durations.delete().where(
+            work_item_delivery_cycle_durations.c.delivery_cycle_id.in_(select([
+                work_item_delivery_cycles.c.delivery_cycle_id
+            ]).where(
+                and_(
+                    work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id,
+                    work_items.c.id == work_item_delivery_cycles.c.work_item_id,
+                    work_items.c.work_items_source_id == work_items_source_id
+                )
+            )
+            )
+        )
+    )
+
+
+def recompute_work_items_delivery_cycle_durations(session, work_items_source_id):
+    # recompute and insert delivery cycle durations
 
     # calculate the start and end date of each state transition from the state transitions table.
     work_items_state_time_spans = select([
@@ -233,15 +240,16 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
                                 lambda w: str(w.state_type) == str(WorkItemsStateType.closed.value))
         work_items_source.init_state_map(state_mappings)
         session.flush()
+
+        # update state type in work items based on new mapping
         update_work_items_computed_state_types(session, work_items_source.id)
+
         # If old closed state is not same as new closed state
         logger.info(f"old_closed_state {old_closed_state}, new_closed_state {new_closed_state}")
         if new_closed_state is not None:
             logger.info(f"{new_closed_state.state}, {new_closed_state.state_type}")
             if old_closed_state is None or old_closed_state.state != new_closed_state.state:
                 update_work_items_delivery_cycles(session, work_items_source.id)
-        # Update delivery cycle durations, based on new delivery cycles and state mappings
-        update_work_items_delivery_cycle_durations(session, work_items_source.id)
 
 
 def update_project_work_items_source_state_mappings(session, project_state_maps):

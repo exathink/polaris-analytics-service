@@ -12,7 +12,8 @@ import pytest
 import uuid
 from datetime import datetime
 from polaris.common import db
-from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem, WorkItemDeliveryCycles
+from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem, WorkItemDeliveryCycles, \
+    WorkItemStateTransition
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
 from polaris.utils.collections import find
@@ -312,12 +313,6 @@ def setup_work_items(setup_projects):
         source_id=str(uuid.uuid4()),
     )
 
-    delivery_cycles = [
-        dict(
-            start_seq_no=0,
-            start_date=get_date("2020-03-19")
-        )
-    ]
     # open state_type of this new work item should be updated to complete after the test
     new_work_items = [
         dict(
@@ -358,10 +353,96 @@ def setup_work_items(setup_projects):
             for item in new_work_items
         ])
 
+    yield project
+
+@pytest.yield_fixture()
+def work_items_delivery_cycles_setup(setup_projects):
+    organization = setup_projects
+    project = organization.projects[0]
+    work_items_common = dict(
+
+        name='Issue 10',
+        display_id='1000',
+        created_at=get_date("2018-12-02"),
+        updated_at=get_date("2018-12-03"),
+        is_bug=True,
+        work_item_type='issue',
+        url='http://foo.com',
+        tags=['ares2'],
+        description='foo',
+        source_id=str(uuid.uuid4()),
+    )
+
+    delivery_cycles = [
+        dict(
+            start_seq_no=0,
+            start_date=get_date("2020-03-19")
+        )
+    ]
+    # open state_type of this new work item should be updated to complete after the test
+    new_work_items = [
+        dict(
+            key=uuid.uuid4().hex,
+            **work_items_common,
+            state='done'
+        )
+    ]
+
+    work_items_state_transitions = [
+        dict (
+            seq_no= 0,
+            created_at=get_date("2020-03-20"),
+            state='created',
+            previous_state=None
+        ),
+        dict(
+            seq_no=1,
+            created_at=get_date("2020-03-21"),
+            state='done',
+            previous_state='created'
+        )
+
+    ]
+
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        session.add(organization)
+        session.add(project)
+        project.work_items_sources.append(
+            WorkItemsSource(
+                organization_key=str(organization.key),
+                organization_id=organization.id,
+                key=str(uuid.uuid4()),
+                name='foo',
+                integration_type='jira',
+                work_items_source_type='repository_issues',
+                commit_mapping_scope='repository',
+                source_id=str(uuid.uuid4())
+            )
+        )
+
+        project.work_items_sources[0].init_state_map(
+        [
+            dict(state='created', state_type=WorkItemsStateType.open.value),
+            dict(state='doing', state_type=WorkItemsStateType.wip.value),
+            dict(state='done', state_type=WorkItemsStateType.closed.value)
+        ]
+    )
+        project.work_items_sources[0].work_items.extend([
+            WorkItem(**item)
+            for item in new_work_items
+        ])
+
         project.work_items_sources[0].work_items[0].delivery_cycles.extend([
             WorkItemDeliveryCycles(**cycle)
             for cycle in delivery_cycles
         ])
+
+        project.work_items_sources[0].work_items[0].state_transitions.extend([
+            WorkItemStateTransition(**transition)
+            for transition in work_items_state_transitions
+        ])
+
     yield project
 
 
@@ -516,13 +597,13 @@ class TestUpdateComputedWorkItemsStateTypes:
 
 class TestUpdateDeliveryCycles:
 
-    def it_updates_delivery_cycles_when_closed_state_mapping_changes(self, setup_work_items):
+    def it_updates_delivery_cycles_when_closed_state_mapping_changes(self, work_items_delivery_cycles_setup):
         # example case to tests:
         # when there was a work item in state done (mapped to complete)
         # corresponding delivery cycle would have lead time and end_date as null
         # when done is mapped to closed in new mapping, the delivery cycle should have a lead time calculated and end_date set
         client = Client(schema)
-        project = setup_work_items
+        project = work_items_delivery_cycles_setup
         project_key = str(project.key)
         work_items_source_key = project.work_items_sources[0].key
         work_item_key = project.work_items_sources[0].work_items[0].key
@@ -539,7 +620,7 @@ class TestUpdateDeliveryCycles:
                     dict(
                         workItemsSourceKey=work_items_source_key,
                         stateMaps=[
-                            dict(state="todo", stateType=WorkItemsStateType.open.value),
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
                             dict(state="doing", stateType=WorkItemsStateType.wip.value),
                             dict(state="done", stateType=WorkItemsStateType.complete.value),
                             dict(state="accepted", stateType=WorkItemsStateType.closed.value)

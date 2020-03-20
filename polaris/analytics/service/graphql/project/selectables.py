@@ -6,35 +6,36 @@
 # is strictly prohibited. The work product in this file is proprietary and
 # confidential.
 
+from datetime import datetime, timedelta
+
 # Author: Krishna Kumar
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract
-from polaris.graphql.utils import nulls_to_zero
-from datetime import datetime, timedelta
-from polaris.utils.datetime_utils import time_window
 
-from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
     work_items, work_item_state_transitions, work_items_commits
-
+from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
+    SelectableFieldResolver
+from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.utils import nulls_to_zero
+from polaris.utils.datetime_utils import time_window
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
+from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
-    WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo
-
-from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
+    WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
+    WorkItemStateTypeCounts
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_time_window_filters
 
-from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 
-
-class ProjectNode:
+class ProjectNode(NamedNodeResolver):
     interfaces = (NamedNode, ArchivedStatus)
 
     @staticmethod
-    def selectable(**kwargs):
+    def named_node_selector(**kwargs):
         return select([
             projects.c.id,
             projects.c.key.label('key'),
@@ -45,11 +46,11 @@ class ProjectNode:
         ).where(projects.c.key == bindparam('key'))
 
 
-class ProjectRepositoriesNodes:
+class ProjectRepositoriesNodes(ConnectionResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             repositories.c.id,
             repositories.c.key,
@@ -63,11 +64,11 @@ class ProjectRepositoriesNodes:
         ).where(projects.c.key == bindparam('key'))
 
 
-class ProjectWorkItemsSourceNodes:
+class ProjectWorkItemsSourceNodes(ConnectionResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             work_items_sources.c.id,
             work_items_sources.c.key,
@@ -79,11 +80,11 @@ class ProjectWorkItemsSourceNodes:
         ).where(projects.c.key == bindparam('key'))
 
 
-class ProjectRecentlyActiveRepositoriesNodes:
+class ProjectRecentlyActiveRepositoriesNodes(ConnectionResolver):
     interfaces = (NamedNode, CommitCount)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         end_date = kwargs.get('before') or datetime.utcnow()
         window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
@@ -114,11 +115,11 @@ class ProjectRecentlyActiveRepositoriesNodes:
         return [project_recently_active_repositories.c.commit_count.desc()]
 
 
-class ProjectCommitNodes:
+class ProjectCommitNodes(ConnectionResolver):
     interface = CommitInfo
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         select_stmt = select([
             *commit_info_columns(repositories, commits)
         ]).select_from(
@@ -137,11 +138,11 @@ class ProjectCommitNodes:
         return [project_commit_nodes.c.commit_date.desc()]
 
 
-class ProjectContributorNodes:
+class ProjectContributorNodes(ConnectionResolver):
     interface = NamedNode
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         return select([
             contributors.c.id,
             contributors.c.key,
@@ -165,11 +166,11 @@ class ProjectContributorNodes:
         ).distinct()
 
 
-class ProjectRecentlyActiveContributorNodes:
+class ProjectRecentlyActiveContributorNodes(ConnectionResolver):
     interfaces = (NamedNode, CommitCount)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         end_date = kwargs.get('before') or datetime.utcnow()
         window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
@@ -203,7 +204,94 @@ class ProjectRecentlyActiveContributorNodes:
         return [recently_active_contributors.c.commit_count.desc()]
 
 
-class ProjectCumulativeCommitCount:
+class ProjectWorkItemNodes(ConnectionResolver):
+    interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        select_stmt = select([
+            work_items_sources.c.key.label('work_items_source_key'),
+            work_items_sources.c.name.label('work_items_source_name'),
+            work_items.c.name,
+            work_items.c.key,
+            *work_item_info_columns(work_items),
+            work_items.c.id
+        ]).select_from(
+            projects.join(
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
+            ).join(
+                work_items
+            )
+        ).where(
+            projects.c.key == bindparam('key')
+        )
+        return work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
+
+    @staticmethod
+    def sort_order(project_work_items_nodes, **kwargs):
+        return [project_work_items_nodes.c.updated_at.desc()]
+
+
+class ProjectWorkItemEventNodes(ConnectionResolver):
+    interfaces = (NamedNode, WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        select_stmt = select([
+            work_items_sources.c.key.label('work_items_source_key'),
+            work_items_sources.c.name.label('work_items_source_name'),
+            *work_item_event_columns(work_items, work_item_state_transitions)
+        ]).select_from(
+            projects.join(
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
+            ).join(
+                work_items
+            ).join(
+                work_item_state_transitions
+            )
+        ).where(
+            projects.c.key == bindparam('key')
+        )
+        return work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions, **kwargs)
+
+    @staticmethod
+    def sort_order(project_work_item_event_nodes, **kwargs):
+        return [project_work_item_event_nodes.c.event_date.desc()]
+
+
+class ProjectWorkItemCommitNodes(ConnectionResolver):
+    interfaces = (NamedNode, WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        select_stmt = select([
+            work_items_sources.c.key.label('work_items_source_key'),
+            work_items_sources.c.name.label('work_items_source_name'),
+            *work_item_info_columns(work_items),
+            *work_item_commit_info_columns(work_items, repositories, commits)
+        ]).select_from(
+            projects.join(
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
+            ).join(
+                work_items
+            ).join(
+                work_items_commits
+            ).join(
+                commits
+            ).join(
+                repositories
+            )
+        ).where(
+            projects.c.key == bindparam('key')
+        )
+        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+
+    @staticmethod
+    def sort_order(project_work_item_commits_nodes, **kwargs):
+        return [project_work_item_commits_nodes.c.commit_date.desc()]
+
+
+class ProjectCumulativeCommitCount(SelectableFieldResolver):
     interface = CumulativeCommitCount
 
     @staticmethod
@@ -237,7 +325,7 @@ class ProjectCumulativeCommitCount:
         ])
 
 
-class ProjectWeeklyContributorCount:
+class ProjectWeeklyContributorCount(SelectableFieldResolver):
     interface = WeeklyContributorCount
 
     @staticmethod
@@ -262,11 +350,11 @@ class ProjectWeeklyContributorCount:
         )
 
 
-class ProjectsCommitSummary:
+class ProjectsCommitSummary(InterfaceResolver):
     interface = CommitSummary
 
     @staticmethod
-    def selectable(project_nodes, **kwargs):
+    def interface_selector(project_nodes, **kwargs):
         return select([
             project_nodes.c.id,
             func.sum(repositories.c.commit_count).label('commit_count'),
@@ -286,11 +374,11 @@ class ProjectsCommitSummary:
         return [nulls_to_zero(projects_commit_summary.c.commit_count).desc()]
 
 
-class ProjectsContributorCount:
+class ProjectsContributorCount(InterfaceResolver):
     interface = ContributorCount
 
     @staticmethod
-    def selectable(project_nodes, **kwargs):
+    def interface_selector(project_nodes, **kwargs):
         select_stmt = select([
             project_nodes.c.id,
             func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
@@ -310,11 +398,11 @@ class ProjectsContributorCount:
         return select_stmt.group_by(project_nodes.c.id)
 
 
-class ProjectsRepositoryCount:
+class ProjectsRepositoryCount(InterfaceResolver):
     interface = RepositoryCount
 
     @staticmethod
-    def selectable(project_nodes, **kwargs):
+    def interface_selector(project_nodes, **kwargs):
         return select([
             project_nodes.c.id,
             func.count(repositories.c.id).label('repository_count')
@@ -328,11 +416,11 @@ class ProjectsRepositoryCount:
         ).group_by(project_nodes.c.id)
 
 
-class ProjectsOrganizationRef:
+class ProjectsOrganizationRef(InterfaceResolver):
     interface = OrganizationRef
 
     @staticmethod
-    def selectable(project_nodes, **kwargs):
+    def interface_selector(project_nodes, **kwargs):
         return select([
             project_nodes.c.id,
             organizations.c.key.label('organization_key'),
@@ -347,11 +435,11 @@ class ProjectsOrganizationRef:
         )
 
 
-class ProjectsArchivedStatus:
+class ProjectsArchivedStatus(InterfaceResolver):
     interface = ArchivedStatus
 
     @staticmethod
-    def selectable(project_nodes, **kwargs):
+    def interface_selector(project_nodes, **kwargs):
         return select([
             project_nodes.c.id,
             projects.c.archived
@@ -362,11 +450,11 @@ class ProjectsArchivedStatus:
         )
 
 
-class ProjectWorkItemEventSpan:
+class ProjectWorkItemEventSpan(InterfaceResolver):
     interface = WorkItemEventSpan
 
     @staticmethod
-    def selectable(project_nodes, **kwargs):
+    def interface_selector(project_nodes, **kwargs):
         return select([
             project_nodes.c.id,
             func.min(work_items.c.created_at).label('earliest_work_item_event'),
@@ -380,88 +468,39 @@ class ProjectWorkItemEventSpan:
         ).group_by(project_nodes.c.id)
 
 
-class ProjectWorkItemNodes:
-    interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
+class ProjectWorkItemStateTypeCounts(InterfaceResolver):
+    interface = WorkItemStateTypeCounts
 
     @staticmethod
-    def selectable(**kwargs):
-        select_stmt = select([
-            work_items_sources.c.key.label('work_items_source_key'),
-            work_items_sources.c.name.label('work_items_source_name'),
-            work_items.c.name,
-            work_items.c.key,
-            *work_item_info_columns(work_items),
-            work_items.c.id
+    def interface_selector(project_nodes, **kwargs):
+        state_types_count = select([
+            project_nodes.c.id,
+            work_items.c.state_type,
+            func.count(work_items.c.id).label('count')
         ]).select_from(
-            projects.join(
-                work_items_sources, work_items_sources.c.project_id == projects.c.id
+            project_nodes.join(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
             ).join(
-                work_items
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             )
-        ).where(
-            projects.c.key == bindparam('key')
-        )
-        return work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
+        ).group_by(
+            project_nodes.c.id,
+            work_items.c.state_type
+        ).alias()
 
-    @staticmethod
-    def sort_order(project_work_items_nodes, **kwargs):
-        return [project_work_items_nodes.c.updated_at.desc()]
+        return select([
+            project_nodes.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'state_type', state_types_count.c.state_type,
+                    'count', state_types_count.c.count
+                )
+            ).label('work_item_state_type_counts')
 
-
-class ProjectWorkItemEventNodes:
-    interfaces = (NamedNode, WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
-
-    @staticmethod
-    def selectable(**kwargs):
-        select_stmt = select([
-            work_items_sources.c.key.label('work_items_source_key'),
-            work_items_sources.c.name.label('work_items_source_name'),
-            *work_item_event_columns(work_items, work_item_state_transitions)
         ]).select_from(
-            projects.join(
-                work_items_sources, work_items_sources.c.project_id == projects.c.id
-            ).join(
-                work_items
-            ).join(
-                work_item_state_transitions
+            project_nodes.outerjoin(
+                state_types_count, project_nodes.c.id == state_types_count.c.id
             )
-        ).where(
-            projects.c.key == bindparam('key')
+        ).group_by(
+            project_nodes.c.id
         )
-        return work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions, **kwargs)
-
-    @staticmethod
-    def sort_order(project_work_item_event_nodes, **kwargs):
-        return [project_work_item_event_nodes.c.event_date.desc()]
-
-
-class ProjectWorkItemCommitNodes:
-    interfaces = (NamedNode, WorkItemInfo, WorkItemCommitInfo, WorkItemsSourceRef)
-
-    @staticmethod
-    def selectable(**kwargs):
-        select_stmt = select([
-            work_items_sources.c.key.label('work_items_source_key'),
-            work_items_sources.c.name.label('work_items_source_name'),
-            *work_item_info_columns(work_items),
-            *work_item_commit_info_columns(work_items, repositories, commits)
-        ]).select_from(
-            projects.join(
-                work_items_sources, work_items_sources.c.project_id == projects.c.id
-            ).join(
-                work_items
-            ).join(
-                work_items_commits
-            ).join(
-                commits
-            ).join(
-                repositories
-            )
-        ).where(
-            projects.c.key == bindparam('key')
-        )
-        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
-
-    @staticmethod
-    def sort_order(project_work_item_commits_nodes, **kwargs):
-        return [project_work_item_commits_nodes.c.commit_date.desc()]

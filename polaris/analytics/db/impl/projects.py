@@ -170,6 +170,60 @@ def update_work_items_delivery_cycles(session, work_items_source_id):
     return updated
 
 
+def update_work_items_delivery_cycle_durations(session, work_items_source_id):
+    # recreate delivery cycle durations as already deleted in update_work_item_delivery_cycles
+
+    # calculate the start and end date of each state transition from the state transitions table.
+    work_items_state_time_spans = select([
+        work_item_delivery_cycles.c.delivery_cycle_id,
+        work_item_delivery_cycles.c.work_item_id,
+        work_item_state_transitions.c.state,
+        work_item_state_transitions.c.created_at.label('start_time'),
+        work_item_state_transitions.c.seq_no,
+        (func.lead(work_item_state_transitions.c.created_at).over(
+            partition_by=work_item_state_transitions.c.work_item_id,
+            order_by=work_item_state_transitions.c.seq_no
+        )).label('end_time')
+    ]).select_from(
+        work_item_delivery_cycles.join(
+            work_item_state_transitions, work_item_delivery_cycles.c.work_item_id == work_item_state_transitions.c.work_item_id
+        ).join(
+            work_items, work_item_state_transitions.c.work_item_id == work_items.c.id
+        )).where(
+            work_items.c.work_items_source_id == work_items_source_id
+        ).alias()
+
+    # compute the duration in each state from the time_span in each state.
+    work_items_duration_in_state = select([
+        work_items_state_time_spans.c.delivery_cycle_id,
+        work_items_state_time_spans.c.state,
+        work_items_state_time_spans.c.start_time,
+        work_items_state_time_spans.c.end_time,
+        (extract('epoch', work_items_state_time_spans.c.end_time) -
+                    extract('epoch', work_items_state_time_spans.c.start_time)).label('duration')
+    ]).select_from(
+        work_items_state_time_spans
+    ).alias()
+
+    # aggregate the cumulative time in each state and insert into the delivery cycle durations table.
+    session.connection().execute(
+        work_item_delivery_cycle_durations.insert().from_select([
+            'delivery_cycle_id',
+            'state',
+            'cumulative_time_in_state'
+        ],
+
+            select([
+                (func.min(work_items_duration_in_state.c.delivery_cycle_id)).label('delivery_cycle_id'),
+                work_items_duration_in_state.c.state.label('state'),
+                (func.sum(work_items_duration_in_state.c.duration)).label('cumulative_time_in_state')
+            ]).select_from(
+                work_items_duration_in_state
+            ).group_by(work_items_duration_in_state.c.delivery_cycle_id, work_items_duration_in_state.c.state)
+        )
+    )
+
+
 def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if work_items_source is not None:
@@ -180,13 +234,14 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         work_items_source.init_state_map(state_mappings)
         session.flush()
         update_work_items_computed_state_types(session, work_items_source.id)
-
         # If old closed state is not same as new closed state
         logger.info(f"old_closed_state {old_closed_state}, new_closed_state {new_closed_state}")
         if new_closed_state is not None:
             logger.info(f"{new_closed_state.state}, {new_closed_state.state_type}")
             if old_closed_state is None or old_closed_state.state != new_closed_state.state:
                 update_work_items_delivery_cycles(session, work_items_source.id)
+        # Update delivery cycle durations, based on new delivery cycles and state mappings
+        update_work_items_delivery_cycle_durations(session, work_items_source.id)
 
 
 def update_project_work_items_source_state_mappings(session, project_state_maps):

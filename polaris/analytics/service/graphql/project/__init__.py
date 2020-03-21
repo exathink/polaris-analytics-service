@@ -14,7 +14,8 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
-    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts
+    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, CycleMetrics
+
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin
 
@@ -50,7 +51,8 @@ from .selectables import ProjectNode, \
     ProjectWorkItemNodes, \
     ProjectWorkItemEventNodes, \
     ProjectWorkItemCommitNodes, \
-    ProjectWorkItemStateTypeCounts
+    ProjectWorkItemStateTypeCounts, \
+    ProjectCycleMetrics
 
 
 from polaris.graphql.connection_utils import CountableConnection
@@ -96,6 +98,7 @@ Implicit Interfaces: ArchivedStatus
             OrganizationRef,
             WorkItemEventSpan,
             WorkItemStateTypeCounts,
+            CycleMetrics,
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -105,6 +108,7 @@ Implicit Interfaces: ArchivedStatus
             'OrganizationRef': ProjectsOrganizationRef,
             'WorkItemEventSpan': ProjectWorkItemEventSpan,
             'WorkItemStateTypeCounts': ProjectWorkItemStateTypeCounts,
+            'CycleMetrics': ProjectCycleMetrics
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -132,6 +136,21 @@ Implicit Interfaces: ArchivedStatus
                 required=False,
                 description="When evaluating contributor count "
                             "return only contributors that have committed code to the project in this many days"
+            ),
+            cycle_metrics_days=graphene.Argument(
+                graphene.Int,
+                required=False,
+                description="When evaluating cycle metrics "
+                            "calculate them over work items that have closed in this many prior days",
+                default_value=30
+            ),
+            cycle_metrics_target_percentile=graphene.Argument(
+                graphene.Float,
+                required=False,
+                description="When evaluating cycle metrics "
+                            "calculate the value at this percentile. For example: if we want the median value, the "
+                            "the percentile is 0.5. Must be a number between 0 and 1",
+                default_value=0.5
             ),
             **kwargs
         )

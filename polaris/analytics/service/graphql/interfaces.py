@@ -207,3 +207,24 @@ class StateTypeAggregateMeasure(graphene.ObjectType):
 
 class WorkItemStateTypeCounts(graphene.Interface):
     work_item_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=True)
+
+
+class CycleMetrics(graphene.Interface):
+    min_lead_time = graphene.Float(required=False)
+    avg_lead_time = graphene.Float(required=False)
+    max_lead_time = graphene.Float(required=False)
+
+    min_cycle_time = graphene.Float(required=False)
+    avg_cycle_time = graphene.Float(required=False)
+    max_cycle_time = graphene.Float(required=False)
+
+    percentile_lead_time = graphene.Float(required=False)
+    percentile_cycle_time = graphene.Float(required=False)
+    target_percentile = graphene.Float(required=False)
+
+    earliest_closed_date = graphene.DateTime(required=False)
+    latest_closed_date = graphene.DateTime(required=False)
+
+    work_items_in_scope = graphene.Int(required=False)
+    work_items_with_null_cycle_time = graphene.Int(required=False)
+

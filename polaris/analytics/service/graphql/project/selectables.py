@@ -582,7 +582,7 @@ class ProjectCycleMetrics(InterfaceResolver):
             func.max(work_item_cycle_metrics.c.end_date).label('latest_closed_date'),
             func.count(work_item_cycle_metrics.c.work_item_id).label('work_items_in_scope'),
             func.sum(
-                case([(work_item_cycle_metrics.c.cycle_time == None, 1)], else_=0)
+                case([(and_(work_item_cycle_metrics.c.work_item_id != None, work_item_cycle_metrics.c.cycle_time == None), 1)], else_=0)
             ).label('work_items_with_null_cycle_time'),
             literal_column(f'{target_percentile}').label('target_percentile')
         ]).select_from(

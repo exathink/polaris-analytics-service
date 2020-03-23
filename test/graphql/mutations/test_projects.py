@@ -8,21 +8,16 @@
 
 # Author: Krishna Kumar
 
-import pytest
-import uuid
-from datetime import datetime
-from polaris.common import db
+
 from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem, WorkItemDeliveryCycles, \
     WorkItemStateTransition
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
-from polaris.utils.collections import find
 from polaris.analytics.db.enums import WorkItemsStateType
-from test.fixtures.graphql import get_date, work_items_common
+from test.fixtures.graphql import get_date
 
 from test.fixtures.repo_org import *
 from test.constants import *
-from polaris.analytics import api
 
 test_projects = [
     dict(name='mercury', key=uuid.uuid4()),
@@ -425,7 +420,7 @@ def work_items_delivery_cycles_setup(setup_projects):
         [
             dict(state='created', state_type=WorkItemsStateType.open.value),
             dict(state='doing', state_type=WorkItemsStateType.wip.value),
-            dict(state='done', state_type=WorkItemsStateType.closed.value)
+            dict(state='done', state_type=WorkItemsStateType.wip.value)
         ]
     )
         project.work_items_sources[0].work_items.extend([
@@ -622,8 +617,8 @@ class TestUpdateDeliveryCycles:
                         stateMaps=[
                             dict(state="created", stateType=WorkItemsStateType.open.value),
                             dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                            dict(state="done", stateType=WorkItemsStateType.complete.value),
-                            dict(state="accepted", stateType=WorkItemsStateType.closed.value)
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                            #dict(state="accepted", stateType=WorkItemsStateType.closed.value)
                         ]
                     )
                 ]
@@ -659,7 +654,8 @@ class TestUpdateDeliveryCycles:
                         stateMaps=[
                             dict(state="created", stateType=WorkItemsStateType.open.value),
                             dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                            dict(state="done", stateType=WorkItemsStateType.closed.value)
+                            dict(state="done", stateType=WorkItemsStateType.complete.value),
+                            dict(state="accepted", stateType=WorkItemsStateType.closed.value)
                         ]
                     )
                 ]
@@ -698,8 +694,7 @@ class TestUpdateDeliveryCycles:
                         stateMaps=[
                             dict(state="created", stateType=WorkItemsStateType.open.value),
                             dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                            dict(state="done", stateType=WorkItemsStateType.complete.value),
-                            dict(state="accepted", stateType=WorkItemsStateType.closed.value)
+                            dict(state="done", stateType=WorkItemsStateType.closed.value)
                         ]
                     )
                 ]
@@ -710,9 +705,42 @@ class TestUpdateDeliveryCycles:
         result = response['data']['updateProjectStateMaps']
         assert result
         assert result['success']
+        assert db.connection().execute("select count(*) from analytics.work_item_delivery_cycles").scalar() == 1
         assert db.connection().execute(
             f"select count(*) from analytics.work_item_delivery_cycles\
                              where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 1
+
+        # Repeat
+        response = client.execute("""
+                                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                                success
+                                            }
+                                        }
+                                """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value)
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        assert db.connection().execute("select count(*) from analytics.work_item_delivery_cycles").scalar() == 1
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_item_delivery_cycles\
+                                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 1
 
 
 class TestUpdateDeliveryCycleDurations:

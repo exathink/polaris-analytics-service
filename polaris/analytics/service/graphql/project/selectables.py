@@ -477,7 +477,12 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
     def interface_selector(project_nodes, **kwargs):
         state_types_count = select([
             project_nodes.c.id,
-            work_items.c.state_type,
+            case(
+                [
+                    (work_items.c.state_type == None, 'unmapped')
+                ],
+                else_=work_items.c.state_type
+            ).label('state_type'),
             func.count(work_items.c.id).label('count')
         ]).select_from(
             project_nodes.join(

@@ -203,6 +203,7 @@ class StateTypeAggregateMeasure(graphene.ObjectType):
     wip = graphene.Float(required=False)
     complete = graphene.Float(required=False)
     closed = graphene.Float(required=False)
+    unmapped = graphene.Float(required=False)
 
 
 class WorkItemStateTypeCounts(graphene.Interface):

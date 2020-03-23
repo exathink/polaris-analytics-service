@@ -379,11 +379,59 @@ class TestProjectWorkItemStateTypeCounts:
         assert state_type_counts['closed'] == 1
         assert state_type_counts['complete'] is None
 
+    def it_returns_a_count_of_unmapped_items(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+
+
 
 @pytest.yield_fixture
 def project_cycle_metrics_test_fixture(api_work_items_import_fixture):
     organization, project, work_items_source, work_items_common = api_work_items_import_fixture
     yield organization, project, work_items_source
+
+    api.import_new_work_items(
+        organization_key=organization.key,
+        work_item_source_key=work_items_source.key,
+        work_item_summaries=[
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 1',
+                display_id='1000',
+                state='backlog',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 2',
+                display_id='1001',
+                state='aFunkyState',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+        ]
+    )
+
+    client = Client(schema)
+    query = """
+                        query getProjectWorkItemStateTypeCounts($project_key:String!) {
+                            project(key: $project_key, interfaces: [WorkItemStateTypeCounts]) {
+                                workItemStateTypeCounts {
+                                    backlog
+                                    unmapped
+                                }
+                            }
+                        }
+                    """
+
+    result = client.execute(query, variable_values=dict(project_key=project.key))
+    assert 'data' in result
+    state_type_counts = result['data']['project']['workItemStateTypeCounts']
+    assert state_type_counts['backlog'] == 1
+    assert state_type_counts['unmapped'] == 1
+
 
 
 class WorkItemApiHelper:

@@ -725,6 +725,8 @@ class WorkItemDeliveryCycles(Base):
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
     work_item = relationship('WorkItem', back_populates='current_delivery_cycle')
 
+    delivery_cycle_durations = relationship('WorkItemDeliveryCycleDurations', cascade="all, delete-orphan")
+
 
 work_item_delivery_cycles = WorkItemDeliveryCycles.__table__
 

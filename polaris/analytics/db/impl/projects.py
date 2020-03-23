@@ -44,7 +44,7 @@ def update_work_items_computed_state_types(session, work_items_source_id):
 
 
 def update_work_items_delivery_cycles(session, work_items_source_id):
-    logger.info("Update work item delivery cycles")
+
     # set current_delivery_cycle_id to none for work items in given source
     session.execute(
         work_items.update().values(
@@ -245,15 +245,12 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         update_work_items_computed_state_types(session, work_items_source.id)
 
         # If old closed state is not same as new closed state
-        logger.info(f"old_closed_state {old_closed_state}, new_closed_state {new_closed_state}")
         if new_closed_state is not None:
-            logger.info(f"{new_closed_state.state}, {new_closed_state.state_type}")
             if old_closed_state is None or old_closed_state.state != new_closed_state.state:
                 update_work_items_delivery_cycles(session, work_items_source.id)
 
 
 def update_project_work_items_source_state_mappings(session, project_state_maps):
-    logger.info("Inside update_project_work_items_state_mappings")
     updated = []
     # Check if project exists
     project = Project.find_by_project_key(session, project_state_maps.project_key)

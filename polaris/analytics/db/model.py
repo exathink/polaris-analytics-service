@@ -661,6 +661,10 @@ class WorkItem(Base):
     def find_by_work_item_key(cls, session, work_item_key):
         return session.query(cls).filter(cls.key == work_item_key).first()
 
+    @classmethod
+    def find_by_work_item_source_key(cls, session, work_items_source_id):
+        return session.query(cls).filter(cls.work_items_source_id == work_items_source_id)
+
     def get_summary(self):
         return dict(
             key=self.key.hex,
@@ -720,6 +724,8 @@ class WorkItemDeliveryCycles(Base):
     # Work Items relationship
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
     work_item = relationship('WorkItem', back_populates='current_delivery_cycle')
+
+    delivery_cycle_durations = relationship('WorkItemDeliveryCycleDurations', cascade="all, delete-orphan")
 
 
 work_item_delivery_cycles = WorkItemDeliveryCycles.__table__

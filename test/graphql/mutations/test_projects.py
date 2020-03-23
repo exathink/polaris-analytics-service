@@ -8,20 +8,16 @@
 
 # Author: Krishna Kumar
 
-import pytest
-import uuid
-from datetime import datetime
-from polaris.common import db
-from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem
+
+from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem, WorkItemDeliveryCycles, \
+    WorkItemStateTransition
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
-from polaris.utils.collections import find
 from polaris.analytics.db.enums import WorkItemsStateType
-from test.fixtures.graphql import get_date, work_items_common
+from test.fixtures.graphql import get_date
 
 from test.fixtures.repo_org import *
 from test.constants import *
-from polaris.analytics import api
 
 test_projects = [
     dict(name='mercury', key=uuid.uuid4()),
@@ -259,6 +255,40 @@ class TestUpdateProjectStateMaps:
         message = response['errors'][0]['message']
         assert 'got invalid value' in message
 
+    def it_validates_duplicate_closed_state(self, setup_work_items_sources):
+        client = Client(schema)
+        project = setup_work_items_sources
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        response = client.execute("""
+            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                        success
+                    }
+                }
+        """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.backlog.value),
+                            dict(state="todo", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                            dict(state="closed", stateType=WorkItemsStateType.closed.value)
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert not result['success']
+
 
 @pytest.yield_fixture()
 def setup_work_items(setup_projects):
@@ -277,6 +307,7 @@ def setup_work_items(setup_projects):
         description='foo',
         source_id=str(uuid.uuid4()),
     )
+
     # open state_type of this new work item should be updated to complete after the test
     new_work_items = [
         dict(
@@ -316,6 +347,108 @@ def setup_work_items(setup_projects):
             WorkItem(**item)
             for item in new_work_items
         ])
+
+    yield project
+
+@pytest.yield_fixture()
+def work_items_delivery_cycles_setup(setup_projects):
+    organization = setup_projects
+    project = organization.projects[0]
+    work_items_common = dict(
+
+        name='Issue 10',
+        display_id='1000',
+        created_at=get_date("2018-12-02"),
+        updated_at=get_date("2018-12-03"),
+        is_bug=True,
+        work_item_type='issue',
+        url='http://foo.com',
+        tags=['ares2'],
+        description='foo',
+        source_id=str(uuid.uuid4()),
+    )
+
+    delivery_cycles = [
+        dict(
+            start_seq_no=0,
+            start_date=get_date("2020-03-19")
+        )
+    ]
+    # open state_type of this new work item should be updated to complete after the test
+    new_work_items = [
+        dict(
+            key=uuid.uuid4().hex,
+            **work_items_common,
+            state='done'
+        )
+    ]
+
+    work_items_state_transitions = [
+        dict (
+            seq_no= 0,
+            created_at=get_date("2020-03-20"),
+            state='created',
+            previous_state=None
+        ),
+        dict(
+            seq_no=1,
+            created_at=get_date("2020-03-21"),
+            state='done',
+            previous_state='created'
+        )
+
+    ]
+
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        session.add(organization)
+        session.add(project)
+        project.work_items_sources.append(
+            WorkItemsSource(
+                organization_key=str(organization.key),
+                organization_id=organization.id,
+                key=str(uuid.uuid4()),
+                name='foo',
+                integration_type='jira',
+                work_items_source_type='repository_issues',
+                commit_mapping_scope='repository',
+                source_id=str(uuid.uuid4())
+            )
+        )
+
+        project.work_items_sources[0].init_state_map(
+        [
+            dict(state='created', state_type=WorkItemsStateType.open.value),
+            dict(state='doing', state_type=WorkItemsStateType.wip.value),
+            dict(state='done', state_type=WorkItemsStateType.wip.value)
+        ]
+    )
+        project.work_items_sources[0].work_items.extend([
+            WorkItem(**item)
+            for item in new_work_items
+        ])
+
+        project.work_items_sources[0].work_items[0].delivery_cycles.extend([
+            WorkItemDeliveryCycles(**cycle)
+            for cycle in delivery_cycles
+        ])
+
+        project.work_items_sources[0].work_items[0].state_transitions.extend([
+            WorkItemStateTransition(**transition)
+            for transition in work_items_state_transitions
+        ])
+
+        project.work_items_sources[0].work_items[0].delivery_cycles[0].delivery_cycle_durations.extend([
+                model.WorkItemDeliveryCycleDurations(
+                    state='created',
+                    cumulative_time_in_state=None   # setting None, should be updated by test
+                ),
+                model.WorkItemDeliveryCycleDurations(
+                    state='done',
+                    cumulative_time_in_state=None
+                )
+        ])
+
     yield project
 
 
@@ -342,7 +475,8 @@ class TestUpdateComputedWorkItemsStateTypes:
                         stateMaps=[
                             dict(state="todo", stateType=WorkItemsStateType.open.value),
                             dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                            dict(state="done", stateType=WorkItemsStateType.complete.value)
+                            dict(state="done", stateType=WorkItemsStateType.complete.value),
+                            dict(state="accepted", stateType=WorkItemsStateType.closed.value)
                         ]
                     )
                 ]
@@ -465,3 +599,197 @@ class TestUpdateComputedWorkItemsStateTypes:
                    ('doing', None),
                    ('done', WorkItemsStateType.complete.value)
                }
+
+
+class TestUpdateDeliveryCycles:
+
+    def it_updates_delivery_cycles_when_closed_state_mapping_changes(self, work_items_delivery_cycles_setup):
+        # example case to tests:
+        # when there was a work item in state done (mapped to complete)
+        # corresponding delivery cycle would have lead time and end_date as null
+        # when done is mapped to closed in new mapping, the delivery cycle should have a lead time calculated and end_date set
+        client = Client(schema)
+        project = work_items_delivery_cycles_setup
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        response = client.execute("""
+                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                success
+                            }
+                        }
+                """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_item_delivery_cycles\
+                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 1
+
+    def it_does_not_update_delivery_cycle_when_closed_state_mapping_is_unchanged(self, work_items_delivery_cycles_setup):
+        client = Client(schema)
+        project = work_items_delivery_cycles_setup
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        response = client.execute("""
+                            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                        success
+                                    }
+                                }
+                        """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.complete.value),
+                            dict(state="accepted", stateType=WorkItemsStateType.closed.value)
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_item_delivery_cycles\
+             where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 0
+
+    def it_is_idempotent(self, work_items_delivery_cycles_setup):
+        # call twice with same inputs. Query both times to find same results in delivery cycle table
+        # just to ensure there are no attempts to create duplicate entries or updates on lead time or end_date
+        client = Client(schema)
+        project = work_items_delivery_cycles_setup
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        response = client.execute("""
+                            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                        success
+                                    }
+                                }
+                        """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value)
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        assert db.connection().execute("select count(*) from analytics.work_item_delivery_cycles").scalar() == 1
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_item_delivery_cycles\
+                             where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 1
+
+        # Repeat
+        response = client.execute("""
+                                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                                success
+                                            }
+                                        }
+                                """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value)
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        assert db.connection().execute("select count(*) from analytics.work_item_delivery_cycles").scalar() == 1
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_item_delivery_cycles\
+                                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 1
+
+
+class TestUpdateDeliveryCycleDurations:
+
+    def it_recomputes_delivery_cycle_durations_when_closed_state_type_mapping_changes(self, work_items_delivery_cycles_setup):
+        client = Client(schema)
+        project = work_items_delivery_cycles_setup
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        response = client.execute("""
+                            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                        success
+                                    }
+                                }
+                        """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_item_delivery_cycles\
+                             where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 1
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_item_delivery_cycle_durations\
+                                     where cumulative_time_in_state is not null and state='created'").scalar() == 1

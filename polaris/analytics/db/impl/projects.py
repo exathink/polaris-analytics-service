@@ -143,8 +143,11 @@ def update_work_items_delivery_cycles(session, work_items_source_id):
         work_item_delivery_cycles.c.work_item_id.label('work_item_id'),
         (func.max(work_item_delivery_cycles.c.delivery_cycle_id)).label('delivery_cycle_id'),
     ]).select_from(
-        work_item_delivery_cycles
-    ).group_by(
+        work_item_delivery_cycles.join(
+            work_items, work_items.c.id == work_item_delivery_cycles.c.work_item_id
+        )).where(
+            work_items.c.work_items_source_id == work_items_source_id
+        ).group_by(
         work_item_delivery_cycles.c.work_item_id
     ).alias()
 

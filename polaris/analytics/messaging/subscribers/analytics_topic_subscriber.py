@@ -14,7 +14,8 @@ from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, Wor
     ProjectsRepositoriesAdded, RepositoriesImported
 
 from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, \
-    InferProjectsRepositoriesRelationships,ResolveWorkItemsSourcesForRepositories
+    InferProjectsRepositoriesRelationships, ResolveWorkItemsSourcesForRepositories, \
+    UpdateWorkItemsCommitsSpan
 
 from polaris.messaging.utils import raise_on_failure
 
@@ -37,7 +38,8 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 # Commands
                 UpdateCommitsWorkItemsSummaries,
                 InferProjectsRepositoriesRelationships,
-                ResolveWorkItemsSourcesForRepositories
+                ResolveWorkItemsSourcesForRepositories,
+                UpdateWorkItemsCommitsSpan,
             ],
             publisher=publisher,
             exclusive=False
@@ -81,14 +83,22 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 in_response_to=message
             )
             self.publish(AnalyticsTopic, update_commit_work_items_summaries_command)
-            # Publish a sub command to infer project repositories relationships
 
+            # Publish a sub command to infer project repositories relationships
             infer_projects_repositories_relationships = InferProjectsRepositoriesRelationships(
                 send=message.dict
             )
             self.publish(AnalyticsTopic, infer_projects_repositories_relationships)
 
-            return update_commit_work_items_summaries_command, infer_projects_repositories_relationships
+            # Publish a sub command to update work items with commits span (earliest and latest commits)
+            update_work_items_commits_span_command = UpdateWorkItemsCommitsSpan(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, update_work_items_commits_span_command)
+
+            return update_commit_work_items_summaries_command, infer_projects_repositories_relationships,\
+                    update_work_items_commits_span_command
 
         elif RepositoriesImported.message_type == message.message_type:
             return self.publish(
@@ -105,6 +115,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         # Commands
         elif UpdateCommitsWorkItemsSummaries.message_type == message.message_type:
             return self.process_update_commits_work_items_summaries(channel, message)
+
+        elif UpdateWorkItemsCommitsSpan.message_type == message.message_type:
+            return self.process_update_work_items_commits_span(channel, message)
 
         elif InferProjectsRepositoriesRelationships.message_type == message.message_type:
             result = self.process_infer_projects_repositories_relationships(channel, message)
@@ -188,6 +201,16 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 commands.update_commit_work_item_summaries(organization_key, work_items_commits)
             )
 
+    @staticmethod
+    def process_update_work_items_commits_span(channel, message):
+        organization_key = message['organization_key']
+        work_items_commits = message['work_items_commits']
+
+        if len(work_items_commits) > 0:
+            return raise_on_failure(
+                message,
+                commands.update_work_items_commits_span(organization_key, work_items_commits)
+            )
 
     @staticmethod
     def process_infer_projects_repositories_relationships(channel, message):

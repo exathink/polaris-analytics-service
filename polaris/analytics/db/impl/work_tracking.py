@@ -891,6 +891,10 @@ def update_commit_work_item_summaries(session, organization_key, work_item_commi
     return dict()
 
 
+def update_work_items_commits_span(session, organization_key, work_item_commits):
+    pass
+
+
 def update_work_items(session, work_items_source_key, work_item_summaries):
     updated = 0
     if len(work_item_summaries) > 0:

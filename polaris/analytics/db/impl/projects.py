@@ -152,7 +152,9 @@ def update_work_items_delivery_cycles(session, work_items_source_id):
     ).alias()
 
     updated = session.execute(
-        work_items.update().values(
+        work_items.update().where(
+            work_items.c.work_items_source_id == work_items_source_id
+        ).values(
             current_delivery_cycle_id=select([
                 latest_delivery_cycle.c.delivery_cycle_id.label('current_delivery_cycle_id')
             ]).where(

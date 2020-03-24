@@ -633,6 +633,8 @@ class WorkItem(Base):
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
     next_state_seq_no = Column(Integer, nullable=False, server_default='0')
+    earliest_commit_id = Column(Integer, nullable=True)
+    latest_commit_id = Column(Integer, nullable=True)
 
     # calculated fields
 

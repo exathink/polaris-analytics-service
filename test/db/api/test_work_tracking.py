@@ -171,7 +171,7 @@ class TestImportWorkItems:
         assert result['success']
         # alpha should be open.
         assert db.connection().execute(
-            "select name from analytics.work_items where state_type='open'"
+            "select name from analytics.work_items where state_type='backlog'"
         ).scalar() == 'alpha'
         # beta should be closed
         assert db.connection().execute(
@@ -773,6 +773,7 @@ class TestImportProject:
                 work_items_source = project.work_items_sources[0]
                 if work_items_source:
                     work_items_source.init_state_map([
+                        dict(state='created', state_type='open'),
                         dict(state='open', state_type='open')
                     ])
 
@@ -781,7 +782,57 @@ class TestImportProject:
             f" inner join analytics.projects on projects.id = work_items_sources.project_id"
             f" inner join analytics.work_items_source_state_map on work_items_source_state_map.work_items_source_id = work_items_sources.id"
             f" where projects.key='{project_key}'"
+        ).scalar() == 2
+
+    def it_interpolates_a_state_map_value_for_created_if_it_is_not_present_in_the_input(self, setup_org):
+        organization = setup_org
+        organization_key = organization.key
+        project_key = uuid.uuid4()
+        source_key = uuid.uuid4()
+
+        project_summary = dict(
+            key=project_key,
+            name='foo',
+            organization_key=organization.key,
+            work_items_sources=[
+                dict(
+                    name='a source',
+                    key=source_key,
+                    integration_type=WorkTrackingIntegrationType.pivotal.value,
+                    commit_mapping_scope='organization',
+                    commit_mapping_scope_key=organization.key,
+                    description='A new remote project',
+                    work_items_source_type='repository_issues',
+                    source_id=str(uuid.uuid4())
+                )
+            ]
+        )
+
+        result = api.import_project(organization_key, project_summary)
+        assert result['success']
+        with db.orm_session() as session:
+            project = model.Project.find_by_project_key(session, project_key)
+            if project is not None:
+                work_items_source = project.work_items_sources[0]
+                if work_items_source:
+                    work_items_source.init_state_map([
+                        dict(state='open', state_type='open')
+                    ])
+
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_items_sources"
+            f" inner join analytics.projects on projects.id = work_items_sources.project_id"
+            f" inner join analytics.work_items_source_state_map on work_items_source_state_map.work_items_source_id = work_items_sources.id"
+            f" where projects.key='{project_key}'"
+        ).scalar() == 2
+
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_items_sources"
+            f" inner join analytics.projects on projects.id = work_items_sources.project_id"
+            f" inner join analytics.work_items_source_state_map on work_items_source_state_map.work_items_source_id = work_items_sources.id"
+            f" where projects.key='{project_key}' and work_items_source_state_map.state='created'"
         ).scalar() == 1
+
 
     def it_does_not_initialize_default_state_map_for_new_jira_work_item_sources(self, setup_org):
         organization = setup_org

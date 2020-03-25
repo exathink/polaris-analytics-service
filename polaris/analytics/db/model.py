@@ -571,7 +571,7 @@ class WorkItemsSource(Base):
         if self.integration_type == WorkTrackingIntegrationType.github.value:
             return [
                 dict(state='created', state_type=WorkItemsStateType.backlog.value),
-                dict(state='open', state_type=WorkItemsStateType.open.value),
+                dict(state='open', state_type=WorkItemsStateType.backlog.value),
                 dict(state='closed', state_type=WorkItemsStateType.closed.value)
             ]
         elif self.integration_type == WorkTrackingIntegrationType.pivotal.value:
@@ -594,6 +594,10 @@ class WorkItemsSource(Base):
             state_maps_keys = [mapping['state'] for mapping in entries]
             if len(set(state_maps_keys)) < len(state_maps_keys):
                 raise ProcessingException(f'Invalid state map: duplicate states in the input')
+
+            # We interpolate a created state in case that was not passed in by the caller
+            if 'created' not in state_maps_keys:
+                entries = [dict(state='created', state_type=WorkItemsStateType.backlog.value), *entries]
 
         self.state_maps = [
             WorkItemsSourceStateMap(**entry)

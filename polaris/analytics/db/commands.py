@@ -64,7 +64,3 @@ def resolve_work_items_sources_for_repositories(organization_key, repositories):
         return db.process_exception("Resolve work items sources for repositories failed", exc)
     except Exception as e:
         return db.failure_message('Resolve work items sources for repositories failed', e)
-
-
-def update_work_items_commits_span(organization_key, work_item_commits):
-    pass

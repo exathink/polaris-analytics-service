@@ -891,8 +891,36 @@ def update_commit_work_item_summaries(session, organization_key, work_item_commi
     return dict()
 
 
-def update_work_items_commits_span(session, organization_key, work_item_commits):
-    pass
+def update_work_items_commits_span(session, organization_key, work_items_commits):
+    work_items_commits_span = []
+
+    # this is written with the assumption that work_items_commits \
+    # contains all commits for a work item (which seemingly is not correct assumption)
+    # We will most likely need to check work_items_summaries field in commits to find more
+    # commits associated with the work item
+    # still this can we used to test end to end flow once
+    for entry in work_items_commits:
+        work_item = WorkItem.find_by_work_item_key(entry['work_item_key'])
+        work_item_in_list = find(work_items_commits_span, lambda w: w.work_item_key == entry['work_item_key'])
+        commit_key = entry['commit_key']
+        commit = Commit.find_by_commit_key(session, commit_key)
+
+        if work_item and not work_item_in_list:
+            work_item_commits_span = dict(
+                work_item_key=entry['work_item_key'],
+                earlist_commit=commit,
+                latest_commit=commit
+            )
+            work_items_commits_span.append(work_item_commits_span)
+
+        if commit is not None:
+            if work_item_commits_span.earliest_commit.commit_date > commit.commit_date:
+                work_item_commits_span.earliest_commit = commit
+
+            if latest_commit.commit_date < commit.commit_date:
+                work_item_commits_span.latest_commit = commit
+    # Update work items in work_items_commits_span with earliest and latest commits
+
 
 
 def update_work_items(session, work_items_source_key, work_item_summaries):

@@ -752,6 +752,43 @@ class TestUpdateDeliveryCycles:
             f"select count(*) from analytics.work_item_delivery_cycles\
                                      where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 1
 
+    def it_validates_current_delivery_cycle_is_reset_after_state_map_updates(self, work_items_delivery_cycles_setup):
+        client = Client(schema)
+        project = work_items_delivery_cycles_setup
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        old_delivery_cycle_id = db.connection().execute("select current_delivery_cycle_id from analytics.work_items").fetchall()[0][0]
+        response = client.execute("""
+                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                success
+                            }
+                        }
+                """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        assert db.connection().execute(f"select count(*) from analytics.work_items where current_delivery_cycle_id is not Null").scalar() == 1
+        new_delivery_cycle_id = db.connection().execute(f"select current_delivery_cycle_id from analytics.work_items where id='{work_item_id}'").fetchall()[0][0]
+        assert new_delivery_cycle_id is not None
+        assert new_delivery_cycle_id != old_delivery_cycle_id
 
 class TestUpdateDeliveryCycleDurations:
 

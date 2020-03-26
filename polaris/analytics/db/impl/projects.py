@@ -44,7 +44,6 @@ def update_work_items_computed_state_types(session, work_items_source_id):
 
 
 def update_work_items_delivery_cycles(session, work_items_source_id):
-
     # set current_delivery_cycle_id to none for work items in given source
     session.execute(
         work_items.update().values(
@@ -58,14 +57,13 @@ def update_work_items_delivery_cycles(session, work_items_source_id):
     delete_work_item_delivery_cycle_durations(session, work_items_source_id)
 
     # delete all delivery cycles for given work items source
-
     session.execute(
         work_item_delivery_cycles.delete().where(
             work_item_delivery_cycles.c.work_item_id.in_(select([
                 work_items.c.id
             ]).where(
-                    work_items.c.work_items_source_id == work_items_source_id
-                )
+                work_items.c.work_items_source_id == work_items_source_id
+            )
             )
         )
     )
@@ -128,7 +126,7 @@ def update_work_items_delivery_cycles(session, work_items_source_id):
             end_seq_no=work_item_state_transitions.c.seq_no,
             end_date=work_item_state_transitions.c.created_at,
             lead_time=extract('epoch', work_item_state_transitions.c.created_at) - \
-                                  extract('epoch', work_item_delivery_cycles.c.start_date)
+                      extract('epoch', work_item_delivery_cycles.c.start_date)
         ).where(
             and_(
                 work_item_delivery_cycles.c.work_item_id == work_item_state_transitions.c.work_item_id,
@@ -141,15 +139,26 @@ def update_work_items_delivery_cycles(session, work_items_source_id):
     )
 
     # update current_delivery_cycle_id for work items
+    latest_delivery_cycle = select([
+        work_item_delivery_cycles.c.work_item_id.label('work_item_id'),
+        (func.max(work_item_delivery_cycles.c.delivery_cycle_id)).label('delivery_cycle_id'),
+    ]).select_from(
+        work_item_delivery_cycles.join(
+            work_items, work_items.c.id == work_item_delivery_cycles.c.work_item_id
+        )).where(
+            work_items.c.work_items_source_id == work_items_source_id
+        ).group_by(
+        work_item_delivery_cycles.c.work_item_id
+    ).alias()
+
     updated = session.execute(
-        work_items.update().values(
-            current_delivery_cycle_id=work_item_delivery_cycles.c.delivery_cycle_id
-        ).where(
-            and_(
-                work_items.c.state == work_items_source_state_map.c.state,
-                work_items.c.work_items_source_id == work_items_source_id,
-                work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-                work_item_delivery_cycles.c.delivery_cycle_id > work_items.c.current_delivery_cycle_id
+        work_items.update().where(
+            work_items.c.work_items_source_id == work_items_source_id
+        ).values(
+            current_delivery_cycle_id=select([
+                latest_delivery_cycle.c.delivery_cycle_id.label('current_delivery_cycle_id')
+            ]).where(
+                latest_delivery_cycle.c.work_item_id == work_items.c.id
             )
         )
     )
@@ -193,12 +202,13 @@ def recompute_work_items_delivery_cycle_durations(session, work_items_source_id)
         )).label('end_time')
     ]).select_from(
         work_item_delivery_cycles.join(
-            work_item_state_transitions, work_item_delivery_cycles.c.work_item_id == work_item_state_transitions.c.work_item_id
+            work_item_state_transitions,
+            work_item_delivery_cycles.c.work_item_id == work_item_state_transitions.c.work_item_id
         ).join(
             work_items, work_item_state_transitions.c.work_item_id == work_items.c.id
         )).where(
-            work_items.c.work_items_source_id == work_items_source_id
-        ).alias()
+        work_items.c.work_items_source_id == work_items_source_id
+    ).alias()
 
     # compute the duration in each state from the time_span in each state.
     work_items_duration_in_state = select([
@@ -207,7 +217,7 @@ def recompute_work_items_delivery_cycle_durations(session, work_items_source_id)
         work_items_state_time_spans.c.start_time,
         work_items_state_time_spans.c.end_time,
         (extract('epoch', work_items_state_time_spans.c.end_time) -
-                    extract('epoch', work_items_state_time_spans.c.start_time)).label('duration')
+         extract('epoch', work_items_state_time_spans.c.start_time)).label('duration')
     ]).select_from(
         work_items_state_time_spans
     ).alias()
@@ -264,9 +274,10 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
                 raise ProcessingException(f'Work Items Source can have only one closed state')
             else:
                 work_items_source = find(project.work_items_sources,
-                                        lambda work_item_source: str(work_item_source.key) == str(source_key))
+                                         lambda work_item_source: str(work_item_source.key) == str(source_key))
                 if work_items_source is not None:
-                    update_work_items_source_state_mapping(session, source_key, work_items_source_state_mapping.state_maps)
+                    update_work_items_source_state_mapping(session, source_key,
+                                                           work_items_source_state_mapping.state_maps)
                     updated.append(source_key)
                 else:
                     raise ProcessingException(f'Work Items Source with key {source_key} does not belong to project')

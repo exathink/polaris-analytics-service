@@ -14,7 +14,7 @@ from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
 from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, desc, case, \
-    extract
+    extract, distinct
 from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType
@@ -892,35 +892,95 @@ def update_commit_work_item_summaries(session, organization_key, work_item_commi
 
 
 def update_work_items_commits_span(session, organization_key, work_items_commits):
-    work_items_commits_span = []
-
-    # this is written with the assumption that work_items_commits \
-    # contains all commits for a work item (which seemingly is not correct assumption)
-    # We will most likely need to check work_items_summaries field in commits to find more
-    # commits associated with the work item
-    # still this can we used to test end to end flow once
-    for entry in work_items_commits:
-        work_item = WorkItem.find_by_work_item_key(entry['work_item_key'])
-        work_item_in_list = find(work_items_commits_span, lambda w: w.work_item_key == entry['work_item_key'])
-        commit_key = entry['commit_key']
-        commit = Commit.find_by_commit_key(session, commit_key)
-
-        if work_item and not work_item_in_list:
-            work_item_commits_span = dict(
-                work_item_key=entry['work_item_key'],
-                earlist_commit=commit,
-                latest_commit=commit
-            )
-            work_items_commits_span.append(work_item_commits_span)
-
-        if commit is not None:
-            if work_item_commits_span.earliest_commit.commit_date > commit.commit_date:
-                work_item_commits_span.earliest_commit = commit
-
-            if latest_commit.commit_date < commit.commit_date:
-                work_item_commits_span.latest_commit = commit
     # Update work items in work_items_commits_span with earliest and latest commits
+    updated = 0
 
+    if len(work_items_commits) > 0:
+        # create a temp table for received work item ids
+        work_items_commits_temp = db.create_temp_table(
+            table_name='work_items_commits_temp',
+            columns=[
+                Column('work_item_key', UUID(as_uuid=True)),
+                Column('work_items_source_key', UUID(as_uuid=True)),
+                Column('commit_key', UUID(as_uuid=True)),
+            ]
+        )
+        work_items_commits_temp.create(session.connection(), checkfirst=True)
+
+        session.connection().execute(
+            work_items_commits_temp.insert().values(
+                [
+                    dict_select(
+                        work_items_commit,
+                        [
+                            'work_item_key',
+                            'commit_key',
+                            'work_items_source_key',
+                        ]
+                    )
+                    for work_items_commit in work_items_commits
+                ]
+            )
+        )
+
+        # select relevant rows to find commits span
+        work_items_commits_rows = select([
+            work_items.c.id.label('work_item_id'),
+            commits.c.id.label('commit_id'),
+            commits.c.commit_date.label('commit_date')
+        ]).select_from(
+            work_items_commits_temp.join(
+                work_items, work_items.c.key == work_items_commits_temp.c.work_item_key
+            ).join(
+                work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+            ).join(
+                commits, work_items_commits_table.c.commit_id == commits.c.id
+            ).join(
+                work_item_delivery_cycles
+            )
+        ).where(
+            commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
+        ).cte('work_items_commits_rows')
+
+        # find earliest commit
+        earliest_commits = select([
+            distinct(work_items_commits_rows.c.work_item_id),
+            work_items_commits_rows.c.commit_id.label('earliest_commit_id')
+        ]).group_by(
+            work_items_commits_rows.c.work_item_id
+        ).order_by(
+            work_items_commits_rows.c.commit_date
+        ).cte('earliest_commits')
+
+        # find latest commit
+        latest_commits = select([
+            distinct(work_items_commits_rows.c.work_item_id),
+            work_items_commits_rows.c.commit_id.label('latest_commit_id')
+        ]).group_by(
+            work_items_commits_rows.c.work_item_id
+        ).order_by(
+            work_items_commits_rows.c.commit_date.desc()
+        ).cte('latest_commits')
+
+        # combine earliest and latest commits
+        work_items_commits_span = earliest_commits.join(
+            latest_commits,
+            latest_commits.c.work_item_id == earliest_commits.c.work_item_id
+        ).cte('work_items_commits_span')
+
+        # update relevant work items with earliest and latest commit ids
+        updated = session.connection.execute(
+            work_items.update().where(
+                work_items_commits_span.c.work_item_id == work_items.c.id
+            ).values(
+                earliest_commit_id=work_items_commits_span.c.earliest_commit_id,
+                latest_commit_id=work_items_commits_span.c.latest_commit_id
+            )
+        )
+
+    return dict(
+        updated=updated
+    )
 
 
 def update_work_items(session, work_items_source_key, work_item_summaries):

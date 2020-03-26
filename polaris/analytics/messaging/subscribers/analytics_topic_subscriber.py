@@ -27,7 +27,7 @@ logger = logging.getLogger('polaris.analytics.analytics_topic_subscriber')
 class AnalyticsTopicSubscriber(TopicSubscriber):
     def __init__(self, channel, publisher=None):
         super().__init__(
-            topic = AnalyticsTopic(channel, create=True),
+            topic=AnalyticsTopic(channel, create=True),
             subscriber_queue='analytics_analytics',
             message_classes=[
                 RepositoriesImported,
@@ -97,8 +97,8 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
             self.publish(AnalyticsTopic, update_work_items_commits_span_command)
 
-            return update_commit_work_items_summaries_command, infer_projects_repositories_relationships,\
-                    update_work_items_commits_span_command
+            return update_commit_work_items_summaries_command, infer_projects_repositories_relationships, \
+                   update_work_items_commits_span_command
 
         elif RepositoriesImported.message_type == message.message_type:
             return self.publish(
@@ -134,8 +134,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
         elif ResolveWorkItemsSourcesForRepositories.message_type == message.message_type:
             return self.process_resolve_work_items_sources_for_repositories(channel, message)
-
-
 
     @staticmethod
     def process_resolve_commit_details_created(channel, message):

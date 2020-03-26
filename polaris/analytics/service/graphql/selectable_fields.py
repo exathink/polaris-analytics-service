@@ -9,8 +9,7 @@
 # Author: Krishna Kumar
 
 import graphene
-from .interfaces import CumulativeCommitCount, WeeklyContributorCount, FileTypesSummary, \
-    WorkItemStateMapping
+from .interfaces import CumulativeCommitCount, WeeklyContributorCount
 
 
 class CumulativeCommitCountField(graphene.ObjectType):
@@ -23,9 +22,7 @@ class WeeklyContributorCountsField(graphene.ObjectType):
         interfaces = (CumulativeCommitCount, WeeklyContributorCount)
 
 
-class WorkItemStateMappingField(graphene.ObjectType):
-    class Meta:
-        interfaces = (WorkItemStateMapping,)
+
 
 
 

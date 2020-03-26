@@ -9,48 +9,44 @@
 # Author: Krishna Kumar
 
 import graphene
-from ..interface_mixins import NamedNodeResolverMixin
+
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
-from polaris.analytics.service.graphql.interfaces import WorkTrackingIntegrationType
+
+from ..interfaces import WorkTrackingIntegrationType, WorkItemStateMappings
+from ..interface_mixins import NamedNodeResolverMixin, WorkItemStateMappingsResolverMixin
 
 from .selectable import WorkItemsSourceNode, WorkItemsSourceWorkItemNodes, WorkItemsSourceWorkItemEventNodes, \
-    WorkItemsSourceWorkItemCommitNodes, WorkItemsSourceWorkItemsStateMapping
+    WorkItemsSourceWorkItemCommitNodes, WorkItemsSourceWorkItemStateMappings
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin
-from ..selectable_field_mixins import WorkItemsStateMappingResolverMixin
-
-
-
 
 
 class WorkItemsSource(
     # interface mixins
     NamedNodeResolverMixin,
+    WorkItemStateMappingsResolverMixin,
 
     # connection mixins
     WorkItemsConnectionMixin,
     WorkItemEventsConnectionMixin,
     WorkItemCommitsConnectionMixin,
-
-    # Field mixins
-    WorkItemsStateMappingResolverMixin,
     #
     Selectable,
 ):
     class Meta:
-        interfaces = (NamedNode,)
-        interface_resolvers = {}
+        interfaces = (NamedNode, WorkItemStateMappings)
+
         named_node_resolver = WorkItemsSourceNode
 
+        interface_resolvers = {
+            'WorkItemStateMappings': WorkItemsSourceWorkItemStateMappings
+        }
         connection_node_resolvers = {
             'work_items': WorkItemsSourceWorkItemNodes,
             'work_item_events': WorkItemsSourceWorkItemEventNodes,
             'work_item_commits': WorkItemsSourceWorkItemCommitNodes
         }
 
-        selectable_field_resolvers = {
-            'work_items_state_mapping': WorkItemsSourceWorkItemsStateMapping
-        }
         connection_class = lambda: WorkItemsSources
 
     @classmethod

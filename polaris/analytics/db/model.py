@@ -637,8 +637,6 @@ class WorkItem(Base):
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
     next_state_seq_no = Column(Integer, nullable=False, server_default='0')
-    earliest_commit_id = Column(Integer, nullable=True)
-    latest_commit_id = Column(Integer, nullable=True)
 
     # calculated fields
 
@@ -726,6 +724,8 @@ class WorkItemDeliveryCycles(Base):
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=True)
     lead_time = Column(Integer, nullable=True)
+    earliest_commit_id = Column(Integer, nullable=True)
+    latest_commit_id = Column(Integer, nullable=True)
 
     # Work Items relationship
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)

@@ -898,7 +898,7 @@ def update_work_items_commits_span(session, organization_key, work_items_commits
     if len(work_items_commits) > 0:
         # create a temp table for received work item ids
         work_items_temp = db.create_temp_table(
-            table_name='work_items_commits_temp',
+            table_name='work_items_temp',
             columns=[
                 Column('work_item_key', UUID(as_uuid=True)),
             ]
@@ -908,17 +908,14 @@ def update_work_items_commits_span(session, organization_key, work_items_commits
         # Get distinct work item keys from input
         distinct_work_items = []
         for entry in work_items_commits:
-            if entry['work_item_key'] not in distinct_work_item_keys:
-                distinct_work_items.append(dict(work_item_key=entry['work_item_key']))
+            if entry['work_item_key'] not in distinct_work_items:
+                distinct_work_items.append(entry['work_item_key'])
 
         session.connection().execute(
             work_items_temp.insert().values(
                 [
-                    dict_select(
-                        record,
-                        [
-                            'work_item_key'
-                        ]
+                    dict(
+                        work_item_key=record
                     )
                     for record in distinct_work_items
                 ]
@@ -928,14 +925,8 @@ def update_work_items_commits_span(session, organization_key, work_items_commits
         # select relevant rows to find commits span
         delivery_cycles_commits_rows = select([
             work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-            (func.lead(commits.c.commit_id).over(
-                partition_by=work_item_delivery_cycles.c.delivery_cycle_id,
-                order_by=commits.c.commit_date
-            )).label('earliest_commit_id'),
-            (func.lead(commits.c.commit_id).over(
-                partition_by=work_item_delivery_cycles.c.delivery_cycle_id,
-                order_by=commits.c.commit_date.desc
-            )).label('latest_commit_id')
+            func.min(commits.c.commit_date).label('earliest_commit'),
+            func.max(commits.c.commit_date).label('latest_commit')
         ]).select_from(
             work_items_temp.join(
                 work_items, work_items.c.key == work_items_temp.c.work_item_key
@@ -947,20 +938,21 @@ def update_work_items_commits_span(session, organization_key, work_items_commits
                 commits, work_items_commits_table.c.commit_id == commits.c.id
             )
         ).where(
-            commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
+            commits.c.commit_date >= work_item_delivery_cycles.c.start_date
         ).group_by(
-            work_item_delivery_cycles.c.delivery_cycle_id
+            work_item_delivery_cycles.c.delivery_cycle_id,
+
         ).cte('delivery_cycles_commits_rows')
 
-        # update relevant work items delivery cycles with earliest and latest commit ids
-        updated = session.connection.execute(
-            work_items.update().where(
-                delivery_cycles_commits_rows.c.work_item_id == work_items.c.id
+        # update relevant work items delivery cycles with earliest and latest commit dates
+        updated = session.connection().execute(
+            work_item_delivery_cycles.update().where(
+                work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
             ).values(
-                earliest_commit_id=delivery_cycles_commits_rows.c.earliest_commit_id,
-                latest_commit_id=delivery_cycles_commits_rows.c.latest_commit_id
+                earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
+                latest_commit=delivery_cycles_commits_rows.c.latest_commit
             )
-        )
+        ).rowcount
 
     return dict(
         updated=updated

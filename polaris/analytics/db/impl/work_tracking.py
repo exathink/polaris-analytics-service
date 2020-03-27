@@ -897,84 +897,68 @@ def update_work_items_commits_span(session, organization_key, work_items_commits
 
     if len(work_items_commits) > 0:
         # create a temp table for received work item ids
-        work_items_commits_temp = db.create_temp_table(
+        work_items_temp = db.create_temp_table(
             table_name='work_items_commits_temp',
             columns=[
                 Column('work_item_key', UUID(as_uuid=True)),
-                Column('work_items_source_key', UUID(as_uuid=True)),
-                Column('commit_key', UUID(as_uuid=True)),
             ]
         )
-        work_items_commits_temp.create(session.connection(), checkfirst=True)
+        work_items_temp.create(session.connection(), checkfirst=True)
+
+        # Get distinct work item keys from input
+        distinct_work_items = []
+        for entry in work_items_commits:
+            if entry['work_item_key'] not in distinct_work_item_keys:
+                distinct_work_items.append(dict(work_item_key=entry['work_item_key']))
 
         session.connection().execute(
-            work_items_commits_temp.insert().values(
+            work_items_temp.insert().values(
                 [
                     dict_select(
-                        work_items_commit,
+                        record,
                         [
-                            'work_item_key',
-                            'commit_key',
-                            'work_items_source_key',
+                            'work_item_key'
                         ]
                     )
-                    for work_items_commit in work_items_commits
+                    for record in distinct_work_items
                 ]
             )
         )
 
         # select relevant rows to find commits span
-        work_items_commits_rows = select([
-            work_items.c.id.label('work_item_id'),
-            commits.c.id.label('commit_id'),
-            commits.c.commit_date.label('commit_date')
+        delivery_cycles_commits_rows = select([
+            work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+            (func.lead(commits.c.commit_id).over(
+                partition_by=work_item_delivery_cycles.c.delivery_cycle_id,
+                order_by=commits.c.commit_date
+            )).label('earliest_commit_id'),
+            (func.lead(commits.c.commit_id).over(
+                partition_by=work_item_delivery_cycles.c.delivery_cycle_id,
+                order_by=commits.c.commit_date.desc
+            )).label('latest_commit_id')
         ]).select_from(
-            work_items_commits_temp.join(
-                work_items, work_items.c.key == work_items_commits_temp.c.work_item_key
+            work_items_temp.join(
+                work_items, work_items.c.key == work_items_temp.c.work_item_key
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
             ).join(
                 work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
             ).join(
                 commits, work_items_commits_table.c.commit_id == commits.c.id
-            ).join(
-                work_item_delivery_cycles
             )
         ).where(
             commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
-        ).cte('work_items_commits_rows')
+        ).group_by(
+            work_item_delivery_cycles.c.delivery_cycle_id
+        ).cte('delivery_cycles_commits_rows')
 
-        # find earliest commit
-        earliest_commits = select([
-            distinct(work_items_commits_rows.c.work_item_id),
-            work_items_commits_rows.c.commit_id.label('earliest_commit_id')
-        ]).group_by(
-            work_items_commits_rows.c.work_item_id
-        ).order_by(
-            work_items_commits_rows.c.commit_date
-        ).cte('earliest_commits')
-
-        # find latest commit
-        latest_commits = select([
-            distinct(work_items_commits_rows.c.work_item_id),
-            work_items_commits_rows.c.commit_id.label('latest_commit_id')
-        ]).group_by(
-            work_items_commits_rows.c.work_item_id
-        ).order_by(
-            work_items_commits_rows.c.commit_date.desc()
-        ).cte('latest_commits')
-
-        # combine earliest and latest commits
-        work_items_commits_span = earliest_commits.join(
-            latest_commits,
-            latest_commits.c.work_item_id == earliest_commits.c.work_item_id
-        ).cte('work_items_commits_span')
-
-        # update relevant work items with earliest and latest commit ids
+        # update relevant work items delivery cycles with earliest and latest commit ids
         updated = session.connection.execute(
             work_items.update().where(
-                work_items_commits_span.c.work_item_id == work_items.c.id
+                delivery_cycles_commits_rows.c.work_item_id == work_items.c.id
             ).values(
-                earliest_commit_id=work_items_commits_span.c.earliest_commit_id,
-                latest_commit_id=work_items_commits_span.c.latest_commit_id
+                earliest_commit_id=delivery_cycles_commits_rows.c.earliest_commit_id,
+                latest_commit_id=delivery_cycles_commits_rows.c.latest_commit_id
             )
         )
 

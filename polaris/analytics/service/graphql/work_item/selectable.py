@@ -22,7 +22,7 @@ from polaris.analytics.service.graphql.interfaces import \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, CycleMetrics
 
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
-    work_item_events_connection_apply_time_window_filters
+    work_item_events_connection_apply_time_window_filters, work_items_cycle_metrics
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters, \
     commit_key_column, commit_name_column
@@ -166,6 +166,17 @@ class WorkItemsCycleMetrics(InterfaceResolver):
     interface = CycleMetrics
 
     @staticmethod
-    def interface_selector(named_node_cte, **kwargs):
-        pass
+    def interface_selector(work_items_nodes, **kwargs):
+        work_items_cycle_metrics_alias = work_items_cycle_metrics(
+            kwargs.get('cycle_metrics_days')
+        ).alias()
 
+        return select([
+            work_items_nodes.c.id,
+            work_items_cycle_metrics_alias.c.lead_time,
+            work_items_cycle_metrics_alias.c.cycle_time
+        ]).select_from(
+            work_items_nodes.outerjoin(
+                work_items_cycle_metrics_alias, work_items_cycle_metrics_alias.work_item_id == work_items_nodes.c.id
+            )
+        )

@@ -13,11 +13,12 @@ import graphene
 from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition,\
-    WorkItemCommitInfo, CommitSummary
+    WorkItemCommitInfo, CommitSummary, CycleMetrics
 
 
 from polaris.analytics.service.graphql.work_item.selectable import \
-    WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, WorkItemsCommitSummary
+    WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
+    WorkItemsCommitSummary, WorkItemsCycleMetrics
 
 
 from polaris.graphql.selectable import ConnectionResolverMixin
@@ -148,9 +149,12 @@ class WorkItem(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef, CommitSummary)
+        interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef, CommitSummary, CycleMetrics)
         named_node_resolver = WorkItemNode
-        interface_resolvers = {'CommitSummary':WorkItemsCommitSummary}
+        interface_resolvers = {
+            'CommitSummary': WorkItemsCommitSummary,
+            'CycleMetrics': WorkItemsCycleMetrics,
+        }
         connection_node_resolvers = {
             'work_item_events': WorkItemEventNodes,
             'commits': WorkItemCommitNodes

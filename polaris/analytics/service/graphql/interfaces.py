@@ -205,6 +205,11 @@ class WorkItemStateTypeCounts(graphene.Interface):
     work_item_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=True)
 
 
+class CycleMetrics(graphene.Interface):
+    lead_time = graphene.Int(required=False)
+    cycle_time = graphene.Int(required=False)
+
+
 class AggregateCycleMetrics(graphene.Interface):
     min_lead_time = graphene.Float(required=False)
     avg_lead_time = graphene.Float(required=False)

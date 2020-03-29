@@ -9,7 +9,7 @@
 from datetime import datetime, timedelta
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case,literal_column
+from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column
 from polaris.analytics.db.enums import WorkItemsStateType
 
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
@@ -32,6 +32,7 @@ from ..interfaces import \
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_time_window_filters
 
+from ..work_item import sql_expressions
 
 class ProjectNode(NamedNodeResolver):
     interfaces = (NamedNode, ArchivedStatus)
@@ -518,81 +519,50 @@ class ProjectCycleMetrics(InterfaceResolver):
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
-        window_start = datetime.utcnow() - timedelta(days=kwargs.get('cycle_metrics_days'))
-
         target_percentile = kwargs.get('cycle_metrics_target_percentile')
 
-        work_item_cycle_metrics = select([
+        work_items_cycle_metrics = sql_expressions.work_items_cycle_metrics(
+            kwargs.get('cycle_metrics_days')
+        ).alias()
+
+        project_work_item_cycle_metrics = select([
             project_nodes.c.id.label('project_id'),
-            work_items.c.id.label('work_item_id'),
-            (
-                    func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)
-            ).label('lead_time'),
-            (
-                func.sum(
-                    case([
-                            (
-                                work_items_source_state_map.c.state_type.in_([
-                                    WorkItemsStateType.open.value,
-                                    WorkItemsStateType.wip.value,
-                                    WorkItemsStateType.complete.value]),
-                                work_item_delivery_cycle_durations.c.cumulative_time_in_state
-                            )
-                        ],
-                        else_=None
-                    )
-                ) / (1.0 * 3600 * 24)
-            ).label('cycle_time'),
-            func.min(work_item_delivery_cycles.c.end_date).label('start_date'),
-            func.max(work_item_delivery_cycles.c.end_date).label('end_date'),
+            work_items_cycle_metrics.c.id.label('work_item_id'),
+            work_items_cycle_metrics.c.lead_time,
+            work_items_cycle_metrics.c.cycle_time,
+            work_items_cycle_metrics.c.end_date,
         ]).select_from(
             project_nodes.join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
             ).join(
-                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
-            ).join(
-                work_item_delivery_cycles,
-                and_(
-                    work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-                    work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
-                )
-            ).join(
-                work_item_delivery_cycle_durations,
-                work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
-            ).join(
-                work_items_source_state_map,
-                and_(
-                    work_items.c.work_items_source_id == work_items_source_state_map.c.work_items_source_id,
-                    work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state
-                )
-            )).where(
-                work_item_delivery_cycles.c.end_date >= window_start
-            ).group_by(
-                project_nodes.c.id,
-                work_items.c.id
-            ).alias()
+                work_items_cycle_metrics, work_items_cycle_metrics.c.work_items_source_id == work_items_sources.c.id
+            )).alias()
 
         return select([
             project_nodes.c.id,
-            func.min(work_item_cycle_metrics.c.lead_time).label('min_lead_time'),
-            func.avg(work_item_cycle_metrics.c.lead_time).label('avg_lead_time'),
-            func.max(work_item_cycle_metrics.c.lead_time).label('max_lead_time'),
-            func.min(work_item_cycle_metrics.c.cycle_time).label('min_cycle_time'),
-            func.avg(work_item_cycle_metrics.c.cycle_time).label('avg_cycle_time'),
-            func.max(work_item_cycle_metrics.c.cycle_time).label('max_cycle_time'),
-            func.percentile_disc(target_percentile).within_group(work_item_cycle_metrics.c.lead_time).label(
+            func.min(project_work_item_cycle_metrics.c.lead_time).label('min_lead_time'),
+            func.avg(project_work_item_cycle_metrics.c.lead_time).label('avg_lead_time'),
+            func.max(project_work_item_cycle_metrics.c.lead_time).label('max_lead_time'),
+            func.min(project_work_item_cycle_metrics.c.cycle_time).label('min_cycle_time'),
+            func.avg(project_work_item_cycle_metrics.c.cycle_time).label('avg_cycle_time'),
+            func.max(project_work_item_cycle_metrics.c.cycle_time).label('max_cycle_time'),
+            func.percentile_disc(target_percentile).within_group(project_work_item_cycle_metrics.c.lead_time).label(
                 'percentile_lead_time'),
-            func.percentile_disc(target_percentile).within_group(work_item_cycle_metrics.c.cycle_time).label('percentile_cycle_time'),
-            func.min(work_item_cycle_metrics.c.start_date).label('earliest_closed_date'),
-            func.max(work_item_cycle_metrics.c.end_date).label('latest_closed_date'),
-            func.count(work_item_cycle_metrics.c.work_item_id).label('work_items_in_scope'),
+            func.percentile_disc(target_percentile).within_group(project_work_item_cycle_metrics.c.cycle_time).label(
+                'percentile_cycle_time'),
+            func.min(project_work_item_cycle_metrics.c.end_date).label('earliest_closed_date'),
+            func.max(project_work_item_cycle_metrics.c.end_date).label('latest_closed_date'),
+            func.count(project_work_item_cycle_metrics.c.work_item_id).label('work_items_in_scope'),
             func.sum(
-                case([(and_(work_item_cycle_metrics.c.work_item_id != None, work_item_cycle_metrics.c.cycle_time == None), 1)], else_=0)
+                case([
+                    (and_(project_work_item_cycle_metrics.c.work_item_id != None,
+                          project_work_item_cycle_metrics.c.cycle_time == None), 1)
+                ], else_=0)
             ).label('work_items_with_null_cycle_time'),
             literal_column(f'{target_percentile}').label('target_percentile')
         ]).select_from(
             project_nodes.outerjoin(
-                work_item_cycle_metrics, project_nodes.c.id == work_item_cycle_metrics.c.project_id
+                project_work_item_cycle_metrics, project_nodes.c.id == project_work_item_cycle_metrics.c.project_id
             )
         ).group_by(
             project_nodes.c.id

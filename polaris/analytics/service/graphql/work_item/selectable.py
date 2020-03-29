@@ -19,7 +19,7 @@ from polaris.analytics.db.model import \
 
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
-    WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary
+    WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, CycleMetrics
 
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
     work_item_events_connection_apply_time_window_filters
@@ -161,4 +161,11 @@ class WorkItemsCommitSummary(InterfaceResolver):
             )
         ).group_by(work_item_nodes.c.id)
 
+
+class WorkItemsCycleMetrics(InterfaceResolver):
+    interface = CycleMetrics
+
+    @staticmethod
+    def interface_selector(named_node_cte, **kwargs):
+        pass
 

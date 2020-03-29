@@ -11,6 +11,7 @@
 from datetime import datetime, timedelta
 from sqlalchemy import and_, cast, Text, func, case, select
 from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.utils.exceptions import ProcessingException
 
 from polaris.analytics.db.model import work_items, work_item_delivery_cycles, work_item_delivery_cycle_durations, \
     work_items_source_state_map
@@ -144,8 +145,14 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
         return select_stmt
 
 
-def work_items_cycle_metrics(cycle_metrics_days):
-    window_start = datetime.utcnow() - timedelta(days=cycle_metrics_days)
+def work_items_cycle_metrics(**kwargs):
+    closed_within_days = kwargs.get('closed_within_days')
+    if closed_within_days is None:
+        raise ProcessingException(
+            "The argument 'closed_within_days' must be specified when computing cycle metrics"
+        )
+
+    window_start = datetime.utcnow() - timedelta(days=closed_within_days)
     return select([
         *work_items.columns,
         work_items.c.id.label('work_item_id'),

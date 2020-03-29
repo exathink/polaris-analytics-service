@@ -137,7 +137,7 @@ Implicit Interfaces: ArchivedStatus
                 description="When evaluating contributor count "
                             "return only contributors that have committed code to the project in this many days"
             ),
-            cycle_metrics_days=graphene.Argument(
+            closed_within_days=graphene.Argument(
                 graphene.Int,
                 required=False,
                 description="When evaluating cycle metrics "

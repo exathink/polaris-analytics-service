@@ -167,9 +167,7 @@ class WorkItemsCycleMetrics(InterfaceResolver):
 
     @staticmethod
     def interface_selector(work_items_nodes, **kwargs):
-        work_items_cycle_metrics_alias = work_items_cycle_metrics(
-            kwargs.get('cycle_metrics_days')
-        ).alias()
+        work_items_cycle_metrics_alias = work_items_cycle_metrics(**kwargs).alias()
 
         return select([
             work_items_nodes.c.id,

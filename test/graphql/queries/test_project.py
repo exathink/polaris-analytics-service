@@ -485,7 +485,7 @@ class TestProjectCycleMetrics:
         query = """
                             query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
                                 project(key: $project_key, interfaces: [AggregateCycleMetrics], 
-                                        cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                                        closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                                 ) {
                                     ... on AggregateCycleMetrics {
                                         minLeadTime
@@ -551,7 +551,7 @@ class TestProjectCycleMetrics:
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
                         project(key: $project_key, interfaces: [AggregateCycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
                             ... on AggregateCycleMetrics {
                                 minLeadTime
@@ -625,7 +625,7 @@ class TestProjectCycleMetrics:
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
                         project(key: $project_key, interfaces: [AggregateCycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
                             ... on AggregateCycleMetrics {
                                 minLeadTime
@@ -704,7 +704,7 @@ class TestProjectCycleMetrics:
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
                         project(key: $project_key, interfaces: [AggregateCycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
                             ... on AggregateCycleMetrics {
                                 minLeadTime
@@ -783,7 +783,7 @@ class TestProjectCycleMetrics:
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
                         project(key: $project_key, interfaces: [AggregateCycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
                             ... on AggregateCycleMetrics {
                                 
@@ -841,7 +841,7 @@ class TestProjectCycleMetrics:
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
                         project(key: $project_key, interfaces: [AggregateCycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
                             ... on AggregateCycleMetrics {
 
@@ -898,7 +898,7 @@ class TestProjectCycleMetrics:
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
                         project(key: $project_key, interfaces: [AggregateCycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
                             ... on AggregateCycleMetrics {
                                 minLeadTime

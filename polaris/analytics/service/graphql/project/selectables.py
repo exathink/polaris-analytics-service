@@ -10,13 +10,12 @@ from datetime import datetime, timedelta
 
 # Author: Krishna Kumar
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column
-from polaris.analytics.db.enums import WorkItemsStateType
+
 
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
-    work_items, work_item_state_transitions, work_items_commits, work_item_delivery_cycles, \
-    work_item_delivery_cycle_durations, work_items_source_state_map
+    work_items, work_item_state_transitions, work_items_commits
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
     SelectableFieldResolver
 from polaris.graphql.interfaces import NamedNode
@@ -29,10 +28,10 @@ from ..interfaces import \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeCounts, AggregateCycleMetrics
+from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_time_window_filters
 
-from ..work_item import sql_expressions
 
 class ProjectNode(NamedNodeResolver):
     interfaces = (NamedNode, ArchivedStatus)
@@ -520,9 +519,8 @@ class ProjectCycleMetrics(InterfaceResolver):
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
         target_percentile = kwargs.get('cycle_metrics_target_percentile')
-
         work_items_cycle_metrics = sql_expressions.work_items_cycle_metrics(
-            kwargs.get('cycle_metrics_days')
+            **kwargs
         ).alias()
 
         project_work_item_cycle_metrics = select([

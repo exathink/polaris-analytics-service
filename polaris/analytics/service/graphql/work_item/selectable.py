@@ -10,6 +10,8 @@
 
 from sqlalchemy import select, bindparam, and_, func
 
+from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
+
 from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
     work_items_commits, repositories, commits, \
@@ -19,17 +21,18 @@ from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary
 
+from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
+    work_item_events_connection_apply_time_window_filters
 
-from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, work_item_events_connection_apply_time_window_filters
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters, \
+    commit_key_column, commit_name_column
 
-from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters, commit_key_column, commit_name_column
 
-
-class WorkItemNode:
+class WorkItemNode(NamedNodeResolver):
     interfaces = (NamedNode, WorkItemInfo)
 
     @staticmethod
-    def selectable(**kwargs):
+    def named_node_selector(**kwargs):
         return select([
             work_items.c.id,
             work_items.c.key,
@@ -41,11 +44,11 @@ class WorkItemNode:
 
 
 # Commits collection on a single work item instance
-class WorkItemCommitNodes:
+class WorkItemCommitNodes(ConnectionResolver):
     interface = CommitInfo
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         select_stmt = select([
             *commit_info_columns(repositories, commits)
         ]).select_from(
@@ -65,13 +68,14 @@ class WorkItemCommitNodes:
     def sort_order(work_item_commit_nodes, **kwargs):
         return [work_item_commit_nodes.c.commit_date.desc()]
 
+
 # work item events collection on a single work item
 
-class WorkItemEventNodes:
+class WorkItemEventNodes(ConnectionResolver):
     interfaces = (NamedNode, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition)
 
     @staticmethod
-    def selectable(**kwargs):
+    def connection_nodes_selector(**kwargs):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
@@ -89,11 +93,11 @@ class WorkItemEventNodes:
 
 # a generic work item event accessed via its node id of the form work_item_key:seq_no
 
-class WorkItemEventNode:
+class WorkItemEventNode(NamedNodeResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemStateTransition, WorkItemsSourceRef)
 
     @staticmethod
-    def selectable(**kwargs):
+    def named_node_selector(**kwargs):
         return select([
             *work_item_event_columns(work_items, work_item_state_transitions),
             work_items_sources.c.key.label('work_items_source_key'),
@@ -114,11 +118,11 @@ class WorkItemEventNode:
 
 
 # a generic work_item_commit accessed by its node id of the form work_item_key:commit_key
-class WorkItemCommitNode:
+class WorkItemCommitNode(NamedNodeResolver):
     interface = (WorkItemInfo, WorkItemCommitInfo)
 
     @staticmethod
-    def selectable(**kwargs):
+    def named_node_selector(**kwargs):
         select_stmt = select([
             *work_item_info_columns(work_items),
             *work_item_commit_info_columns(work_items, repositories, commits)
@@ -137,25 +141,24 @@ class WorkItemCommitNode:
             )
         )
 
-class WorkItemsCommitSummary:
+
+class WorkItemsCommitSummary(InterfaceResolver):
     interface = CommitSummary
+
     @staticmethod
-    def selectable(work_items_node, **kwargs):
+    def interface_selector(work_item_nodes, **kwargs):
         return select([
-            work_items_node.c.id,
+            work_item_nodes.c.id,
             func.count(commits.c.commit_date).label('commit_count'),
             func.min(commits.c.commit_date).label('earliest_commit'),
             func.max(commits.c.commit_date).label('latest_commit')
 
         ]).select_from(
-            work_items_node.join(
-                work_items_commits, work_items_commits.c.work_item_id == work_items_node.c.id
+            work_item_nodes.join(
+                work_items_commits, work_items_commits.c.work_item_id == work_item_nodes.c.id
             ).join(
                 commits, commits.c.id == work_items_commits.c.commit_id
             )
-        ).group_by(work_items_node.c.id)
-
-
-
+        ).group_by(work_item_nodes.c.id)
 
 

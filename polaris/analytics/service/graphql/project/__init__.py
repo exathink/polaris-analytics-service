@@ -14,7 +14,7 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
-    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, CycleMetrics
+    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin
@@ -98,7 +98,7 @@ Implicit Interfaces: ArchivedStatus
             OrganizationRef,
             WorkItemEventSpan,
             WorkItemStateTypeCounts,
-            CycleMetrics,
+            AggregateCycleMetrics,
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -108,7 +108,7 @@ Implicit Interfaces: ArchivedStatus
             'OrganizationRef': ProjectsOrganizationRef,
             'WorkItemEventSpan': ProjectWorkItemEventSpan,
             'WorkItemStateTypeCounts': ProjectWorkItemStateTypeCounts,
-            'CycleMetrics': ProjectCycleMetrics
+            'AggregateCycleMetrics': ProjectCycleMetrics
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,

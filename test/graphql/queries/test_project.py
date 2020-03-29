@@ -484,10 +484,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                             query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                                project(key: $project_key, interfaces: [CycleMetrics], 
+                                project(key: $project_key, interfaces: [AggregateCycleMetrics], 
                                         cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
                                 ) {
-                                    ... on CycleMetrics {
+                                    ... on AggregateCycleMetrics {
                                         minLeadTime
                                         avgLeadTime
                                         maxLeadTime
@@ -550,10 +550,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
                                 cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
                                 minLeadTime
                                 avgLeadTime
                                 maxLeadTime
@@ -624,10 +624,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
                                 cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
                                 minLeadTime
                                 avgLeadTime
                                 maxLeadTime
@@ -703,10 +703,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
                                 cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
                                 minLeadTime
                                 avgLeadTime
                                 maxLeadTime
@@ -782,10 +782,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
                                 cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
                                 
                                 percentileLeadTime
                                 percentileCycleTime
@@ -840,10 +840,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
                                 cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
 
                                 workItemsWithNullCycleTime
 
@@ -897,10 +897,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
                                 cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
                                 minLeadTime
                                 avgLeadTime
                                 maxLeadTime

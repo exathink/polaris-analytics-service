@@ -28,7 +28,7 @@ from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeCounts, CycleMetrics
+    WorkItemStateTypeCounts, AggregateCycleMetrics
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_time_window_filters
 
@@ -514,7 +514,7 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
 
 
 class ProjectCycleMetrics(InterfaceResolver):
-    interface = CycleMetrics
+    interface = AggregateCycleMetrics
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):

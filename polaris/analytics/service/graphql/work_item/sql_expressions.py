@@ -30,6 +30,10 @@ def work_item_commit_name_column(work_items, commits):
                                                              Text)).label('name')
 
 
+def work_item_delivery_cycle_key_column(work_items, work_item_delivery_cycles):
+    return (cast(work_items.c.key, Text) + ':' + cast(work_item_delivery_cycles.c.delivery_cycle_id, Text)).label('key')
+
+
 def work_item_info_columns(work_items):
     return [
         work_items.c.display_id,
@@ -91,6 +95,16 @@ def work_item_commit_info_columns(work_items, repositories, commits):
     ]
 
 
+def work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles):
+    return [
+        work_item_delivery_cycle_key_column(work_items, work_item_delivery_cycles),
+        work_items.c.name,
+        work_item_delivery_cycles.c.start_date,
+        work_item_delivery_cycles.c.end_date,
+        case([(work_item_delivery_cycles.c.end_date != None, True)], else_=False).label('closed')
+    ]
+
+
 def work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs):
     before = None
     if 'before' in kwargs:
@@ -145,11 +159,15 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
         return select_stmt
 
 
+def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
+    return select_stmt
+
+
 def work_items_cycle_metrics(**kwargs):
     closed_within_days = kwargs.get('closed_within_days')
     if closed_within_days is None:
         raise ProcessingException(
-            "The argument 'closed_within_days' must be specified when computing cycle metrics"
+            "The argument 'closedWithinDays' must be specified when computing cycle metrics"
         )
 
     window_start = datetime.utcnow() - timedelta(days=closed_within_days)

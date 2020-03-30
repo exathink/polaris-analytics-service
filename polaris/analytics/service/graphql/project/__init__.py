@@ -142,7 +142,6 @@ Implicit Interfaces: ArchivedStatus
                 required=False,
                 description="When evaluating cycle metrics "
                             "calculate them over work items that have closed in this many prior days",
-                default_value=30
             ),
             cycle_metrics_target_percentile=graphene.Argument(
                 graphene.Float,

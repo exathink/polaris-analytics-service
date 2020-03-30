@@ -9,11 +9,14 @@
 # Author: Krishna Kumar
 
 import graphene
+
+from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.graphql.interfaces import NamedNode
 
 from polaris.common.enums import WorkTrackingIntegrationType as _WorkTrackingIntegrationType
 
 WorkTrackingIntegrationType = graphene.Enum.from_enum(_WorkTrackingIntegrationType)
+WorkItemsStateType = graphene.Enum.from_enum(WorkItemsStateType)
 
 
 class FileTypesSummary(graphene.ObjectType):

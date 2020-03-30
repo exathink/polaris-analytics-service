@@ -11,11 +11,10 @@ from datetime import datetime, timedelta
 # Author: Krishna Kumar
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column
 
-
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
-    work_items, work_item_state_transitions, work_items_commits
+    work_items, work_item_state_transitions, work_items_commits, work_item_delivery_cycles
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
     SelectableFieldResolver
 from polaris.graphql.interfaces import NamedNode
@@ -27,10 +26,11 @@ from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeCounts, AggregateCycleMetrics
+    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
-    work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_time_window_filters
+    work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_time_window_filters, \
+    work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
 
 
 class ProjectNode(NamedNodeResolver):
@@ -291,6 +291,34 @@ class ProjectWorkItemCommitNodes(ConnectionResolver):
     @staticmethod
     def sort_order(project_work_item_commits_nodes, **kwargs):
         return [project_work_item_commits_nodes.c.commit_date.desc()]
+
+
+class ProjectWorkItemDeliveryCycleNodes(ConnectionResolver):
+    interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        select_stmt = select([
+            *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles),
+            *work_item_info_columns(work_items),
+        ]).select_from(
+            projects.join(
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            )
+        ).where(
+            projects.c.key == bindparam('key')
+        )
+        return work_item_delivery_cycles_connection_apply_filters(
+            select_stmt, work_items, work_item_delivery_cycles, **kwargs
+        )
+
+    @staticmethod
+    def sort_order(project_work_item_delivery_cycle_nodes, **kwargs):
+        return [project_work_item_delivery_cycle_nodes.c.end_date.desc().nullsfirst()]
 
 
 class ProjectCumulativeCommitCount(SelectableFieldResolver):

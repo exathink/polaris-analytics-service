@@ -13,7 +13,7 @@ import graphene
 from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, \
-    WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo
+    WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType
 
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
@@ -171,6 +171,16 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
             required=False,
             description="Return work items that were closed within this many days from utc now. This argument is "
                         "required if you are resolve cycle metrics related interfaces in your query"
+        ),
+        active_only=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            description="Return only delivery cycles that are not closed"
+        ),
+        state_types=graphene.Argument(
+            graphene.List(WorkItemsStateType),
+            required=False,
+            description="Include only delivery cycles for work items with the specified state types"
         )
     )
 

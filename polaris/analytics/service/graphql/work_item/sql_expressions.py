@@ -160,6 +160,17 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
 
 
 def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
+    if 'closed_within_days' in kwargs:
+        window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
+        select_stmt = select_stmt.where(
+            work_item_delivery_cycles.c.end_date >= window_start
+        )
+    if 'active_only' in kwargs:
+        select_stmt = select_stmt.where(work_item_delivery_cycles.c.end_date == None)
+
+    if 'state_types' in kwargs:
+        select_stmt = select_stmt.where(work_items.c.state_type.in_(kwargs.get('state_types')))
+
     return select_stmt
 
 

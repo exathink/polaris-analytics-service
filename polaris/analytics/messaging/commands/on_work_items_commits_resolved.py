@@ -19,3 +19,6 @@ class UpdateCommitsWorkItemsSummaries(WorkItemsCommitsResolved):
 class InferProjectsRepositoriesRelationships(WorkItemsCommitsResolved):
     message_type = 'analytics.infer_projects_repositories_relationships'
 
+
+class UpdateWorkItemsCommitsSpan(WorkItemsCommitsResolved):
+    message_type = 'analytics.update_work_items_commits_span'

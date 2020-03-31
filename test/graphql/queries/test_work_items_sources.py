@@ -11,6 +11,7 @@
 from test.fixtures.graphql import *
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
+from polaris.analytics.db.enums import WorkItemsStateType
 
 
 class TestWorkItemsSourceInstance:
@@ -163,74 +164,52 @@ class TestWorkItemsSourceWorkItemCommits:
             assert node['commitMessage']
 
 
-class TestWorkItemsSourceWorkItemsStateMapping:
+@pytest.yield_fixture
+def work_items_sources_state_mapping_fixture(work_items_sources_fixture):
+    _, work_items_sources = work_items_sources_fixture
+    with db.orm_session() as session:
+        session.add(work_items_sources['github'])
+        work_items_sources['github'].init_state_map([
+            dict(state='created', state_type=WorkItemsStateType.backlog.value),
+            dict(state='open', state_type=WorkItemsStateType.backlog.value),
+            dict(state='upnext', state_type=WorkItemsStateType.open.value),
+            dict(state='doing', state_type=WorkItemsStateType.wip.value),
+            dict(state='done', state_type=WorkItemsStateType.complete.value),
+            dict(state='closed', state_type=WorkItemsStateType.closed.value)
+        ])
 
-    def it_resolves_work_items_state_mappings_for_jira(self, jira_work_items_source_work_items_states_fixture):
-        source_key,_ = jira_work_items_source_work_items_states_fixture
+
+    yield work_items_sources['github'].key
+
+
+class TestWorkItemsSourceWorkItemStateMappings:
+
+    def it_resolves_work_items_state_mappings(self, work_items_sources_state_mapping_fixture):
+        source_key = work_items_sources_state_mapping_fixture
+
         client = Client(schema)
         query = """
             query getWorkItemsSource($key:String!) {
-                workItemsSource(key: $key){
-                    workItemsStateMapping {
+                workItemsSource(key: $key, interfaces: [WorkItemStateMappings]){
+                    workItemStateMappings {
                         state
                         stateType
-                        }
+                    }
                 }
             }
         """
         result = client.execute(query, variable_values=dict(key=source_key))
         assert 'data' in result
-        work_items_state_mapping = result['data']['workItemsSource']['workItemsStateMapping']
-        states = [mapping['state'].lower() for mapping in work_items_state_mapping]
-        state_types = [mapping['stateType'] for mapping in work_items_state_mapping]
-        assert len(set(states))==len(states)
-        assert 'backlog' in states
-        assert not any(state_types) #Since no state is mapped for jira
+        work_items_state_mapping = result['data']['workItemsSource']['workItemStateMappings']
 
-
-    def it_resolves_work_items_state_mappings_for_github(self, github_work_items_source_work_items_states_fixture):
-        source_key,_ = github_work_items_source_work_items_states_fixture
-        client = Client(schema)
-        query = """
-            query getWorkItemsSource($key:String!) {
-                workItemsSource(key: $key){
-                    workItemsStateMapping {
-                        state
-                        stateType
-                        }
-                }
-            }
-        """
-        result = client.execute(query, variable_values=dict(key=source_key))
-        assert 'data' in result
-        work_items_state_mapping = result['data']['workItemsSource']['workItemsStateMapping']
-        states = [mapping['state'].lower() for mapping in work_items_state_mapping]
-        state_types = [mapping['stateType'] for mapping in work_items_state_mapping]
-        assert len(set(states))==len(states)
-        assert 'backlog' in states
-        assert 'closed' not in states
-        assert any(state_types)
-
-
-    def it_resolves_work_items_state_mappings_for_pivotal(self, pivotal_work_items_source_work_items_states_fixture):
-        source_key,_ = pivotal_work_items_source_work_items_states_fixture
-        client = Client(schema)
-        query = """
-            query getWorkItemsSource($key:String!) {
-                workItemsSource(key: $key){
-                    workItemsStateMapping {
-                        state
-                        stateType
-                        }
-                }
-            }
-        """
-        result = client.execute(query, variable_values=dict(key=source_key))
-        assert 'data' in result
-        work_items_state_mapping = result['data']['workItemsSource']['workItemsStateMapping']
-        states = [mapping['state'].lower() for mapping in work_items_state_mapping]
-        state_types = [mapping['stateType'] for mapping in work_items_state_mapping]
-        assert len(set(states))==len(states)
-        assert 'backlog' in states
-        assert 'started' not in states
-        assert any(state_types)
+        assert {
+            (mapping['state'], mapping['stateType'])
+            for mapping in work_items_state_mapping
+        } == {
+            ('created', WorkItemsStateType.backlog.value),
+            ('open', WorkItemsStateType.backlog.value),
+            ('upnext', WorkItemsStateType.open.value),
+            ('doing', WorkItemsStateType.wip.value),
+            ('done', WorkItemsStateType.complete.value),
+            ('closed', WorkItemsStateType.closed.value)
+        }

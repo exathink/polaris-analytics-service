@@ -135,11 +135,6 @@ class WorkItemEventSpan(graphene.Interface):
     latest_work_item_event = graphene.DateTime(required=False)
 
 
-class WorkItemStateMapping(graphene.Interface):
-    state = graphene.String(required=True)
-    state_type = graphene.String(required=False)
-
-
 class AccountInfo(graphene.Interface):
     created = graphene.DateTime(required=False)
     updated = graphene.DateTime(required=False)
@@ -229,3 +224,11 @@ class CycleMetrics(graphene.Interface):
     work_items_in_scope = graphene.Int(required=False)
     work_items_with_null_cycle_time = graphene.Int(required=False)
 
+
+class StateMapping(graphene.ObjectType):
+    state = graphene.String(required=True)
+    state_type = graphene.String(required=False)
+
+
+class WorkItemStateMappings(graphene.Interface):
+    work_item_state_mappings = graphene.Field(graphene.List(StateMapping))

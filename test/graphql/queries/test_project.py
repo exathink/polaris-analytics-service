@@ -383,7 +383,6 @@ class TestProjectWorkItemStateTypeCounts:
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
 
 
-
 @pytest.yield_fixture
 def project_cycle_metrics_test_fixture(api_work_items_import_fixture):
     organization, project, work_items_source, work_items_common = api_work_items_import_fixture
@@ -431,7 +430,6 @@ def project_cycle_metrics_test_fixture(api_work_items_import_fixture):
     state_type_counts = result['data']['project']['workItemStateTypeCounts']
     assert state_type_counts['backlog'] == 1
     assert state_type_counts['unmapped'] == 1
-
 
 
 class WorkItemApiHelper:
@@ -483,7 +481,6 @@ class TestProjectCycleMetrics:
         api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
         api_helper.update_work_items([(0, 'done', start_date + timedelta(days=4))])
 
-
         client = Client(schema)
         query = """
                             query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
@@ -529,7 +526,6 @@ class TestProjectCycleMetrics:
         api_helper = WorkItemApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
-
 
         work_items = [
             dict(
@@ -862,7 +858,6 @@ class TestProjectCycleMetrics:
         project = result['data']['project']
         assert project['workItemsWithNullCycleTime'] == 1
 
-
     def it_respects_the_days_parameter(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemApiHelper(organization, work_items_source)
@@ -941,3 +936,93 @@ class TestProjectCycleMetrics:
         assert project['workItemsWithNullCycleTime'] == 0
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 10
         assert (graphql_date(project['latestClosedDate']) - start_date).days == 10
+
+
+@pytest.yield_fixture
+def project_work_items_source_state_mapping_fixture(org_repo_fixture):
+    organization, projects, _ = org_repo_fixture
+
+    project = projects['mercury']
+    with db.orm_session() as session:
+        session.add(organization)
+        session.add(project)
+
+        work_items_source = WorkItemsSource(
+            key=uuid.uuid4(),
+            organization_key=organization.key,
+            integration_type='jira',
+            commit_mapping_scope='repository',
+            commit_mapping_scope_key=None,
+            project_id=project.id,
+            **work_items_source_common
+        )
+        work_items_source.init_state_map(
+            [
+                dict(state='created', state_type=WorkItemsStateType.backlog.value),
+                dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
+                dict(state='upnext', state_type=WorkItemsStateType.open.value),
+                dict(state='doing', state_type=WorkItemsStateType.wip.value),
+                dict(state='done', state_type=WorkItemsStateType.complete.value),
+                dict(state='closed', state_type=WorkItemsStateType.closed.value),
+            ]
+        )
+        organization.work_items_sources.append(work_items_source)
+
+        work_items_source = WorkItemsSource(
+            key=uuid.uuid4(),
+            organization_key=organization.key,
+            integration_type='github',
+            commit_mapping_scope='repository',
+            commit_mapping_scope_key=None,
+            project_id=project.id,
+            **work_items_source_common
+        )
+        work_items_source.init_state_map(
+            [
+                dict(state='created', state_type=WorkItemsStateType.backlog.value),
+                dict(state='open', state_type=WorkItemsStateType.backlog.value),
+                dict(state='closed', state_type=WorkItemsStateType.closed.value),
+            ]
+        )
+        organization.work_items_sources.append(work_items_source)
+
+    yield project
+
+    db.connection().execute("delete  from analytics.work_items_source_state_map")
+    db.connection().execute("delete  from analytics.work_items_sources")
+
+
+class TestProjectWorkItemsSourceWorkItemStateMappings:
+
+    def it_returns_work_item_state_mappings_for_each_work_item_source_in_the_project(
+            self, project_work_items_source_state_mapping_fixture):
+        project = project_work_items_source_state_mapping_fixture
+
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemSourceStateMappings($project_key:String!){
+                        project(key: $project_key) {
+                            workItemsSources (interfaces: [WorkItemStateMappings]){
+                                edges {
+                                    node {
+                                        workItemStateMappings {
+                                            state
+                                            stateType
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                  """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+
+        assert result['data']
+        work_item_sources = result['data']['project']['workItemsSources']['edges']
+        assert len(work_item_sources) == 2
+        assert {
+            len(work_item_source['node']['workItemStateMappings'])
+            for work_item_source in work_item_sources
+        } == {
+            6,3
+        }

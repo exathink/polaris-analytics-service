@@ -20,5 +20,5 @@ class InferProjectsRepositoriesRelationships(WorkItemsCommitsResolved):
     message_type = 'analytics.infer_projects_repositories_relationships'
 
 
-class UpdateWorkItemsCommitsSpan(WorkItemsCommitsResolved):
-    message_type = 'analytics.update_work_items_commits_span'
+class ComputeImplementationComplexityMetrics(WorkItemsCommitsResolved):
+    message_type = 'analytics.compute_implementation_complexity_metrics'

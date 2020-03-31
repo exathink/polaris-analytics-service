@@ -215,8 +215,8 @@ class DeliveryCycleInfo(graphene.Interface):
 
 
 class CycleMetrics(graphene.Interface):
-    lead_time = graphene.Int(required=False)
-    cycle_time = graphene.Int(required=False)
+    lead_time = graphene.Float(required=False)
+    cycle_time = graphene.Float(required=False)
 
 
 class AggregateCycleMetrics(graphene.Interface):

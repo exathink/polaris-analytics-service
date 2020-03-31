@@ -13,11 +13,11 @@ import graphene
 from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, \
-    WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType
+    WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics
 
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
-    WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes
+    WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -141,9 +141,11 @@ class WorkItemDeliveryCycle(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo)
+        interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, CycleMetrics)
         named_node_resolver = WorkItemDeliveryCycleNode
-        interface_resolvers = {}
+        interface_resolvers = {
+            'CycleMetrics': WorkItemDeliveryCycleCycleMetrics
+        }
         connection_class = lambda: WorkItemDeliveryCycles
 
     @classmethod
@@ -189,6 +191,7 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
             self.get_connection_resolver_context('work_item_delivery_cycles'),
             self.get_connection_node_resolver('work_item_delivery_cycles'),
             self.get_instance_query_params(),
+            join_field='key',
             **kwargs
         )
 

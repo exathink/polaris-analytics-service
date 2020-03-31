@@ -30,8 +30,13 @@ def work_item_commit_name_column(work_items, commits):
                                                              Text)).label('name')
 
 
-def work_item_delivery_cycle_key_column(work_items, work_item_delivery_cycles):
-    return (cast(work_items.c.key, Text) + ':' + cast(work_item_delivery_cycles.c.delivery_cycle_id, Text)).label('key')
+def work_item_delivery_cycle_key_columns(work_items, work_item_delivery_cycles):
+    return [
+        (cast(work_items.c.key, Text) + ':' + cast(work_item_delivery_cycles.c.delivery_cycle_id, Text)).label('key'),
+        work_item_delivery_cycles.c.work_item_id,
+        work_item_delivery_cycles.c.delivery_cycle_id,
+        work_items.c.work_items_source_id
+    ]
 
 
 def work_item_info_columns(work_items):
@@ -97,7 +102,7 @@ def work_item_commit_info_columns(work_items, repositories, commits):
 
 def work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles):
     return [
-        work_item_delivery_cycle_key_column(work_items, work_item_delivery_cycles),
+        *work_item_delivery_cycle_key_columns(work_items, work_item_delivery_cycles),
         work_items.c.name,
         work_item_delivery_cycles.c.start_date,
         work_item_delivery_cycles.c.end_date,

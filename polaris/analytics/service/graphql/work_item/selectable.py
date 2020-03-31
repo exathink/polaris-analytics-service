@@ -8,14 +8,18 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam, and_, func
+from sqlalchemy import select, bindparam, and_, func, case
+from datetime import datetime, timedelta
 
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
-
+from polaris.utils.exceptions import ProcessingException
 from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
     work_items_commits, repositories, commits, \
-    work_items_sources, work_item_delivery_cycles
+    work_items_sources, work_item_delivery_cycles, work_items_source_state_map,\
+    work_item_delivery_cycle_durations
+
+from polaris.analytics.db.enums import WorkItemsStateType
 
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
@@ -187,11 +191,59 @@ class WorkItemDeliveryCycleNodes(ConnectionResolver):
         ).where(
             work_items.c.key == bindparam('key')
         )
-        return work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles,  **kwargs)
+        return work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles,
+                                                                  **kwargs)
 
     @staticmethod
     def sort_order(work_item_delivery_cycle_nodes, **kwargs):
         return [work_item_delivery_cycle_nodes.c.end_date.desc().nullsfirst()]
+
+
+class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
+    interface = CycleMetrics
+
+    @staticmethod
+    def interface_selector(work_item_delivery_cycle_nodes, **kwargs):
+        return select([
+            work_item_delivery_cycle_nodes.c.key,
+            (
+                    func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)
+            ).label('lead_time'),
+            (
+                    func.sum(
+                        case([
+                            (
+                                work_items_source_state_map.c.state_type.in_([
+                                    WorkItemsStateType.open.value,
+                                    WorkItemsStateType.wip.value,
+                                    WorkItemsStateType.complete.value]),
+                                work_item_delivery_cycle_durations.c.cumulative_time_in_state
+                            )
+                        ],
+                            else_=None
+                        )
+                    ) / (1.0 * 3600 * 24)
+            ).label('cycle_time'),
+            func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
+        ]).select_from(
+            work_item_delivery_cycle_nodes.outerjoin(
+                work_item_delivery_cycles,
+                and_(
+                    work_item_delivery_cycle_nodes.c.work_item_id == work_item_delivery_cycles.c.work_item_id,
+                    work_item_delivery_cycle_nodes.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+                )
+            ).outerjoin(
+                work_item_delivery_cycle_durations,
+                work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycle_nodes.c.delivery_cycle_id
+            ).join(
+                work_items_source_state_map,
+                and_(
+                    work_item_delivery_cycle_nodes.c.work_items_source_id == work_items_source_state_map.c.work_items_source_id,
+                    work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state
+                )
+            )).group_by(
+            work_item_delivery_cycle_nodes.c.key,
+        )
 
 
 # -----------------------------
@@ -216,6 +268,3 @@ class WorkItemsCommitSummary(InterfaceResolver):
                 commits, commits.c.id == work_items_commits.c.commit_id
             )
         ).group_by(work_item_nodes.c.id)
-
-
-

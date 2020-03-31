@@ -726,6 +726,7 @@ class WorkItemDeliveryCycles(Base):
     lead_time = Column(Integer, nullable=True)
     earliest_commit = Column(DateTime, nullable=True)
     latest_commit = Column(DateTime, nullable=True)
+    repository_count = Column(Integer, nullable=True)
 
     # Work Items relationship
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)

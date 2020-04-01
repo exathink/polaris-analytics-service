@@ -1251,7 +1251,7 @@ def infer_projects_repositories_relationships(session, organization_key, work_it
 
 
 def update_work_items_commits_span(session, work_items_temp):
-    # Update work items in work_items_commits_span with earliest and latest commits
+    # Update delivery cycles of work items in work_items_temp with earliest and latest commits
     updated = 0
 
     # select relevant rows to find commits span
@@ -1290,7 +1290,39 @@ def update_work_items_commits_span(session, work_items_temp):
 
 
 def update_work_items_commits_repository_count(session, work_items_temp):
+    # Update delivery cycles of work items in work_items_temp with repository count
     updated = 0
+
+    # select relevant rows to find commits span
+    delivery_cycles_commits_rows = select([
+        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        func.count(distinct(commits.c.repository_id)).label('repository_count'),
+    ]).select_from(
+        work_items_temp.join(
+            work_items, work_items.c.key == work_items_temp.c.work_item_key
+        ).join(
+            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+        ).join(
+            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+        ).join(
+            commits, work_items_commits_table.c.commit_id == commits.c.id
+        )
+    ).where(
+        commits.c.commit_date >= work_item_delivery_cycles.c.start_date
+    ).group_by(
+        work_item_delivery_cycles.c.delivery_cycle_id,
+
+    ).cte('delivery_cycles_commits_rows')
+
+    # update relevant work items delivery cycles with repository_count
+    updated = session.connection().execute(
+        work_item_delivery_cycles.update().where(
+            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
+        ).values(
+            repository_count=delivery_cycles_commits_rows.c.repository_count
+        )
+    ).rowcount
+
     return updated
 
 

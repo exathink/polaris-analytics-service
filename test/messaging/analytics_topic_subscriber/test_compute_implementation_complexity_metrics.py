@@ -8,9 +8,7 @@
 
 # Author: Krishna Kumar
 
-from unittest.mock import patch
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
-from polaris.messaging.topics import AnalyticsTopic
 from polaris.analytics.messaging.commands import ComputeImplementationComplexityMetrics
 from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
 

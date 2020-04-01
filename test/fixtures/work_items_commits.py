@@ -42,7 +42,7 @@ test_work_items = [
 
 
 @pytest.yield_fixture()
-def update_work_items_commits_span_fixture(commits_fixture):
+def work_items_commits_fixture(commits_fixture):
     organization, projects, repositories, contributor = commits_fixture
     test_repo = repositories['alpha']
 
@@ -63,6 +63,10 @@ def update_work_items_commits_span_fixture(commits_fixture):
     test_commits[2]['commit_date'] = latest_commit_date
     test_commits[3]['commit_date'] = latest_commit_date + timedelta(days=1)
     test_commits[4]['commit_date'] = earliest_commit_date
+
+    # changing repo ids to test repository count
+    test_commits[1]['repository_id'] = repositories['beta'].id
+    test_commits[4]['repository_id'] = repositories['gamma'].id
 
     # Add commits
     create_test_commits(test_commits)

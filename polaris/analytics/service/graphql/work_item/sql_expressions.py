@@ -208,7 +208,8 @@ def work_items_cycle_metrics(**kwargs):
     return select([
         *work_items.columns,
         work_items.c.id.label('work_item_id'),
-        (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
+        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        (func.min(work_item_delivery_cycles.c.lead_time)/ (1.0 * 3600 * 24)).label('lead_time'),
         work_item_cycle_time_column_expr().label('cycle_time'),
         func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
     ]).select_from(
@@ -226,5 +227,6 @@ def work_items_cycle_metrics(**kwargs):
         )).where(
         work_item_delivery_cycles.c.end_date >= window_start
     ).group_by(
-        work_items.c.id
+        work_items.c.id,
+        work_item_delivery_cycles.c.delivery_cycle_id
     )

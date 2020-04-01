@@ -657,7 +657,6 @@ class WorkItem(Base):
     state_transitions = relationship("WorkItemStateTransition")
 
     # Work Items Delivery Cycles Relationship
-    current_delivery_cycle = relationship('WorkItemDeliveryCycles', uselist=False, back_populates="work_item")
     delivery_cycles = relationship('WorkItemDeliveryCycles', cascade='all, delete-orphan')
 
 
@@ -668,6 +667,12 @@ class WorkItem(Base):
     @classmethod
     def find_by_work_item_source_key(cls, session, work_items_source_id):
         return session.query(cls).filter(cls.work_items_source_id == work_items_source_id)
+
+    @property
+    def current_delivery_cycle(self):
+        return object_session(self).query(WorkItemDeliveryCycles).filter(
+            WorkItemDeliveryCycles.delivery_cycle_id == self.current_delivery_cycle_id
+        ).first()
 
     def get_summary(self):
         return dict(
@@ -729,7 +734,7 @@ class WorkItemDeliveryCycles(Base):
 
     # Work Items relationship
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
-    work_item = relationship('WorkItem', back_populates='current_delivery_cycle')
+    work_item = relationship('WorkItem', back_populates='delivery_cycles')
 
     delivery_cycle_durations = relationship('WorkItemDeliveryCycleDurations', cascade="all, delete-orphan")
 

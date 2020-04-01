@@ -1074,6 +1074,41 @@ class TestUpdateWorkItemsDeliveryCycles:
          join analytics.work_item_delivery_cycles on work_items.id=work_item_delivery_cycles.work_item_id \
          where work_items.current_delivery_cycle_id > work_item_delivery_cycles.delivery_cycle_id').scalar() == 1
 
+    def it_sets_the_current_delivery_cycle_of_reopened_items_to_the_new_delivery_cycle(self, update_closed_work_items_setup):
+        organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
+        # re-open closed item 1 day after close. Original cycle lead time was 7 days
+        work_items_list[0]['updated_at'] = work_items_list[0]['updated_at'] + timedelta(days=1)
+        work_items_list[0]['state'] = 'open'
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list)
+        assert result['success']
+        with db.orm_session() as session:
+            work_item = model.WorkItem.find_by_work_item_key(session, work_items_list[0]['key'])
+            current_delivery_cycle = work_item.current_delivery_cycle
+
+            assert current_delivery_cycle.start_date == work_items_list[0]['updated_at']
+            assert current_delivery_cycle.end_date is None
+            assert current_delivery_cycle.lead_time is None
+
+    def it_updates_the_stats_on_new_delivery_cycle_when_the_reopened_item_is_closed(self, update_closed_work_items_setup):
+        organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
+        # re-open closed item 1 day after close. Original cycle lead time was 7 days
+        work_items_list[0]['updated_at'] = work_items_list[0]['updated_at'] + timedelta(days=1)
+        work_items_list[0]['state'] = 'open'
+        api.update_work_items(organization_key, work_items_source_key, work_items_list)
+
+        # close it again 2 days after re-open
+        work_items_list[0]['updated_at'] = work_items_list[0]['updated_at'] + timedelta(days=2)
+        work_items_list[0]['state'] = 'closed'
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list)
+
+        assert result['success']
+        with db.orm_session() as session:
+            work_item = model.WorkItem.find_by_work_item_key(session, work_items_list[0]['key'])
+            delivery_cycles = work_item.delivery_cycles
+            assert len(delivery_cycles) == 2
+            assert set([int(cycle.lead_time/(3600*24)) for cycle in delivery_cycles]) == {7, 2}
+            assert set([(cycle.start_seq_no, cycle.end_seq_no) for cycle in delivery_cycles]) == {(0, 1), (2, 3)}
+
     def it_does_not_update_delivery_cycle_when_transition_does_not_involve_closed_state(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_work_items_setup
         # check count before update

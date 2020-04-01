@@ -16,6 +16,7 @@ from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, Wor
 from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, \
     InferProjectsRepositoriesRelationships, ResolveWorkItemsSourcesForRepositories, \
     ComputeImplementationComplexityMetrics
+
 from polaris.messaging.utils import raise_on_failure
 
 from polaris.analytics.db import api, commands

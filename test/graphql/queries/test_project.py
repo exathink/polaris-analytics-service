@@ -5,6 +5,7 @@ from datetime import timedelta
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 from polaris.analytics.db.enums import WorkItemsStateType
+from test.fixtures.graphql import WorkItemImportApiHelper
 
 
 @pytest.yield_fixture
@@ -382,83 +383,55 @@ class TestProjectWorkItemStateTypeCounts:
     def it_returns_a_count_of_unmapped_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
 
-
-@pytest.yield_fixture
-def project_cycle_metrics_test_fixture(api_work_items_import_fixture):
-    organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-    yield organization, project, work_items_source
-
-    api.import_new_work_items(
-        organization_key=organization.key,
-        work_item_source_key=work_items_source.key,
-        work_item_summaries=[
-            dict(
-                key=uuid.uuid4().hex,
-                name='Issue 1',
-                display_id='1000',
-                state='backlog',
-                created_at=get_date("2018-12-02"),
-                updated_at=get_date("2018-12-03"),
-                **work_items_common
-            ),
-            dict(
-                key=uuid.uuid4().hex,
-                name='Issue 2',
-                display_id='1001',
-                state='aFunkyState',
-                created_at=get_date("2018-12-02"),
-                updated_at=get_date("2018-12-03"),
-                **work_items_common
-            ),
-        ]
-    )
-
-    client = Client(schema)
-    query = """
-                        query getProjectWorkItemStateTypeCounts($project_key:String!) {
-                            project(key: $project_key, interfaces: [WorkItemStateTypeCounts]) {
-                                workItemStateTypeCounts {
-                                    backlog
-                                    unmapped
-                                }
-                            }
-                        }
-                    """
-
-    result = client.execute(query, variable_values=dict(project_key=project.key))
-    assert 'data' in result
-    state_type_counts = result['data']['project']['workItemStateTypeCounts']
-    assert state_type_counts['backlog'] == 1
-    assert state_type_counts['unmapped'] == 1
-
-
-class WorkItemApiHelper:
-    def __init__(self, organization, work_items_source):
-        self.organization = organization
-        self.work_items_source = work_items_source
-        self.work_items = None
-
-    def import_work_items(self, work_items):
-        self.work_items = work_items
         api.import_new_work_items(
-            organization_key=self.organization.key,
-            work_item_source_key=self.work_items_source.key,
-            work_item_summaries=work_items
+            organization_key=organization.key,
+            work_item_source_key=work_items_source.key,
+            work_item_summaries=[
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 2',
+                    display_id='1001',
+                    state='aFunkyState',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+            ]
         )
 
-    def update_work_items(self, updates):
-        for index, state, updated in updates:
-            self.work_items[index]['state'] = state
-            self.work_items[index]['updated_at'] = updated
+        client = Client(schema)
+        query = """
+                            query getProjectWorkItemStateTypeCounts($project_key:String!) {
+                                project(key: $project_key, interfaces: [WorkItemStateTypeCounts]) {
+                                    workItemStateTypeCounts {
+                                        backlog
+                                        unmapped
+                                    }
+                                }
+                            }
+                        """
 
-        api.update_work_items(self.organization.key, self.work_items_source.key, self.work_items)
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        assert state_type_counts['backlog'] == 1
+        assert state_type_counts['unmapped'] == 1
 
 
 class TestProjectCycleMetrics:
 
     def it_return_correct_results_when_there_are_no_closed_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -523,7 +496,7 @@ class TestProjectCycleMetrics:
 
     def it_computes_cycle_time_metrics_when_there_is_exactly_one_closed_item(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -592,7 +565,7 @@ class TestProjectCycleMetrics:
 
     def it_computes_cycle_time_metrics_when_there_are_two_closed_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -666,7 +639,7 @@ class TestProjectCycleMetrics:
 
     def it_computes_cycle_time_metrics_when_there_are_three_closed_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -745,7 +718,7 @@ class TestProjectCycleMetrics:
 
     def it_respects_target_percentile(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -806,7 +779,7 @@ class TestProjectCycleMetrics:
 
     def it_computes_work_items_with_null_cycle_times(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -860,7 +833,7 @@ class TestProjectCycleMetrics:
 
     def it_respects_the_days_parameter(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 

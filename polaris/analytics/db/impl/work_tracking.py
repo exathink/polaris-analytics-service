@@ -1098,13 +1098,14 @@ def update_work_item_delivery_cycles(session, work_items_temp):
         work_item_delivery_cycles.update().values(
             end_seq_no=work_items.c.next_state_seq_no,
             end_date=work_items_temp.c.updated_at,
-            lead_time=func.trunc((extract('epoch', work_items_temp.c.updated_at) - \
-                                  extract('epoch', work_items.c.created_at)))
+            lead_time=func.trunc((extract('epoch', work_items_temp.c.updated_at) -
+                                  extract('epoch', work_item_delivery_cycles.c.start_date)))
         ).where(
             and_(
                 work_items_temp.c.key == work_items.c.key,
                 work_items.c.state != work_items_temp.c.state,
                 work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id,
                 work_items_temp.c.state_type == WorkItemsStateType.closed.value
             )
         )

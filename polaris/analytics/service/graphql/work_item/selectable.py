@@ -26,7 +26,7 @@ from polaris.analytics.service.graphql.interfaces import \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics
 
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
-    work_item_events_connection_apply_time_window_filters, work_items_cycle_metrics, \
+    work_item_events_connection_apply_time_window_filters, work_item_cycle_time_column_expr,\
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
@@ -206,24 +206,8 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
     def interface_selector(work_item_delivery_cycle_nodes, **kwargs):
         return select([
             work_item_delivery_cycle_nodes.c.key,
-            (
-                    func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)
-            ).label('lead_time'),
-            (
-                    func.sum(
-                        case([
-                            (
-                                work_items_source_state_map.c.state_type.in_([
-                                    WorkItemsStateType.open.value,
-                                    WorkItemsStateType.wip.value,
-                                    WorkItemsStateType.complete.value]),
-                                work_item_delivery_cycle_durations.c.cumulative_time_in_state
-                            )
-                        ],
-                            else_=None
-                        )
-                    ) / (1.0 * 3600 * 24)
-            ).label('cycle_time'),
+            (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
+            work_item_cycle_time_column_expr().label('cycle_time'),
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
         ]).select_from(
             work_item_delivery_cycle_nodes.outerjoin(

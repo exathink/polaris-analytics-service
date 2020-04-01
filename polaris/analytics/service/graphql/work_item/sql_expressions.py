@@ -179,6 +179,24 @@ def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, 
     return select_stmt
 
 
+def work_item_cycle_time_column_expr():
+    return (
+            func.sum(
+                case([
+                    (
+                        work_items_source_state_map.c.state_type.in_([
+                            WorkItemsStateType.open.value,
+                            WorkItemsStateType.wip.value,
+                            WorkItemsStateType.complete.value]),
+                        work_item_delivery_cycle_durations.c.cumulative_time_in_state
+                    )
+                ],
+                    else_=None
+                )
+            ) / (1.0 * 3600 * 24)
+    )
+
+
 def work_items_cycle_metrics(**kwargs):
     closed_within_days = kwargs.get('closed_within_days')
     if closed_within_days is None:
@@ -190,32 +208,12 @@ def work_items_cycle_metrics(**kwargs):
     return select([
         *work_items.columns,
         work_items.c.id.label('work_item_id'),
-        (
-                func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)
-        ).label('lead_time'),
-        (
-                func.sum(
-                    case([
-                        (
-                            work_items_source_state_map.c.state_type.in_([
-                                WorkItemsStateType.open.value,
-                                WorkItemsStateType.wip.value,
-                                WorkItemsStateType.complete.value]),
-                            work_item_delivery_cycle_durations.c.cumulative_time_in_state
-                        )
-                    ],
-                        else_=None
-                    )
-                ) / (1.0 * 3600 * 24)
-        ).label('cycle_time'),
+        (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
+        work_item_cycle_time_column_expr().label('cycle_time'),
         func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
     ]).select_from(
         work_items.join(
-            work_item_delivery_cycles,
-            and_(
-                work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-                work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
-            )
+            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
         ).join(
             work_item_delivery_cycle_durations,
             work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id

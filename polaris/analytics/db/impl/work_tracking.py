@@ -1156,9 +1156,14 @@ def update_work_item_delivery_cycle_durations(session, work_items_temp):
             work_items, work_items_temp.c.key == work_items.c.key
         ).join(
             work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
+        ).join(
+            work_item_delivery_cycles, work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
         )
     ).where(
-        work_items_temp.c.state != work_items.c.state
+        and_(
+            work_items_temp.c.state != work_items.c.state,
+            work_item_state_transitions.c.created_at >= work_item_delivery_cycles.c.start_date
+        )
     ).alias()
 
     # aggregate the total duration in each state

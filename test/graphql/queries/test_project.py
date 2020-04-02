@@ -698,19 +698,20 @@ class TestProjectAggregateCycleMetrics:
 
         assert result['data']
         project = result['data']['project']
-        assert project['minLeadTime'] == 6.0
-        assert project['avgLeadTime'] == 7.0
-        assert project['maxLeadTime'] == 8.0
-        assert project['minCycleTime'] == 5.0
-        assert project['avgCycleTime'] == 6.0
-        assert project['maxCycleTime'] == 7.0
-        assert project['percentileLeadTime'] == 8.0
-        assert project['percentileCycleTime'] == 7.0
+        assert project['minLeadTime'] == 3.0
+        assert project['avgLeadTime'] == 4.5
+        assert project['maxLeadTime'] == 6.0
+        assert project['minCycleTime'] == 3.0
+        assert project['avgCycleTime'] == 4.0
+        assert project['maxCycleTime'] == 5.0
+        assert project['percentileLeadTime'] == 6.0
+        assert project['percentileCycleTime'] == 5.0
         assert project['targetPercentile'] == 0.7
-        assert project['workItemsInScope'] == 2
+        # re-opened items only count as a single work items for throughput purposes
+        assert project['workItemsInScope'] == 1
         assert project['workItemsWithNullCycleTime'] == 0
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
-        assert (graphql_date(project['latestClosedDate']) - start_date).days == 8
+        assert (graphql_date(project['latestClosedDate']) - start_date).days == 10
 
     def it_computes_cycle_time_metrics_when_there_are_three_closed_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture

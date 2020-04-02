@@ -21,19 +21,18 @@ def upgrade():
     op.execute("""
             WITH delivery_cycles_commits_rows AS
              (SELECT analytics.work_item_delivery_cycles.delivery_cycle_id AS delivery_cycle_id,
-                     SUM(CAST(commits.stats->>'lines'as INTEGER)) as total_lines_changed,
-       SUM(CAST(commits.stats->>'files'as INTEGER)) as total_files_changed,
-       SUM(CAST(commits.stats->>'deletions'as INTEGER)) as total_lines_deleted,
-       SUM(CAST(commits.stats->>'insertions'as INTEGER)) as total_lines_inserted
-              FROM analytics.work_items
+                     SUM(CASE WHEN commits.num_parents = 1 THEN CAST(commits.stats->>'lines'as INTEGER) ELSE 0 END) as total_lines_changed,
+       SUM(CASE WHEN commits.num_parents=1 THEN CAST(commits.stats->>'files'as INTEGER) ELSE 0 END) as total_files_changed,
+       SUM(CASE WHEN commits.num_parents = 1 THEN CAST(commits.stats->>'deletions'as INTEGER) ELSE 0 END) as total_lines_deleted,
+       SUM(CASE WHEN commits.num_parents = 1 THEN CAST(commits.stats->>'insertions'as INTEGER) ELSE 0 END) as total_lines_inserted
+            FROM analytics.work_items
                        JOIN analytics.work_item_delivery_cycles
                             ON analytics.work_item_delivery_cycles.work_item_id = analytics.work_items.id
                        JOIN analytics.work_items_commits
                             ON analytics.work_items_commits.work_item_id = analytics.work_items.id
                        JOIN analytics.commits ON analytics.work_items_commits.commit_id = analytics.commits.id
-              WHERE analytics.commits.commit_date >= analytics.work_item_delivery_cycles.start_date and 
-              analytics.commits.num_parents = 1
-              GROUP BY analytics.work_item_delivery_cycles.delivery_cycle_id)
+            WHERE analytics.commits.commit_date >= analytics.work_item_delivery_cycles.start_date
+            GROUP BY analytics.work_item_delivery_cycles.delivery_cycle_id)
             UPDATE analytics.work_item_delivery_cycles
         SET total_lines_changed = delivery_cycles_commits_rows.total_lines_changed,
         total_files_changed = delivery_cycles_commits_rows.total_files_changed,

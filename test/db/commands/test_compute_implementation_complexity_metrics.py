@@ -26,7 +26,7 @@ class TestUpateWorkItemsCommitsSpan:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_span'] == 1
+        assert result['updated'] == 1
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
             work_item_id={work_items_ids[1]} and earliest_commit is not NULL").scalar() == 1
@@ -42,7 +42,7 @@ class TestUpateWorkItemsCommitsSpan:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_span'] == 2
+        assert result['updated'] == 2
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                     work_item_id={work_items_ids[0]} and earliest_commit is not NULL").scalar() == 2
@@ -65,7 +65,7 @@ class TestUpateWorkItemsCommitsSpan:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_span'] == 3
+        assert result['updated'] == 3
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                             work_item_id={work_items_ids[0]} and earliest_commit is not NULL").scalar() == 2
@@ -84,7 +84,7 @@ class TestUpateWorkItemsCommitsSpan:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_span'] == 2
+        assert result['updated'] == 2
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                             work_item_id={work_items_ids[1]} and earliest_commit is NULL and latest_commit is NULL").scalar() == 1
@@ -105,7 +105,7 @@ class TestUpateWorkItemsCommitsSpan:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_span'] == 3
+        assert result['updated'] == 3
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                                     work_item_id={work_items_ids[0]} and earliest_commit is not NULL").scalar() == 2
@@ -116,7 +116,7 @@ class TestUpateWorkItemsCommitsSpan:
         # call again
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_span'] == 3
+        assert result['updated'] == 3
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                                             work_item_id={work_items_ids[0]} and earliest_commit is not NULL").scalar() == 2
@@ -143,7 +143,7 @@ class TestUpateWorkItemsCommitsSpan:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_span'] == 3
+        assert result['updated'] == 3
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                                     work_item_id={work_items_ids[0]} and earliest_commit is not NULL").scalar() == 2
@@ -164,7 +164,7 @@ class TestUpdateWorkItemsCommitsRepositoryCount:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_repository_count'] == 1
+        assert result['updated'] == 1
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
             work_item_id={work_items_ids[1]} and repository_count=1").scalar() == 1
@@ -180,7 +180,7 @@ class TestUpdateWorkItemsCommitsRepositoryCount:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_repository_count'] == 2
+        assert result['updated'] == 2
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                     work_item_id={work_items_ids[0]} and repository_count=1").scalar() == 1
@@ -205,7 +205,7 @@ class TestUpdateWorkItemsCommitsRepositoryCount:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_repository_count'] == 3
+        assert result['updated'] == 3
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                             work_item_id={work_items_ids[0]} and repository_count is not NULL").scalar() == 2
@@ -222,7 +222,7 @@ class TestUpdateWorkItemsCommitsRepositoryCount:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_repository_count'] == 2
+        assert result['updated'] == 2
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                             work_item_id={work_items_ids[1]} and repository_count is NULL").scalar() == 1
@@ -243,7 +243,7 @@ class TestUpdateWorkItemsCommitsRepositoryCount:
         ]
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_repository_count'] == 3
+        assert result['updated'] == 3
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                                     work_item_id={work_items_ids[0]} and repository_count is not NULL").scalar() == 2
@@ -251,7 +251,7 @@ class TestUpdateWorkItemsCommitsRepositoryCount:
         # call again
         result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
         assert result['success']
-        assert result['updated_commits_span'] == 3
+        assert result['updated'] == 3
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                                             work_item_id={work_items_ids[0]} and repository_count is not NULL").scalar() == 2

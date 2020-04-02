@@ -1319,85 +1319,12 @@ def infer_projects_repositories_relationships(session, organization_key, work_it
     )
 
 
-def update_work_items_commits_span(session, work_items_temp):
-    # Update delivery cycles of work items in work_items_temp with earliest and latest commits
-    updated = 0
-
-    # select relevant rows to find commits span
-    delivery_cycles_commits_rows = select([
-        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-        func.min(commits.c.commit_date).label('earliest_commit'),
-        func.max(commits.c.commit_date).label('latest_commit')
-    ]).select_from(
-        work_items_temp.join(
-            work_items, work_items.c.key == work_items_temp.c.work_item_key
-        ).join(
-            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-        ).join(
-            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
-        ).join(
-            commits, work_items_commits_table.c.commit_id == commits.c.id
-        )
-    ).where(
-        commits.c.commit_date >= work_item_delivery_cycles.c.start_date
-    ).group_by(
-        work_item_delivery_cycles.c.delivery_cycle_id,
-
-    ).cte('delivery_cycles_commits_rows')
-
-    # update relevant work items delivery cycles with earliest and latest commit dates
-    updated = session.connection().execute(
-        work_item_delivery_cycles.update().where(
-            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
-        ).values(
-            earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
-            latest_commit=delivery_cycles_commits_rows.c.latest_commit
-        )
-    ).rowcount
-
-    return updated
-
-
-def update_work_items_commits_repository_count(session, work_items_temp):
-    # Update delivery cycles of work items in work_items_temp with repository count
-    updated = 0
-
-    # select relevant rows to find commits span
-    delivery_cycles_commits_rows = select([
-        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-        func.count(distinct(commits.c.repository_id)).label('repository_count'),
-    ]).select_from(
-        work_items_temp.join(
-            work_items, work_items.c.key == work_items_temp.c.work_item_key
-        ).join(
-            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-        ).join(
-            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
-        ).join(
-            commits, work_items_commits_table.c.commit_id == commits.c.id
-        )
-    ).where(
-        commits.c.commit_date >= work_item_delivery_cycles.c.start_date
-    ).group_by(
-        work_item_delivery_cycles.c.delivery_cycle_id,
-
-    ).cte('delivery_cycles_commits_rows')
-
-    # update relevant work items delivery cycles with repository_count
-    updated = session.connection().execute(
-        work_item_delivery_cycles.update().where(
-            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
-        ).values(
-            repository_count=delivery_cycles_commits_rows.c.repository_count
-        )
-    ).rowcount
-
-    return updated
-
-
 def compute_implementation_complexity_metrics(session, organization_key, work_items_commits):
-    updated_commits_span = 0
-    updated_commits_repository_count = 0
+    # The following metrics are calculated and updated for each work_item_delivery_cycle
+    # 1. earliest_commit, latest_commit: earliest and latest commit for a work item delivery cycle
+    # 2. repository_count: distinct repository count over all commits during a delivery cycle for a work item
+
+    updated = 0
 
     if len(work_items_commits) > 0:
         # create a temp table for received work item ids
@@ -1426,9 +1353,40 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
             )
         )
 
-        updated_commits_span = update_work_items_commits_span(session, work_items_temp)
-        updated_commits_repository_count = update_work_items_commits_repository_count(session, work_items_temp)
+        # select relevant rows to find various metrics
+        delivery_cycles_commits_rows = select([
+            work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+            func.min(commits.c.commit_date).label('earliest_commit'),
+            func.max(commits.c.commit_date).label('latest_commit'),
+            func.count(distinct(commits.c.repository_id)).label('repository_count'),
+        ]).select_from(
+            work_items_temp.join(
+                work_items, work_items.c.key == work_items_temp.c.work_item_key
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            ).join(
+                work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+            ).join(
+                commits, work_items_commits_table.c.commit_id == commits.c.id
+            )
+        ).where(
+            commits.c.commit_date >= work_item_delivery_cycles.c.start_date
+        ).group_by(
+            work_item_delivery_cycles.c.delivery_cycle_id,
+
+        ).cte('delivery_cycles_commits_rows')
+
+        # update relevant work items delivery cycles with relevant metrics
+        updated = session.connection().execute(
+            work_item_delivery_cycles.update().where(
+                work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
+            ).values(
+                earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
+                latest_commit=delivery_cycles_commits_rows.c.latest_commit,
+                repository_count=delivery_cycles_commits_rows.c.repository_count
+            )
+        ).rowcount
+
     return dict(
-        updated_commits_span=updated_commits_span,
-        updated_commits_repository_count=updated_commits_repository_count
+        updated=updated
     )

@@ -1045,24 +1045,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                         )
                     )
                 )
-                # Update current_delivery_cycle_id for all those transitioned from closed to non-closed state
-                session.connection().execute(
-                    work_items.update().values(
-                        current_delivery_cycle_id=work_item_delivery_cycles.c.delivery_cycle_id
-                    ).where(
-                        and_(
-                            work_items.c.key == work_items_temp.c.key,
-                            work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-                            or_(
-                                work_item_delivery_cycles.c.delivery_cycle_id > work_items.c.current_delivery_cycle_id,
-                                work_items.c.current_delivery_cycle_id == None  # Not an expected condition
-                            )
-                        )
-                    )
-                )
 
-                # Update delivery_cycle_durations for all work items with state changes
-                update_work_item_delivery_cycle_durations(session, work_items_temp)
 
             # finally do the update of the changed rows.
             updated = session.connection().execute(
@@ -1132,6 +1115,25 @@ def update_work_item_delivery_cycles(session, work_items_temp):
             )
         )
     )
+
+    # Update current_delivery_cycle_id for all those transitioned from closed to non-closed state
+    session.connection().execute(
+        work_items.update().values(
+            current_delivery_cycle_id=work_item_delivery_cycles.c.delivery_cycle_id
+        ).where(
+            and_(
+                work_items.c.key == work_items_temp.c.key,
+                work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                or_(
+                    work_item_delivery_cycles.c.delivery_cycle_id > work_items.c.current_delivery_cycle_id,
+                    work_items.c.current_delivery_cycle_id == None  # Not an expected condition
+                )
+            )
+        )
+    )
+
+    # Update delivery_cycle_durations for all work items with state changes
+    update_work_item_delivery_cycle_durations(session, work_items_temp)
 
 
 def update_work_item_delivery_cycle_durations(session, work_items_temp):

@@ -833,7 +833,6 @@ class TestImportProject:
             f" where projects.key='{project_key}' and work_items_source_state_map.state='created'"
         ).scalar() == 1
 
-
     def it_does_not_initialize_default_state_map_for_new_jira_work_item_sources(self, setup_org):
         organization = setup_org
         organization_key = organization.key
@@ -1063,7 +1062,8 @@ class TestUpdateWorkItemsDeliveryCycles:
             "select count(delivery_cycle_id) from analytics.work_item_delivery_cycles \
             where lead_time is not NULL and end_date is not NULL").scalar() == 1
 
-    def it_creates_new_delivery_cycle_when_state_type_changes_from_closed_to_non_closed(self, update_closed_work_items_setup):
+    def it_creates_new_delivery_cycle_when_state_type_changes_from_closed_to_non_closed(self,
+                                                                                        update_closed_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
         work_items_list[0]['state'] = 'open'
         result = api.update_work_items(organization_key, work_items_source_key, work_items_list)
@@ -1074,7 +1074,8 @@ class TestUpdateWorkItemsDeliveryCycles:
          join analytics.work_item_delivery_cycles on work_items.id=work_item_delivery_cycles.work_item_id \
          where work_items.current_delivery_cycle_id > work_item_delivery_cycles.delivery_cycle_id').scalar() == 1
 
-    def it_sets_the_current_delivery_cycle_of_reopened_items_to_the_new_delivery_cycle(self, update_closed_work_items_setup):
+    def it_sets_the_current_delivery_cycle_of_reopened_items_to_the_new_delivery_cycle(self,
+                                                                                       update_closed_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
         # re-open closed item 1 day after close. Original cycle lead time was 7 days
         work_items_list[0]['updated_at'] = work_items_list[0]['updated_at'] + timedelta(days=1)
@@ -1089,9 +1090,10 @@ class TestUpdateWorkItemsDeliveryCycles:
             assert current_delivery_cycle.end_date is None
             assert current_delivery_cycle.lead_time is None
 
-    def it_updates_the_stats_on_new_delivery_cycle_when_the_reopened_item_is_closed(self, update_closed_work_items_setup):
+    def it_updates_the_stats_on_new_delivery_cycle_when_the_reopened_item_is_closed(self,
+                                                                                    update_closed_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
-        # re-open closed item 1 day after close. Original cycle lead time was 7 days
+        # re-open closed item 1 day after close. Original lead time was 7 days
         work_items_list[0]['updated_at'] = work_items_list[0]['updated_at'] + timedelta(days=1)
         work_items_list[0]['state'] = 'open'
         api.update_work_items(organization_key, work_items_source_key, work_items_list)
@@ -1106,8 +1108,42 @@ class TestUpdateWorkItemsDeliveryCycles:
             work_item = model.WorkItem.find_by_work_item_key(session, work_items_list[0]['key'])
             delivery_cycles = work_item.delivery_cycles
             assert len(delivery_cycles) == 2
-            assert set([int(cycle.lead_time/(3600*24)) for cycle in delivery_cycles]) == {7, 2}
+            assert set([int(cycle.lead_time / (3600 * 24)) for cycle in delivery_cycles]) == {7, 2}
             assert set([(cycle.start_seq_no, cycle.end_seq_no) for cycle in delivery_cycles]) == {(0, 1), (2, 3)}
+
+    def it_updates_the_durations_for_the_new_delivery_cycle_when_the_reopened_item_is_closed(self,
+                                                                                             update_closed_work_items_setup):
+        organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
+        # re-open closed item 1 day after close. Original lead time was 7 days
+        work_items_list[0]['updated_at'] = work_items_list[0]['updated_at'] + timedelta(days=1)
+        work_items_list[0]['state'] = 'open'
+        api.update_work_items(organization_key, work_items_source_key, work_items_list)
+
+        # put into wip 2 days after open
+        work_items_list[0]['updated_at'] = work_items_list[0]['updated_at'] + timedelta(days=2)
+        work_items_list[0]['state'] = 'wip'
+        api.update_work_items(organization_key, work_items_source_key, work_items_list)
+
+        # close it again 3 days after wip transition
+        work_items_list[0]['updated_at'] = work_items_list[0]['updated_at'] + timedelta(days=3)
+        work_items_list[0]['state'] = 'closed'
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list)
+        assert result['success']
+        with db.orm_session() as session:
+            work_item = model.WorkItem.find_by_work_item_key(session, work_items_list[0]['key'])
+            current_delivery_cycle = work_item.current_delivery_cycle
+            assert len(current_delivery_cycle.delivery_cycle_durations) == 3
+            assert {
+                       duration.state: int(
+                           duration.cumulative_time_in_state / (
+                                       3600 * 24) if duration.cumulative_time_in_state is not None else 0
+                       )
+                       for duration in current_delivery_cycle.delivery_cycle_durations
+                   } == {
+                    'open': 2,
+                    'wip': 3,
+                    'closed': 0
+                   }
 
     def it_does_not_update_delivery_cycle_when_transition_does_not_involve_closed_state(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_work_items_setup
@@ -1122,6 +1158,7 @@ class TestUpdateWorkItemsDeliveryCycles:
         assert db.connection().execute(
             "select count(delivery_cycle_id) from analytics.work_item_delivery_cycles \
             where lead_time is NULL and end_date is NULL").scalar() == 2
+
 
 class TestWorkItemDeliveryCycleDurations:
 
@@ -1175,7 +1212,8 @@ class TestWorkItemDeliveryCycleDurations:
                 where cumulative_time_in_state>0 and state='created'"
         ).scalar() == 2
 
-    def it_updates_delivery_cycles_durations_for_work_item_transitioning_from_created_to_closed_through_different_states(self, work_items_setup):
+    def it_updates_delivery_cycles_durations_for_work_item_transitioning_from_created_to_closed_through_different_states(
+            self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_items = []
         work_items.extend([
@@ -1255,7 +1293,6 @@ class TestWorkItemDeliveryCycleDurations:
         assert db.connection().execute(
             "select count(*) from analytics.work_item_delivery_cycle_durations").scalar() == 11
 
-
         # work_item 1 changes state to 'complete'
         work_items[0]['state'] = 'complete'
         work_items[0]['updated_at'] = work_items[0]['updated_at'] + timedelta(days=1)
@@ -1266,7 +1303,8 @@ class TestWorkItemDeliveryCycleDurations:
             "select count(*) from analytics.work_item_delivery_cycle_durations").scalar() == 12
 
         cumulative_time_in_wip = db.connection().execute(
-            "select cumulative_time_in_state from analytics.work_item_delivery_cycle_durations where state='wip'").fetchall()[0][0]
+            "select cumulative_time_in_state from analytics.work_item_delivery_cycle_durations where state='wip'").fetchall()[
+            0][0]
 
         # work item 1 moves to 'wip' again, no change expected in cumulative time yet
         work_items[0]['state'] = 'wip'
@@ -1277,7 +1315,8 @@ class TestWorkItemDeliveryCycleDurations:
         assert db.connection().execute(
             "select count(cumulative_time_in_state) from analytics.work_item_delivery_cycle_durations where state='wip'").scalar() == 1
         updated_cumulative_time_in_wip = db.connection().execute(
-            "select cumulative_time_in_state from analytics.work_item_delivery_cycle_durations where state='wip'").fetchall()[0][0]
+            "select cumulative_time_in_state from analytics.work_item_delivery_cycle_durations where state='wip'").fetchall()[
+            0][0]
         assert updated_cumulative_time_in_wip == cumulative_time_in_wip
 
         # Changing state again so that 'wip' state has more time to be added

@@ -14,7 +14,7 @@ from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
 from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, desc, case, \
-    extract, distinct
+    extract, distinct, cast
 from sqlalchemy.dialects.postgresql import UUID, insert
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType
@@ -1366,6 +1366,51 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
             func.min(commits.c.commit_date).label('earliest_commit'),
             func.max(commits.c.commit_date).label('latest_commit'),
             func.count(distinct(commits.c.repository_id)).label('repository_count'),
+            func.sum(
+                case(
+                    [
+                        (
+                            commits.c.num_parents == 1,
+                            cast(commits.c.stats["lines"].astext, Integer)
+                        )
+                    ],
+                    else_=0
+                )
+            ).label('total_lines_changed'),
+            func.sum(
+                case(
+                    [
+                        (
+                            commits.c.num_parents == 1,
+                            cast(commits.c.stats["files"].astext, Integer)
+                        )
+                    ],
+                    else_=0
+                )
+            ).label('total_files_changed'),
+            func.sum(
+                case(
+                    [
+                        (
+                            commits.c.num_parents == 1,
+                            cast(commits.c.stats["deletions"].astext, Integer)
+                        )
+                    ],
+                    else_=0
+                )
+            ).label('total_lines_deleted'),
+            func.sum(
+                case(
+                    [
+                        (
+                            commits.c.num_parents == 1,
+                            cast(commits.c.stats["insertions"].astext, Integer)
+                        )
+                    ],
+                    else_=0
+                )
+            ).label('total_lines_inserted')
+
         ]).select_from(
             work_items_temp.join(
                 work_items, work_items.c.key == work_items_temp.c.work_item_key
@@ -1377,7 +1422,13 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                 commits, work_items_commits_table.c.commit_id == commits.c.id
             )
         ).where(
-            commits.c.commit_date >= work_item_delivery_cycles.c.start_date
+            and_(
+                commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
+                or_(
+                    work_item_delivery_cycles.c.end_date == None,
+                    work_item_delivery_cycles.c.end_date >= commits.c.commit_date
+                )
+            )
         ).group_by(
             work_item_delivery_cycles.c.delivery_cycle_id,
 
@@ -1390,7 +1441,11 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
             ).values(
                 earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
                 latest_commit=delivery_cycles_commits_rows.c.latest_commit,
-                repository_count=delivery_cycles_commits_rows.c.repository_count
+                repository_count=delivery_cycles_commits_rows.c.repository_count,
+                total_lines_changed=delivery_cycles_commits_rows.c.total_lines_changed,
+                total_files_changed=delivery_cycles_commits_rows.c.total_files_changed,
+                total_lines_deleted=delivery_cycles_commits_rows.c.total_lines_deleted,
+                total_lines_inserted=delivery_cycles_commits_rows.c.total_lines_inserted
             )
         ).rowcount
 

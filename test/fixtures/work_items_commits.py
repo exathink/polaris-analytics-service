@@ -24,8 +24,8 @@ from datetime import datetime, timedelta
 
 from polaris.analytics.db.model import WorkItemDeliveryCycles
 
-earliest_commit_date = datetime.utcnow()-timedelta(days=5)
-latest_commit_date = datetime.utcnow()-timedelta(days=2)
+earliest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=5)
+latest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=2)
 
 
 test_work_items = [
@@ -33,8 +33,8 @@ test_work_items = [
         key=uuid.uuid4().hex,
         name='Issue 1',
         display_id='1000',
-        created_at=get_date("2018-12-02") - timedelta(days=7),
-        updated_at=get_date("2018-12-03"),
+        created_at=datetime.utcnow().replace(microsecond=0) - timedelta(days=7),
+        updated_at=datetime.utcnow().replace(microsecond=0) - timedelta(days=7),
         **work_items_common
     )
     for i in range(0, 2)
@@ -128,7 +128,7 @@ def work_items_commits_fixture(commits_fixture):
             WorkItemDeliveryCycles(
                     start_seq_no=0,
                     start_date=w1.created_at,
-                    end_date=datetime.utcnow()-timedelta(hours=1),
+                    end_date=latest_commit_date,
                     end_seq_no=2,
                     work_item_id=w1.id,
                     lead_time=int((datetime.utcnow()-timedelta(hours=1)-w1.created_at).total_seconds())

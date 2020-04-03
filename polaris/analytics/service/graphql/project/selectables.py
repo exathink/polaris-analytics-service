@@ -299,6 +299,7 @@ class ProjectWorkItemDeliveryCycleNodes(ConnectionResolver):
     @staticmethod
     def connection_nodes_selector(**kwargs):
         select_stmt = select([
+            work_item_delivery_cycles.c.delivery_cycle_id.label('id'),
             *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles),
             *work_item_info_columns(work_items),
         ]).select_from(

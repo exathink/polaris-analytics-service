@@ -191,7 +191,6 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
             self.get_connection_resolver_context('work_item_delivery_cycles'),
             self.get_connection_node_resolver('work_item_delivery_cycles'),
             self.get_instance_query_params(),
-            join_field='key',
             **kwargs
         )
 

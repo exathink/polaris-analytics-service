@@ -162,6 +162,7 @@ class WorkItemDeliveryCycleNode(NamedNodeResolver):
     @staticmethod
     def named_node_selector(**kwargs):
         return select([
+            work_item_delivery_cycles.c.delivery_cycle_id.label('id'),
             *work_item_info_columns(work_items),
             *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles)
         ]).select_from(
@@ -182,6 +183,7 @@ class WorkItemDeliveryCycleNodes(ConnectionResolver):
     @staticmethod
     def connection_nodes_selector(**kwargs):
         select_stmt = select([
+            work_item_delivery_cycles.c.delivery_cycle_id.label('id'),
             *work_item_info_columns(work_items),
             *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles)
         ]).select_from(
@@ -205,7 +207,7 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
     @staticmethod
     def interface_selector(work_item_delivery_cycle_nodes, **kwargs):
         return select([
-            work_item_delivery_cycle_nodes.c.key,
+            work_item_delivery_cycle_nodes.c.id,
             (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
             # We return cycle time only for closed items.
             case([
@@ -216,7 +218,7 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
         ]).select_from(
             work_item_delivery_cycle_nodes.outerjoin(
                 work_item_delivery_cycles,
-                work_item_delivery_cycle_nodes.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+                work_item_delivery_cycle_nodes.c.id == work_item_delivery_cycles.c.delivery_cycle_id
             ).outerjoin(
                 work_item_delivery_cycle_durations,
                 work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
@@ -227,7 +229,7 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
                     work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state
                 )
             )).group_by(
-            work_item_delivery_cycle_nodes.c.key,
+            work_item_delivery_cycle_nodes.c.id
         )
 
 

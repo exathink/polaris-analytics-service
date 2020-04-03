@@ -207,18 +207,19 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
         return select([
             work_item_delivery_cycle_nodes.c.key,
             (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
-            work_item_cycle_time_column_expr().label('cycle_time'),
+            # We return cycle time only for closed items.
+            case([
+                (func.min(work_item_delivery_cycles.c.end_date) != None, work_item_cycle_time_column_expr())
+            ], else_=None).label('cycle_time'),
+
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
         ]).select_from(
             work_item_delivery_cycle_nodes.outerjoin(
                 work_item_delivery_cycles,
-                and_(
-                    work_item_delivery_cycle_nodes.c.work_item_id == work_item_delivery_cycles.c.work_item_id,
-                    work_item_delivery_cycle_nodes.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
-                )
+                work_item_delivery_cycle_nodes.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
             ).outerjoin(
                 work_item_delivery_cycle_durations,
-                work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycle_nodes.c.delivery_cycle_id
+                work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
             ).join(
                 work_items_source_state_map,
                 and_(

@@ -1161,8 +1161,6 @@ class TestProjectWorkItemDeliveryCycles:
         api_helper.update_work_items([(2, 'doing', start_date + timedelta(days=5))])
         api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=8))])
 
-
-
         client = Client(schema)
         query = """
                 query getProjectDeliveryCycles($project_key:String!, $days: Int!) {
@@ -1348,6 +1346,72 @@ class TestProjectWorkItemDeliveryCycles:
                {(8.0, 6.0), (2.0, 2.0)}
         assert {(node['leadTime'], node['cycleTime']) for node in nodes if node['name'] != 'Issue 1'} == \
                {(None, None)}
+
+
+class TestAggregateVsDetailConsistency:
+
+    def it_returns_aggregate_metrics_that_are_consistent_with_the_detail_delivery_cycle_metrics(self,
+                                                                                                api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=5))])
+
+        api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=3))])
+
+        api_helper.update_work_items([(2, 'doing', start_date + timedelta(days=4))])
+        api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=8))])
+
+        client = Client(schema)
+        query = """
+                query getProjectDeliveryCycles($project_key:String!, $days: Int!) {
+                    project(key: $project_key, closedWithinDays: $days, interfaces: [AggregateCycleMetrics]) {
+                        avgLeadTime
+                        avgCycleTime
+                        
+                        workItemDeliveryCycles (closedWithinDays: $days, interfaces: [CycleMetrics]){
+                            edges {
+                                node {
+                                    name
+                                    leadTime
+                                    cycleTime
+                                    endDate
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+        result = client.execute(query, variable_values=dict(project_key=project.key, days=10))
+        assert result['data']
+        project = result['data']['project']
+        assert project['avgLeadTime'] == 5.5
+        assert project['avgCycleTime'] == 2.5
+
+        nodes = [edge['node'] for edge in project['workItemDeliveryCycles']['edges']]
+        assert len(nodes) == 2
+        assert {(node['leadTime'], node['cycleTime']) for node in nodes if node['name'] == 'Issue 2'} == \
+               {(8.0, 4.0)}
+        assert {(node['leadTime'], node['cycleTime']) for node in nodes if node['name'] == 'Issue 1'} == \
+               {(3.0, 1.0)}
 
 
 @pytest.yield_fixture

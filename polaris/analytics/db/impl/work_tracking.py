@@ -1393,10 +1393,47 @@ def update_work_items_commits_repository_count(session, work_items_temp):
 
     return updated
 
+def update_work_items_commits_count(session, work_items_temp):
+    # Update delivery cycles of work items in work_items_temp with commit count
+    updated = 0
+
+    # select relevant rows to find commits span
+    delivery_cycles_commits_rows = select([
+        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        func.count(distinct(commits.c.id)).label('commit_count'),
+    ]).select_from(
+        work_items_temp.join(
+            work_items, work_items.c.key == work_items_temp.c.work_item_key
+        ).join(
+            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+        ).join(
+            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+        ).join(
+            commits, work_items_commits_table.c.commit_id == commits.c.id
+        )
+    ).where(
+        commits.c.commit_date >= work_item_delivery_cycles.c.start_date
+    ).group_by(
+        work_item_delivery_cycles.c.delivery_cycle_id,
+
+    ).cte('delivery_cycles_commits_rows')
+
+    # update relevant work items delivery cycles with commit_count
+    updated = session.connection().execute(
+        work_item_delivery_cycles.update().where(
+            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
+        ).values(
+            commit_count=delivery_cycles_commits_rows.c.commit_count
+        )
+    ).rowcount
+
+    return updated
+
 
 def compute_implementation_complexity_metrics(session, organization_key, work_items_commits):
     updated_commits_span = 0
     updated_commits_repository_count = 0
+    updated_commits_count = 0
 
     if len(work_items_commits) > 0:
         # create a temp table for received work item ids
@@ -1427,7 +1464,9 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
 
         updated_commits_span = update_work_items_commits_span(session, work_items_temp)
         updated_commits_repository_count = update_work_items_commits_repository_count(session, work_items_temp)
+        updated_commits_count = update_work_items_commits_count(session, work_items_temp)
     return dict(
         updated_commits_span=updated_commits_span,
-        updated_commits_repository_count=updated_commits_repository_count
+        updated_commits_repository_count=updated_commits_repository_count,
+        updated_commits_count=updated_commits_count
     )

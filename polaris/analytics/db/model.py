@@ -732,6 +732,7 @@ class WorkItemDeliveryCycles(Base):
     earliest_commit = Column(DateTime, nullable=True)
     latest_commit = Column(DateTime, nullable=True)
     repository_count = Column(Integer, nullable=True)
+    commit_count = Column(Integer, nullable=True)
 
     # non-merge commits' code change stats columns
     total_lines_changed = Column(Integer, nullable=True)

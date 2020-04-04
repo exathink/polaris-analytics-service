@@ -1330,6 +1330,7 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
     # The following metrics are calculated and updated for each work_item_delivery_cycle
     # 1. earliest_commit, latest_commit: earliest and latest commit for a work item delivery cycle
     # 2. repository_count: distinct repository count over all commits during a delivery cycle for a work item
+    # 3. commit_count: distinct commit count over all commits during a delivery cycle for a work item
 
     updated = 0
 
@@ -1366,6 +1367,7 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
             func.min(commits.c.commit_date).label('earliest_commit'),
             func.max(commits.c.commit_date).label('latest_commit'),
             func.count(distinct(commits.c.repository_id)).label('repository_count'),
+            func.count(distinct(commits.c.id)).label('commit_count'),
             func.sum(
                 case(
                     [
@@ -1445,7 +1447,8 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                 total_lines_changed=delivery_cycles_commits_rows.c.total_lines_changed,
                 total_files_changed=delivery_cycles_commits_rows.c.total_files_changed,
                 total_lines_deleted=delivery_cycles_commits_rows.c.total_lines_deleted,
-                total_lines_inserted=delivery_cycles_commits_rows.c.total_lines_inserted
+                total_lines_inserted=delivery_cycles_commits_rows.c.total_lines_inserted,
+                commit_count=delivery_cycles_commits_rows.c.commit_count
             )
         ).rowcount
 

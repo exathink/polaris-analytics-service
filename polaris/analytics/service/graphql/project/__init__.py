@@ -14,7 +14,7 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
-    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, CycleMetrics
+    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin
@@ -31,7 +31,8 @@ from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositories
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
 from ..work_items_source import WorkItemsSourcesConnectionMixin
-from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin
+from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin, \
+    WorkItemDeliveryCyclesConnectionMixin
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -52,7 +53,8 @@ from .selectables import ProjectNode, \
     ProjectWorkItemEventNodes, \
     ProjectWorkItemCommitNodes, \
     ProjectWorkItemStateTypeCounts, \
-    ProjectCycleMetrics
+    ProjectCycleMetrics, \
+    ProjectWorkItemDeliveryCycleNodes
 
 
 from polaris.graphql.connection_utils import CountableConnection
@@ -73,6 +75,7 @@ class Project(
     WorkItemsConnectionMixin,
     WorkItemEventsConnectionMixin,
     WorkItemCommitsConnectionMixin,
+    WorkItemDeliveryCyclesConnectionMixin,
     # field mixins
     CumulativeCommitCountResolverMixin,
     WeeklyContributorCountsResolverMixin,
@@ -98,7 +101,7 @@ Implicit Interfaces: ArchivedStatus
             OrganizationRef,
             WorkItemEventSpan,
             WorkItemStateTypeCounts,
-            CycleMetrics,
+            AggregateCycleMetrics,
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -108,7 +111,7 @@ Implicit Interfaces: ArchivedStatus
             'OrganizationRef': ProjectsOrganizationRef,
             'WorkItemEventSpan': ProjectWorkItemEventSpan,
             'WorkItemStateTypeCounts': ProjectWorkItemStateTypeCounts,
-            'CycleMetrics': ProjectCycleMetrics
+            'AggregateCycleMetrics': ProjectCycleMetrics
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -120,6 +123,7 @@ Implicit Interfaces: ArchivedStatus
             'work_items': ProjectWorkItemNodes,
             'work_item_events': ProjectWorkItemEventNodes,
             'work_item_commits': ProjectWorkItemCommitNodes,
+            'work_item_delivery_cycles': ProjectWorkItemDeliveryCycleNodes
         }
         selectable_field_resolvers = {
           'cumulative_commit_count': ProjectCumulativeCommitCount,
@@ -137,12 +141,11 @@ Implicit Interfaces: ArchivedStatus
                 description="When evaluating contributor count "
                             "return only contributors that have committed code to the project in this many days"
             ),
-            cycle_metrics_days=graphene.Argument(
+            closed_within_days=graphene.Argument(
                 graphene.Int,
                 required=False,
                 description="When evaluating cycle metrics "
                             "calculate them over work items that have closed in this many prior days",
-                default_value=30
             ),
             cycle_metrics_target_percentile=graphene.Argument(
                 graphene.Float,

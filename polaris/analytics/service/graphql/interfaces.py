@@ -9,11 +9,14 @@
 # Author: Krishna Kumar
 
 import graphene
+
+from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.graphql.interfaces import NamedNode
 
 from polaris.common.enums import WorkTrackingIntegrationType as _WorkTrackingIntegrationType
 
 WorkTrackingIntegrationType = graphene.Enum.from_enum(_WorkTrackingIntegrationType)
+WorkItemsStateType = graphene.Enum.from_enum(WorkItemsStateType)
 
 
 class FileTypesSummary(graphene.ObjectType):
@@ -205,7 +208,18 @@ class WorkItemStateTypeCounts(graphene.Interface):
     work_item_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=True)
 
 
+class DeliveryCycleInfo(graphene.Interface):
+    closed = graphene.Boolean(required=False)
+    start_date = graphene.DateTime(required=False)
+    end_date = graphene.DateTime(required=False)
+
+
 class CycleMetrics(graphene.Interface):
+    lead_time = graphene.Float(required=False)
+    cycle_time = graphene.Float(required=False)
+
+
+class AggregateCycleMetrics(graphene.Interface):
     min_lead_time = graphene.Float(required=False)
     avg_lead_time = graphene.Float(required=False)
     max_lead_time = graphene.Float(required=False)

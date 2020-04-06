@@ -897,3 +897,25 @@ def pivotal_work_items_source_work_items_states_fixture(org_repo_fixture, cleanu
         work_items_sources['pivotal'].init_state_map()
         session.add_all(work_items_sources.values())
     yield pivotal_source_key, work_items_sources
+
+
+class WorkItemImportApiHelper:
+    def __init__(self, organization, work_items_source):
+        self.organization = organization
+        self.work_items_source = work_items_source
+        self.work_items = None
+
+    def import_work_items(self, work_items):
+        self.work_items = work_items
+        api.import_new_work_items(
+            organization_key=self.organization.key,
+            work_item_source_key=self.work_items_source.key,
+            work_item_summaries=work_items
+        )
+
+    def update_work_items(self, updates):
+        for index, state, updated in updates:
+            self.work_items[index]['state'] = state
+            self.work_items[index]['updated_at'] = updated
+
+        api.update_work_items(self.organization.key, self.work_items_source.key, self.work_items)

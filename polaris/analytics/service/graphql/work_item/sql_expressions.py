@@ -9,7 +9,12 @@
 # Author: Krishna Kumar
 
 from datetime import datetime, timedelta
-from sqlalchemy import and_, cast, Text, func
+from sqlalchemy import and_, cast, Text, func, case, select
+from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.utils.exceptions import ProcessingException
+
+from polaris.analytics.db.model import work_items, work_item_delivery_cycles, work_item_delivery_cycle_durations, \
+    work_items_source_state_map
 
 
 def work_item_event_key_column(work_items, work_item_state_transitions):
@@ -21,7 +26,18 @@ def work_item_commit_key_column(work_items, commits):
 
 
 def work_item_commit_name_column(work_items, commits):
-    return (cast(work_items.c.display_id, Text) + ':' + cast(func.substr(commits.c.source_commit_id, 1, 8), Text)).label('name')
+    return (cast(work_items.c.display_id, Text) + ':' + cast(func.substr(commits.c.source_commit_id, 1, 8),
+                                                             Text)).label('name')
+
+
+def work_item_delivery_cycle_key_columns(work_items, work_item_delivery_cycles):
+    return [
+        work_item_delivery_cycles.c.delivery_cycle_id,
+        (cast(work_items.c.key, Text) + ':' + cast(work_item_delivery_cycles.c.delivery_cycle_id, Text)).label('key'),
+        work_item_delivery_cycles.c.work_item_id,
+        work_items.c.work_items_source_id
+    ]
+
 
 def work_item_info_columns(work_items):
     return [
@@ -84,8 +100,17 @@ def work_item_commit_info_columns(work_items, repositories, commits):
     ]
 
 
+def work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles):
+    return [
+        *work_item_delivery_cycle_key_columns(work_items, work_item_delivery_cycles),
+        work_items.c.name,
+        work_item_delivery_cycles.c.start_date,
+        work_item_delivery_cycles.c.end_date,
+        case([(work_item_delivery_cycles.c.end_date != None, True)], else_=False).label('closed')
+    ]
 
-def work_items_connection_apply_time_window_filters(select_stmt, work_items,  **kwargs):
+
+def work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs):
     before = None
     if 'before' in kwargs:
         before = kwargs['before']
@@ -102,8 +127,8 @@ def work_items_connection_apply_time_window_filters(select_stmt, work_items,  **
         else:
             window_start = datetime.utcnow() - timedelta(days=kwargs['days'])
             return select_stmt.where(
-                    work_items.c.updated_at >= window_start
-                )
+                work_items.c.updated_at >= window_start
+            )
     elif before:
         return select_stmt.where(
             work_items.c.updated_at <= before
@@ -112,7 +137,7 @@ def work_items_connection_apply_time_window_filters(select_stmt, work_items,  **
         return select_stmt
 
 
-def work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions,  **kwargs):
+def work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions, **kwargs):
     before = None
     if 'before' in kwargs:
         before = kwargs['before']
@@ -129,11 +154,79 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
         else:
             window_start = datetime.utcnow() - timedelta(days=kwargs['days'])
             return select_stmt.where(
-                    work_item_state_transitions.c.created_at >= window_start
-                )
+                work_item_state_transitions.c.created_at >= window_start
+            )
     elif before:
         return select_stmt.where(
             work_item_state_transitions.c.created_at <= before
         )
     else:
         return select_stmt
+
+
+def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
+    if 'closed_within_days' in kwargs:
+        window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
+        select_stmt = select_stmt.where(
+            work_item_delivery_cycles.c.end_date >= window_start
+        )
+    if 'active_only' in kwargs:
+        select_stmt = select_stmt.where(work_item_delivery_cycles.c.end_date == None)
+
+    if 'state_types' in kwargs:
+        select_stmt = select_stmt.where(work_items.c.state_type.in_(kwargs.get('state_types')))
+
+    return select_stmt
+
+
+def work_item_cycle_time_column_expr():
+    return (
+            func.sum(
+                case([
+                    (
+                        work_items_source_state_map.c.state_type.in_([
+                            WorkItemsStateType.open.value,
+                            WorkItemsStateType.wip.value,
+                            WorkItemsStateType.complete.value]),
+                        work_item_delivery_cycle_durations.c.cumulative_time_in_state
+                    )
+                ],
+                    else_=None
+                )
+            ) / (1.0 * 3600 * 24)
+    )
+
+
+def work_items_cycle_metrics(**kwargs):
+    closed_within_days = kwargs.get('closed_within_days')
+    if closed_within_days is None:
+        raise ProcessingException(
+            "The argument 'closedWithinDays' must be specified when computing cycle metrics"
+        )
+
+    window_start = datetime.utcnow() - timedelta(days=closed_within_days)
+    return select([
+        *work_items.columns,
+        work_items.c.id.label('work_item_id'),
+        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        (func.min(work_item_delivery_cycles.c.lead_time)/ (1.0 * 3600 * 24)).label('lead_time'),
+        work_item_cycle_time_column_expr().label('cycle_time'),
+        func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
+    ]).select_from(
+        work_items.join(
+            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+        ).join(
+            work_item_delivery_cycle_durations,
+            work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+        ).join(
+            work_items_source_state_map,
+            and_(
+                work_items.c.work_items_source_id == work_items_source_state_map.c.work_items_source_id,
+                work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state
+            )
+        )).where(
+        work_item_delivery_cycles.c.end_date >= window_start
+    ).group_by(
+        work_items.c.id,
+        work_item_delivery_cycles.c.delivery_cycle_id
+    )

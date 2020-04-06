@@ -12,13 +12,12 @@ import graphene
 
 from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
-    WorkItemsSourceRef, WorkItemStateTransition,\
-    WorkItemCommitInfo, CommitSummary
-
+    WorkItemsSourceRef, WorkItemStateTransition, \
+    WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics
 
 from polaris.analytics.service.graphql.work_item.selectable import \
-    WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, WorkItemsCommitSummary
-
+    WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
+    WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -58,7 +57,6 @@ class WorkItemEvents(
 
 
 class WorkItemEventsConnectionMixin(ConnectionResolverMixin):
-
     work_item_events = WorkItemEvent.ConnectionField(
         before=graphene.Argument(
             graphene.DateTime, required=False,
@@ -96,12 +94,12 @@ class WorkItemCommit(
         interface_resolvers = {}
         connection_class = lambda: WorkItemCommits
 
-
     @classmethod
     def key_to_instance_resolver_params(cls, key):
         key_parts = key.split(':')
         assert len(key_parts) == 2
         return dict(work_item_key=key_parts[0], commit_key=key_parts[1])
+
 
 class WorkItemCommits(
     CountableConnection
@@ -111,7 +109,6 @@ class WorkItemCommits(
 
 
 class WorkItemCommitsConnectionMixin(ConnectionResolverMixin):
-
     work_item_commits = WorkItemCommit.ConnectionField(
         before=graphene.Argument(
             graphene.DateTime, required=False,
@@ -137,6 +134,67 @@ class WorkItemCommitsConnectionMixin(ConnectionResolverMixin):
         )
 
 
+class WorkItemDeliveryCycle(
+    # interface mixins
+    NamedNodeResolverMixin,
+
+    Selectable
+):
+    class Meta:
+        interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, CycleMetrics)
+        named_node_resolver = WorkItemDeliveryCycleNode
+        interface_resolvers = {
+            'CycleMetrics': WorkItemDeliveryCycleCycleMetrics
+        }
+        connection_class = lambda: WorkItemDeliveryCycles
+
+    @classmethod
+    def key_to_instance_resolver_params(cls, key):
+        key_parts = key.split(':')
+        assert len(key_parts) == 2
+        return dict(work_item_key=key_parts[0], delivery_cycle_id=key_parts[1])
+
+    @classmethod
+    def resolve_field(cls, info, work_item_event_key, **kwargs):
+        return cls.resolve_instance(work_item_event_key, **kwargs)
+
+
+class WorkItemDeliveryCycles(
+    CountableConnection
+):
+    class Meta:
+        node = WorkItemDeliveryCycle
+
+
+class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
+    work_item_delivery_cycles = WorkItemDeliveryCycle.ConnectionField(
+        closed_within_days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="Return work items that were closed within this many days from utc now. This argument is "
+                        "required if you are resolve cycle metrics related interfaces in your query"
+        ),
+        active_only=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            description="Return only delivery cycles that are not closed"
+        ),
+        state_types=graphene.Argument(
+            graphene.List(WorkItemsStateType),
+            required=False,
+            description="Include only delivery cycles for work items with the specified state types"
+        )
+    )
+
+    def resolve_work_item_delivery_cycles(self, info, **kwargs):
+        return WorkItemDeliveryCycle.resolve_connection(
+            self.get_connection_resolver_context('work_item_delivery_cycles'),
+            self.get_connection_node_resolver('work_item_delivery_cycles'),
+            self.get_instance_query_params(),
+            **kwargs
+        )
+
+
 class WorkItem(
     # interface resolver mixins
     NamedNodeResolverMixin,
@@ -144,20 +202,22 @@ class WorkItem(
     # Connection Mixins
     WorkItemEventsConnectionMixin,
     CommitsConnectionMixin,
+    WorkItemDeliveryCyclesConnectionMixin,
     # selectable
     Selectable
 ):
     class Meta:
         interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef, CommitSummary)
         named_node_resolver = WorkItemNode
-        interface_resolvers = {'CommitSummary':WorkItemsCommitSummary}
+        interface_resolvers = {
+            'CommitSummary': WorkItemsCommitSummary
+        }
         connection_node_resolvers = {
             'work_item_events': WorkItemEventNodes,
+            'work_item_delivery_cycles': WorkItemDeliveryCycleNodes,
             'commits': WorkItemCommitNodes
         }
         connection_class = lambda: WorkItems
-
-
 
     @classmethod
     def resolve_field(cls, parent, info, key, **kwargs):
@@ -172,7 +232,6 @@ class WorkItems(
 
 
 class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
-
     work_items = WorkItem.ConnectionField(
         before=graphene.Argument(
             graphene.DateTime, required=False,
@@ -187,7 +246,6 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
                         "If before is not specified the it returns work items for the"
                         "previous n days starting from utc now"
         )
-
     )
 
     def resolve_work_items(self, info, **kwargs):
@@ -197,5 +255,3 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             self.get_instance_query_params(),
             **kwargs
         )
-
-

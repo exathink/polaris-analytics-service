@@ -5,6 +5,7 @@ from datetime import timedelta
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 from polaris.analytics.db.enums import WorkItemsStateType
+from test.fixtures.graphql import WorkItemImportApiHelper
 
 
 @pytest.yield_fixture
@@ -382,83 +383,55 @@ class TestProjectWorkItemStateTypeCounts:
     def it_returns_a_count_of_unmapped_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
 
-
-@pytest.yield_fixture
-def project_cycle_metrics_test_fixture(api_work_items_import_fixture):
-    organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-    yield organization, project, work_items_source
-
-    api.import_new_work_items(
-        organization_key=organization.key,
-        work_item_source_key=work_items_source.key,
-        work_item_summaries=[
-            dict(
-                key=uuid.uuid4().hex,
-                name='Issue 1',
-                display_id='1000',
-                state='backlog',
-                created_at=get_date("2018-12-02"),
-                updated_at=get_date("2018-12-03"),
-                **work_items_common
-            ),
-            dict(
-                key=uuid.uuid4().hex,
-                name='Issue 2',
-                display_id='1001',
-                state='aFunkyState',
-                created_at=get_date("2018-12-02"),
-                updated_at=get_date("2018-12-03"),
-                **work_items_common
-            ),
-        ]
-    )
-
-    client = Client(schema)
-    query = """
-                        query getProjectWorkItemStateTypeCounts($project_key:String!) {
-                            project(key: $project_key, interfaces: [WorkItemStateTypeCounts]) {
-                                workItemStateTypeCounts {
-                                    backlog
-                                    unmapped
-                                }
-                            }
-                        }
-                    """
-
-    result = client.execute(query, variable_values=dict(project_key=project.key))
-    assert 'data' in result
-    state_type_counts = result['data']['project']['workItemStateTypeCounts']
-    assert state_type_counts['backlog'] == 1
-    assert state_type_counts['unmapped'] == 1
-
-
-class WorkItemApiHelper:
-    def __init__(self, organization, work_items_source):
-        self.organization = organization
-        self.work_items_source = work_items_source
-        self.work_items = None
-
-    def import_work_items(self, work_items):
-        self.work_items = work_items
         api.import_new_work_items(
-            organization_key=self.organization.key,
-            work_item_source_key=self.work_items_source.key,
-            work_item_summaries=work_items
+            organization_key=organization.key,
+            work_item_source_key=work_items_source.key,
+            work_item_summaries=[
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 2',
+                    display_id='1001',
+                    state='aFunkyState',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+            ]
         )
 
-    def update_work_items(self, updates):
-        for index, state, updated in updates:
-            self.work_items[index]['state'] = state
-            self.work_items[index]['updated_at'] = updated
+        client = Client(schema)
+        query = """
+                            query getProjectWorkItemStateTypeCounts($project_key:String!) {
+                                project(key: $project_key, interfaces: [WorkItemStateTypeCounts]) {
+                                    workItemStateTypeCounts {
+                                        backlog
+                                        unmapped
+                                    }
+                                }
+                            }
+                        """
 
-        api.update_work_items(self.organization.key, self.work_items_source.key, self.work_items)
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        assert state_type_counts['backlog'] == 1
+        assert state_type_counts['unmapped'] == 1
 
 
-class TestProjectCycleMetrics:
+class TestProjectAggregateCycleMetrics:
 
     def it_return_correct_results_when_there_are_no_closed_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -472,7 +445,7 @@ class TestProjectCycleMetrics:
                 updated_at=start_date,
                 **work_items_common
             )
-            for i in range(0, 10)
+            for i in range(0, 3)
         ]
 
         api_helper.import_work_items(work_items)
@@ -484,10 +457,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                             query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                                project(key: $project_key, interfaces: [CycleMetrics], 
-                                        cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                                project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                        closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                                 ) {
-                                    ... on CycleMetrics {
+                                    ... on AggregateCycleMetrics {
                                         minLeadTime
                                         avgLeadTime
                                         maxLeadTime
@@ -523,7 +496,7 @@ class TestProjectCycleMetrics:
 
     def it_computes_cycle_time_metrics_when_there_is_exactly_one_closed_item(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -537,7 +510,7 @@ class TestProjectCycleMetrics:
                 updated_at=start_date,
                 **work_items_common
             )
-            for i in range(0, 10)
+            for i in range(0, 3)
         ]
 
         api_helper.import_work_items(work_items)
@@ -550,10 +523,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
                                 minLeadTime
                                 avgLeadTime
                                 maxLeadTime
@@ -592,7 +565,7 @@ class TestProjectCycleMetrics:
 
     def it_computes_cycle_time_metrics_when_there_are_two_closed_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -606,7 +579,7 @@ class TestProjectCycleMetrics:
                 updated_at=start_date,
                 **work_items_common
             )
-            for i in range(0, 10)
+            for i in range(0, 3)
         ]
 
         api_helper.import_work_items(work_items)
@@ -624,10 +597,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
                                 minLeadTime
                                 avgLeadTime
                                 maxLeadTime
@@ -664,9 +637,9 @@ class TestProjectCycleMetrics:
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
         assert (graphql_date(project['latestClosedDate']) - start_date).days == 8
 
-    def it_computes_cycle_time_metrics_when_there_are_three_closed_items(self, api_work_items_import_fixture):
+    def it_computes_cycle_time_metrics_when_there_are_reopened_work_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -680,7 +653,82 @@ class TestProjectCycleMetrics:
                 updated_at=start_date,
                 **work_items_common
             )
-            for i in range(0, 10)
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+        api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(0, 'done', start_date + timedelta(days=4))])
+        api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=6))])
+
+        api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=7))])
+        api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=8))])
+        api_helper.update_work_items([(0, 'done', start_date + timedelta(days=9))])
+        api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=10))])
+
+        client = Client(schema)
+        query = """
+                    query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
+                        ) {
+                            ... on AggregateCycleMetrics {
+                                minLeadTime
+                                avgLeadTime
+                                maxLeadTime
+                                minCycleTime
+                                avgCycleTime
+                                maxCycleTime
+                                percentileLeadTime
+                                percentileCycleTime
+                                targetPercentile
+                                earliestClosedDate
+                                latestClosedDate
+                                workItemsInScope
+                                workItemsWithNullCycleTime
+
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(project_key=project.key, days=30, percentile=0.70))
+
+        assert result['data']
+        project = result['data']['project']
+        assert project['minLeadTime'] == 3.0
+        assert project['avgLeadTime'] == 4.5
+        assert project['maxLeadTime'] == 6.0
+        assert project['minCycleTime'] == 3.0
+        assert project['avgCycleTime'] == 4.0
+        assert project['maxCycleTime'] == 5.0
+        assert project['percentileLeadTime'] == 6.0
+        assert project['percentileCycleTime'] == 5.0
+        assert project['targetPercentile'] == 0.7
+        # re-opened items only count as a single work items for throughput purposes
+        assert project['workItemsInScope'] == 1
+        assert project['workItemsWithNullCycleTime'] == 0
+        assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
+        assert (graphql_date(project['latestClosedDate']) - start_date).days == 10
+
+    def it_computes_cycle_time_metrics_when_there_are_three_closed_items(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
         ]
 
         api_helper.import_work_items(work_items)
@@ -703,10 +751,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
                                 minLeadTime
                                 avgLeadTime
                                 maxLeadTime
@@ -745,7 +793,7 @@ class TestProjectCycleMetrics:
 
     def it_respects_target_percentile(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -759,7 +807,7 @@ class TestProjectCycleMetrics:
                 updated_at=start_date,
                 **work_items_common
             )
-            for i in range(0, 10)
+            for i in range(0, 3)
         ]
 
         api_helper.import_work_items(work_items)
@@ -782,10 +830,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
                                 
                                 percentileLeadTime
                                 percentileCycleTime
@@ -806,7 +854,7 @@ class TestProjectCycleMetrics:
 
     def it_computes_work_items_with_null_cycle_times(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -820,7 +868,7 @@ class TestProjectCycleMetrics:
                 updated_at=start_date,
                 **work_items_common
             )
-            for i in range(0, 10)
+            for i in range(0, 3)
         ]
 
         api_helper.import_work_items(work_items)
@@ -840,10 +888,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
 
                                 workItemsWithNullCycleTime
 
@@ -858,9 +906,9 @@ class TestProjectCycleMetrics:
         project = result['data']['project']
         assert project['workItemsWithNullCycleTime'] == 1
 
-    def it_respects_the_days_parameter(self, api_work_items_import_fixture):
+    def it_respects_the_closed_within_days_parameter(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemApiHelper(organization, work_items_source)
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
         start_date = datetime.utcnow() - timedelta(days=10)
 
@@ -874,7 +922,7 @@ class TestProjectCycleMetrics:
                 updated_at=start_date,
                 **work_items_common
             )
-            for i in range(0, 10)
+            for i in range(0, 3)
         ]
 
         api_helper.import_work_items(work_items)
@@ -897,10 +945,10 @@ class TestProjectCycleMetrics:
         client = Client(schema)
         query = """
                     query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                        project(key: $project_key, interfaces: [CycleMetrics], 
-                                cycleMetricsDays: $days, cycleMetricsTargetPercentile: $percentile
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
-                            ... on CycleMetrics {
+                            ... on AggregateCycleMetrics {
                                 minLeadTime
                                 avgLeadTime
                                 maxLeadTime
@@ -936,6 +984,434 @@ class TestProjectCycleMetrics:
         assert project['workItemsWithNullCycleTime'] == 0
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 10
         assert (graphql_date(project['latestClosedDate']) - start_date).days == 10
+
+
+class TestProjectWorkItemDeliveryCycles:
+
+    def it_implements_the_named_node_interface(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+        client = Client(schema)
+        query = """
+                                query getProjectDeliveryCycles($project_key:String!) {
+                                    project(key: $project_key) {
+                                        workItemDeliveryCycles {
+                                            edges {
+                                                node {
+                                                    id
+                                                    name
+                                                    key
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert result['data']
+        nodes = [edge['node'] for edge in result['data']['project']['workItemDeliveryCycles']['edges']]
+        assert len(nodes) == 3
+        for node in nodes:
+            assert node['id']
+            assert node['name']
+            assert node['key']
+
+    def it_implements_the_work_item_info_interface(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+        client = Client(schema)
+        query = """
+                                query getProjectDeliveryCycles($project_key:String!) {
+                                    project(key: $project_key) {
+                                        workItemDeliveryCycles {
+                                            edges {
+                                                node {
+                                                    workItemType
+                                                    displayId
+                                                    url
+                                                    description
+                                                    state
+                                                    tags
+                                                    createdAt
+                                                    updatedAt
+                                                    stateType
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert result['data']
+        nodes = [edge['node'] for edge in result['data']['project']['workItemDeliveryCycles']['edges']]
+        assert len(nodes) == 3
+        for node in nodes:
+            assert node['workItemType']
+            assert node['displayId']
+            assert node['url']
+            assert node['description']
+            assert node['state']
+            assert node['stateType']
+            assert node['tags']
+            assert node['createdAt']
+            assert node['updatedAt']
+
+    def it_implements_the_delivery_cycle_info_interface(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+        client = Client(schema)
+        query = """
+                                query getProjectDeliveryCycles($project_key:String!) {
+                                    project(key: $project_key) {
+                                        workItemDeliveryCycles {
+                                            edges {
+                                                node {
+                                                    closed
+                                                    startDate
+                                                    endDate
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert result['data']
+        nodes = [edge['node'] for edge in result['data']['project']['workItemDeliveryCycles']['edges']]
+        assert len(nodes) == 3
+        for node in nodes:
+            assert not node['closed']
+            assert graphql_date(node['startDate']) == start_date
+            assert not node['endDate']
+
+    def it_respects_the_closed_within_days_parameter(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+        api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=3))])
+
+        api_helper.update_work_items([(2, 'doing', start_date + timedelta(days=5))])
+        api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=8))])
+
+        client = Client(schema)
+        query = """
+                query getProjectDeliveryCycles($project_key:String!, $days: Int!) {
+                    project(key: $project_key) {
+                        workItemDeliveryCycles(closedWithinDays: $days) {
+                            edges {
+                                node {
+                                    closed
+                                    startDate
+                                    endDate
+                                }
+                            }
+                        }
+                    }
+                }
+                """
+        result = client.execute(query, variable_values=dict(project_key=project.key, days=5))
+        assert result['data']
+        nodes = [edge['node'] for edge in result['data']['project']['workItemDeliveryCycles']['edges']]
+        assert len(nodes) == 1
+        assert nodes[0]['closed']
+        assert nodes[0]['endDate']
+
+    class TestCycleMetrics:
+
+        def it_returns_no_cycle_metrics_when_there_are_no_closed_items(self, api_work_items_import_fixture):
+            organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+            api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+            start_date = datetime.utcnow() - timedelta(days=10)
+
+            work_items = [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name=f'Issue {i}',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **work_items_common
+                )
+                for i in range(0, 3)
+            ]
+
+            api_helper.import_work_items(work_items)
+
+            api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=8))])
+
+            api_helper.update_work_items([(2, 'upnext', start_date + timedelta(days=3))])
+            api_helper.update_work_items([(2, 'doing', start_date + timedelta(days=4))])
+            api_helper.update_work_items([(2, 'done', start_date + timedelta(days=5))])
+
+            client = Client(schema)
+            query = """
+                                    query getProjectDeliveryCycles($project_key:String!) {
+                                        project(key: $project_key) {
+                                            workItemDeliveryCycles (interfaces: [CycleMetrics]){
+                                                edges {
+                                                    node {
+                                                        leadTime
+                                                        cycleTime
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                """
+            result = client.execute(query, variable_values=dict(project_key=project.key))
+            assert result['data']
+            nodes = [edge['node'] for edge in result['data']['project']['workItemDeliveryCycles']['edges']]
+            assert len(nodes) == 3
+            for node in nodes:
+                assert not node['leadTime']
+                assert not node['cycleTime']
+
+    def it_returns_cycle_metrics_for_closed_items(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=8))])
+
+        api_helper.update_work_items([(2, 'done', start_date + timedelta(days=5))])
+
+        client = Client(schema)
+        query = """
+                                query getProjectDeliveryCycles($project_key:String!) {
+                                    project(key: $project_key) {
+                                        workItemDeliveryCycles (interfaces: [CycleMetrics]){
+                                            edges {
+                                                node {
+                                                    name
+                                                    leadTime
+                                                    cycleTime
+                                                    endDate
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert result['data']
+        nodes = [edge['node'] for edge in result['data']['project']['workItemDeliveryCycles']['edges']]
+        assert len(nodes) == 3
+        for node in nodes:
+            if node['name'] == 'Issue 1':
+                assert node['leadTime'] == 8.0
+                assert node['cycleTime'] == 6.0
+            else:
+                assert not node['leadTime']
+                assert not node['cycleTime']
+
+    def it_returns_cycle_metrics_for_reopened_items(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=8))])
+
+        api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=10))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=12))])
+
+        api_helper.update_work_items([(2, 'done', start_date + timedelta(days=5))])
+
+        client = Client(schema)
+        query = """
+                                query getProjectDeliveryCycles($project_key:String!) {
+                                    project(key: $project_key) {
+                                        workItemDeliveryCycles (interfaces: [CycleMetrics]){
+                                            edges {
+                                                node {
+                                                    name
+                                                    leadTime
+                                                    cycleTime
+                                                    endDate
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert result['data']
+        nodes = [edge['node'] for edge in result['data']['project']['workItemDeliveryCycles']['edges']]
+        # expect new delivery cycle for re-opened items
+        assert len(nodes) == 4
+        assert {(node['leadTime'], node['cycleTime']) for node in nodes if node['name'] == 'Issue 1'} == \
+               {(8.0, 6.0), (2.0, 2.0)}
+        assert {(node['leadTime'], node['cycleTime']) for node in nodes if node['name'] != 'Issue 1'} == \
+               {(None, None)}
+
+
+class TestAggregateVsDetailConsistency:
+
+    def it_returns_aggregate_metrics_that_are_consistent_with_the_detail_delivery_cycle_metrics(self,
+                                                                                                api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=5))])
+
+        api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=3))])
+
+        api_helper.update_work_items([(2, 'doing', start_date + timedelta(days=4))])
+        api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=8))])
+
+        client = Client(schema)
+        query = """
+                query getProjectDeliveryCycles($project_key:String!, $days: Int!) {
+                    project(key: $project_key, closedWithinDays: $days, interfaces: [AggregateCycleMetrics]) {
+                        avgLeadTime
+                        avgCycleTime
+                        
+                        workItemDeliveryCycles (closedWithinDays: $days, interfaces: [CycleMetrics]){
+                            edges {
+                                node {
+                                    name
+                                    leadTime
+                                    cycleTime
+                                    endDate
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+        result = client.execute(query, variable_values=dict(project_key=project.key, days=10))
+        assert result['data']
+        project = result['data']['project']
+        assert project['avgLeadTime'] == 5.5
+        assert project['avgCycleTime'] == 2.5
+
+        nodes = [edge['node'] for edge in project['workItemDeliveryCycles']['edges']]
+        assert len(nodes) == 2
+        assert {(node['leadTime'], node['cycleTime']) for node in nodes if node['name'] == 'Issue 2'} == \
+               {(8.0, 4.0)}
+        assert {(node['leadTime'], node['cycleTime']) for node in nodes if node['name'] == 'Issue 1'} == \
+               {(3.0, 1.0)}
 
 
 @pytest.yield_fixture
@@ -1021,8 +1497,8 @@ class TestProjectWorkItemsSourceWorkItemStateMappings:
         work_item_sources = result['data']['project']['workItemsSources']['edges']
         assert len(work_item_sources) == 2
         assert {
-            len(work_item_source['node']['workItemStateMappings'])
-            for work_item_source in work_item_sources
-        } == {
-            6,3
-        }
+                   len(work_item_source['node']['workItemStateMappings'])
+                   for work_item_source in work_item_sources
+               } == {
+                   6, 3
+               }

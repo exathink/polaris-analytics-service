@@ -13,11 +13,9 @@ import logging
 from polaris.common import db
 from polaris.analytics.db import api as db_api
 from polaris.analytics import api
-from polaris.analytics.db.enums import WorkItemsStateType
+from ..interfaces import WorkItemsStateType
 
 logger = logging.getLogger('polaris.analytics.mutations')
-
-WorkItemsStateType = graphene.Enum.from_enum(WorkItemsStateType)
 
 
 class ArchiveProjectInput(graphene.InputObjectType):

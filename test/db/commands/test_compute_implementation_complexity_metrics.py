@@ -403,6 +403,52 @@ class TestUpdateWorkItemsCommitsCount:
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                                             work_item_id={work_items_ids[0]} and commit_count=1").scalar() == 1
 
+    def it_updates_commit_count_when_a_commit_is_mapped_to_more_than_one_work_item(self,
+                                                                                       work_items_commits_fixture):
+        organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
+
+        # Map commit 2 to work item 2 resulting in increase in commit count
+        create_work_item_commits(test_work_items[1]['key'], [test_commits[1]['key']])
+        work_items_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_items[0]['key'],
+                commit_key=test_commits[0]['key']
+            ),
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_items[1]['key'],
+                commit_key=test_commits[4]['key']
+            )
+        ]
+        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        assert result['success']
+        assert result['updated'] == 3
+        assert db.connection().execute(
+            f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
+                                    work_item_id={work_items_ids[0]} and commit_count=3").scalar() == 1
+        assert db.connection().execute(
+            f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
+                                            work_item_id={work_items_ids[0]} and commit_count=1").scalar() == 1
+        assert db.connection().execute(f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
+                                    work_item_id={work_items_ids[1]} and commit_count=2").scalar() == 1
+
+    def it_doesnt_update_commit_count_for_work_items_not_in_input(self, work_items_commits_fixture):
+        organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
+        work_items_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_items[0]['key'],
+                commit_key=test_commits[0]['key']
+            )
+        ]
+        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        assert result['success']
+        assert result['updated'] == 2
+        assert db.connection().execute(
+            f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
+                            work_item_id={work_items_ids[1]} and commit_count is NULL").scalar() == 1
+
 
 class TestUpdateWorkItemsNonMergeCommitsStats:
 

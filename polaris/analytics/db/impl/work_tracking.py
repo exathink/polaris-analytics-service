@@ -1331,6 +1331,8 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
     # 1. earliest_commit, latest_commit: earliest and latest commit for a work item delivery cycle
     # 2. repository_count: distinct repository count over all commits during a delivery cycle for a work item
     # 3. commit_count: distinct commit count over all commits during a delivery cycle for a work item
+    # 4. commit stats for non merge commits
+    # 5. commit stats for merge commits
 
     updated = 0
 
@@ -1434,7 +1436,7 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                     else_=0
                 )
             ).label('total_files_changed_merge'),
-            func.trunc(func.avg(
+            func.coalesce(func.trunc(func.avg(
                 case(
                     [
                         (
@@ -1442,9 +1444,9 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                             cast(commits.c.stats["lines"].astext, Integer)
                         )
                     ],
-                    else_=0
+                    else_=None
                 )
-            )).label('average_lines_changed_merge'),
+            )), 0).label('average_lines_changed_merge'),
 
         ]).select_from(
             work_items_temp.join(

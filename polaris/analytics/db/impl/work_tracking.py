@@ -1366,8 +1366,8 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
             work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
             func.min(commits.c.commit_date).label('earliest_commit'),
             func.max(commits.c.commit_date).label('latest_commit'),
-            func.count(distinct(commits.c.repository_id)).label('repository_count'),
             func.count(distinct(commits.c.id)).label('commit_count'),
+            func.count(distinct(commits.c.repository_id)).label('repository_count'),
             func.sum(
                 case(
                     [
@@ -1411,7 +1411,40 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                     ],
                     else_=0
                 )
-            ).label('total_lines_inserted_non_merge')
+            ).label('total_lines_inserted_non_merge'),
+            func.sum(
+                case(
+                    [
+                        (
+                            commits.c.num_parents > 1,
+                            cast(commits.c.stats["lines"].astext, Integer)
+                        )
+                    ],
+                    else_=0
+                )
+            ).label('total_lines_changed_merge'),
+            func.sum(
+                case(
+                    [
+                        (
+                            commits.c.num_parents > 1,
+                            cast(commits.c.stats["files"].astext, Integer)
+                        )
+                    ],
+                    else_=0
+                )
+            ).label('total_files_changed_merge'),
+            func.trunc(func.avg(
+                case(
+                    [
+                        (
+                            commits.c.num_parents > 1,
+                            cast(commits.c.stats["lines"].astext, Integer)
+                        )
+                    ],
+                    else_=0
+                )
+            )).label('average_lines_changed_merge'),
 
         ]).select_from(
             work_items_temp.join(
@@ -1443,15 +1476,17 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
             ).values(
                 earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
                 latest_commit=delivery_cycles_commits_rows.c.latest_commit,
+                commit_count=delivery_cycles_commits_rows.c.commit_count,
                 repository_count=delivery_cycles_commits_rows.c.repository_count,
                 total_lines_changed_non_merge=delivery_cycles_commits_rows.c.total_lines_changed_non_merge,
                 total_files_changed_non_merge=delivery_cycles_commits_rows.c.total_files_changed_non_merge,
                 total_lines_deleted_non_merge=delivery_cycles_commits_rows.c.total_lines_deleted_non_merge,
                 total_lines_inserted_non_merge=delivery_cycles_commits_rows.c.total_lines_inserted_non_merge,
-                commit_count=delivery_cycles_commits_rows.c.commit_count
+                total_lines_changed_merge=delivery_cycles_commits_rows.c.total_lines_changed_merge,
+                total_files_changed_merge=delivery_cycles_commits_rows.c.total_files_changed_merge,
+                average_lines_changed_merge=delivery_cycles_commits_rows.c.average_lines_changed_merge
             )
         ).rowcount
-
     return dict(
         updated=updated
     )

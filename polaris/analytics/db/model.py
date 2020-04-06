@@ -740,6 +740,11 @@ class WorkItemDeliveryCycles(Base):
     total_lines_deleted_non_merge = Column(Integer, nullable=True)
     total_lines_inserted_non_merge = Column(Integer, nullable=True)
 
+    # merge commits' code change stats columns
+    total_lines_changed_merge = Column(Integer, nullable=True)
+    total_files_changed_merge = Column(Integer, nullable=True)
+    average_lines_changed_merge = Column(Integer, nullable=True)
+
     # Work Items relationship
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
     work_item = relationship('WorkItem', back_populates='delivery_cycles')

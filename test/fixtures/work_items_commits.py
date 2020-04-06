@@ -68,6 +68,17 @@ def work_items_commits_fixture(commits_fixture):
     test_commits[1]['repository_id'] = repositories['beta'].id
     test_commits[4]['repository_id'] = repositories['gamma'].id
 
+    # updating test commits for commits stats, 1 indicates non merge commits, >1 is merge commit
+    test_commits[0]['num_parents'] = 1
+    test_commits[1]['num_parents'] = 2
+    test_commits[2]['num_parents'] = 1
+    test_commits[3]['num_parents'] = 2
+    test_commits[4]['num_parents'] = 1
+
+    for commit in test_commits:
+        commit['stats'] = {"files": 1, "lines": 8, "deletions": 4, "insertions": 4}
+
+
     # Add commits
     create_test_commits(test_commits)
 

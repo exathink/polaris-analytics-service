@@ -16,7 +16,7 @@ depends_on = None
 
 
 def upgrade():
-    # Update all delivery cycles with code change stats:
+    # Update all delivery cycles with code change stats for non merge commits only:
     # total_lines_changed, total_files_changed, total_lines_deleted, total_lines_inserted
     op.execute("""
             WITH delivery_cycles_commits_rows AS
@@ -34,10 +34,10 @@ def upgrade():
             WHERE analytics.commits.commit_date >= analytics.work_item_delivery_cycles.start_date
             GROUP BY analytics.work_item_delivery_cycles.delivery_cycle_id)
             UPDATE analytics.work_item_delivery_cycles
-        SET total_lines_changed = delivery_cycles_commits_rows.total_lines_changed,
-        total_files_changed = delivery_cycles_commits_rows.total_files_changed,
-        total_lines_deleted = delivery_cycles_commits_rows.total_lines_deleted,
-        total_lines_inserted = delivery_cycles_commits_rows.total_lines_inserted
+        SET total_lines_changed_non_merge = delivery_cycles_commits_rows.total_lines_changed,
+        total_files_changed_non_merge = delivery_cycles_commits_rows.total_files_changed,
+        total_lines_deleted_non_merge = delivery_cycles_commits_rows.total_lines_deleted,
+        total_lines_inserted_non_merge = delivery_cycles_commits_rows.total_lines_inserted
         FROM delivery_cycles_commits_rows
         WHERE analytics.work_item_delivery_cycles.delivery_cycle_id = delivery_cycles_commits_rows.delivery_cycle_id
         """)

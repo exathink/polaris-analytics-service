@@ -735,10 +735,10 @@ class WorkItemDeliveryCycles(Base):
     commit_count = Column(Integer, nullable=True)
 
     # non-merge commits' code change stats columns
-    total_lines_changed = Column(Integer, nullable=True)
-    total_files_changed = Column(Integer, nullable=True)
-    total_lines_deleted = Column(Integer, nullable=True)
-    total_lines_inserted = Column(Integer, nullable=True)
+    total_lines_changed_non_merge = Column(Integer, nullable=True)
+    total_files_changed_non_merge = Column(Integer, nullable=True)
+    total_lines_deleted_non_merge = Column(Integer, nullable=True)
+    total_lines_inserted_non_merge = Column(Integer, nullable=True)
 
     # Work Items relationship
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)

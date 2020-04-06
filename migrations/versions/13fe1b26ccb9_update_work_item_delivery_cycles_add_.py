@@ -17,14 +17,14 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('work_item_delivery_cycles', sa.Column('total_files_changed', sa.Integer(), nullable=True), schema='analytics')
-    op.add_column('work_item_delivery_cycles', sa.Column('total_lines_changed', sa.Integer(), nullable=True), schema='analytics')
-    op.add_column('work_item_delivery_cycles', sa.Column('total_lines_deleted', sa.Integer(), nullable=True), schema='analytics')
-    op.add_column('work_item_delivery_cycles', sa.Column('total_lines_inserted', sa.Integer(), nullable=True), schema='analytics')
+    op.add_column('work_item_delivery_cycles', sa.Column('total_files_changed_non_merge', sa.Integer(), nullable=True), schema='analytics')
+    op.add_column('work_item_delivery_cycles', sa.Column('total_lines_changed_non_merge', sa.Integer(), nullable=True), schema='analytics')
+    op.add_column('work_item_delivery_cycles', sa.Column('total_lines_deleted_non_merge', sa.Integer(), nullable=True), schema='analytics')
+    op.add_column('work_item_delivery_cycles', sa.Column('total_lines_inserted_non_merge', sa.Integer(), nullable=True), schema='analytics')
 
 
 def downgrade():
-    op.drop_column('work_item_delivery_cycles', 'total_lines_inserted', schema='analytics')
-    op.drop_column('work_item_delivery_cycles', 'total_lines_deleted', schema='analytics')
-    op.drop_column('work_item_delivery_cycles', 'total_lines_changed', schema='analytics')
-    op.drop_column('work_item_delivery_cycles', 'total_files_changed', schema='analytics')
+    op.drop_column('work_item_delivery_cycles', 'total_lines_inserted_non_merge', schema='analytics')
+    op.drop_column('work_item_delivery_cycles', 'total_lines_deleted_non_merge', schema='analytics')
+    op.drop_column('work_item_delivery_cycles', 'total_lines_changed_non_merge', schema='analytics')
+    op.drop_column('work_item_delivery_cycles', 'total_files_changed_non_merge', schema='analytics')

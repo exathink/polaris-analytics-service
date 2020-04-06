@@ -1378,7 +1378,7 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                     ],
                     else_=0
                 )
-            ).label('total_lines_changed'),
+            ).label('total_lines_changed_non_merge'),
             func.sum(
                 case(
                     [
@@ -1389,7 +1389,7 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                     ],
                     else_=0
                 )
-            ).label('total_files_changed'),
+            ).label('total_files_changed_non_merge'),
             func.sum(
                 case(
                     [
@@ -1400,7 +1400,7 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                     ],
                     else_=0
                 )
-            ).label('total_lines_deleted'),
+            ).label('total_lines_deleted_non_merge'),
             func.sum(
                 case(
                     [
@@ -1411,7 +1411,7 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                     ],
                     else_=0
                 )
-            ).label('total_lines_inserted')
+            ).label('total_lines_inserted_non_merge')
 
         ]).select_from(
             work_items_temp.join(
@@ -1425,10 +1425,10 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
             )
         ).where(
             and_(
-                commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
+                    work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
                 or_(
                     work_item_delivery_cycles.c.end_date == None,
-                    work_item_delivery_cycles.c.end_date >= commits.c.commit_date
+                    commits.c.commit_date <= work_item_delivery_cycles.c.end_date
                 )
             )
         ).group_by(
@@ -1444,10 +1444,10 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                 earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
                 latest_commit=delivery_cycles_commits_rows.c.latest_commit,
                 repository_count=delivery_cycles_commits_rows.c.repository_count,
-                total_lines_changed=delivery_cycles_commits_rows.c.total_lines_changed,
-                total_files_changed=delivery_cycles_commits_rows.c.total_files_changed,
-                total_lines_deleted=delivery_cycles_commits_rows.c.total_lines_deleted,
-                total_lines_inserted=delivery_cycles_commits_rows.c.total_lines_inserted,
+                total_lines_changed_non_merge=delivery_cycles_commits_rows.c.total_lines_changed_non_merge,
+                total_files_changed_non_merge=delivery_cycles_commits_rows.c.total_files_changed_non_merge,
+                total_lines_deleted_non_merge=delivery_cycles_commits_rows.c.total_lines_deleted_non_merge,
+                total_lines_inserted_non_merge=delivery_cycles_commits_rows.c.total_lines_inserted_non_merge,
                 commit_count=delivery_cycles_commits_rows.c.commit_count
             )
         ).rowcount

@@ -419,6 +419,7 @@ class ContributorAlias(Base):
 
     contributor_id = Column(Integer, ForeignKey('contributors.id'), index=True, nullable=False)
     contributor = relationship('Contributor', back_populates='aliases')
+    delivery_cycles = relationship('WorkItemDeliveryCycleContributors', cascade="all, delete-orphan")
 
     @classmethod
     def find_by_contributor_alias_key(cls, session, contributor_alias_key):
@@ -750,6 +751,7 @@ class WorkItemDeliveryCycles(Base):
     work_item = relationship('WorkItem', back_populates='delivery_cycles')
 
     delivery_cycle_durations = relationship('WorkItemDeliveryCycleDurations', cascade="all, delete-orphan")
+    delivery_cycle_contributors = relationship('WorkItemDeliveryCycleContributors', cascade="all, delete-orphan")
 
 
 work_item_delivery_cycles = WorkItemDeliveryCycles.__table__
@@ -767,6 +769,22 @@ class WorkItemDeliveryCycleDurations(Base):
 
 
 work_item_delivery_cycle_durations = WorkItemDeliveryCycleDurations.__table__
+
+
+class WorkItemDeliveryCycleContributors(Base):
+    __tablename__ = 'work_item_delivery_cycle_contributors'
+
+    total_lines_as_author = Column(Integer, nullable=True)
+    total_lines_as_reviewer = Column(Integer, nullable=True)
+    # Work Item Delivery Cycles relationship
+    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), \
+                               primary_key=True, nullable=False)
+    # Contributor Alias relationship
+    contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), primary_key=True, nullable=False)
+
+
+work_item_delivery_cycle_contributors = WorkItemDeliveryCycleContributors.__table__
+
 
 class FeatureFlag(Base):
     __tablename__ = 'feature_flags'

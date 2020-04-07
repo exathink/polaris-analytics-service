@@ -1492,3 +1492,6 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
     return dict(
         updated=updated
     )
+
+def compute_contributor_metrics(session, organization_key, work_items_commits):
+    pass

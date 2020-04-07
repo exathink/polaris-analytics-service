@@ -22,3 +22,6 @@ class InferProjectsRepositoriesRelationships(WorkItemsCommitsResolved):
 
 class ComputeImplementationComplexityMetrics(WorkItemsCommitsResolved):
     message_type = 'analytics.compute_implementation_complexity_metrics'
+
+class ComputeContributorMetrics(WorkItemsCommitsResolved):
+    message_type = 'analytics.compute_contributor_metrics'

@@ -9,6 +9,8 @@
 # Author: Krishna Kumar
 
 from unittest.mock import patch
+
+from polaris.analytics.messaging import ComputeContributorMetrics
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
 from polaris.messaging.messages import WorkItemsCommitsResolved
 from polaris.messaging.topics import AnalyticsTopic
@@ -78,7 +80,8 @@ class TestWorkItemsCommitsResolved:
         publisher = mock_publisher()
         channel = mock_channel()
         result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        assert len(result) == 3
+        assert len(result) == 4
         publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateCommitsWorkItemsSummaries, call=0)
         publisher.assert_topic_called_with_message(AnalyticsTopic, InferProjectsRepositoriesRelationships, call=1)
         publisher.assert_topic_called_with_message(AnalyticsTopic, ComputeImplementationComplexityMetrics, call=2)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, ComputeContributorMetrics, call=3)

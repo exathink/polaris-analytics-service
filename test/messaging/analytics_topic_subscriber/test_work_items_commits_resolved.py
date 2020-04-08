@@ -78,8 +78,7 @@ class TestWorkItemsCommitsResolved:
         publisher = mock_publisher()
         channel = mock_channel()
         result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        assert len(result) == 4
+        assert len(result) == 3
         publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateCommitsWorkItemsSummaries, call=0)
         publisher.assert_topic_called_with_message(AnalyticsTopic, InferProjectsRepositoriesRelationships, call=1)
         publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateWorkItemsCommitsStats, call=2)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, ComputeImplementationComplexityMetrics, call=3)

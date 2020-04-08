@@ -891,74 +891,6 @@ def update_commit_work_item_summaries(session, organization_key, work_item_commi
     return dict()
 
 
-def update_work_items_commits_span(session, organization_key, work_items_commits):
-    # Update work items in work_items_commits_span with earliest and latest commits
-    updated = 0
-
-    if len(work_items_commits) > 0:
-        # create a temp table for received work item ids
-        work_items_temp = db.create_temp_table(
-            table_name='work_items_temp',
-            columns=[
-                Column('work_item_key', UUID(as_uuid=True)),
-            ]
-        )
-        work_items_temp.create(session.connection(), checkfirst=True)
-
-        # Get distinct work item keys from input
-        distinct_work_items = []
-        for entry in work_items_commits:
-            if entry['work_item_key'] not in distinct_work_items:
-                distinct_work_items.append(entry['work_item_key'])
-
-        session.connection().execute(
-            work_items_temp.insert().values(
-                [
-                    dict(
-                        work_item_key=record
-                    )
-                    for record in distinct_work_items
-                ]
-            )
-        )
-
-        # select relevant rows to find commits span
-        delivery_cycles_commits_rows = select([
-            work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-            func.min(commits.c.commit_date).label('earliest_commit'),
-            func.max(commits.c.commit_date).label('latest_commit')
-        ]).select_from(
-            work_items_temp.join(
-                work_items, work_items.c.key == work_items_temp.c.work_item_key
-            ).join(
-                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-            ).join(
-                work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
-            ).join(
-                commits, work_items_commits_table.c.commit_id == commits.c.id
-            )
-        ).where(
-            commits.c.commit_date >= work_item_delivery_cycles.c.start_date
-        ).group_by(
-            work_item_delivery_cycles.c.delivery_cycle_id,
-
-        ).cte('delivery_cycles_commits_rows')
-
-        # update relevant work items delivery cycles with earliest and latest commit dates
-        updated = session.connection().execute(
-            work_item_delivery_cycles.update().where(
-                work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
-            ).values(
-                earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
-                latest_commit=delivery_cycles_commits_rows.c.latest_commit
-            )
-        ).rowcount
-
-    return dict(
-        updated=updated
-    )
-
-
 def update_work_items(session, work_items_source_key, work_item_summaries):
     updated = 0
     if len(work_item_summaries) > 0:
@@ -1326,13 +1258,12 @@ def infer_projects_repositories_relationships(session, organization_key, work_it
     )
 
 
-def compute_implementation_complexity_metrics(session, organization_key, work_items_commits):
-    # The following metrics are calculated and updated for each work_item_delivery_cycle
+def update_work_items_commits_stats(session, organization_key, work_items_commits):
+
+    # The following commit stats are calculated and updated for each work_item_delivery_cycle
     # 1. earliest_commit, latest_commit: earliest and latest commit for a work item delivery cycle
     # 2. repository_count: distinct repository count over all commits during a delivery cycle for a work item
     # 3. commit_count: distinct commit count over all commits during a delivery cycle for a work item
-    # 4. commit stats for non merge commits
-    # 5. commit stats for merge commits
 
     updated = 0
 
@@ -1369,7 +1300,83 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
             func.min(commits.c.commit_date).label('earliest_commit'),
             func.max(commits.c.commit_date).label('latest_commit'),
             func.count(distinct(commits.c.id)).label('commit_count'),
-            func.count(distinct(commits.c.repository_id)).label('repository_count'),
+            func.count(distinct(commits.c.repository_id)).label('repository_count')
+            ]).select_from(
+            work_items_temp.join(
+                work_items, work_items.c.key == work_items_temp.c.work_item_key
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            ).join(
+                work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+            ).join(
+                commits, work_items_commits_table.c.commit_id == commits.c.id
+            )
+        ).where(
+            and_(
+                work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
+                or_(
+                    work_item_delivery_cycles.c.end_date == None,
+                    commits.c.commit_date <= work_item_delivery_cycles.c.end_date
+                )
+            )
+        ).group_by(
+            work_item_delivery_cycles.c.delivery_cycle_id,
+
+        ).cte('delivery_cycles_commits_rows')
+
+        # update relevant work items delivery cycles with relevant metrics
+        updated = session.connection().execute(
+            work_item_delivery_cycles.update().where(
+                work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
+            ).values(
+                earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
+                latest_commit=delivery_cycles_commits_rows.c.latest_commit,
+                commit_count=delivery_cycles_commits_rows.c.commit_count,
+                repository_count=delivery_cycles_commits_rows.c.repository_count,
+            )
+        ).rowcount
+    return dict(
+        updated=updated
+    )
+
+
+def compute_implementation_complexity_metrics(session, organization_key, work_items_commits):
+    # The following metrics are calculated and updated for each work_item_delivery_cycle
+    # 1. commit stats for non merge commits
+    # 2. commit stats for merge commits
+
+    updated = 0
+
+    if len(work_items_commits) > 0:
+        # create a temp table for received work item ids
+        work_items_temp = db.create_temp_table(
+            table_name='work_items_temp',
+            columns=[
+                Column('work_item_key', UUID(as_uuid=True)),
+            ]
+        )
+        work_items_temp.create(session.connection(), checkfirst=True)
+
+        # Get distinct work item keys from input
+        distinct_work_items = []
+        for entry in work_items_commits:
+            if entry['work_item_key'] not in distinct_work_items:
+                distinct_work_items.append(entry['work_item_key'])
+
+        session.connection().execute(
+            work_items_temp.insert().values(
+                [
+                    dict(
+                        work_item_key=record
+                    )
+                    for record in distinct_work_items
+                ]
+            )
+        )
+
+        # select relevant rows to find various metrics
+        delivery_cycles_commits_rows = select([
+            work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
             func.sum(
                 case(
                     [
@@ -1476,10 +1483,6 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
             work_item_delivery_cycles.update().where(
                 work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
             ).values(
-                earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
-                latest_commit=delivery_cycles_commits_rows.c.latest_commit,
-                commit_count=delivery_cycles_commits_rows.c.commit_count,
-                repository_count=delivery_cycles_commits_rows.c.repository_count,
                 total_lines_changed_non_merge=delivery_cycles_commits_rows.c.total_lines_changed_non_merge,
                 total_files_changed_non_merge=delivery_cycles_commits_rows.c.total_files_changed_non_merge,
                 total_lines_deleted_non_merge=delivery_cycles_commits_rows.c.total_lines_deleted_non_merge,

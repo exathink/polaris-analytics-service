@@ -28,17 +28,30 @@ def update_commit_work_item_summaries(organization_key, work_item_commits):
     except Exception as e:
         return db.failure_message('Update commit work item summaries failed', e)
 
-def update_work_items_commits_span(organization_key, work_items_commits):
+def update_work_items_commits_stats(organization_key, work_items_commits):
     try:
         with db.orm_session() as session:
             return success(
-                impl.update_work_items_commits_span(
+                impl.update_work_items_commits_stats(
                     session, organization_key, work_items_commits)
             )
     except SQLAlchemyError as exc:
         return db.process_exception("Update work items commits span failed", exc)
     except Exception as e:
         return db.failure_message('Update work items commits span failed', e)
+
+def compute_implementation_complexity_metrics(organization_key, work_items_commits):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.compute_implementation_complexity_metrics(
+                    session, organization_key, work_items_commits)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Compute implementation complexity metrics failed", exc)
+    except Exception as e:
+        return db.failure_message('Compute implementation complexity metrics failed', e)
+
 
 def infer_projects_repositories_relationships(organization_key, work_items_commits):
     try:

@@ -100,17 +100,17 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
             self.publish(AnalyticsTopic, update_work_items_commits_stats_command)
 
-            # # Publish a sub command to compute following complexity metrics:
-            # # 1. Commit stats for merge commits
-            # # 2. Commit stats for non merge commits
-            # compute_implementation_complexity_metrics_command = ComputeImplementationComplexityMetrics(
-            #     send=message.dict,
-            #     in_response_to=message
-            # )
-            # self.publish(AnalyticsTopic, compute_implementation_complexity_metrics_command)
+            # Publish a sub command to compute following complexity metrics:
+            # 1. Commit stats for merge commits
+            # 2. Commit stats for non merge commits
+            compute_implementation_complexity_metrics_command = ComputeImplementationComplexityMetrics(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, compute_implementation_complexity_metrics_command)
 
             return update_commit_work_items_summaries_command, infer_projects_repositories_relationships, \
-                   update_work_items_commits_stats_command
+                   update_work_items_commits_stats_command, compute_implementation_complexity_metrics_command
 
         elif RepositoriesImported.message_type == message.message_type:
             return self.publish(

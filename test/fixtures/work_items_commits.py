@@ -24,8 +24,8 @@ from datetime import datetime, timedelta
 
 from polaris.analytics.db.model import WorkItemDeliveryCycles
 
-earliest_commit_date = datetime.utcnow()-timedelta(days=5)
-latest_commit_date = datetime.utcnow()-timedelta(days=2)
+earliest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=5)
+latest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=2)
 
 
 test_work_items = [
@@ -33,8 +33,8 @@ test_work_items = [
         key=uuid.uuid4().hex,
         name='Issue 1',
         display_id='1000',
-        created_at=get_date("2018-12-02") - timedelta(days=7),
-        updated_at=get_date("2018-12-03"),
+        created_at=datetime.utcnow().replace(microsecond=0) - timedelta(days=7),
+        updated_at=datetime.utcnow().replace(microsecond=0) - timedelta(days=7),
         **work_items_common
     )
     for i in range(0, 2)
@@ -42,7 +42,7 @@ test_work_items = [
 
 
 @pytest.yield_fixture()
-def update_work_items_commits_span_fixture(commits_fixture):
+def work_items_commits_fixture(commits_fixture):
     organization, projects, repositories, contributor = commits_fixture
     test_repo = repositories['alpha']
 
@@ -63,6 +63,21 @@ def update_work_items_commits_span_fixture(commits_fixture):
     test_commits[2]['commit_date'] = latest_commit_date
     test_commits[3]['commit_date'] = latest_commit_date + timedelta(days=1)
     test_commits[4]['commit_date'] = earliest_commit_date
+
+    # changing repo ids to test repository count
+    test_commits[1]['repository_id'] = repositories['beta'].id
+    test_commits[4]['repository_id'] = repositories['gamma'].id
+
+    # updating test commits for commits stats, 1 indicates non merge commits, >1 is merge commit
+    test_commits[0]['num_parents'] = 1
+    test_commits[1]['num_parents'] = 2
+    test_commits[2]['num_parents'] = 1
+    test_commits[3]['num_parents'] = 2
+    test_commits[4]['num_parents'] = 1
+
+    for commit in test_commits:
+        commit['stats'] = {"files": 1, "lines": 8, "deletions": 4, "insertions": 4}
+
 
     # Add commits
     create_test_commits(test_commits)
@@ -124,7 +139,7 @@ def update_work_items_commits_span_fixture(commits_fixture):
             WorkItemDeliveryCycles(
                     start_seq_no=0,
                     start_date=w1.created_at,
-                    end_date=datetime.utcnow()-timedelta(hours=1),
+                    end_date=latest_commit_date,
                     end_seq_no=2,
                     work_item_id=w1.id,
                     lead_time=int((datetime.utcnow()-timedelta(hours=1)-w1.created_at).total_seconds())

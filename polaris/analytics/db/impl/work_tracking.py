@@ -1495,3 +1495,12 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
     return dict(
         updated=updated
     )
+
+
+def compute_implementation_complexity_metrics_for_commits(session, organization_key, commit_details):
+    # work_items_commits = []
+    #         for commit_detail in commit_details:
+    #             commit = Commit.find_by_commit_key(commit_detail['key'])
+    #             for work_item in commit.work_items:
+    #                 work_items_commits.append(dict(work_item_key=work_item.key))
+    pass

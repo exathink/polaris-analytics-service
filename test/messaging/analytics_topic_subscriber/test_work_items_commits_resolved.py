@@ -83,3 +83,4 @@ class TestWorkItemsCommitsResolved:
         publisher.assert_topic_called_with_message(AnalyticsTopic, InferProjectsRepositoriesRelationships, call=1)
         publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateWorkItemsCommitsStats, call=2)
         publisher.assert_topic_called_with_message(AnalyticsTopic, ComputeImplementationComplexityMetrics, call=3)
+

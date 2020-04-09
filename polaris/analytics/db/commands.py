@@ -55,22 +55,18 @@ def compute_implementation_complexity_metrics(organization_key, work_items_commi
         return db.failure_message('Compute implementation complexity metrics failed', e)
 
 
-def compute_commits_implementation_complexity_metrics(organization_key, commit_details):
+def compute_implementation_complexity_metrics_for_commits(organization_key, commit_details):
     try:
         with db.orm_session() as session:
-            work_items_commits = []
-            for commit_detail in commit_details:
-                commit = Commit.find_by_commit_key(commit_detail['key'])
-                for work_item in commit.work_items:
-                    work_items_commits.append(dict(work_item_key=work_item.key))
             return success(
-                impl.compute_implementation_complexity_metrics(
+                impl.compute_implementation_complexity_metrics_for_commits(
                     session, organization_key, work_items_commits)
             )
     except SQLAlchemyError as exc:
         return db.process_exception("Compute implementation complexity metrics failed", exc)
     except Exception as e:
         return db.failure_message('Compute implementation complexity metrics failed', e)
+
 
 
 def infer_projects_repositories_relationships(organization_key, work_items_commits):

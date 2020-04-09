@@ -1530,7 +1530,7 @@ def compute_implementation_complexity_metrics_for_commits(session, organization_
         # Get distinct work item keys from input
         distinct_work_items = []
         for entry in commit_details:
-            commit = Commit.find_by_commit_key(entry['key'])
+            commit = Commit.find_by_commit_key(session, commit_key=entry['key'])
             for work_item in commit.work_items:
                 work_item_key = work_item.key
                 if work_item_key not in distinct_work_items:

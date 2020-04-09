@@ -50,9 +50,9 @@ def compute_implementation_complexity_metrics_for_work_items(organization_key, w
                     session, organization_key, work_items_commits)
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Compute implementation complexity metrics failed", exc)
+        return db.process_exception("Compute implementation complexity metrics for work items failed", exc)
     except Exception as e:
-        return db.failure_message('Compute implementation complexity metrics failed', e)
+        return db.failure_message('Compute implementation complexity metrics for work items failed', e)
 
 
 def compute_implementation_complexity_metrics_for_commits(organization_key, commit_details):
@@ -60,12 +60,12 @@ def compute_implementation_complexity_metrics_for_commits(organization_key, comm
         with db.orm_session() as session:
             return success(
                 impl.compute_implementation_complexity_metrics_for_commits(
-                    session, organization_key, work_items_commits)
+                    session, organization_key, commit_details)
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Compute implementation complexity metrics failed", exc)
+        return db.process_exception("Compute implementation complexity metrics for commits failed", exc)
     except Exception as e:
-        return db.failure_message('Compute implementation complexity metrics failed', e)
+        return db.failure_message('Compute implementation complexity metrics for commits failed', e)
 
 
 

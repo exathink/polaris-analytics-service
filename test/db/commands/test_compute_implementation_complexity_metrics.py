@@ -25,7 +25,7 @@ class TestUpdateWorkItemsNonMergeCommitsStats:
                 commit_key=test_commits[4]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 1
         assert db.connection().execute(
@@ -41,7 +41,7 @@ class TestUpdateWorkItemsNonMergeCommitsStats:
                 commit_key=test_commits[0]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 2
         assert db.connection().execute(
@@ -65,7 +65,7 @@ class TestUpdateWorkItemsNonMergeCommitsStats:
                 commit_key=test_commits[4]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 3
         assert db.connection().execute(
@@ -87,7 +87,7 @@ class TestUpdateWorkItemsNonMergeCommitsStats:
                 commit_key=test_commits[0]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 2
         assert db.connection().execute(
@@ -115,7 +115,7 @@ class TestUpdateWorkItemsNonMergeCommitsStats:
                 commit_key=test_commits[4]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 3
         assert db.connection().execute(
@@ -129,7 +129,7 @@ class TestUpdateWorkItemsNonMergeCommitsStats:
                                 work_item_id={work_items_ids[1]} and total_lines_changed_non_merge=8 and total_files_changed_non_merge=1 and total_lines_deleted_non_merge=4 and total_lines_inserted_non_merge=4").scalar() == 1
 
         # call again
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 3
         assert db.connection().execute(
@@ -161,7 +161,7 @@ class TestUpdateWorkItemsNonMergeCommitsStats:
                 commit_key=test_commits[4]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 3
         assert db.connection().execute(
@@ -186,7 +186,7 @@ class TestUpdateWorkItemsMergeCommitsStats:
                 commit_key=test_commits[4]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 1
         assert db.connection().execute(
@@ -202,7 +202,7 @@ class TestUpdateWorkItemsMergeCommitsStats:
                 commit_key=test_commits[0]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 2
         assert db.connection().execute(
@@ -223,7 +223,7 @@ class TestUpdateWorkItemsMergeCommitsStats:
                 commit_key=test_commits[4]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 3
         assert db.connection().execute(
@@ -242,7 +242,7 @@ class TestUpdateWorkItemsMergeCommitsStats:
                 commit_key=test_commits[0]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 2
         assert db.connection().execute(
@@ -266,7 +266,7 @@ class TestUpdateWorkItemsMergeCommitsStats:
                 commit_key=test_commits[4]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 3
         assert db.connection().execute(
@@ -277,7 +277,7 @@ class TestUpdateWorkItemsMergeCommitsStats:
                             work_item_id={work_items_ids[1]} and total_lines_changed_merge=0 and total_files_changed_merge=0 and average_lines_changed_merge=0").scalar() == 1
 
         # call again
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 3
         assert db.connection().execute(
@@ -306,7 +306,7 @@ class TestUpdateWorkItemsMergeCommitsStats:
                 commit_key=test_commits[4]['key']
             )
         ]
-        result = commands.compute_implementation_complexity_metrics(organization.key, work_items_commits)
+        result = commands.compute_implementation_complexity_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
         assert result['updated'] == 3
         assert db.connection().execute(

@@ -1340,7 +1340,137 @@ def update_work_items_commits_stats(session, organization_key, work_items_commit
     )
 
 
-def compute_implementation_complexity_metrics(session, organization_key, work_items_commits):
+def compute_implementation_complexity_metrics(session, work_items_temp):
+    # The following metrics are calculated and updated for each work_item_delivery_cycle
+    # 1. commit stats for non merge commits
+    # 2. commit stats for merge commits
+
+    updated = 0
+
+    # select relevant rows to find various metrics
+    delivery_cycles_commits_rows = select([
+        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        func.sum(
+            case(
+                [
+                    (
+                        commits.c.num_parents == 1,
+                        cast(commits.c.stats["lines"].astext, Integer)
+                    )
+                ],
+                else_=0
+            )
+        ).label('total_lines_changed_non_merge'),
+        func.sum(
+            case(
+                [
+                    (
+                        commits.c.num_parents == 1,
+                        cast(commits.c.stats["files"].astext, Integer)
+                    )
+                ],
+                else_=0
+            )
+        ).label('total_files_changed_non_merge'),
+        func.sum(
+            case(
+                [
+                    (
+                        commits.c.num_parents == 1,
+                        cast(commits.c.stats["deletions"].astext, Integer)
+                    )
+                ],
+                else_=0
+            )
+        ).label('total_lines_deleted_non_merge'),
+        func.sum(
+            case(
+                [
+                    (
+                        commits.c.num_parents == 1,
+                        cast(commits.c.stats["insertions"].astext, Integer)
+                    )
+                ],
+                else_=0
+            )
+        ).label('total_lines_inserted_non_merge'),
+        func.sum(
+            case(
+                [
+                    (
+                        commits.c.num_parents > 1,
+                        cast(commits.c.stats["lines"].astext, Integer)
+                    )
+                ],
+                else_=0
+            )
+        ).label('total_lines_changed_merge'),
+        func.sum(
+            case(
+                [
+                    (
+                        commits.c.num_parents > 1,
+                        cast(commits.c.stats["files"].astext, Integer)
+                    )
+                ],
+                else_=0
+            )
+        ).label('total_files_changed_merge'),
+        func.coalesce(func.trunc(func.avg(
+            case(
+                [
+                    (
+                        commits.c.num_parents > 1,
+                        cast(commits.c.stats["lines"].astext, Integer)
+                    )
+                ],
+                else_=None
+            )
+        )), 0).label('average_lines_changed_merge'),
+
+    ]).select_from(
+        work_items_temp.join(
+            work_items, work_items.c.key == work_items_temp.c.work_item_key
+        ).join(
+            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+        ).join(
+            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+        ).join(
+            commits, work_items_commits_table.c.commit_id == commits.c.id
+        )
+    ).where(
+        and_(
+                work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
+            or_(
+                work_item_delivery_cycles.c.end_date == None,
+                commits.c.commit_date <= work_item_delivery_cycles.c.end_date
+            )
+        )
+    ).group_by(
+        work_item_delivery_cycles.c.delivery_cycle_id,
+
+    ).cte('delivery_cycles_commits_rows')
+
+    # update relevant work items delivery cycles with relevant metrics
+    updated = session.connection().execute(
+        work_item_delivery_cycles.update().where(
+            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
+        ).values(
+            total_lines_changed_non_merge=delivery_cycles_commits_rows.c.total_lines_changed_non_merge,
+            total_files_changed_non_merge=delivery_cycles_commits_rows.c.total_files_changed_non_merge,
+            total_lines_deleted_non_merge=delivery_cycles_commits_rows.c.total_lines_deleted_non_merge,
+            total_lines_inserted_non_merge=delivery_cycles_commits_rows.c.total_lines_inserted_non_merge,
+            total_lines_changed_merge=delivery_cycles_commits_rows.c.total_lines_changed_merge,
+            total_files_changed_merge=delivery_cycles_commits_rows.c.total_files_changed_merge,
+            average_lines_changed_merge=delivery_cycles_commits_rows.c.average_lines_changed_merge
+        )
+    ).rowcount
+    return dict(
+        updated=updated
+    )
+
+
+def compute_implementation_complexity_metrics_for_work_items(session, organization_key, work_items_commits):
     # The following metrics are calculated and updated for each work_item_delivery_cycle
     # 1. commit stats for non merge commits
     # 2. commit stats for merge commits
@@ -1373,134 +1503,51 @@ def compute_implementation_complexity_metrics(session, organization_key, work_it
                 ]
             )
         )
-
-        # select relevant rows to find various metrics
-        delivery_cycles_commits_rows = select([
-            work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-            func.sum(
-                case(
-                    [
-                        (
-                            commits.c.num_parents == 1,
-                            cast(commits.c.stats["lines"].astext, Integer)
-                        )
-                    ],
-                    else_=0
-                )
-            ).label('total_lines_changed_non_merge'),
-            func.sum(
-                case(
-                    [
-                        (
-                            commits.c.num_parents == 1,
-                            cast(commits.c.stats["files"].astext, Integer)
-                        )
-                    ],
-                    else_=0
-                )
-            ).label('total_files_changed_non_merge'),
-            func.sum(
-                case(
-                    [
-                        (
-                            commits.c.num_parents == 1,
-                            cast(commits.c.stats["deletions"].astext, Integer)
-                        )
-                    ],
-                    else_=0
-                )
-            ).label('total_lines_deleted_non_merge'),
-            func.sum(
-                case(
-                    [
-                        (
-                            commits.c.num_parents == 1,
-                            cast(commits.c.stats["insertions"].astext, Integer)
-                        )
-                    ],
-                    else_=0
-                )
-            ).label('total_lines_inserted_non_merge'),
-            func.sum(
-                case(
-                    [
-                        (
-                            commits.c.num_parents > 1,
-                            cast(commits.c.stats["lines"].astext, Integer)
-                        )
-                    ],
-                    else_=0
-                )
-            ).label('total_lines_changed_merge'),
-            func.sum(
-                case(
-                    [
-                        (
-                            commits.c.num_parents > 1,
-                            cast(commits.c.stats["files"].astext, Integer)
-                        )
-                    ],
-                    else_=0
-                )
-            ).label('total_files_changed_merge'),
-            func.coalesce(func.trunc(func.avg(
-                case(
-                    [
-                        (
-                            commits.c.num_parents > 1,
-                            cast(commits.c.stats["lines"].astext, Integer)
-                        )
-                    ],
-                    else_=None
-                )
-            )), 0).label('average_lines_changed_merge'),
-
-        ]).select_from(
-            work_items_temp.join(
-                work_items, work_items.c.key == work_items_temp.c.work_item_key
-            ).join(
-                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-            ).join(
-                work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
-            ).join(
-                commits, work_items_commits_table.c.commit_id == commits.c.id
-            )
-        ).where(
-            and_(
-                    work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
-                or_(
-                    work_item_delivery_cycles.c.end_date == None,
-                    commits.c.commit_date <= work_item_delivery_cycles.c.end_date
-                )
-            )
-        ).group_by(
-            work_item_delivery_cycles.c.delivery_cycle_id,
-
-        ).cte('delivery_cycles_commits_rows')
-
-        # update relevant work items delivery cycles with relevant metrics
-        updated = session.connection().execute(
-            work_item_delivery_cycles.update().where(
-                work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
-            ).values(
-                total_lines_changed_non_merge=delivery_cycles_commits_rows.c.total_lines_changed_non_merge,
-                total_files_changed_non_merge=delivery_cycles_commits_rows.c.total_files_changed_non_merge,
-                total_lines_deleted_non_merge=delivery_cycles_commits_rows.c.total_lines_deleted_non_merge,
-                total_lines_inserted_non_merge=delivery_cycles_commits_rows.c.total_lines_inserted_non_merge,
-                total_lines_changed_merge=delivery_cycles_commits_rows.c.total_lines_changed_merge,
-                total_files_changed_merge=delivery_cycles_commits_rows.c.total_files_changed_merge,
-                average_lines_changed_merge=delivery_cycles_commits_rows.c.average_lines_changed_merge
-            )
-        ).rowcount
+        result = compute_implementation_complexity_metrics(session, work_items_temp)
+        updated = result['updated']
     return dict(
         updated=updated
     )
 
 
 def compute_implementation_complexity_metrics_for_commits(session, organization_key, commit_details):
-    # work_items_commits = []
-    #         for commit_detail in commit_details:
-    #             commit = Commit.find_by_commit_key(commit_detail['key'])
-    #             for work_item in commit.work_items:
-    #                 work_items_commits.append(dict(work_item_key=work_item.key))
-    pass
+    # This is called when we have commit keys as input
+    # The following metrics are calculated and updated for each work_item_delivery_cycle
+    # 1. commit stats for non merge commits
+    # 2. commit stats for merge commits
+    updated = 0
+
+    if len(commit_details) > 0:
+        # create a temp table for associated work item ids
+        work_items_temp = db.create_temp_table(
+            table_name='work_items_temp',
+            columns=[
+                Column('work_item_key', UUID(as_uuid=True)),
+            ]
+        )
+        work_items_temp.create(session.connection(), checkfirst=True)
+
+        # Get distinct work item keys from input
+        distinct_work_items = []
+        for entry in commit_details:
+            commit = Commit.find_by_commit_key(entry['key'])
+            for work_item in commit.work_items:
+                work_item_key = work_item.key
+                if work_item_key not in distinct_work_items:
+                    distinct_work_items.append(work_item_key)
+
+        session.connection().execute(
+            work_items_temp.insert().values(
+                [
+                    dict(
+                        work_item_key=record
+                    )
+                    for record in distinct_work_items
+                ]
+            )
+        )
+        result = compute_implementation_complexity_metrics(session, work_items_temp)
+        updated = result['updated']
+    return dict(
+        updated=updated
+    )

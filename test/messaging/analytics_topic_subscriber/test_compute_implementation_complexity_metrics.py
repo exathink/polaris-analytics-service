@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
-from polaris.analytics.messaging.commands import ComputeImplementationComplexityMetrics
+from polaris.analytics.messaging.commands import ComputeImplementationComplexityMetricsForWorkItems
 from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
 
 from test.fixtures.work_item_commit_resolution import *
@@ -58,7 +58,7 @@ class TestUpdateWorkItemsCommitsSpan:
 
     def it_returns_a_valid_response(self, work_items_commits_fixture):
         work_item_key, commit_key, work_items_source_key, repository_key = work_items_commits_fixture
-        message = fake_send(ComputeImplementationComplexityMetrics(
+        message = fake_send(ComputeImplementationComplexityMetricsForWorkItems(
             send=dict(
                 organization_key=test_organization_key,
                 work_items_commits=[

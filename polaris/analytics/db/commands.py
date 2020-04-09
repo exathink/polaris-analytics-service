@@ -42,11 +42,11 @@ def update_work_items_commits_stats(organization_key, work_items_commits):
         return db.failure_message('Update work items commits span failed', e)
 
 
-def compute_implementation_complexity_metrics(organization_key, work_items_commits):
+def compute_implementation_complexity_metrics_for_work_items(organization_key, work_items_commits):
     try:
         with db.orm_session() as session:
             return success(
-                impl.compute_implementation_complexity_metrics(
+                impl.compute_implementation_complexity_metrics_for_work_items(
                     session, organization_key, work_items_commits)
             )
     except SQLAlchemyError as exc:

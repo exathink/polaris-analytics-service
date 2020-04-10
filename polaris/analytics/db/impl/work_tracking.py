@@ -1528,22 +1528,27 @@ def compute_implementation_complexity_metrics_for_commits(session, organization_
         work_items_temp.create(session.connection(), checkfirst=True)
 
         # Get distinct work item keys from input
-        distinct_work_items = []
+        distinct_commit_keys = []
         for entry in commit_details:
-            commit = Commit.find_by_commit_key(session, commit_key=entry['key'])
-            for work_item in commit.work_items:
-                work_item_key = work_item.key
-                if work_item_key not in distinct_work_items:
-                    distinct_work_items.append(work_item_key)
+            if entry['key'] not in distinct_commit_keys:
+                    distinct_commit_keys.append(entry['key'])
 
         session.connection().execute(
-            work_items_temp.insert().values(
+            work_items_temp.insert().from_select(
                 [
-                    dict(
-                        work_item_key=record
+                    'work_item_key'
+                ],
+                select([
+                    distinct(work_items.c.key)
+                ]).select_from(
+                    work_items.join(
+                        work_items_commits_table, work_items.c.id == work_items_commits_table.c.work_item_id
+                    ).join(
+                        commits, commits.c.id == work_items_commits_table.c.commit_id
                     )
-                    for record in distinct_work_items
-                ]
+                ).where(
+                    commits.c.key.in_(distinct_commit_keys)
+                )
             )
         )
         result = compute_implementation_complexity_metrics(session, work_items_temp)

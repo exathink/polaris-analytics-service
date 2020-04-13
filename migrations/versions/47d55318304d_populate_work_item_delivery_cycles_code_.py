@@ -46,5 +46,5 @@ def upgrade():
 def downgrade():
     # Reset total_lines_changed, total_files_changed, total_lines_deleted, total_lines_inserted to null
     op.execute(
-        "update analytics.work_item_delivery_cycles set total_lines_changed = null, total_files_changed = null , \
-        total_lines_deleted = null, total_lines_inserted = null ")
+        "update analytics.work_item_delivery_cycles set total_lines_changed_non_merge = null, total_files_changed_non_merge = null , \
+        total_lines_deleted_non_merge = null, total_lines_inserted_non_merge = null ")

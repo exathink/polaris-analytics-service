@@ -9,10 +9,12 @@
 # Author: Krishna Kumar
 
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
-from polaris.analytics.messaging.commands import ComputeImplementationComplexityMetrics
+from polaris.analytics.messaging.commands import UpdateWorkItemsCommitsStats, \
+    ComputeImplementationComplexityMetricsForWorkItems
 from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
 
 from test.fixtures.work_item_commit_resolution import *
+from test.fixtures.commit_details import *
 
 
 @pytest.yield_fixture
@@ -54,11 +56,11 @@ def work_items_commits_fixture(commits_fixture):
     yield new_key, test_commit_key, work_item_source.key, test_repo.key
 
 
-class TestUpdateWorkItemsCommitsSpan:
+class TestUpdateCommitsStats:
 
     def it_returns_a_valid_response(self, work_items_commits_fixture):
         work_item_key, commit_key, work_items_source_key, repository_key = work_items_commits_fixture
-        message = fake_send(ComputeImplementationComplexityMetrics(
+        message = fake_send(UpdateWorkItemsCommitsStats(
             send=dict(
                 organization_key=test_organization_key,
                 work_items_commits=[
@@ -76,4 +78,26 @@ class TestUpdateWorkItemsCommitsSpan:
         result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
         assert result['success']
 
+
+class TestComputeComplexityMetricsForWorkItems:
+
+    def it_returns_a_valid_response(self, work_items_commits_fixture):
+        work_item_key, commit_key, work_items_source_key, repository_key = work_items_commits_fixture
+        message = fake_send(ComputeImplementationComplexityMetricsForWorkItems(
+            send=dict(
+                organization_key=test_organization_key,
+                work_items_commits=[
+                    dict(
+                        work_item_key=work_item_key,
+                        commit_key=commit_key,
+                        work_items_source_key=work_items_source_key,
+                        repository_key=repository_key
+                    )
+                ]
+            )
+        ))
+        publisher = mock_publisher()
+        channel = mock_channel()
+        result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        assert result['success']
 

@@ -15,7 +15,8 @@ from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, Wor
 
 from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, \
     InferProjectsRepositoriesRelationships, ResolveWorkItemsSourcesForRepositories, \
-    UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetrics
+    UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, \
+    RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits
 
 from polaris.messaging.utils import raise_on_failure
 
@@ -39,7 +40,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 UpdateCommitsWorkItemsSummaries,
                 InferProjectsRepositoriesRelationships,
                 ResolveWorkItemsSourcesForRepositories,
-                ComputeImplementationComplexityMetrics
+                ComputeImplementationComplexityMetricsForWorkItems,
+                ComputeImplementationComplexityMetricsForCommits,
+                RegisterSourceFileVersions
             ],
             publisher=publisher,
             exclusive=False
@@ -74,7 +77,23 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 return response
 
         elif CommitDetailsCreated.message_type == message.message_type:
-            return self.process_resolve_commit_details_created(channel, message)
+            #  register_source_file_versions
+            register_source_file_versions_command = RegisterSourceFileVersions(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, register_source_file_versions_command)
+
+            # Publish a sub command to compute following complexity metrics:
+            # 1. Commit stats for merge commits
+            # 2. Commit stats for non merge commits
+            compute_implementation_complexity_metrics_for_commits_command = ComputeImplementationComplexityMetricsForCommits(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, compute_implementation_complexity_metrics_for_commits_command)
+
+            return register_source_file_versions_command, compute_implementation_complexity_metrics_for_commits_command
 
         elif WorkItemsCommitsResolved.message_type == message.message_type:
             # Publish a sub command to update commit work items summaries
@@ -100,17 +119,17 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
             self.publish(AnalyticsTopic, update_work_items_commits_stats_command)
 
-            # # Publish a sub command to compute following complexity metrics:
-            # # 1. Commit stats for merge commits
-            # # 2. Commit stats for non merge commits
-            # compute_implementation_complexity_metrics_command = ComputeImplementationComplexityMetrics(
-            #     send=message.dict,
-            #     in_response_to=message
-            # )
-            # self.publish(AnalyticsTopic, compute_implementation_complexity_metrics_command)
+            # Publish a sub command to compute following complexity metrics:
+            # 1. Commit stats for merge commits
+            # 2. Commit stats for non merge commits
+            compute_implementation_complexity_metrics_for_work_items_command = ComputeImplementationComplexityMetricsForWorkItems(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, compute_implementation_complexity_metrics_for_work_items_command)
 
             return update_commit_work_items_summaries_command, infer_projects_repositories_relationships, \
-                   update_work_items_commits_stats_command
+                   update_work_items_commits_stats_command, compute_implementation_complexity_metrics_for_work_items_command
 
         elif RepositoriesImported.message_type == message.message_type:
             return self.publish(
@@ -124,6 +143,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 )
             )
 
+        elif RegisterSourceFileVersions.message_type == message.message_type:
+            return self.process_register_source_file_versions(channel, message)
+
         # Commands
         elif UpdateCommitsWorkItemsSummaries.message_type == message.message_type:
             return self.process_update_commits_work_items_summaries(channel, message)
@@ -131,8 +153,11 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         elif UpdateWorkItemsCommitsStats.message_type == message.message_type:
             return self.process_update_work_items_commits_stats(channel, message)
 
-        elif ComputeImplementationComplexityMetrics.message_type == message.message_type:
-            return self.process_compute_implementation_complexity_metrics(channel, message)
+        elif ComputeImplementationComplexityMetricsForWorkItems.message_type == message.message_type:
+            return self.process_compute_implementation_complexity_metrics_for_work_items(channel, message)
+
+        elif ComputeImplementationComplexityMetricsForCommits.message_type == message.message_type:
+            return self.process_compute_implementation_complexity_metrics_for_commits(channel, message)
 
         elif InferProjectsRepositoriesRelationships.message_type == message.message_type:
             result = self.process_infer_projects_repositories_relationships(channel, message)
@@ -151,7 +176,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             return self.process_resolve_work_items_sources_for_repositories(channel, message)
 
     @staticmethod
-    def process_resolve_commit_details_created(channel, message):
+    def process_register_source_file_versions(channel, message):
         organization_key = message['organization_key']
         repository_name = message['repository_name']
         commit_details = message['commit_details']
@@ -226,14 +251,25 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
 
     @staticmethod
-    def process_compute_implementation_complexity_metrics(channel, message):
+    def process_compute_implementation_complexity_metrics_for_work_items(channel, message):
         organization_key = message['organization_key']
         work_items_commits = message['work_items_commits']
 
         if len(work_items_commits) > 0:
             return raise_on_failure(
                 message,
-                commands.compute_implementation_complexity_metrics(organization_key, work_items_commits)
+                commands.compute_implementation_complexity_metrics_for_work_items(organization_key, work_items_commits)
+            )
+
+    @staticmethod
+    def process_compute_implementation_complexity_metrics_for_commits(channel, message):
+        organization_key = message['organization_key']
+        commit_details = message['commit_details']
+
+        if len(commit_details) > 0:
+            return raise_on_failure(
+                message,
+                commands.compute_implementation_complexity_metrics_for_commits(organization_key, commit_details)
             )
 
     @staticmethod

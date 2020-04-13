@@ -11,6 +11,7 @@
 from polaris.common import db
 from polaris.analytics.db import impl
 from sqlalchemy.exc import SQLAlchemyError
+from polaris.analytics.db.model import Commit
 
 
 from .api import success
@@ -28,11 +29,11 @@ def update_commit_work_item_summaries(organization_key, work_item_commits):
     except Exception as e:
         return db.failure_message('Update commit work item summaries failed', e)
 
-def update_work_items_commits_span(organization_key, work_items_commits):
+def update_work_items_commits_stats(organization_key, work_items_commits):
     try:
         with db.orm_session() as session:
             return success(
-                impl.update_work_items_commits_span(
+                impl.update_work_items_commits_stats(
                     session, organization_key, work_items_commits)
             )
     except SQLAlchemyError as exc:
@@ -40,17 +41,32 @@ def update_work_items_commits_span(organization_key, work_items_commits):
     except Exception as e:
         return db.failure_message('Update work items commits span failed', e)
 
-def compute_implementation_complexity_metrics(organization_key, work_items_commits):
+
+def compute_implementation_complexity_metrics_for_work_items(organization_key, work_items_commits):
     try:
         with db.orm_session() as session:
             return success(
-                impl.compute_implementation_complexity_metrics(
+                impl.compute_implementation_complexity_metrics_for_work_items(
                     session, organization_key, work_items_commits)
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Compute implementation complexity metrics failed", exc)
+        return db.process_exception("Compute implementation complexity metrics for work items failed", exc)
     except Exception as e:
-        return db.failure_message('Compute implementation complexity metrics failed', e)
+        return db.failure_message('Compute implementation complexity metrics for work items failed', e)
+
+
+def compute_implementation_complexity_metrics_for_commits(organization_key, commit_details):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.compute_implementation_complexity_metrics_for_commits(
+                    session, organization_key, commit_details)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Compute implementation complexity metrics for commits failed", exc)
+    except Exception as e:
+        return db.failure_message('Compute implementation complexity metrics for commits failed', e)
+
 
 def compute_contributor_metrics(organization_key, work_items_commits):
     try:

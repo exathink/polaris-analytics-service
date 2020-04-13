@@ -20,8 +20,13 @@ class InferProjectsRepositoriesRelationships(WorkItemsCommitsResolved):
     message_type = 'analytics.infer_projects_repositories_relationships'
 
 
-class ComputeImplementationComplexityMetrics(WorkItemsCommitsResolved):
-    message_type = 'analytics.compute_implementation_complexity_metrics'
+class UpdateWorkItemsCommitsStats(WorkItemsCommitsResolved):
+    message_type = 'analytics.update_work_items_commits_stats'
+
+
+class ComputeImplementationComplexityMetricsForWorkItems(WorkItemsCommitsResolved):
+    message_type = 'analytics.compute_implementation_complexity_metrics_for_work_items'
+
 
 class ComputeContributorMetrics(WorkItemsCommitsResolved):
     message_type = 'analytics.compute_contributor_metrics'

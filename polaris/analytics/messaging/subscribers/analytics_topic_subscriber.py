@@ -40,6 +40,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 UpdateCommitsWorkItemsSummaries,
                 InferProjectsRepositoriesRelationships,
                 ResolveWorkItemsSourcesForRepositories,
+                UpdateWorkItemsCommitsStats,
                 ComputeImplementationComplexityMetricsForWorkItems,
                 ComputeImplementationComplexityMetricsForCommits,
                 RegisterSourceFileVersions
@@ -49,6 +50,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         )
 
     def dispatch(self, channel, message):
+        logger.info(f"Dispatching {message.message_type}")
         # Messages
         if CommitsCreated.message_type == message.message_type:
             result = self.process_resolve_work_items_for_commits(channel, message)

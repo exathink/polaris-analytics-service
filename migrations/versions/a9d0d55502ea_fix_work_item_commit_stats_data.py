@@ -35,7 +35,7 @@ def upgrade():
           analytics.commits.commit_date >= analytics.work_item_delivery_cycles.start_date 
           and (
             analytics.work_item_delivery_cycles.end_date is null or 
-            analytics.work_item_delivery_cycles.end_date <= analytics.commits.commit_date
+            analytics.commits.commit_date <= analytics.work_item_delivery_cycles.end_date
           )
           GROUP BY analytics.work_item_delivery_cycles.delivery_cycle_id)
         UPDATE analytics.work_item_delivery_cycles

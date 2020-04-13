@@ -24,5 +24,5 @@ class UpdateWorkItemsCommitsStats(WorkItemsCommitsResolved):
     message_type = 'analytics.update_work_items_commits_stats'
 
 
-class ComputeImplementationComplexityMetrics(WorkItemsCommitsResolved):
-    message_type = 'analytics.compute_implementation_complexity_metrics'
+class ComputeImplementationComplexityMetricsForWorkItems(WorkItemsCommitsResolved):
+    message_type = 'analytics.compute_implementation_complexity_metrics_for_work_items'

@@ -11,10 +11,10 @@
 import logging
 
 from polaris.messaging.utils import raise_on_failure
-from polaris.messaging.messages import CommitHistoryImported, CommitsCreated, CommitDetailsImported, CommitDetailsCreated
-from polaris.messaging.topics import TopicSubscriber, CommitsTopic, AnalyticsTopic, CommandsTopic
+from polaris.messaging.messages import CommitHistoryImported, CommitsCreated, CommitDetailsImported, \
+    CommitDetailsCreated
+from polaris.messaging.topics import TopicSubscriber, CommitsTopic, AnalyticsTopic
 from polaris.analytics.db import api
-from polaris.analytics.messaging.commands import ResolveCommitsWorkItems
 
 logger = logging.getLogger('polaris.analytics.commits_topic_subscriber')
 
@@ -55,8 +55,6 @@ class CommitsTopicSubscriber(TopicSubscriber):
                 )
                 AnalyticsTopic(channel).publish(commit_details_created_message)
                 return commit_details_created_message
-
-
 
     @staticmethod
     def process_commit_history_imported(message):

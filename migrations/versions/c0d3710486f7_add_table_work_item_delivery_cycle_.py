@@ -1,8 +1,8 @@
 """add_table_work_item_delivery_cycle_contributors
 
-Revision ID: 0ece71118a31
-Revises: dbbf66aca87d
-Create Date: 2020-04-07 12:35:06.529217
+Revision ID: c0d3710486f7
+Revises: 38da2ee3c64f
+Create Date: 2020-04-13 15:53:05.700656
 
 """
 from alembic import op
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '0ece71118a31'
-down_revision = 'dbbf66aca87d'
+revision = 'c0d3710486f7'
+down_revision = '38da2ee3c64f'
 branch_labels = None
 depends_on = None
 

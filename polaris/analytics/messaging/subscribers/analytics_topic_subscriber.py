@@ -266,7 +266,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         organization_key = message['organization_key']
         commit_details = message['commit_details']
 
-        if len(work_items_commits) > 0:
+        if len(commit_details) > 0:
             return raise_on_failure(
                 message,
                 commands.compute_implementation_complexity_metrics_for_commits(organization_key, commit_details)

@@ -69,17 +69,30 @@ def compute_implementation_complexity_metrics_for_commits(organization_key, comm
         return db.failure_message('Compute implementation complexity metrics for commits failed', e)
 
 
-def compute_contributor_metrics(organization_key, work_items_commits):
+def compute_contributor_metrics_for_work_items(organization_key, work_items_commits):
     try:
         with db.orm_session() as session:
             return success(
-                impl.compute_contributor_metrics(
+                impl.compute_contributor_metrics_for_work_items(
                     session, organization_key, work_items_commits)
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Compute implementation complexity metrics for work items failed", exc)
+        return db.process_exception("Compute contributor metrics for work items failed", exc)
     except Exception as e:
-        return db.failure_message('Compute implementation complexity metrics for work items failed', e)
+        return db.failure_message('Compute contributor metrics for work items failed', e)
+
+
+def compute_contributor_metrics_for_commits(organization_key, commit_details):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.compute_contributor_metrics_for_commits(
+                    session, organization_key, commit_details)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Compute contributor metrics for commits failed", exc)
+    except Exception as e:
+        return db.failure_message('Compute contributor metrics for commits failed', e)
 
 
 def infer_projects_repositories_relationships(organization_key, work_items_commits):

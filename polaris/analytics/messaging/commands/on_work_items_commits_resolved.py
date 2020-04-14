@@ -28,6 +28,6 @@ class ComputeImplementationComplexityMetricsForWorkItems(WorkItemsCommitsResolve
     message_type = 'analytics.compute_implementation_complexity_metrics_for_work_items'
 
 
-class ComputeContributorMetrics(WorkItemsCommitsResolved):
-    message_type = 'analytics.compute_contributor_metrics'
+class ComputeContributorMetricsForWorkItems(WorkItemsCommitsResolved):
+    message_type = 'analytics.compute_contributor_metrics_for_work_items'
 

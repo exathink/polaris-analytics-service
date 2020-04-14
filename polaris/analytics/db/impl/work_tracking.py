@@ -1558,5 +1558,13 @@ def compute_implementation_complexity_metrics_for_commits(session, organization_
     )
 
 
-def compute_contributor_metrics(session, organization_key, work_items_commits):
+def compute_contributor_metrics(session, work_items_temp):
+    pass
+
+
+def compute_contributor_metrics_for_work_items(session, organization_key, work_items_commits):
+    pass
+
+
+def compute_contributor_metrics_for_commits(session, organization_key, commit_details):
     pass

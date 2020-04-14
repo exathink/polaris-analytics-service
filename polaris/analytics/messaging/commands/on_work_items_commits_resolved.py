@@ -30,3 +30,4 @@ class ComputeImplementationComplexityMetricsForWorkItems(WorkItemsCommitsResolve
 
 class ComputeContributorMetrics(WorkItemsCommitsResolved):
     message_type = 'analytics.compute_contributor_metrics'
+

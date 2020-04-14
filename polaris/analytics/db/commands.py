@@ -29,6 +29,7 @@ def update_commit_work_item_summaries(organization_key, work_item_commits):
     except Exception as e:
         return db.failure_message('Update commit work item summaries failed', e)
 
+
 def update_work_items_commits_stats(organization_key, work_items_commits):
     try:
         with db.orm_session() as session:
@@ -76,9 +77,10 @@ def compute_contributor_metrics(organization_key, work_items_commits):
                     session, organization_key, work_items_commits)
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Compute implementation complexity metrics failed", exc)
+        return db.process_exception("Compute implementation complexity metrics for work items failed", exc)
     except Exception as e:
-        return db.failure_message('Compute implementation complexity metrics failed', e)
+        return db.failure_message('Compute implementation complexity metrics for work items failed', e)
+
 
 def infer_projects_repositories_relationships(organization_key, work_items_commits):
     try:

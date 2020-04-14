@@ -1563,8 +1563,14 @@ def compute_contributor_metrics(session, work_items_temp):
 
 
 def compute_contributor_metrics_for_work_items(session, organization_key, work_items_commits):
-    pass
+    updated = 0
+    return dict(
+        updated=updated
+    )
 
 
 def compute_contributor_metrics_for_commits(session, organization_key, commit_details):
-    pass
+    updated = 0
+    return dict(
+        updated=updated
+    )

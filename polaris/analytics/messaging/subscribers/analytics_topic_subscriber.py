@@ -306,7 +306,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         if len(work_items_commits) > 0:
             return raise_on_failure(
                 message,
-                commands.compute_contributor_metrics(organization_key, work_items_commits)
+                commands.compute_contributor_metrics_for_work_items(organization_key, work_items_commits)
             )
 
     @staticmethod
@@ -317,7 +317,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         if len(commit_details) > 0:
             return raise_on_failure(
                 message,
-                commands.compute_contributor_metrics(organization_key, commit_details)
+                commands.compute_contributor_metrics_for_commits(organization_key, commit_details)
             )
 
     @staticmethod

@@ -60,16 +60,16 @@ test_work_items = [
 
 
 @pytest.yield_fixture()
-def contributors_commits_fixture(org_repo_fixture, cleanup):
+def contributor_commits_fixture(org_repo_fixture, cleanup):
     organization, projects, repositories = org_repo_fixture
-    contributors = []
+    contributor_list = []
     with db.create_session() as session:
-        for contributor in test_contributors_info:
+        for test_contributor in test_contributors_info:
             contributor_id = session.connection.execute(
                 contributors.insert(
                     dict(
-                        key=contributor['key'],
-                        name=contributor['name']
+                        key=test_contributor['key'],
+                        name=test_contributor['name']
                     )
                 )
             ).inserted_primary_key[0]
@@ -77,22 +77,40 @@ def contributors_commits_fixture(org_repo_fixture, cleanup):
             contributor_alias_id = session.connection.execute(
                 contributor_aliases.insert(
                     dict(
-                        source_alias=contributor['source_alias'],
-                        key=contributor['key'],
-                        name=contributor['name'],
+                        source_alias=test_contributor['source_alias'],
+                        key=test_contributor['key'],
+                        name=test_contributor['name'],
                         contributor_id=contributor_id,
-                        source=contributor['source']
+                        source=test_contributor['source']
                     )
                 )
             ).inserted_primary_key[0]
 
-            contributors.append(dict(alias_id=contributor_alias_id, key=contributor['key'], name=contributor['name']))
-    yield organization, projects, repositories, contributors
+            contributor_list.append(dict(alias_id=contributor_alias_id, key=test_contributor['key'], name=test_contributor['name']))
+    yield organization, projects, repositories, contributor_list
 
+
+def commits_common_fields(contributor_commits_fixture):
+    _, _, _, contributor_list = contributor_commits_fixture
+    contributor = contributor_list[0]
+    contributor_alias = contributor['alias_id']
+    contributor_key = contributor['key']
+    contributor_name = contributor['name']
+    return dict(
+        commit_date=datetime.utcnow(),
+        commit_date_tz_offset=0,
+        committer_contributor_alias_id=contributor_alias,
+        committer_contributor_key=contributor_key,
+        committer_contributor_name=contributor_name,
+        author_date_tz_offset=0,
+        author_contributor_alias_id=contributor_alias,
+        author_contributor_key=contributor_key,
+        author_contributor_name=contributor_name
+    )
 
 @pytest.yield_fixture()
-def work_items_commits_contributors_fixture(contributors_commits_fixture):
-    organization, projects, repositories, contributors = contributors_commits_fixture
+def work_items_commits_contributors_fixture(contributor_commits_fixture):
+    organization, projects, repositories, contributor_list = contributor_commits_fixture
     test_repo = repositories['alpha']
 
     test_commits = [
@@ -102,7 +120,7 @@ def work_items_commits_contributors_fixture(contributors_commits_fixture):
             source_commit_id=f'XXXXXX{i}',
             commit_message=f"Another change. Fixes issue {i}",
             author_date=get_date("2018-12-03"),
-            **commits_common_fields(commits_fixture)
+            **commits_common_fields(contributor_commits_fixture)
         )
         for i in range(1000, 1005)]
 
@@ -127,17 +145,17 @@ def work_items_commits_contributors_fixture(contributors_commits_fixture):
 
     for commit in test_commits:
         commit['stats'] = {"files": 1, "lines": 8, "deletions": 4, "insertions": 4}
-        commit['author_contributor_alias_id'] = contributors[0]['alias_id']
-        commit['author_contributor_key'] = contributors[0]['key']
-        commit['author_contributor_name'] = contributors[0]['name']
+        # commit['author_contributor_alias_id'] = contributor_list[0]['alias_id']
+        # commit['author_contributor_key'] = contributor_list[0]['key']
+        # commit['author_contributor_name'] = contributor_list[0]['name']
 
     # Setting second contributor as committer for commit 3 and commit 4
-    test_commits[2]['committer_contributor_alias_id'] = contributors[1]['alias_id']
-    test_commits[2]['committer_contributor_key'] = contributors[1]['key']
-    test_commits[2]['committer_contributor_name'] = contributors[1]['name']
-    test_commits[3]['committer_contributor_alias_id'] = contributors[1]['alias_id']
-    test_commits[3]['committer_contributor_key'] = contributors[1]['key']
-    test_commits[3]['committer_contributor_name'] = contributors[1]['name']
+    test_commits[2]['committer_contributor_alias_id'] = contributor_list[1]['alias_id']
+    test_commits[2]['committer_contributor_key'] = contributor_list[1]['key']
+    test_commits[2]['committer_contributor_name'] = contributor_list[1]['name']
+    test_commits[3]['committer_contributor_alias_id'] = contributor_list[1]['alias_id']
+    test_commits[3]['committer_contributor_key'] = contributor_list[1]['key']
+    test_commits[3]['committer_contributor_name'] = contributor_list[1]['name']
 
 
     # Add commits
@@ -224,4 +242,4 @@ def work_items_commits_contributors_fixture(contributors_commits_fixture):
         w1.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in w1.delivery_cycles])
         w2.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in w2.delivery_cycles])
 
-    yield organization, [w1.id, w2.id], test_commits, test_work_items, contributors
+    yield organization, [w1.id, w2.id], test_commits, test_work_items, contributor_list

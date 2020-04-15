@@ -6,16 +6,16 @@
 # is strictly prohibited. The work product in this file is proprietary and
 # confidential.
 
-# Author: Maneet Sehgal
+# Author: Pragya Goyal
 
 
 from polaris.analytics.db import commands
 from test.fixtures.work_items_commits_contributors import *
 
-class TestComputesWorkItemsContributorMetrics:
+class TestComputeWorkItemsContributorMetrics:
 
     def it_computes_contributor_metrics_for_single_delivery_cycle_work_item_with_single_contributor(self, work_items_commits_contributors_fixture):
-        organization, work_items_ids, test_commits, test_work_items, contributors = work_items_commits_contributors_fixture
+        organization, work_items_ids, test_commits, test_work_items, contributor_list = work_items_commits_contributors_fixture
         work_items_commits = [
             dict(
                 organization_key=organization.key,
@@ -25,7 +25,7 @@ class TestComputesWorkItemsContributorMetrics:
         ]
         result = commands.compute_contributor_metrics_for_work_items(organization.key, work_items_commits)
         assert result['success']
-        # Add specific assertions
+        assert db.connection().execute("select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_contributors where total_lines_as_author=8 and total_lines_as_reviewer=0").scalar() == 1
 
     def it_computes_contributor_metrics_for_single_work_item_multiple_delivery_cycles_multiple_contributors(self, work_items_commits_contributors_fixture):
         pass

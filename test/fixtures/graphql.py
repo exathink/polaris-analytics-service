@@ -34,6 +34,7 @@ test_contributor_name = 'Joe Blow'
 def graphql_date(date):
     return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
 
+
 def getRepository(name):
     with db.orm_session() as session:
         organization = Organization.find_by_organization_key(session, test_organization_key)

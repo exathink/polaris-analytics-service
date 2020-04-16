@@ -1654,7 +1654,7 @@ def compute_contributor_metrics(session, work_items_temp):
                 total_lines_as_reviewer=upsert_stmt.excluded.total_lines_as_reviewer
             )
         )
-    )
+    ).rowcount
 
     return dict(
         updated=updated

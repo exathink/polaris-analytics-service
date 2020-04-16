@@ -13,7 +13,7 @@ from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
 from polaris.messaging.messages import CommitDetailsCreated
 from polaris.messaging.topics import AnalyticsTopic
 from polaris.analytics.messaging.commands import RegisterSourceFileVersions, \
-    ComputeImplementationComplexityMetricsForCommits
+    ComputeImplementationComplexityMetricsForCommits, ComputeContributorMetricsForCommits
 from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
 
 from test.fixtures.commit_details import *
@@ -26,7 +26,8 @@ class TestDispatchCommitDetailsCreated:
         publisher = mock_publisher()
         channel = mock_channel()
         result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        assert len(result) == 2
+        assert len(result) == 3
         publisher.assert_topic_called_with_message(AnalyticsTopic, RegisterSourceFileVersions, call=0)
         publisher.assert_topic_called_with_message(AnalyticsTopic, ComputeImplementationComplexityMetricsForCommits, call=1)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, ComputeContributorMetricsForCommits, call=2)
 

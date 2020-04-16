@@ -34,6 +34,7 @@ test_contributor_name = 'Joe Blow'
 def graphql_date(date):
     return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
 
+
 def getRepository(name):
     with db.orm_session() as session:
         organization = Organization.find_by_organization_key(session, test_organization_key)
@@ -153,6 +154,7 @@ def commits_fixture(org_repo_fixture, cleanup):
 @pytest.yield_fixture()
 def cleanup():
     yield
+    db.connection().execute("delete from analytics.work_item_delivery_cycle_contributors")
     db.connection().execute("delete from analytics.work_item_delivery_cycles")
     db.connection().execute("delete from analytics.feature_flag_enablements")
     db.connection().execute("delete from analytics.feature_flags")

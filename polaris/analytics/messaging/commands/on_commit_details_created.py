@@ -18,3 +18,8 @@ class RegisterSourceFileVersions(CommitDetailsCreated):
 
 class ComputeImplementationComplexityMetricsForCommits(CommitDetailsCreated):
     message_type = 'analytics.compute_implementation_complexity_metrics_for_commits'
+
+
+class ComputeContributorMetricsForCommits(CommitDetailsCreated):
+    message_type = 'analytics.compute_contributor_metrics_for_commits'
+

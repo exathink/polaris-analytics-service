@@ -16,8 +16,8 @@ from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, Wor
 from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, \
     InferProjectsRepositoriesRelationships, ResolveWorkItemsSourcesForRepositories, \
     UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, \
-    RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits
-
+    RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits, \
+    ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems
 from polaris.messaging.utils import raise_on_failure
 
 from polaris.analytics.db import api, commands
@@ -43,7 +43,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 UpdateWorkItemsCommitsStats,
                 ComputeImplementationComplexityMetricsForWorkItems,
                 ComputeImplementationComplexityMetricsForCommits,
-                RegisterSourceFileVersions
+                RegisterSourceFileVersions,
+                ComputeContributorMetricsForWorkItems,
+                ComputeContributorMetricsForCommits
             ],
             publisher=publisher,
             exclusive=False
@@ -95,7 +97,15 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
             self.publish(AnalyticsTopic, compute_implementation_complexity_metrics_for_commits_command)
 
-            return register_source_file_versions_command, compute_implementation_complexity_metrics_for_commits_command
+            compute_contributor_metrics_for_commits_command = ComputeContributorMetricsForCommits(
+                send=message.dict,
+                in_response_to=message
+            )
+
+            self.publish(AnalyticsTopic, compute_contributor_metrics_for_commits_command)
+
+            return register_source_file_versions_command, compute_implementation_complexity_metrics_for_commits_command, \
+                   compute_contributor_metrics_for_commits_command
 
         elif WorkItemsCommitsResolved.message_type == message.message_type:
             # Publish a sub command to update commit work items summaries
@@ -130,8 +140,16 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
             self.publish(AnalyticsTopic, compute_implementation_complexity_metrics_for_work_items_command)
 
+            compute_contributor_metrics_for_work_items_command = ComputeContributorMetricsForWorkItems(
+                send=message.dict,
+                in_response_to=message
+            )
+
+            self.publish(AnalyticsTopic, compute_contributor_metrics_for_work_items_command)
+
             return update_commit_work_items_summaries_command, infer_projects_repositories_relationships, \
-                   update_work_items_commits_stats_command, compute_implementation_complexity_metrics_for_work_items_command
+                   update_work_items_commits_stats_command, compute_implementation_complexity_metrics_for_work_items_command, \
+                   compute_contributor_metrics_for_work_items_command
 
         elif RepositoriesImported.message_type == message.message_type:
             return self.publish(
@@ -160,6 +178,12 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
         elif ComputeImplementationComplexityMetricsForCommits.message_type == message.message_type:
             return self.process_compute_implementation_complexity_metrics_for_commits(channel, message)
+
+        elif ComputeContributorMetricsForWorkItems.message_type == message.message_type:
+            return self.process_compute_contributor_metrics_for_work_items(channel, message)
+
+        elif ComputeContributorMetricsForCommits.message_type == message.message_type:
+            return self.process_compute_contributor_metrics_for_commits(channel, message)
 
         elif InferProjectsRepositoriesRelationships.message_type == message.message_type:
             result = self.process_infer_projects_repositories_relationships(channel, message)
@@ -272,6 +296,28 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             return raise_on_failure(
                 message,
                 commands.compute_implementation_complexity_metrics_for_commits(organization_key, commit_details)
+            )
+
+    @staticmethod
+    def process_compute_contributor_metrics_for_work_items(channel, message):
+        organization_key = message['organization_key']
+        work_items_commits = message['work_items_commits']
+
+        if len(work_items_commits) > 0:
+            return raise_on_failure(
+                message,
+                commands.compute_contributor_metrics_for_work_items(organization_key, work_items_commits)
+            )
+
+    @staticmethod
+    def process_compute_contributor_metrics_for_commits(channel, message):
+        organization_key = message['organization_key']
+        commit_details = message['commit_details']
+
+        if len(commit_details) > 0:
+            return raise_on_failure(
+                message,
+                commands.compute_contributor_metrics_for_commits(organization_key, commit_details)
             )
 
     @staticmethod

@@ -23,7 +23,8 @@ from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
     Commit, WorkItem, work_item_state_transitions, Project, work_items_sources, \
-    work_item_delivery_cycles, work_item_delivery_cycle_durations
+    work_item_delivery_cycles, work_item_delivery_cycle_durations, work_item_delivery_cycle_contributors, \
+    contributor_aliases
 
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
@@ -978,7 +979,6 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     )
                 )
 
-
             # finally do the update of the changed rows.
             updated = session.connection().execute(
                 work_items.update().values(
@@ -1091,7 +1091,8 @@ def update_work_item_delivery_cycle_durations(session, work_items_temp):
         ).join(
             work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
         ).join(
-            work_item_delivery_cycles, work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+            work_item_delivery_cycles,
+            work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
         )
     ).where(
         and_(
@@ -1259,7 +1260,6 @@ def infer_projects_repositories_relationships(session, organization_key, work_it
 
 
 def update_work_items_commits_stats(session, organization_key, work_items_commits):
-
     # The following commit stats are calculated and updated for each work_item_delivery_cycle
     # 1. earliest_commit, latest_commit: earliest and latest commit for a work item delivery cycle
     # 2. repository_count: distinct repository count over all commits during a delivery cycle for a work item
@@ -1301,7 +1301,7 @@ def update_work_items_commits_stats(session, organization_key, work_items_commit
             func.max(commits.c.commit_date).label('latest_commit'),
             func.count(distinct(commits.c.id)).label('commit_count'),
             func.count(distinct(commits.c.repository_id)).label('repository_count')
-            ]).select_from(
+        ]).select_from(
             work_items_temp.join(
                 work_items, work_items.c.key == work_items_temp.c.work_item_key
             ).join(
@@ -1440,7 +1440,7 @@ def compute_implementation_complexity_metrics(session, work_items_temp):
         )
     ).where(
         and_(
-                work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
+            work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
             or_(
                 work_item_delivery_cycles.c.end_date == None,
                 commits.c.commit_date <= work_item_delivery_cycles.c.end_date
@@ -1531,7 +1531,7 @@ def compute_implementation_complexity_metrics_for_commits(session, organization_
         distinct_commit_keys = []
         for entry in commit_details:
             if entry['key'] not in distinct_commit_keys:
-                    distinct_commit_keys.append(entry['key'])
+                distinct_commit_keys.append(entry['key'])
 
         session.connection().execute(
             work_items_temp.insert().from_select(
@@ -1553,6 +1553,199 @@ def compute_implementation_complexity_metrics_for_commits(session, organization_
         )
         result = compute_implementation_complexity_metrics(session, work_items_temp)
         updated = result['updated']
+    return dict(
+        updated=updated
+    )
+
+
+def compute_contributor_metrics(session, work_items_temp):
+    # The following metrics are calculated and updated for each work_item_delivery_cycle
+    # 1. commit stats for non merge commits
+    # 2. commit stats for merge commits
+
+    updated = 0
+
+    # select relevant rows to find various metrics
+    delivery_cycles_contributor_commits = select([
+        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        contributor_aliases.c.id.label('contributor_alias_id'),
+        func.sum(
+            case(
+                [
+                    (
+                        and_(commits.c.num_parents == 1,
+                             contributor_aliases.c.id == commits.c.author_contributor_alias_id),
+                        cast(commits.c.stats["lines"].astext, Integer)
+                    )
+                ],
+                else_=0
+            )
+        ).label('total_lines_as_author'),
+        func.sum(
+            case(
+                [
+                    (
+                        or_(
+                            and_(
+                                commits.c.num_parents > 1,
+                                contributor_aliases.c.id == commits.c.committer_contributor_alias_id
+                            ),
+                            and_(
+                                commits.c.num_parents == 1,
+                                contributor_aliases.c.id == commits.c.committer_contributor_alias_id,
+                                commits.c.committer_contributor_alias_id != commits.c.author_contributor_alias_id
+                            )
+                        ),
+                        cast(commits.c.stats["lines"].astext, Integer)
+                    )
+                ],
+                else_=0
+            )
+        ).label('total_lines_as_reviewer'),
+    ]).select_from(
+        work_items_temp.join(
+            work_items, work_items.c.key == work_items_temp.c.work_item_key
+        ).join(
+            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+        ).join(
+            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+        ).join(
+            commits, work_items_commits_table.c.commit_id == commits.c.id
+        ).join(
+            contributor_aliases, or_(
+                contributor_aliases.c.id == commits.c.author_contributor_alias_id,
+                contributor_aliases.c.id == commits.c.committer_contributor_alias_id
+            )
+        )
+    ).where(
+        and_(
+            work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
+            or_(
+                work_item_delivery_cycles.c.end_date == None,
+                commits.c.commit_date <= work_item_delivery_cycles.c.end_date
+            )
+        )
+    ).group_by(
+        work_item_delivery_cycles.c.delivery_cycle_id, contributor_aliases.c.id
+
+    ).cte('delivery_cycles_contributor_commits')
+
+    # upsert work items delivery cycle contributors  with relevant metrics
+    upsert_stmt = insert(work_item_delivery_cycle_contributors).from_select(
+        ['delivery_cycle_id', 'contributor_alias_id', 'total_lines_as_author', 'total_lines_as_reviewer'],
+        select(
+            [
+                delivery_cycles_contributor_commits.c.delivery_cycle_id,
+                delivery_cycles_contributor_commits.c.contributor_alias_id,
+                delivery_cycles_contributor_commits.c.total_lines_as_author,
+                delivery_cycles_contributor_commits.c.total_lines_as_reviewer
+            ]
+        ).select_from(
+           delivery_cycles_contributor_commits
+        )
+
+    )
+
+    updated = session.connection().execute(
+        upsert_stmt.on_conflict_do_update(
+            index_elements=['delivery_cycle_id', 'contributor_alias_id'],
+            set_=dict(
+                total_lines_as_author=upsert_stmt.excluded.total_lines_as_author,
+                total_lines_as_reviewer=upsert_stmt.excluded.total_lines_as_reviewer
+            )
+        )
+    ).rowcount
+
+    return dict(
+        updated=updated
+    )
+
+
+def compute_contributor_metrics_for_work_items(session, organization_key, work_items_commits):
+    updated = 0
+
+    if len(work_items_commits) > 0:
+        # create a temp table for received work item ids
+        work_items_temp = db.create_temp_table(
+            table_name='work_items_temp',
+            columns=[
+                Column('work_item_key', UUID(as_uuid=True)),
+            ]
+        )
+        work_items_temp.create(session.connection(), checkfirst=True)
+
+        # Get distinct work item keys from input
+        distinct_work_items = []
+        for entry in work_items_commits:
+            if entry['work_item_key'] not in distinct_work_items:
+                distinct_work_items.append(entry['work_item_key'])
+
+        session.connection().execute(
+            work_items_temp.insert().values(
+                [
+                    dict(
+                        work_item_key=record
+                    )
+                    for record in distinct_work_items
+                ]
+            )
+        )
+        result = compute_contributor_metrics(session, work_items_temp)
+        updated = result['updated']
+    return dict(
+        updated=updated
+    )
+
+
+def compute_contributor_metrics_for_commits(session, organization_key, commit_details):
+    updated = 0
+
+    # This is called when we have commit keys as input
+    # The following metrics are calculated and updated for each work_item_delivery_cycle_contributor mapping
+    # 1. total_lines_as_author
+    # 2. total_lines_as_reviewer
+    updated = 0
+
+    if len(commit_details) > 0:
+        # create a temp table for associated work item ids
+        work_items_temp = db.create_temp_table(
+            table_name='work_items_temp',
+            columns=[
+                Column('work_item_key', UUID(as_uuid=True)),
+            ]
+        )
+        work_items_temp.create(session.connection(), checkfirst=True)
+
+        # Get distinct work item keys from input
+        distinct_commit_keys = []
+        for entry in commit_details:
+            if entry['key'] not in distinct_commit_keys:
+                distinct_commit_keys.append(entry['key'])
+
+        session.connection().execute(
+            work_items_temp.insert().from_select(
+                [
+                    'work_item_key'
+                ],
+                select([
+                    distinct(work_items.c.key)
+                ]).select_from(
+                    work_items.join(
+                        work_items_commits_table, work_items.c.id == work_items_commits_table.c.work_item_id
+                    ).join(
+                        commits, commits.c.id == work_items_commits_table.c.commit_id
+                    )
+                ).where(
+                    commits.c.key.in_(distinct_commit_keys)
+                )
+            )
+        )
+        result = compute_contributor_metrics(session, work_items_temp)
+        updated = result['updated']
+    return dict(
+        updated=updated
+    )
+
     return dict(
         updated=updated
     )

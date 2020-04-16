@@ -133,7 +133,7 @@ class TestUpdateWorkItemsNonMergeCommitsStats:
                                                                                              work_items_commits_fixture):
         organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
 
-        # Map commit 3 to work item 2 resulting in increase in repo count
+        # Map commit 3 to work item 2
         create_work_item_commits(test_work_items[1]['key'], [test_commits[2]['key']])
         commit_details = [
             dict(

@@ -37,7 +37,9 @@ def upgrade():
             ON analytics.work_item_delivery_cycles.work_item_id = work_items_commits.work_item_id
             JOIN analytics.commits on work_items_commits.commit_id = commits.id
             JOIN analytics.contributor_aliases on commits.author_contributor_alias_id = contributor_aliases.id or commits.committer_contributor_alias_id = contributor_aliases.id
-            WHERE analytics.commits.commit_date >= analytics.work_item_delivery_cycles.start_date
+            WHERE 
+                analytics.commits.commit_date >= analytics.work_item_delivery_cycles.start_date AND
+                (analytics.work_item_delivery_cycles.end_date is null or analytics.commits.commit_date <= work_item_delivery_cycles.end_date)
             GROUP BY analytics.work_item_delivery_cycles.delivery_cycle_id, analytics.contributor_aliases.id)
             INSERT INTO analytics.work_item_delivery_cycle_contributors(delivery_cycle_id,total_lines_as_author,total_lines_as_reviewer,contributor_alias_id) 
             SELECT delivery_cycle_id, total_lines_as_author, total_lines_as_reviewer, contributor_alias_id from work_item_delivery_cycle_contributors

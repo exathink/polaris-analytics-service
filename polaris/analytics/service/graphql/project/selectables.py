@@ -29,7 +29,7 @@ from ..interfaces import \
     WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
-    work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_time_window_filters, \
+    work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
 
 
@@ -227,7 +227,7 @@ class ProjectWorkItemNodes(ConnectionResolver):
         ).where(
             projects.c.key == bindparam('key')
         )
-        return work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
+        return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
 
     @staticmethod
     def sort_order(project_work_items_nodes, **kwargs):
@@ -504,7 +504,7 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
-        state_types_count = select([
+        select_work_items = select([
             project_nodes.c.id,
             case(
                 [
@@ -519,7 +519,11 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             )
-        ).group_by(
+        )
+        if 'defects_only' in kwargs:
+            select_work_items = select_work_items.where(work_items.c.is_bug == True)
+
+        work_items_by_state_type = select_work_items.group_by(
             project_nodes.c.id,
             work_items.c.state_type
         ).alias()
@@ -528,14 +532,14 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
             project_nodes.c.id,
             func.json_agg(
                 func.json_build_object(
-                    'state_type', state_types_count.c.state_type,
-                    'count', state_types_count.c.count
+                    'state_type', work_items_by_state_type.c.state_type,
+                    'count', work_items_by_state_type.c.count
                 )
             ).label('work_item_state_type_counts')
 
         ]).select_from(
             project_nodes.outerjoin(
-                state_types_count, project_nodes.c.id == state_types_count.c.id
+                work_items_by_state_type, project_nodes.c.id == work_items_by_state_type.c.id
             )
         ).group_by(
             project_nodes.c.id

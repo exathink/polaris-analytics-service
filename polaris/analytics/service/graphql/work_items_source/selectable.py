@@ -18,7 +18,7 @@ from polaris.graphql.base_classes import NamedNodeResolver, ConnectionResolver, 
 from polaris.graphql.interfaces import NamedNode
 from ..commit.sql_expressions import commits_connection_apply_time_window_filters
 from ..interfaces import WorkItemStateMappings
-from ..work_item.sql_expressions import work_item_info_columns, work_items_connection_apply_time_window_filters, \
+from ..work_item.sql_expressions import work_item_info_columns, work_items_connection_apply_filters, \
     work_item_event_columns, work_item_events_connection_apply_time_window_filters, work_item_commit_info_columns
 
 
@@ -57,7 +57,7 @@ class WorkItemsSourceWorkItemNodes(ConnectionResolver):
         ).where(
             work_items_sources.c.key == bindparam('key')
         )
-        return work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
+        return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
 
 
 class WorkItemsSourceWorkItemEventNodes(ConnectionResolver):

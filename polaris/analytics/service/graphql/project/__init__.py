@@ -155,6 +155,12 @@ Implicit Interfaces: ArchivedStatus
                             "the percentile is 0.5. Must be a number between 0 and 1",
                 default_value=0.5
             ),
+            defects_only=graphene.Argument(
+                graphene.Boolean,
+                required=False,
+                description="When evaluating cycle metrics "
+                            "include only defects"
+            ),
             **kwargs
         )
 

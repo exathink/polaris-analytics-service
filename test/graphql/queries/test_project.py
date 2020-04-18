@@ -160,6 +160,53 @@ class TestProjectContributorCount:
         project = result['data']['project']
         assert project['contributorCount'] == 0
 
+@pytest.yield_fixture
+def api_work_items_import_fixture(org_repo_fixture):
+    organization, projects, _ = org_repo_fixture
+
+    project = projects['mercury']
+    work_items_source = WorkItemsSource(
+        key=uuid.uuid4(),
+        organization_key=organization.key,
+        integration_type='jira',
+        commit_mapping_scope='repository',
+        commit_mapping_scope_key=None,
+        project_id=project.id,
+        **work_items_source_common
+    )
+    work_items_source.init_state_map(
+        [
+            dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
+            dict(state='upnext', state_type=WorkItemsStateType.open.value),
+            dict(state='doing', state_type=WorkItemsStateType.wip.value),
+            dict(state='done', state_type=WorkItemsStateType.complete.value),
+            dict(state='closed', state_type=WorkItemsStateType.closed.value),
+        ]
+    )
+
+    with db.orm_session() as session:
+        session.add(organization)
+        organization.work_items_sources.append(work_items_source)
+
+    work_items_common = dict(
+        is_bug=True,
+        work_item_type='issue',
+        url='http://foo.com',
+        tags=['ares2'],
+        description='foo',
+        source_id=str(uuid.uuid4()),
+    )
+
+    yield organization, project, work_items_source, work_items_common
+
+    db.connection().execute("delete  from analytics.work_item_state_transitions")
+    db.connection().execute("delete  from analytics.work_item_delivery_cycle_durations")
+    db.connection().execute("delete  from analytics.work_item_delivery_cycles")
+    db.connection().execute("delete  from analytics.work_items")
+    db.connection().execute("delete  from analytics.work_items_source_state_map")
+    db.connection().execute("delete  from analytics.work_items_sources")
+
+
 
 class TestProjectWorkItems:
     def it_implements_the_work_item_info_interface(self, commit_summary_fixture):
@@ -240,52 +287,104 @@ class TestProjectWorkItems:
             assert node['latestCommit'] == get_date("2020-02-05").isoformat()
             assert node['commitCount'] == 2
 
+    def it_respects_the_defects_only_parameter(self, api_work_items_import_fixture):
+        organization, project, work_items_source, _ = api_work_items_import_fixture
 
-@pytest.yield_fixture
-def api_work_items_import_fixture(org_repo_fixture):
-    organization, projects, _ = org_repo_fixture
+        work_items_common = dict(
+            work_item_type='issue',
+            url='http://foo.com',
+            tags=['ares2'],
+            description='foo',
+            source_id=str(uuid.uuid4()),
+        )
 
-    project = projects['mercury']
-    work_items_source = WorkItemsSource(
-        key=uuid.uuid4(),
-        organization_key=organization.key,
-        integration_type='jira',
-        commit_mapping_scope='repository',
-        commit_mapping_scope_key=None,
-        project_id=project.id,
-        **work_items_source_common
-    )
-    work_items_source.init_state_map(
-        [
-            dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
-            dict(state='upnext', state_type=WorkItemsStateType.open.value),
-            dict(state='doing', state_type=WorkItemsStateType.wip.value),
-            dict(state='done', state_type=WorkItemsStateType.complete.value),
-            dict(state='closed', state_type=WorkItemsStateType.closed.value),
-        ]
-    )
+        api.import_new_work_items(
+            organization_key=organization.key,
+            work_item_source_key=work_items_source.key,
+            work_item_summaries=[
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 1',
+                    display_id='1000',
+                    is_bug=False,
+                    state='backlog',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 2',
+                    display_id='1001',
+                    is_bug=True,
+                    state='upnext',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 3',
+                    display_id='1002',
+                    state='upnext',
+                    is_bug=False,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 4',
+                    display_id='1004',
+                    state='doing',
+                    is_bug=False,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 5',
+                    display_id='1005',
+                    state='doing',
+                    is_bug=False,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 6',
+                    display_id='1006',
+                    state='closed',
+                    is_bug=True,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
 
-    with db.orm_session() as session:
-        session.add(organization)
-        organization.work_items_sources.append(work_items_source)
+            ]
+        )
 
-    work_items_common = dict(
-        is_bug=True,
-        work_item_type='issue',
-        url='http://foo.com',
-        tags=['ares2'],
-        description='foo',
-        source_id=str(uuid.uuid4()),
-    )
-
-    yield organization, project, work_items_source, work_items_common
-
-    db.connection().execute("delete  from analytics.work_item_state_transitions")
-    db.connection().execute("delete  from analytics.work_item_delivery_cycle_durations")
-    db.connection().execute("delete  from analytics.work_item_delivery_cycles")
-    db.connection().execute("delete  from analytics.work_items")
-    db.connection().execute("delete  from analytics.work_items_source_state_map")
-    db.connection().execute("delete  from analytics.work_items_sources")
+        client = Client(schema)
+        query = """
+                    query getProjectDefects($project_key:String!) {
+                        project(key: $project_key) {
+                            workItems(defectsOnly: true) {
+                                edges {
+                                    node {
+                                      id
+                                      name
+                                      key
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        assert len(result['data']['project']['workItems']['edges']) == 2
 
 
 class TestProjectWorkItemStateTypeCounts:
@@ -425,6 +524,109 @@ class TestProjectWorkItemStateTypeCounts:
         state_type_counts = result['data']['project']['workItemStateTypeCounts']
         assert state_type_counts['backlog'] == 1
         assert state_type_counts['unmapped'] == 1
+
+    def it_supports_filtering_by_defects_only(self,api_work_items_import_fixture):
+        organization, project, work_items_source, _ = api_work_items_import_fixture
+
+        work_items_common = dict(
+            work_item_type='issue',
+            url='http://foo.com',
+            tags=['ares2'],
+            description='foo',
+            source_id=str(uuid.uuid4()),
+        )
+
+        api.import_new_work_items(
+            organization_key=organization.key,
+            work_item_source_key=work_items_source.key,
+            work_item_summaries=[
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    is_bug=True,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 2',
+                    display_id='1001',
+                    state='upnext',
+                    is_bug=False,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 3',
+                    display_id='1002',
+                    state='upnext',
+                    is_bug=False,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 4',
+                    display_id='1004',
+                    is_bug=True,
+                    state='doing',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 5',
+                    display_id='1005',
+                    state='doing',
+                    is_bug=False,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 6',
+                    display_id='1006',
+                    is_bug=True,
+                    state='closed',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+
+            ]
+        )
+
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemStateTypeCounts($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeCounts], defectsOnly: true) {
+                            workItemStateTypeCounts {
+                                backlog
+                                open
+                                wip
+                                complete
+                                closed
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        assert state_type_counts['backlog'] == 1
+        assert state_type_counts['open'] is None
+        assert state_type_counts['wip'] == 1
+        assert state_type_counts['closed'] == 1
+        assert state_type_counts['complete'] is None
 
 
 class TestProjectAggregateCycleMetrics:
@@ -986,6 +1188,116 @@ class TestProjectAggregateCycleMetrics:
         assert (graphql_date(project['latestClosedDate']) - start_date).days == 10
 
 
+    def it_respects_the_defects_only_parameter(self, api_work_items_import_fixture):
+        organization, project, work_items_source, _  = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items_common = dict(
+            work_item_type='issue',
+            url='http://foo.com',
+            tags=['ares2'],
+            description='foo',
+            source_id=str(uuid.uuid4()),
+        )
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue 1',
+                display_id='1001',
+                state='backlog',
+                is_bug=True,
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue 2',
+                display_id='1001',
+                state='backlog',
+                is_bug=True,
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue 2',
+                display_id='1002',
+                state='backlog',
+                is_bug=False,
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+        api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(0, 'done', start_date + timedelta(days=4))])
+        api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=6))])
+
+        api_helper.update_work_items([(1, 'upnext', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'done', start_date + timedelta(days=6))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=8))])
+
+        api_helper.update_work_items([(2, 'upnext', start_date + timedelta(days=3))])
+        api_helper.update_work_items([(2, 'doing', start_date + timedelta(days=4))])
+        api_helper.update_work_items([(2, 'done', start_date + timedelta(days=5))])
+        api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=10))])
+
+        client = Client(schema)
+        query = """
+                    query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile,
+                                defectsOnly: true
+                        ) {
+                            ... on AggregateCycleMetrics {
+                                minLeadTime
+                                avgLeadTime
+                                maxLeadTime
+                                minCycleTime
+                                avgCycleTime
+                                maxCycleTime
+                                percentileLeadTime
+                                percentileCycleTime
+                                targetPercentile
+                                earliestClosedDate
+                                latestClosedDate
+                                workItemsInScope
+                                workItemsWithNullCycleTime
+
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(project_key=project.key, days=30, percentile=0.70))
+
+        assert result['data']
+        project = result['data']['project']
+        assert project['minLeadTime'] == 6.0
+        assert project['avgLeadTime'] == 7.0
+        assert project['maxLeadTime'] == 8.0
+        assert project['minCycleTime'] == 5.0
+        assert project['avgCycleTime'] == 5.5
+        assert project['maxCycleTime'] == 6.0
+        assert project['percentileLeadTime'] == 8.0
+        assert project['percentileCycleTime'] == 6.0
+        assert project['targetPercentile'] == 0.7
+        assert project['workItemsInScope'] == 2
+        assert project['workItemsWithNullCycleTime'] == 0
+        assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
+        assert (graphql_date(project['latestClosedDate']) - start_date).days == 8
+
+
 class TestProjectWorkItemDeliveryCycles:
 
     def it_implements_the_named_node_interface(self, api_work_items_import_fixture):
@@ -1183,6 +1495,81 @@ class TestProjectWorkItemDeliveryCycles:
         assert len(nodes) == 1
         assert nodes[0]['closed']
         assert nodes[0]['endDate']
+
+    def it_respects_the_defects_only_parameter(self, api_work_items_import_fixture):
+        organization, project, work_items_source, _ = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items_common = dict(
+            work_item_type='issue',
+            url='http://foo.com',
+            tags=['ares2'],
+            description='foo',
+            source_id=str(uuid.uuid4()),
+        )
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue 1',
+                display_id='1000',
+                is_bug=False,
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue 2',
+                display_id='1000',
+                state='backlog',
+                is_bug=True,
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue 3',
+                display_id='1000',
+                is_bug=True,
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            ),
+
+
+        ]
+
+        api_helper.import_work_items(work_items)
+        client = Client(schema)
+        query = """
+                                query getProjectDeliveryCycles($project_key:String!) {
+                                    project(key: $project_key) {
+                                        workItemDeliveryCycles(defectsOnly: true) {
+                                            edges {
+                                                node {
+                                                    id
+                                                    name
+                                                    key
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert result['data']
+        nodes = [edge['node'] for edge in result['data']['project']['workItemDeliveryCycles']['edges']]
+        assert len(nodes) == 2
+        for node in nodes:
+            assert node['id']
+            assert node['name']
+            assert node['key']
 
     class TestCycleMetrics:
 

@@ -137,6 +137,18 @@ def work_items_connection_apply_time_window_filters(select_stmt, work_items, **k
         return select_stmt
 
 
+def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
+    select_stmt = work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
+
+    if 'state_types' in kwargs:
+        select_stmt = select_stmt.where(work_items.c.state_type.in_(kwargs.get('state_types')))
+
+    if 'defects_only' in kwargs:
+        select_stmt = select_stmt.where(work_items.c.is_bug == True)
+
+    return select_stmt
+
+
 def work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions, **kwargs):
     before = None
     if 'before' in kwargs:
@@ -173,10 +185,7 @@ def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, 
     if 'active_only' in kwargs:
         select_stmt = select_stmt.where(work_item_delivery_cycles.c.end_date == None)
 
-    if 'state_types' in kwargs:
-        select_stmt = select_stmt.where(work_items.c.state_type.in_(kwargs.get('state_types')))
-
-    return select_stmt
+    return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
 
 
 def work_item_cycle_time_column_expr():
@@ -204,12 +213,11 @@ def work_items_cycle_metrics(**kwargs):
             "The argument 'closedWithinDays' must be specified when computing cycle metrics"
         )
 
-    window_start = datetime.utcnow() - timedelta(days=closed_within_days)
-    return select([
+    select_stmt = select([
         *work_items.columns,
         work_items.c.id.label('work_item_id'),
         work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-        (func.min(work_item_delivery_cycles.c.lead_time)/ (1.0 * 3600 * 24)).label('lead_time'),
+        (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
         work_item_cycle_time_column_expr().label('cycle_time'),
         func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
     ]).select_from(
@@ -224,9 +232,13 @@ def work_items_cycle_metrics(**kwargs):
                 work_items.c.work_items_source_id == work_items_source_state_map.c.work_items_source_id,
                 work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state
             )
-        )).where(
-        work_item_delivery_cycles.c.end_date >= window_start
-    ).group_by(
+        ))
+
+    select_stmt = work_item_delivery_cycles_connection_apply_filters(
+        select_stmt, work_items, work_item_delivery_cycles, **kwargs
+    )
+
+    return select_stmt.group_by(
         work_items.c.id,
         work_item_delivery_cycles.c.delivery_cycle_id
     )

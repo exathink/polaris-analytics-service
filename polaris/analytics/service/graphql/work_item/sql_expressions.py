@@ -49,7 +49,8 @@ def work_item_info_columns(work_items):
         work_items.c.state_type,
         work_items.c.tags,
         work_items.c.created_at,
-        work_items.c.updated_at
+        work_items.c.updated_at,
+        work_items.c.is_bug
     ]
 
 
@@ -66,6 +67,7 @@ def work_item_event_columns(work_items, work_item_state_transitions):
         work_items.c.tags,
         work_items.c.created_at,
         work_items.c.updated_at,
+        work_items.c.is_bug,
         work_item_state_transitions.c.seq_no,
         work_item_state_transitions.c.created_at.label('event_date'),
         work_item_state_transitions.c.previous_state,

@@ -49,6 +49,7 @@ class TestWorkItemInstance:
                     url
                     tags
                     stateType
+                    isBug
                 }
             } 
         """
@@ -63,6 +64,7 @@ class TestWorkItemInstance:
         assert work_item['url'] == work_items_common['url']
         assert work_item['tags'] == work_items_common['tags']
         assert work_item['stateType'] == work_items_common['state_type']
+        assert work_item['isBug'] == work_items_common['is_bug']
 
     def it_implements_commit_summary_info_interface(self, work_items_commit_summary_fixture):
         work_item_key, _, _ = work_items_commit_summary_fixture

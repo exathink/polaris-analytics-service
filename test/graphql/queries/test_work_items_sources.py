@@ -182,6 +182,15 @@ def work_items_sources_state_mapping_fixture(work_items_sources_fixture):
     yield work_items_sources['github'].key
 
 
+@pytest.yield_fixture
+def empty_work_items_sources_state_mapping_fixture(work_items_sources_fixture):
+    _, work_items_sources = work_items_sources_fixture
+    with db.orm_session() as session:
+        session.add(work_items_sources['jira'])
+
+    yield work_items_sources['jira'].key
+
+
 class TestWorkItemsSourceWorkItemStateMappings:
 
     def it_resolves_work_items_state_mappings(self, work_items_sources_state_mapping_fixture):
@@ -213,3 +222,23 @@ class TestWorkItemsSourceWorkItemStateMappings:
             ('done', WorkItemsStateType.complete.value),
             ('closed', WorkItemsStateType.closed.value)
         }
+
+    def it_resolves_work_items_state_mappings_when_there_are_no_mappings(self, empty_work_items_sources_state_mapping_fixture):
+        source_key = empty_work_items_sources_state_mapping_fixture
+
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key, interfaces: [WorkItemStateMappings]){
+                    workItemStateMappings {
+                        state
+                        stateType
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=source_key))
+        assert 'data' in result
+        work_items_state_mapping = result['data']['workItemsSource']['workItemStateMappings']
+
+        assert len(work_items_state_mapping) == 0

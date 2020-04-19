@@ -8,7 +8,7 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam, func
+from sqlalchemy import select, bindparam, func, case
 
 from polaris.analytics.db.model import work_items_sources, work_items, work_item_state_transitions, repositories, \
     commits, work_items_commits, work_items_source_state_map
@@ -122,12 +122,18 @@ class WorkItemsSourceWorkItemStateMappings(InterfaceResolver):
     def interface_selector(work_items_source_nodes, **kwargs):
         return select([
             work_items_source_nodes.c.id,
+
             func.json_agg(
-                func.json_build_object(
-                    'state', work_items_source_state_map.c.state,
-                    'state_type', work_items_source_state_map.c.state_type
-                )
-            ).label('work_item_state_mappings')
+                case([
+                    (
+                        work_items_source_state_map.c.work_items_source_id != None,
+                        func.json_build_object(
+                            'state', work_items_source_state_map.c.state,
+                            'state_type', work_items_source_state_map.c.state_type
+                        )
+                    )
+                ], else_=None)
+        ).label('work_item_state_mappings')
 
         ]).select_from(
             work_items_source_nodes.outerjoin(

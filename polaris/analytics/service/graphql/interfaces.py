@@ -123,6 +123,7 @@ class WorkItemInfo(graphene.Interface):
     tags = graphene.Field(graphene.List(graphene.String, required=True))
     created_at = graphene.DateTime(required=True)
     updated_at = graphene.DateTime(required=True)
+    is_bug = graphene.Boolean(required=True)
     state_type = graphene.String(required=False)
 
 

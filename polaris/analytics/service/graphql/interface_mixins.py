@@ -43,5 +43,5 @@ class WorkItemStateMappingsResolverMixin(KeyIdResolverMixin):
     def resolve_work_item_state_mappings(self, info, **kwargs):
         return [
             StateMapping(**state_mapping)
-            for state_mapping in self.work_item_state_mappings
+            for state_mapping in self.work_item_state_mappings if state_mapping is not None
         ]

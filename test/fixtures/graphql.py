@@ -651,6 +651,16 @@ def work_items_sources_fixture(org_repo_fixture, cleanup):
             organization_id=organization.id,
         )
         session.add_all(work_items_sources.values())
+        work_items_sources['jira'] = WorkItemsSource(
+            key=uuid.uuid4().hex,
+            integration_type='jira',
+            name='Test Work Items Source 3',
+            organization_key=organization.key,
+            commit_mapping_scope='organization',
+            commit_mapping_scope_key=organization.key,
+            organization_id=organization.id,
+        )
+        session.add_all(work_items_sources.values())
     yield new_key, work_items_sources
 
 @pytest.yield_fixture()

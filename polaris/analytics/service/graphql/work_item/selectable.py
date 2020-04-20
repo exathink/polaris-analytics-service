@@ -26,7 +26,7 @@ from polaris.analytics.service.graphql.interfaces import \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics
 
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
-    work_item_events_connection_apply_time_window_filters, work_item_cycle_time_column_expr,\
+    work_item_events_connection_apply_time_window_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
@@ -209,11 +209,7 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
         return select([
             work_item_delivery_cycle_nodes.c.id,
             (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
-            # We return cycle time only for closed items.
-            case([
-                (func.min(work_item_delivery_cycles.c.end_date) != None, work_item_cycle_time_column_expr())
-            ], else_=None).label('cycle_time'),
-
+            (func.min(work_item_delivery_cycles.c.cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
         ]).select_from(
             work_item_delivery_cycle_nodes.outerjoin(

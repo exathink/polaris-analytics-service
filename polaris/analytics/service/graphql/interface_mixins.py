@@ -30,7 +30,7 @@ class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):
     def resolve_work_item_state_type_counts(self, info, **kwargs):
         return StateTypeAggregateMeasure(**{
             result.get('state_type'): result['count']
-            for result in self.work_item_state_type_counts
+            for result in self.work_item_state_type_counts if result is not None
         })
 
 

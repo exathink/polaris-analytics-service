@@ -531,10 +531,15 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
         return select([
             project_nodes.c.id,
             func.json_agg(
-                func.json_build_object(
-                    'state_type', work_items_by_state_type.c.state_type,
-                    'count', work_items_by_state_type.c.count
-                )
+                case([
+                    (
+                        work_items_by_state_type.c.id != None,
+                        func.json_build_object(
+                            'state_type', work_items_by_state_type.c.state_type,
+                            'count', work_items_by_state_type.c.count
+                        )
+                    )
+                ], else_=None)
             ).label('work_item_state_type_counts')
 
         ]).select_from(

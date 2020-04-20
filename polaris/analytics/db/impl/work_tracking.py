@@ -412,7 +412,7 @@ def compute_work_item_delivery_cycles_cycle_time(session, work_items_temp):
                         or_(
                             work_items_source_state_map.c.state_type == WorkItemsStateType.open.value,
                             work_items_source_state_map.c.state_type == WorkItemsStateType.wip.value,
-                            work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value
+                            work_items_source_state_map.c.state_type == WorkItemsStateType.complete.value
                         ),
                         work_item_delivery_cycle_durations.c.cumulative_time_in_state
                     )

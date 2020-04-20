@@ -241,6 +241,10 @@ def recompute_work_items_delivery_cycle_durations(session, work_items_source_id)
     )
 
 
+def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id):
+    pass
+
+
 def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if work_items_source is not None:
@@ -258,6 +262,13 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         if new_closed_state is not None:
             if old_closed_state is None or old_closed_state.state != new_closed_state.state:
                 update_work_items_delivery_cycles(session, work_items_source.id)
+
+        # Recompute cycle time as it is dependent on state type mapping
+        # Directly impacted if mapping change includes state types: open, wip, complete
+        # Also needs to be recomputed is closed state type changes as delivery cycles are recreated then
+        # So need to recompute for all cases except when only state mapping is changed for 'backlog'
+        # check for state_type backlog
+        recompute_work_item_delivery_cycles_cycle_time(session, work_items_source.id)
 
 
 def update_project_work_items_source_state_mappings(session, project_state_maps):

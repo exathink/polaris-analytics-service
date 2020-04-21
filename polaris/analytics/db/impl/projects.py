@@ -268,10 +268,11 @@ def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id
             work_items_source_state_map,
             work_items_source_state_map.c.work_items_source_id == work_items.c.work_items_source_id
         )).where(
-        and_(work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state,
+        and_(
+            work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state,
              work_item_delivery_cycles.c.end_date != None,
-             work_items.c.work_items_source_id == work_items_source_id)
-
+             work_items.c.work_items_source_id == work_items_source_id
+        )
     ).group_by(
         work_item_delivery_cycles.c.delivery_cycle_id
     ).cte('delivery_cycles_cycle_time')

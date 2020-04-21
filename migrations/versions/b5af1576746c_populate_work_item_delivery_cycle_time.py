@@ -41,7 +41,7 @@ def upgrade():
                 SET cycle_time = delivery_cycle_cycle_time.cycle_time
                 FROM delivery_cycle_cycle_time
                 WHERE analytics.work_item_delivery_cycles.delivery_cycle_id = delivery_cycle_cycle_time.delivery_cycle_id
-                    """)
+                and end_date is not NULL""")
 
 
 def downgrade():

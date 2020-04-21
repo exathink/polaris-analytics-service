@@ -1050,6 +1050,39 @@ class TestWorkItemDeliveryCycles:
         assert db.connection().execute(
             'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where end_seq_no=1').scalar() == 5
 
+    def it_updates_cycle_time_for_newly_imported_work_items(self, work_items_setup):
+        # Cycle time, like lead time is calculated only for closed work items
+        # But cycle time cannot be calculated for work items imported in closed state
+        # as there is no knowledge of transitions in open, wip or complete states
+        # so it will be null only, even when lead time is not null
+        organization_key, work_items_source_key = work_items_setup
+        work_items = []
+        work_items.extend([
+            dict(
+                key=uuid.uuid4().hex,
+                name=str(i),
+                display_id=str(i),
+                **work_items_common()
+            )
+            for i in range(0, 5)]
+        )
+        work_items.extend([
+            dict(
+                key=uuid.uuid4().hex,
+                name=str(i),
+                display_id=str(i),
+                **work_items_closed()
+            )
+            for i in range(5, 10)]
+        )
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+        assert result['success']
+        assert db.connection().execute(
+            'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where lead_time is not NULL and cycle_time is NULL').scalar() == 5
+        assert db.connection().execute(
+            'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where lead_time is NULL and cycle_time is NULL').scalar() == 5
+
 
 class TestUpdateWorkItemsDeliveryCycles:
 
@@ -1136,13 +1169,13 @@ class TestUpdateWorkItemsDeliveryCycles:
             assert {
                        duration.state: int(
                            duration.cumulative_time_in_state / (
-                                       3600 * 24) if duration.cumulative_time_in_state is not None else 0
+                                   3600 * 24) if duration.cumulative_time_in_state is not None else 0
                        )
                        for duration in current_delivery_cycle.delivery_cycle_durations
                    } == {
-                    'open': 2,
-                    'wip': 3,
-                    'closed': 0
+                       'open': 2,
+                       'wip': 3,
+                       'closed': 0
                    }
 
     def it_does_not_update_delivery_cycle_when_transition_does_not_involve_closed_state(self, update_work_items_setup):
@@ -1158,6 +1191,35 @@ class TestUpdateWorkItemsDeliveryCycles:
         assert db.connection().execute(
             "select count(delivery_cycle_id) from analytics.work_item_delivery_cycles \
             where lead_time is NULL and end_date is NULL").scalar() == 2
+
+    def it_updates_cycle_time_for_closed_work_items(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items_list = update_work_items_setup
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list[0:])
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles join analytics.work_items on work_item_delivery_cycles.work_item_id=work_items.id\
+            where work_items.key='{work_items_list[0]['key']}' and cycle_time is NULL").scalar() == 1
+        work_items_list[0]['state'] = 'wip'
+        #work_items_list[0]['updated_at'] = datetime.utcnow() - timedelta(days=5)
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list[0:])
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles join analytics.work_items on work_item_delivery_cycles.work_item_id=work_items.id\
+                    where work_items.key='{work_items_list[0]['key']}' and cycle_time is NULL").scalar() == 1
+        work_items_list[0]['state'] = 'complete'
+        #work_items_list[0]['updated_at'] = datetime.utcnow() - timedelta(days=4)
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list[0:])
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles join analytics.work_items on work_item_delivery_cycles.work_item_id=work_items.id\
+                    where work_items.key='{work_items_list[0]['key']}' and cycle_time is NULL").scalar() == 1
+        work_items_list[0]['state'] = 'closed'
+        #work_items_list[0]['updated_at'] = datetime.utcnow() - timedelta(days=3)
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list[0:])
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles join analytics.work_items on work_item_delivery_cycles.work_item_id=work_items.id\
+                    where work_items.key='{work_items_list[0]['key']}' and cycle_time is not NULL").scalar() == 1
 
 
 class TestWorkItemDeliveryCycleDurations:

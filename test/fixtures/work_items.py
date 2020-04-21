@@ -9,6 +9,7 @@
 # Author: Krishna Kumar
 import uuid
 from polaris.analytics.db import api
+from polaris.analytics.db.enums import WorkItemsStateType
 
 # work_item_sources
 rails_work_items_source_key = uuid.uuid4()
@@ -63,12 +64,6 @@ def work_item_source_common():
     )
 
 
-def work_item_state_transition_common():
-    return dict(
-
-    )
-
-
 @pytest.yield_fixture()
 def work_items_setup(setup_repo_org):
     _, organization_id = setup_repo_org
@@ -78,7 +73,13 @@ def work_items_setup(setup_repo_org):
             organization_key=rails_organization_key,
             **work_item_source_common()
         )
-        work_items_source.init_state_map()
+        state_map_entries = [
+                dict(state='created', state_type=WorkItemsStateType.backlog.value),
+                dict(state='open', state_type=WorkItemsStateType.backlog.value),
+                dict(state='complete', state_type=WorkItemsStateType.complete.value),
+                dict(state='closed', state_type=WorkItemsStateType.closed.value)
+            ]
+        work_items_source.init_state_map(state_map_entries)
         session.add(
             work_items_source
         )

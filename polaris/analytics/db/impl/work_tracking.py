@@ -272,6 +272,8 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
             initialize_work_item_delivery_cycle_durations(session, work_items_temp)
 
             # compute work_item_delivery_cycles cycle_time field
+            # we may not need to compute cycle time for new work items as
+            # cycle time can't be calculated without open, wip, complete state transitions
             compute_work_item_delivery_cycles_cycle_time(session, work_items_temp)
 
         else:

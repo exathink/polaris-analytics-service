@@ -24,7 +24,7 @@ from polaris.analytics.db.model import \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
     Commit, WorkItem, work_item_state_transitions, Project, work_items_sources, \
     work_item_delivery_cycles, work_item_delivery_cycle_durations, work_item_delivery_cycle_contributors, \
-    contributor_aliases
+    contributor_aliases, work_items_source_state_map
 
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
@@ -271,6 +271,10 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
             # Populate work_item_delivery_cycle_durations
             initialize_work_item_delivery_cycle_durations(session, work_items_temp)
 
+            # compute work_item_delivery_cycles cycle_time field
+            # we may not need to compute cycle time for new work items as
+            # cycle time can't be calculated without open, wip, complete state transitions
+            compute_work_item_delivery_cycles_cycle_time(session, work_items_temp)
 
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")
@@ -304,7 +308,7 @@ def initialize_work_item_delivery_cycles(session, work_items_temp):
             'start_date',
             'end_seq_no',
             'end_date',
-            'lead_time'
+            'lead_time',
         ],
             select([
                 work_items.c.id.label('work_item_id'),
@@ -400,6 +404,50 @@ def initialize_work_item_delivery_cycle_durations(session, work_items_temp):
         )
     )
 
+
+def compute_work_item_delivery_cycles_cycle_time(session, work_items_temp):
+    delivery_cycles_cycle_time = select([
+            work_items.c.current_delivery_cycle_id.label('current_delivery_cycle_id'),
+            func.sum(case(
+                [
+                    (
+                        or_(
+                            work_items_source_state_map.c.state_type == WorkItemsStateType.open.value,
+                            work_items_source_state_map.c.state_type == WorkItemsStateType.wip.value,
+                            work_items_source_state_map.c.state_type == WorkItemsStateType.complete.value
+                        ),
+                        work_item_delivery_cycle_durations.c.cumulative_time_in_state
+                    )
+                ],
+                else_=None
+            )).label('cycle_time')
+            ]).select_from(
+            work_items_temp.join(
+                work_items, work_items_temp.c.key == work_items.c.key
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+            ).join(
+                work_item_delivery_cycle_durations, work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+            ).join(
+                work_items_source_state_map, work_items_source_state_map.c.work_items_source_id == work_items.c.work_items_source_id
+            )).where(
+                and_(work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state,
+                work_item_delivery_cycles.c.end_date != None)
+            ).group_by(
+                work_items.c.current_delivery_cycle_id
+            ).cte('delivery_cycles_cycle_time')
+
+    updated = session.connection().execute(
+        work_item_delivery_cycles.update().where(
+            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_cycle_time.c.current_delivery_cycle_id
+        ).values(
+            cycle_time=delivery_cycles_cycle_time.c.cycle_time
+        )
+    ).rowcount
+
+    return dict(
+        updated=updated
+    )
 
 # ---------------------------
 # Map commits to work items
@@ -1066,6 +1114,9 @@ def update_work_item_delivery_cycles(session, work_items_temp):
 
     # Update delivery_cycle_durations for all work items with state changes
     update_work_item_delivery_cycle_durations(session, work_items_temp)
+
+    # Recompute cycle time for all updated delivery cycles
+    compute_work_item_delivery_cycles_cycle_time(session, work_items_temp)
 
 
 def update_work_item_delivery_cycle_durations(session, work_items_temp):

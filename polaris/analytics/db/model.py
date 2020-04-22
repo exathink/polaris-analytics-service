@@ -730,6 +730,7 @@ class WorkItemDeliveryCycles(Base):
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=True)
     lead_time = Column(Integer, nullable=True)
+    cycle_time = Column(Integer, nullable=True)
     earliest_commit = Column(DateTime, nullable=True)
     latest_commit = Column(DateTime, nullable=True)
     repository_count = Column(Integer, nullable=True)

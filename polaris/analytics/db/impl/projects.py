@@ -11,7 +11,7 @@ import logging
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.sql.expression import and_, select, extract
+from sqlalchemy.sql.expression import and_, select, extract, or_, case
 
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import Project, WorkItemsSource, work_items, work_items_source_state_map, \
@@ -146,8 +146,8 @@ def update_work_items_delivery_cycles(session, work_items_source_id):
         work_item_delivery_cycles.join(
             work_items, work_items.c.id == work_item_delivery_cycles.c.work_item_id
         )).where(
-            work_items.c.work_items_source_id == work_items_source_id
-        ).group_by(
+        work_items.c.work_items_source_id == work_items_source_id
+    ).group_by(
         work_item_delivery_cycles.c.work_item_id
     ).alias()
 
@@ -241,6 +241,56 @@ def recompute_work_items_delivery_cycle_durations(session, work_items_source_id)
     )
 
 
+def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id):
+    delivery_cycles_cycle_time = select([
+        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        work_item_delivery_cycles.c.work_item_id,
+        func.sum(
+            case(
+            [
+                (
+                    or_(
+                        work_items_source_state_map.c.state_type == WorkItemsStateType.open.value,
+                        work_items_source_state_map.c.state_type == WorkItemsStateType.wip.value,
+                        work_items_source_state_map.c.state_type == WorkItemsStateType.complete.value
+                    ),
+                    work_item_delivery_cycle_durations.c.cumulative_time_in_state
+                )
+            ],
+            else_=None
+        )).label('cycle_time')
+    ]).select_from(
+        work_items.join(
+            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+        ).join(
+            work_item_delivery_cycle_durations,
+            work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+        ).join(
+            work_items_source_state_map,
+            work_items_source_state_map.c.work_items_source_id == work_items.c.work_items_source_id
+        )).where(
+        and_(
+            work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state,
+            work_item_delivery_cycles.c.end_date != None,
+            work_items.c.work_items_source_id == work_items_source_id
+        )
+    ).group_by(
+        work_item_delivery_cycles.c.delivery_cycle_id
+    ).cte('delivery_cycles_cycle_time')
+
+    updated = session.connection().execute(
+        work_item_delivery_cycles.update().where(
+            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_cycle_time.c.delivery_cycle_id
+        ).values(
+            cycle_time=delivery_cycles_cycle_time.c.cycle_time
+        )
+    ).rowcount
+
+    return dict(
+        updated=updated
+    )
+
+
 def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if work_items_source is not None:
@@ -258,6 +308,13 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         if new_closed_state is not None:
             if old_closed_state is None or old_closed_state.state != new_closed_state.state:
                 update_work_items_delivery_cycles(session, work_items_source.id)
+
+        # Recompute cycle time as it is dependent on state type mapping
+        # Directly impacted if mapping change includes state types: open, wip, complete
+        # Also needs to be recomputed is closed state type changes as delivery cycles are recreated then
+        # So need to recompute for all cases except when only state mapping is changed for 'backlog'
+        # That may be once in a while, so updating every time state map changes
+        recompute_work_item_delivery_cycles_cycle_time(session, work_items_source.id)
 
 
 def update_project_work_items_source_state_mappings(session, project_state_maps):

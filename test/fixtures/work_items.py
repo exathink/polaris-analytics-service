@@ -32,7 +32,7 @@ def work_items_common():
         tags=['ares2'],
         description='An issue here',
         created_at=datetime.utcnow() - timedelta(days=7),
-        updated_at=datetime.utcnow(),
+        updated_at=datetime.utcnow() - timedelta(days=6),
         state='open',
         source_id=str(uuid.uuid4())
     )
@@ -75,7 +75,8 @@ def work_items_setup(setup_repo_org):
         )
         state_map_entries = [
                 dict(state='created', state_type=WorkItemsStateType.backlog.value),
-                dict(state='open', state_type=WorkItemsStateType.backlog.value),
+                dict(state='open', state_type=WorkItemsStateType.open.value),
+                dict(state='wip', state_type=WorkItemsStateType.wip.value),
                 dict(state='complete', state_type=WorkItemsStateType.complete.value),
                 dict(state='closed', state_type=WorkItemsStateType.closed.value)
             ]
@@ -115,7 +116,7 @@ def update_work_items_setup(work_items_setup):
         work_items_source.work_items.extend(work_items)
         session.add_all(work_items)
         # Adding state transition from null to created, and from created to state
-        seq_1_transition_time = datetime.utcnow()
+        seq_1_transition_time = datetime.utcnow() - timedelta(days=5)
         for work_item in work_items:
             # Adding state_transitions
             work_item.state_transitions.extend([

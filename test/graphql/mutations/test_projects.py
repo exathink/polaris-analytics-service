@@ -830,3 +830,53 @@ class TestUpdateDeliveryCycleDurations:
         assert db.connection().execute(
             f"select count(*) from analytics.work_item_delivery_cycle_durations\
                                      where cumulative_time_in_state is not null and state='created'").scalar() == 1
+
+class TestRecomputeDeliveryCyclesCycleTime:
+
+    def it_recomputes_delivery_cycle_cycle_time_when_state_type_mapping_changes(self,
+                                                                                      work_items_delivery_cycles_setup):
+        client = Client(schema)
+        project = work_items_delivery_cycles_setup
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+
+        # check cycle time, should be null initially
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_item_delivery_cycles\
+                                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and cycle_time is NULL").scalar() == 1
+        response = client.execute("""
+                            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                        success
+                                    }
+                                }
+                        """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        # cycle time will be value greater than zero, as created state is mapped to open
+        # note there is only 1 delivery cycle in this case
+        _delivery_cycle_id, cycle_time = db.connection().execute(
+            f"select delivery_cycle_id, cycle_time from analytics.work_item_delivery_cycles\
+                             where work_item_delivery_cycles.work_item_id='{work_item_id}' and cycle_time > 0").fetchall()[0]
+        expected_cycle_time = db.connection().execute(
+            f"select sum(cumulative_time_in_state) from analytics.work_item_delivery_cycle_durations\
+                                     where state in ('created', 'doing') and delivery_cycle_id={_delivery_cycle_id}").fetchall()[0][0]
+        assert expected_cycle_time == cycle_time

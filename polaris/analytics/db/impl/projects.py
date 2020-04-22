@@ -146,8 +146,8 @@ def update_work_items_delivery_cycles(session, work_items_source_id):
         work_item_delivery_cycles.join(
             work_items, work_items.c.id == work_item_delivery_cycles.c.work_item_id
         )).where(
-            work_items.c.work_items_source_id == work_items_source_id
-        ).group_by(
+        work_items.c.work_items_source_id == work_items_source_id
+    ).group_by(
         work_item_delivery_cycles.c.work_item_id
     ).alias()
 
@@ -245,7 +245,8 @@ def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id
     delivery_cycles_cycle_time = select([
         work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
         work_item_delivery_cycles.c.work_item_id,
-        func.sum(case(
+        func.sum(
+            case(
             [
                 (
                     or_(
@@ -270,8 +271,8 @@ def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id
         )).where(
         and_(
             work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state,
-             work_item_delivery_cycles.c.end_date != None,
-             work_items.c.work_items_source_id == work_items_source_id
+            work_item_delivery_cycles.c.end_date != None,
+            work_items.c.work_items_source_id == work_items_source_id
         )
     ).group_by(
         work_item_delivery_cycles.c.delivery_cycle_id
@@ -312,7 +313,7 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         # Directly impacted if mapping change includes state types: open, wip, complete
         # Also needs to be recomputed is closed state type changes as delivery cycles are recreated then
         # So need to recompute for all cases except when only state mapping is changed for 'backlog'
-        # check for state_type backlog
+        # That may be once in a while, so updating every time state map changes
         recompute_work_item_delivery_cycles_cycle_time(session, work_items_source.id)
 
 

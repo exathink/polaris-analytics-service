@@ -476,6 +476,9 @@ class Commit(Base):
                               secondary=work_items_commits,
                               back_populates="commits")
 
+    # Work Items Source File Relationship
+    source_file_changes = relationship('WorkItemSourceFileChanges', cascade='all, delete-orphan')
+
     @classmethod
     def find_by_commit_key(cls, session, commit_key):
         return session.query(cls).filter(cls.key == commit_key).first()
@@ -507,6 +510,9 @@ class SourceFile(Base):
 
     repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False)
     repository = relationship('Repository', back_populates='source_files')
+
+    # Work Items Source File Relationship
+    source_file_changes = relationship('WorkItemSourceFileChanges', cascade='all, delete-orphan')
 
 
 source_files = SourceFile.__table__
@@ -660,6 +666,9 @@ class WorkItem(Base):
     # Work Items Delivery Cycles Relationship
     delivery_cycles = relationship('WorkItemDeliveryCycles', cascade='all, delete-orphan')
 
+    # Work Items Source File Relationship
+    source_file_changes = relationship('WorkItemSourceFileChanges', cascade='all, delete-orphan')
+
 
     @classmethod
     def find_by_work_item_key(cls, session, work_item_key):
@@ -754,6 +763,9 @@ class WorkItemDeliveryCycles(Base):
     delivery_cycle_durations = relationship('WorkItemDeliveryCycleDurations', cascade="all, delete-orphan")
     delivery_cycle_contributors = relationship('WorkItemDeliveryCycleContributors', cascade="all, delete-orphan")
 
+    # Work Items Source File Relationship
+    source_file_changes = relationship('WorkItemSourceFileChanges', cascade='all, delete-orphan')
+
 
 work_item_delivery_cycles = WorkItemDeliveryCycles.__table__
 
@@ -785,6 +797,29 @@ class WorkItemDeliveryCycleContributors(Base):
 
 
 work_item_delivery_cycle_contributors = WorkItemDeliveryCycleContributors.__table__
+
+
+class WorkItemSourceFileChanges(Base):
+    __tablename__ = 'work_item_source_file_changes'
+
+    id = Column(Integer, primary_key=True)
+    work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
+    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), nullable=True)
+    repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False)
+    source_file_id = Column(BigInteger, ForeignKey('source_files.id'), nullable=False)
+    commit_id = Column(BigInteger, ForeignKey('commits.id'), nullable=False)
+    source_commit_id = Column(String, nullable=False)
+    commit_date = Column(DateTime, nullable=False)
+    committer_contributor_alias_id = Column(Integer, nullable=False)
+    author_contributor_alias_id = Column(Integer, nullable=False)
+    created_on_branch = Column(String, nullable=True)
+    file_action = Column(String, nullable=False)
+    total_lines_changed = Column(Integer, nullable=True)
+    total_lines_deleted = Column(Integer, nullable=True)
+    total_lines_added = Column(Integer, nullable=True)
+
+
+work_item_source_file_changes = WorkItemSourceFileChanges.__table__
 
 
 class FeatureFlag(Base):

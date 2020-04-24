@@ -148,6 +148,15 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
     if 'defects_only' in kwargs:
         select_stmt = select_stmt.where(work_items.c.is_bug == True)
 
+    if 'active_only' in kwargs:
+        select_stmt = select_stmt.where(
+            work_items.c.state_type.in_([
+                    WorkItemsStateType.open.value,
+                    WorkItemsStateType.wip.value,
+                    WorkItemsStateType.complete.value
+                ])
+        )
+
     return select_stmt
 
 
@@ -184,8 +193,7 @@ def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, 
         select_stmt = select_stmt.where(
             work_item_delivery_cycles.c.end_date >= window_start
         )
-    if 'active_only' in kwargs:
-        select_stmt = select_stmt.where(work_item_delivery_cycles.c.end_date == None)
+
 
     return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
 

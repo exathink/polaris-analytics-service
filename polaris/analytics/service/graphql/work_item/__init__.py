@@ -251,6 +251,11 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
                         "If before is not specified the it returns work items for the"
                         "previous n days starting from utc now"
         ),
+        active_only=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            description="Return only delivery cycles that are not closed"
+        ),
         defects_only=graphene.Argument(
             graphene.Boolean,
             required=False,

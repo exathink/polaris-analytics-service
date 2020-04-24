@@ -3,7 +3,7 @@ from .resolve_commits_work_items import ResolveCommitsWorkItems
 from .on_work_items_commits_resolved import UpdateCommitsWorkItemsSummaries, InferProjectsRepositoriesRelationships, \
     UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, ComputeContributorMetricsForWorkItems
 from .on_commit_details_created import RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits, \
-    ComputeContributorMetricsForCommits
+    ComputeContributorMetricsForCommits, PopulateWorkItemsSourceFileChangesForCommits
 
 from .resolve_work_items_sources_for_repositories import ResolveWorkItemsSourcesForRepositories
 __exported__ = [
@@ -16,7 +16,8 @@ __exported__ = [
     RegisterSourceFileVersions,
     ComputeImplementationComplexityMetricsForCommits,
     ComputeContributorMetricsForWorkItems,
-    ComputeContributorMetricsForCommits
+    ComputeContributorMetricsForCommits,
+    PopulateWorkItemsSourceFileChangesForCommits
 ]
 
 register_messages(__exported__)

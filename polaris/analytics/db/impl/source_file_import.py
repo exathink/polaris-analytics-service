@@ -85,3 +85,9 @@ def register_source_file_versions(session, repository_key, commit_details):
         return dict(
             new_file_count=new_files
         )
+
+def populate_work_items_source_file_changes_for_commits(session, repository_key, commit_details):
+    updated = 0
+    return dict(
+        updated=updated
+    )

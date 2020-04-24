@@ -23,3 +23,6 @@ class ComputeImplementationComplexityMetricsForCommits(CommitDetailsCreated):
 class ComputeContributorMetricsForCommits(CommitDetailsCreated):
     message_type = 'analytics.compute_contributor_metrics_for_commits'
 
+
+class PopulateWorkItemsSourceFileChangesForCommits(CommitDetailsCreated):
+    message_type = 'analytics.populate_work_items_source_file_changes_for_commits'

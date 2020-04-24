@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 
-from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem, WorkItemDeliveryCycles, \
+from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem, WorkItemDeliveryCycle, \
     WorkItemStateTransition
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
@@ -429,7 +429,7 @@ def work_items_delivery_cycles_setup(setup_projects):
         ])
 
         project.work_items_sources[0].work_items[0].delivery_cycles.extend([
-            WorkItemDeliveryCycles(**cycle)
+            WorkItemDeliveryCycle(**cycle)
             for cycle in delivery_cycles
         ])
 
@@ -439,11 +439,11 @@ def work_items_delivery_cycles_setup(setup_projects):
         ])
 
         project.work_items_sources[0].work_items[0].delivery_cycles[0].delivery_cycle_durations.extend([
-                model.WorkItemDeliveryCycleDurations(
+                model.WorkItemDeliveryCycleDuration(
                     state='created',
                     cumulative_time_in_state=None   # setting None, should be updated by test
                 ),
-                model.WorkItemDeliveryCycleDurations(
+                model.WorkItemDeliveryCycleDuration(
                     state='done',
                     cumulative_time_in_state=None
                 )

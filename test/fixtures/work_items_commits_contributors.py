@@ -27,7 +27,7 @@ import pytest
 from test.fixtures.graphql import *
 from datetime import datetime, timedelta
 
-from polaris.analytics.db.model import WorkItemDeliveryCycles
+from polaris.analytics.db.model import WorkItemDeliveryCycle
 
 earliest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=5)
 latest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=2)
@@ -215,7 +215,7 @@ def work_items_commits_contributors_fixture(contributor_commits_fixture):
         w2 = WorkItem.find_by_work_item_key(session, test_work_items[1]['key'])
 
         w1.delivery_cycles.extend([
-            WorkItemDeliveryCycles(
+            WorkItemDeliveryCycle(
                     start_seq_no=0,
                     start_date=w1.created_at,
                     end_date=latest_commit_date,
@@ -223,7 +223,7 @@ def work_items_commits_contributors_fixture(contributor_commits_fixture):
                     work_item_id=w1.id,
                     lead_time=int((datetime.utcnow()-timedelta(hours=1)-w1.created_at).total_seconds())
                 ),
-            WorkItemDeliveryCycles(
+            WorkItemDeliveryCycle(
                     start_seq_no=3,
                     start_date=latest_commit_date+timedelta(hours=1),
                     work_item_id=w1.id
@@ -231,7 +231,7 @@ def work_items_commits_contributors_fixture(contributor_commits_fixture):
         ])
 
         w2.delivery_cycles.extend([
-            WorkItemDeliveryCycles(
+            WorkItemDeliveryCycle(
                     start_seq_no=0,
                     start_date=w2.created_at,
                     work_item_id=w2.id

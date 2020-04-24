@@ -18,7 +18,7 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, \
     RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits, \
     ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
-    PopulateWorkItemsSourceFileChangesForCommits
+    PopulateWorkItemSourceFileChangesForCommits
 
 from polaris.messaging.utils import raise_on_failure
 
@@ -48,7 +48,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 RegisterSourceFileVersions,
                 ComputeContributorMetricsForWorkItems,
                 ComputeContributorMetricsForCommits,
-                PopulateWorkItemsSourceFileChangesForCommits
+                PopulateWorkItemSourceFileChangesForCommits
             ],
             publisher=publisher,
             exclusive=False
@@ -106,14 +106,14 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
             self.publish(AnalyticsTopic, compute_contributor_metrics_for_commits_command)
 
-            populate_work_items_source_file_changes_for_commits_command = PopulateWorkItemsSourceFileChangesForCommits(
+            populate_work_item_source_file_changes_for_commits_command = PopulateWorkItemSourceFileChangesForCommits(
                 send=message.dict,
                 in_response_to=message
             )
-            self.publish(AnalyticsTopic, populate_work_items_source_file_changes_for_commits_command)
+            self.publish(AnalyticsTopic, populate_work_item_source_file_changes_for_commits_command)
 
             return register_source_file_versions_command, compute_implementation_complexity_metrics_for_commits_command, \
-                compute_contributor_metrics_for_commits_command, populate_work_items_source_file_changes_for_commits_command
+                compute_contributor_metrics_for_commits_command, populate_work_item_source_file_changes_for_commits_command
 
         elif WorkItemsCommitsResolved.message_type == message.message_type:
             # Publish a sub command to update commit work items summaries
@@ -229,7 +229,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
 
     @staticmethod
-    def process_populate_work_items_source_file_changes_for_commits(channel, message):
+    def process_populate_work_item_source_file_changes_for_commits(channel, message):
         organization_key = message['organization_key']
         repository_key = message['repository_key']
         commit_details = message['commit_details']
@@ -237,7 +237,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         if len(commit_details) > 0:
             return raise_on_failure(
                 message,
-                commands.populate_work_items_source_file_changes_for_commits(
+                commands.populate_work_item_source_file_changes_for_commits(
                     organization_key=organization_key,
                     repository_key=repository_key,
                     commit_details=commit_details

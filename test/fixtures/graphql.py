@@ -289,7 +289,8 @@ work_items_common = dict(
     state='open',
     description='foo',
     source_id=str(uuid.uuid4()),
-    state_type='open'
+    state_type='open',
+    next_state_seq_no=2,
 )
 
 

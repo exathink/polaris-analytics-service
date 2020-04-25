@@ -10,14 +10,16 @@
 
 import graphene
 
-from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin
+from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin, WorkItemStateDetailsResolverMixin
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, \
-    WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics
+    WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics, \
+    WorkItemStateDetails
 
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
-    WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics
+    WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics, \
+    WorkItemsWorkItemStateDetails
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -203,6 +205,7 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
 class WorkItem(
     # interface resolver mixins
     NamedNodeResolverMixin,
+    WorkItemStateDetailsResolverMixin,
 
     # Connection Mixins
     WorkItemEventsConnectionMixin,
@@ -212,10 +215,11 @@ class WorkItem(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef, CommitSummary)
+        interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef, CommitSummary, WorkItemStateDetails)
         named_node_resolver = WorkItemNode
         interface_resolvers = {
-            'CommitSummary': WorkItemsCommitSummary
+            'CommitSummary': WorkItemsCommitSummary,
+            'WorkItemStateDetails': WorkItemsWorkItemStateDetails,
         }
         connection_node_resolvers = {
             'work_item_events': WorkItemEventNodes,

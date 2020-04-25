@@ -9,6 +9,7 @@
 # Author: Krishna Kumar
 
 import graphene
+from datetime import datetime
 
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.graphql.interfaces import NamedNode
@@ -134,9 +135,29 @@ class WorkItemStateTransition(graphene.Interface):
     new_state = graphene.String(required=True)
 
 
+class WorkItemStateTransitionImpl(graphene.ObjectType):
+    class Meta:
+        interfaces = (WorkItemStateTransition,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            self.event_date = datetime.strptime(self.event_date, "%Y-%m-%dT%H:%M:%S.%f")
+        except ValueError:
+            self.event_date = datetime.strptime(self.event_date, "%Y-%m-%dT%H:%M:%S")
+
+
 class WorkItemEventSpan(graphene.Interface):
     earliest_work_item_event = graphene.DateTime(required=False)
     latest_work_item_event = graphene.DateTime(required=False)
+
+
+class WorkItemStateDetail(graphene.ObjectType):
+    current_state_transition = graphene.Field(WorkItemStateTransitionImpl, required=False)
+
+
+class WorkItemStateDetails(graphene.Interface):
+    work_item_state_details = graphene.Field(WorkItemStateDetail, required=False)
 
 
 class AccountInfo(graphene.Interface):

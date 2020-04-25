@@ -8,9 +8,10 @@
 
 # Author: Krishna Kumar
 
-from test.fixtures.graphql import *
 from graphene.test import Client
+
 from polaris.analytics.service.graphql import schema
+from test.fixtures.graphql import *
 
 
 class TestWorkItemInstance:
@@ -191,6 +192,33 @@ class TestWorkItemInstance:
             for node in map(lambda edge: edge['node'], edges):
                 assert node['workItemsSourceName']
                 assert node['workItemsSourceKey']
+
+    class TestWorkItemInstanceWorkItemStateDetails:
+
+        def it_returns_current_state_transition(self, setup_work_item_transitions):
+            new_work_items = setup_work_item_transitions
+            work_item_key = new_work_items[0]['key']
+
+            client = Client(schema)
+            query = """
+                        query getWorkItem($key:String!) {
+                            workItem(key: $key, interfaces:[WorkItemStateDetails]){
+                                ... on WorkItemStateDetails {
+                                    workItemStateDetails {
+                                        currentStateTransition {
+                                            eventDate
+                                            
+                                        }
+                                    }
+                                }
+                            }
+                        } 
+                    """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            work_item_state_details = result['data']['workItem']['workItemStateDetails']
+            assert work_item_state_details
+
 
 
     class TestWorkItemInstanceCommits:

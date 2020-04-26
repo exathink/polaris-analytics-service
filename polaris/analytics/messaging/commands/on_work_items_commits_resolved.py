@@ -31,3 +31,6 @@ class ComputeImplementationComplexityMetricsForWorkItems(WorkItemsCommitsResolve
 class ComputeContributorMetricsForWorkItems(WorkItemsCommitsResolved):
     message_type = 'analytics.compute_contributor_metrics_for_work_items'
 
+class PopulateWorkItemSourceFileChangesForWorkItems(WorkItemsCommitsResolved):
+    message_type = 'analytics.populate_work_item_source_file_changes_for_work_items'
+

@@ -91,3 +91,9 @@ def populate_work_item_source_file_changes_for_commits(session, repository_key, 
     return dict(
         updated=updated
     )
+
+def populate_work_item_source_file_changes_for_work_items(session, repository_key, work_items_commits):
+    updated = 0
+    return dict(
+        updated=updated
+    )

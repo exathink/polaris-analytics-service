@@ -15,7 +15,7 @@ from polaris.messaging.messages import WorkItemsCommitsResolved
 from polaris.messaging.topics import AnalyticsTopic
 from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, InferProjectsRepositoriesRelationships, \
     UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, \
-    ComputeContributorMetricsForWorkItems
+    ComputeContributorMetricsForWorkItems, PopulateWorkItemSourceFileChangesForWorkItems
 from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
 
 from test.fixtures.work_item_commit_resolution import *
@@ -80,10 +80,11 @@ class TestWorkItemsCommitsResolved:
         publisher = mock_publisher()
         channel = mock_channel()
         result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        assert len(result) == 5
+        assert len(result) == 6
         publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateCommitsWorkItemsSummaries, call=0)
         publisher.assert_topic_called_with_message(AnalyticsTopic, InferProjectsRepositoriesRelationships, call=1)
         publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateWorkItemsCommitsStats, call=2)
         publisher.assert_topic_called_with_message(AnalyticsTopic, ComputeImplementationComplexityMetricsForWorkItems, call=3)
         publisher.assert_topic_called_with_message(AnalyticsTopic, ComputeContributorMetricsForWorkItems, call=4)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, PopulateWorkItemSourceFileChangesForWorkItems, call=5)
 

@@ -125,10 +125,22 @@ def populate_work_items_source_file_changes_for_commits(organization_key, reposi
     try:
         with db.orm_session() as session:
             return success(
-                impl.populate_work_items_source_file_changes_for_commits(
+                impl.populate_work_item_source_file_changes_for_commits(
                     session, repository_key, commit_details)
             )
     except SQLAlchemyError as exc:
         return db.process_exception("Populate work items source file changes for commits failed", exc)
     except Exception as e:
         return db.failure_message('Populate work items source file changes for commits failed', e)
+
+def populate_work_items_source_file_changes_for_work_items(organization_key, repository_key, work_items_commits):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.populate_work_item_source_file_changes_for_work_items(
+                    session, repository_key, work_items_commits)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Populate work items source file changes for work items failed", exc)
+    except Exception as e:
+        return db.failure_message('Populate work items source file changes for work items failed', e)

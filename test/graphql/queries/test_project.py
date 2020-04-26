@@ -160,51 +160,7 @@ class TestProjectContributorCount:
         project = result['data']['project']
         assert project['contributorCount'] == 0
 
-@pytest.yield_fixture
-def api_work_items_import_fixture(org_repo_fixture):
-    organization, projects, _ = org_repo_fixture
 
-    project = projects['mercury']
-    work_items_source = WorkItemsSource(
-        key=uuid.uuid4(),
-        organization_key=organization.key,
-        integration_type='jira',
-        commit_mapping_scope='repository',
-        commit_mapping_scope_key=None,
-        project_id=project.id,
-        **work_items_source_common
-    )
-    work_items_source.init_state_map(
-        [
-            dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
-            dict(state='upnext', state_type=WorkItemsStateType.open.value),
-            dict(state='doing', state_type=WorkItemsStateType.wip.value),
-            dict(state='done', state_type=WorkItemsStateType.complete.value),
-            dict(state='closed', state_type=WorkItemsStateType.closed.value),
-        ]
-    )
-
-    with db.orm_session() as session:
-        session.add(organization)
-        organization.work_items_sources.append(work_items_source)
-
-    work_items_common = dict(
-        is_bug=True,
-        work_item_type='issue',
-        url='http://foo.com',
-        tags=['ares2'],
-        description='foo',
-        source_id=str(uuid.uuid4()),
-    )
-
-    yield organization, project, work_items_source, work_items_common
-
-    db.connection().execute("delete  from analytics.work_item_state_transitions")
-    db.connection().execute("delete  from analytics.work_item_delivery_cycle_durations")
-    db.connection().execute("delete  from analytics.work_item_delivery_cycles")
-    db.connection().execute("delete  from analytics.work_items")
-    db.connection().execute("delete  from analytics.work_items_source_state_map")
-    db.connection().execute("delete  from analytics.work_items_sources")
 
 
 

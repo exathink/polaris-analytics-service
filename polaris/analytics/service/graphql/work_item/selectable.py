@@ -243,17 +243,34 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                     'seq_no', func.min(work_item_state_transitions.c.seq_no),
                     'previous_state', func.min(work_item_state_transitions.c.previous_state),
                     'new_state', func.min(work_item_state_transitions.c.state)
+                ),
+                'current_delivery_cycle_durations',
+                func.json_agg(
+                    func.json_build_object(
+                        'state', work_item_delivery_cycle_durations.c.state,
+                        'state_type', work_items_source_state_map.c.state_type,
+                        'days_in_state', work_item_delivery_cycle_durations.c.cumulative_time_in_state/(1.0*3600*24)
+                    )
                 )
             ).label('work_item_state_details')
 
         ]).select_from(
-            work_item_nodes.join(
-                work_items, work_items.c.id == work_item_nodes.c.id,
+            work_item_nodes.outerjoin(
+                work_items, work_items.c.id == work_item_nodes.c.id
             ).outerjoin(
                 work_item_state_transitions,
                 and_(
-                    work_item_state_transitions.c.work_item_id == work_item_nodes.c.id,
+                    work_item_state_transitions.c.work_item_id == work_items.c.id,
                     work_item_state_transitions.c.seq_no == work_items.c.next_state_seq_no - 1
+                )
+            ).outerjoin(
+                work_item_delivery_cycle_durations,
+                work_item_delivery_cycle_durations.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+            ).outerjoin(
+                work_items_source_state_map,
+                and_(
+                    work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state,
+                    work_items_source_state_map.c.work_items_source_id == work_items.c.work_items_source_id
                 )
             )
         ).group_by(work_item_nodes.c.id)

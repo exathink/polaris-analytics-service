@@ -10,7 +10,8 @@
 
 from polaris.graphql.mixins import *
 
-from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail
+from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
+    WorkItemDaysInState
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -44,7 +45,15 @@ class WorkItemStateDetailsResolverMixin(KeyIdResolverMixin):
             return WorkItemStateDetail(
                 current_state_transition=WorkItemStateTransitionImpl(
                     **self.work_item_state_details['current_state_transition']
-                ))
+                ),
+                current_delivery_cycle_durations=[
+                    WorkItemDaysInState(
+                        **record
+                    )
+                    for record in self.work_item_state_details['current_delivery_cycle_durations']
+                    if 'state' in record
+                ]
+            )
 
 
 class WorkItemStateMappingsResolverMixin(KeyIdResolverMixin):

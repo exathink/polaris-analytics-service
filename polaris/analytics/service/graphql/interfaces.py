@@ -152,8 +152,15 @@ class WorkItemEventSpan(graphene.Interface):
     latest_work_item_event = graphene.DateTime(required=False)
 
 
+class WorkItemDaysInState(graphene.ObjectType):
+    state = graphene.String(required=True)
+    state_type = graphene.String(required=True)
+    days_in_state = graphene.Float(required=False)
+
+
 class WorkItemStateDetail(graphene.ObjectType):
     current_state_transition = graphene.Field(WorkItemStateTransitionImpl, required=False)
+    current_delivery_cycle_durations = graphene.List(WorkItemDaysInState, required=False)
 
 
 class WorkItemStateDetails(graphene.Interface):

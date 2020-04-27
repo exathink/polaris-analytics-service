@@ -48,7 +48,6 @@ class TestWorkItemInstance:
                     workItemType
                     updatedAt
                     url
-                    tags
                     stateType
                     isBug
                 }
@@ -63,7 +62,6 @@ class TestWorkItemInstance:
         assert work_item['workItemType'] == work_items_common['work_item_type']
         assert work_item['updatedAt'] == get_date("2018-12-03").isoformat()
         assert work_item['url'] == work_items_common['url']
-        assert work_item['tags'] == work_items_common['tags']
         assert work_item['stateType'] == work_items_common['state_type']
         assert work_item['isBug'] == work_items_common['is_bug']
 
@@ -79,7 +77,6 @@ class TestWorkItemInstance:
                     workItemType
                     updatedAt
                     url
-                    tags
                     earliestCommit
                     latestCommit
                     commitCount
@@ -96,7 +93,6 @@ class TestWorkItemInstance:
         assert work_item['workItemType'] == work_items_common['work_item_type']
         assert work_item['updatedAt'] == get_date("2018-12-03").isoformat()
         assert work_item['url'] == work_items_common['url']
-        assert work_item['tags'] == work_items_common['tags']
         assert work_item['earliestCommit'] == get_date("2020-01-29").isoformat()
         assert work_item['latestCommit'] == get_date("2020-02-05").isoformat()
         assert work_item['commitCount'] == 2

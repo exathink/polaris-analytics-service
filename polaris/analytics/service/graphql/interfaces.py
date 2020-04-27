@@ -121,7 +121,6 @@ class WorkItemInfo(graphene.Interface):
     url = graphene.String(required=True)
     description = graphene.String(required=False)
     state = graphene.String(required=True)
-    tags = graphene.Field(graphene.List(graphene.String, required=True))
     created_at = graphene.DateTime(required=True)
     updated_at = graphene.DateTime(required=True)
     is_bug = graphene.Boolean(required=True)

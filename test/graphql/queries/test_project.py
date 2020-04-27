@@ -181,7 +181,6 @@ class TestProjectWorkItems:
                               createdAt
                               updatedAt
                               url
-                              tags
                               stateType
                             }
                         }
@@ -198,7 +197,6 @@ class TestProjectWorkItems:
             assert node['displayId']
             assert node['state']
             assert node['workItemType']
-            assert node['tags']
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
@@ -218,7 +216,6 @@ class TestProjectWorkItems:
                               state
                               workItemType
                               url
-                              tags
                               earliestCommit
                               latestCommit
                               commitCount
@@ -237,7 +234,6 @@ class TestProjectWorkItems:
             assert node['displayId'] == "1001"
             assert node['state'] == work_items_common['state']
             assert node['workItemType'] == work_items_common['work_item_type']
-            assert node['tags'] == work_items_common['tags']
             assert node['url'] == work_items_common['url']
             assert node['earliestCommit'] == get_date("2020-01-29").isoformat()
             assert node['latestCommit'] == get_date("2020-02-05").isoformat()
@@ -1432,7 +1428,6 @@ class TestProjectWorkItemDeliveryCycles:
                                                     url
                                                     description
                                                     state
-                                                    tags
                                                     createdAt
                                                     updatedAt
                                                     stateType
@@ -1453,7 +1448,6 @@ class TestProjectWorkItemDeliveryCycles:
             assert node['description']
             assert node['state']
             assert node['stateType']
-            assert node['tags']
             assert node['createdAt']
             assert node['updatedAt']
 

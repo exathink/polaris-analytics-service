@@ -30,7 +30,8 @@ from ..interfaces import \
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
-    work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
+    work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
+    work_item_info_group_expr_columns
 
 
 class ProjectNode(NamedNodeResolver):
@@ -80,6 +81,45 @@ class ProjectWorkItemsSourceNodes(ConnectionResolver):
                 work_items_sources, work_items_sources.c.project_id == projects.c.id
             )
         ).where(projects.c.key == bindparam('key'))
+
+
+class ProjectRecentlyActiveWorkItemsNodes(ConnectionResolver):
+    interfaces = (NamedNode, WorkItemInfo, CommitCount)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        end_date = kwargs.get('before') or datetime.utcnow()
+        window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
+
+        return select([
+            work_items.c.id,
+            func.min(cast(work_items.c.key, Text)).label('key'),
+            func.min(work_items.c.display_id).label('name'),
+            *work_item_info_group_expr_columns(work_items),
+            func.count(commits.c.id).label('commit_count')
+
+        ]).select_from(
+            projects.join(
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
+            ).join(
+                commits, work_items_commits.c.commit_id == commits.c.id
+            )
+        ).where(
+            and_(
+                projects.c.key == bindparam('key'),
+                between(commits.c.commit_date, window.begin, window.end)
+            )
+        ).group_by(
+            work_items.c.id
+        )
+
+    @staticmethod
+    def sort_order(project_recently_active_work_items, **kwargs):
+        return [project_recently_active_work_items.c.commit_count.desc()]
 
 
 class ProjectRecentlyActiveRepositoriesNodes(ConnectionResolver):

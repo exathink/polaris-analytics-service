@@ -99,7 +99,6 @@ class TestOrganizationWorkItems:
                               createdAt
                               updatedAt
                               url
-                              tags
                               stateType
                             }
                         }
@@ -116,7 +115,6 @@ class TestOrganizationWorkItems:
             assert node['displayId']
             assert node['state']
             assert node['workItemType']
-            assert node['tags']
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
@@ -138,7 +136,6 @@ class TestOrganizationWorkItems:
                               createdAt
                               updatedAt
                               url
-                              tags
                               stateType
                               earliestCommit
                               latestCommit
@@ -158,7 +155,6 @@ class TestOrganizationWorkItems:
             assert node['displayId']
             assert node['state']
             assert node['workItemType']
-            assert node['tags']
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
@@ -183,7 +179,6 @@ class TestOrganizationWorkItems:
                               createdAt
                               updatedAt
                               url
-                              tags
                               stateType 
                             }
                         }
@@ -308,7 +303,6 @@ class TestOrganizationWorkItemEvents:
                                 createdAt
                                 updatedAt
                                 url
-                                tags
                                 stateType
                             }
                         }
@@ -325,7 +319,6 @@ class TestOrganizationWorkItemEvents:
             assert node['displayId']
             assert node['state']
             assert node['workItemType']
-            assert node['tags']
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
@@ -531,7 +524,6 @@ class TestOrganizationWorkItemCommits:
                                 createdAt
                                 updatedAt
                                 url
-                                tags
                                 stateType
                             }
                         }
@@ -548,7 +540,6 @@ class TestOrganizationWorkItemCommits:
             assert node['displayId']
             assert node['state']
             assert node['workItemType']
-            assert node['tags']
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']

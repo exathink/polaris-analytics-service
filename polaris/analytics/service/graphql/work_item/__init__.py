@@ -250,7 +250,7 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             graphene.Int,
             required=False,
             description="Return work items last updated within the specified number of days. "
-                        "If before is specified, it returns work items with commit dates"
+                        "If before is specified, it returns work items updated "
                         "between (before - days) and before"
                         "If before is not specified the it returns work items for the"
                         "previous n days starting from utc now"
@@ -276,6 +276,30 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
         return WorkItem.resolve_connection(
             self.get_connection_resolver_context('work_items'),
             self.get_connection_node_resolver('work_items'),
+            self.get_instance_query_params(),
+            **kwargs
+        )
+
+
+class RecentlyActiveWorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
+    recently_active_work_items = WorkItem.ConnectionField(
+        before=graphene.Argument(
+            graphene.DateTime,
+            required=False,
+            description="End date of period to search for commit activity. If not specified it defaults to utc now"
+        ),
+        days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            default_value=7,
+            description="Return work items with commits within the specified number of days"
+        )
+    )
+
+    def resolve_recently_active_work_items(self, info, **kwargs):
+        return WorkItem.resolve_connection(
+            self.get_connection_resolver_context('recently_active_work_items'),
+            self.get_connection_node_resolver('recently_active_work_items'),
             self.get_instance_query_params(),
             **kwargs
         )

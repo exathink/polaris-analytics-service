@@ -833,7 +833,7 @@ class TestImportProject:
             f" where projects.key='{project_key}' and work_items_source_state_map.state='created'"
         ).scalar() == 1
 
-    def it_does_not_initialize_default_state_map_for_new_jira_work_item_sources(self, setup_org):
+    def it_does_not_initialize_default_state_map_for_new_jira_work_item_sources_only_adds_created_state(self, setup_org):
         organization = setup_org
         organization_key = organization.key
         project_key = uuid.uuid4()
@@ -864,7 +864,7 @@ class TestImportProject:
             f" inner join analytics.projects on projects.id = work_items_sources.project_id"
             f" inner join analytics.work_items_source_state_map on work_items_source_state_map.work_items_source_id = work_items_sources.id"
             f" where projects.key='{project_key}'"
-        ).scalar() == 0
+        ).scalar() == 1
 
     def it_returns_new_work_items_sources(self, setup_org):
         organization = setup_org

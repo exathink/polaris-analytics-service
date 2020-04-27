@@ -1610,9 +1610,9 @@ def compute_implementation_complexity_metrics_for_commits(session, organization_
 
 
 def compute_contributor_metrics(session, work_items_temp):
-    # The following metrics are calculated and updated for each work_item_delivery_cycle
-    # 1. commit stats for non merge commits
-    # 2. commit stats for merge commits
+    # The following metrics are calculated and updated for each work_item_delivery_cycle_contributor
+    # 1. total_lines_as_author
+    # 2. total_lines_as_reviewer
 
     updated = 0
 
@@ -1681,7 +1681,7 @@ def compute_contributor_metrics(session, work_items_temp):
 
     ).cte('delivery_cycles_contributor_commits')
 
-    # upsert work items delivery cycle contributors  with relevant metrics
+    # upsert work items delivery cycle contributors with relevant metrics
     upsert_stmt = insert(work_item_delivery_cycle_contributors).from_select(
         ['delivery_cycle_id', 'contributor_alias_id', 'total_lines_as_author', 'total_lines_as_reviewer'],
         select(

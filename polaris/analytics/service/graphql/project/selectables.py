@@ -84,7 +84,7 @@ class ProjectWorkItemsSourceNodes(ConnectionResolver):
 
 
 class ProjectRecentlyActiveWorkItemsNodes(ConnectionResolver):
-    interfaces = (NamedNode, WorkItemInfo)
+    interfaces = (NamedNode, WorkItemInfo, CommitCount)
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
@@ -94,7 +94,7 @@ class ProjectRecentlyActiveWorkItemsNodes(ConnectionResolver):
         return select([
             work_items.c.id,
             func.min(cast(work_items.c.key, Text)).label('key'),
-            func.min(work_items.c.name).label('name'),
+            func.min(work_items.c.display_id).label('name'),
             *work_item_info_group_expr_columns(work_items),
             func.count(commits.c.id).label('commit_count')
 

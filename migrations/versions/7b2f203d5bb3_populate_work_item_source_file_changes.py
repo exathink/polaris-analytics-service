@@ -19,28 +19,50 @@ def upgrade():
     # insert into work_item_source_file_changes
     op.execute("""
         WITH source_files_details AS
-        (SELECT work_items.id as work_item_id,
-    	    work_item_delivery_cycles.delivery_cycle_id,
-           	work_items_commits.commit_id as commit_id,
-           	source_files.id as source_file_id,
-           	analytics.source_files.repository_id,
-           	commit_date,
-           	source_commit_id,
-           	committer_contributor_alias_id,
-           	author_contributor_alias_id,
-           	created_on_branch,
-    	    sf->>'action' file_action,
-    	    CAST(sf->'stats'->>'lines' AS INTEGER) total_lines_changed,
-    	    CAST(sf->'stats'->>'deletions' As INTEGER) total_lines_deleted,
-    	    CAST(sf->'stats'->>'insertions' AS INTEGER) total_lines_added
-    	FROM analytics.source_files,
-         	analytics.work_items, analytics.commits, analytics.work_items_commits, analytics.work_item_delivery_cycles, jsonb_array_elements(analytics.commits.source_files) sf where UUID(sf->>'key') = 	source_files.key
-             AND work_items.id = work_items_commits.work_item_id
-             AND work_items_commits.commit_id = commits.id
-             AND work_items.id = work_item_delivery_cycles.work_item_id)
-                INSERT INTO analytics.work_item_source_file_changes(work_item_id, delivery_cycle_id, repository_id, source_file_id, commit_id, source_commit_id, commit_date, committer_contributor_alias_id, author_contributor_alias_id, created_on_branch, file_action, total_lines_changed, total_lines_deleted, total_lines_added) 
-                SELECT work_item_id, delivery_cycle_id, repository_id, source_file_id, commit_id, source_commit_id, commit_date, committer_contributor_alias_id, author_contributor_alias_id, created_on_branch, file_action, total_lines_changed, total_lines_deleted, total_lines_added from source_files_details
-            """)
+         (SELECT work_items.id                as                 work_item_id,
+                 work_item_delivery_cycles.delivery_cycle_id,
+                 work_items_commits.commit_id as                 commit_id,
+                 source_files.id              as                 source_file_id,
+                 analytics.source_files.repository_id,
+                 commit_date,
+                 source_commit_id,
+                 committer_contributor_alias_id,
+                 author_contributor_alias_id,
+                 created_on_branch,
+                 sf ->> 'action'                                 file_action,
+                 CAST(sf -> 'stats' ->> 'lines' AS INTEGER)      total_lines_changed,
+                 CAST(sf -> 'stats' ->> 'deletions' As INTEGER)  total_lines_deleted,
+                 CAST(sf -> 'stats' ->> 'insertions' AS INTEGER) total_lines_added
+          FROM analytics.source_files,
+               analytics.work_items,
+               analytics.commits,
+               analytics.work_items_commits,
+               analytics.work_item_delivery_cycles,
+               jsonb_array_elements(analytics.commits.source_files) sf
+          where UUID(sf ->> 'key') = source_files.key
+            AND work_items.id = work_items_commits.work_item_id
+            AND work_items_commits.commit_id = commits.id
+            AND work_items.id = work_item_delivery_cycles.work_item_id)
+        INSERT
+        INTO analytics.work_item_source_file_changes(work_item_id, delivery_cycle_id, repository_id, source_file_id, commit_id,
+                                             source_commit_id, commit_date, committer_contributor_alias_id,
+                                             author_contributor_alias_id, created_on_branch, file_action,
+                                             total_lines_changed, total_lines_deleted, total_lines_added)
+        SELECT work_item_id,
+            delivery_cycle_id,
+            repository_id,
+            source_file_id,
+            commit_id,
+            source_commit_id,
+            commit_date,
+            committer_contributor_alias_id,
+            author_contributor_alias_id,
+            created_on_branch,
+            file_action,
+            total_lines_changed,
+            total_lines_deleted,
+            total_lines_added
+        from source_files_details""")
 
 
 def downgrade():

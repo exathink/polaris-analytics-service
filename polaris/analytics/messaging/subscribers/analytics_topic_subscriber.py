@@ -241,7 +241,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     @staticmethod
     def process_populate_work_item_source_file_changes_for_commits(channel, message):
         organization_key = message['organization_key']
-        repository_key = message['repository_key']
         commit_details = message['commit_details']
 
         if len(commit_details) > 0:
@@ -249,7 +248,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 message,
                 commands.populate_work_items_source_file_changes_for_commits(
                     organization_key=organization_key,
-                    repository_key=repository_key,
                     commit_details=commit_details
                 )
             )
@@ -257,7 +255,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     @staticmethod
     def process_populate_work_item_source_file_changes_for_work_items(channel, message):
         organization_key = message['organization_key']
-        repository_key = message['repository_key']
         work_items_commits = message['work_items_commits']
 
         if len(work_items_commits) > 0:
@@ -265,7 +262,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 message,
                 commands.populate_work_items_source_file_changes_for_work_items(
                     organization_key=organization_key,
-                    repository_key=repository_key,
                     work_items_commits=work_items_commits
                 )
             )

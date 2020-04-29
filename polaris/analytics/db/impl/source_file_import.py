@@ -7,15 +7,16 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import select, func, and_, Column, cast
+from sqlalchemy.dialects.postgresql import UUID, insert
 
-from polaris.analytics.db.model import Repository, source_files
+from polaris.analytics.db.model import Repository, source_files, work_items, commits, \
+    work_items_commits as work_items_commits_table, work_item_delivery_cycles, \
+    work_item_source_file_changes
 from polaris.common import db
 
 
 def create_source_files(session, repository, commit_details):
-
     source_files_temp = db.temp_table_from(
         source_files,
         table_name='source_files_temp',
@@ -86,13 +87,133 @@ def register_source_file_versions(session, repository_key, commit_details):
             new_file_count=new_files
         )
 
-def populate_work_item_source_file_changes_for_commits(session, repository_key, commit_details):
+
+def populate_work_item_source_file_changes(session, commits_temp):
     updated = 0
+
+    source_files_json = select([
+        func.jsonb_array_elements(commits.c.source_files)
+    ]).select_from(
+        commits
+    ).alias()
+    # select relevant rows to find various field values
+    source_file_changes = select([
+        commits.c.id.label('commit_id'),
+        work_items.c.id.label('work_item_id'),
+        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        source_files.c.repository_id.label('repository_id'),
+        source_files.c.id.label('source_file_id'),
+        commits.c.source_commit_id,
+        commits.c.commit_date,
+        commits.c.committer_contributor_alias_id,
+        commits.c.author_contributor_alias_id,
+        commits.c.created_on_branch,
+        source_files_json['action'].label('file_action'),
+        source_files_json['stats']['lines'].label('total_lines_changed'),
+        source_files_json['stats']['deletions'].label('total_lines_deleted'),
+        source_files_json['stats']['insertions'].label('total_lines_added')
+    ]).select_from(
+        commits_temp,
+        commits,
+        source_files,
+        work_items_commits_table,
+        work_items,
+        work_item_delivery_cycles,
+        source_files_json
+    ).where(
+        and_(
+            commits_temp.c.commit_key == commits.c.key,
+            commits.c.id == work_items_commits_table.c.id,
+            work_items.c.id == work_items_commits_table.c.work_item_id,
+            work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id,
+            cast(source_files_json['key'], UUID) == source_files.c.key
+        )
+    )
+
+    upsert_stmt = insert(work_item_source_file_changes).from_select(
+        [
+            'commit_id',
+            'work_item_id',
+            'delivery_cycle_id',
+            'repository_id',
+            'source_file_id',
+            'source_commit_id',
+            'commit_date',
+            'committer_contributor_alias_id',
+            'author_contributor_alias_id',
+            'created_on_branch',
+            'file_action',
+            'total_lines_changed',
+            'total_lines_deleted',
+            'total_lines_added'
+
+        ]
+    ).select([
+        source_file_changes.c.commit_id,
+        source_file_changes.c.work_item_id,
+        source_file_changes.c.delivery_cycle_id,
+    ]
+    ).select_from(
+        source_file_changes
+    )
+
+    updated = session.connection().execute(
+        upsert_stmt.on_conflict_do_update(
+            index_elements=['commit_id', 'work_item_id', 'delivery_cycle_id', 'repository_id', 'source_file_id'],
+            set_=dict(
+                source_commit_id=upsert_stmt.excluded.source_commit_id,
+                commit_date=upsert_stmt.excluded.commit_date,
+                committer_contributor_alias_id=upsert_stmt.excluded.committer_contributor_alias_id,
+                author_contributor_alias_id=upsert_stmt.excluded.author_contributor_alias_id,
+                created_on_branch=upsert_stmt.excluded.created_on_branch,
+                file_action=upsert_stmt.excluded.file_action,
+                total_lines_changed=upsert_stmt.excluded.total_lines_changed,
+                total_lines_deleted=upsert_stmt.excluded.total_lines_deleted,
+                total_lines_added=upsert_stmt.excluded.total_lines_added
+            )
+        )
+    ).rowcount
     return dict(
         updated=updated
     )
 
-def populate_work_item_source_file_changes_for_work_items(session, repository_key, work_items_commits):
+
+def populate_work_item_source_file_changes_for_commits(session, commit_details):
+    updated = 0
+    if len(commit_details) > 0:
+        # create a temp table for received commit ids
+        commits_temp = db.create_temp_table(
+            table_name='commits_temp',
+            columns=[
+                Column('commit_key', UUID(as_uuid=True)),
+            ]
+        )
+        commits_temp.create(session.connection(), checkfirst=True)
+
+        # Get distinct commit keys from input
+        distinct_commits = []
+        for entry in commit_details:
+            if entry['key'] not in distinct_commits:
+                distinct_commits.append(entry['key'])
+
+        session.connection().execute(
+            commits_temp.insert().values(
+                [
+                    dict(
+                        commit_key=record
+                    )
+                    for record in distinct_commits
+                ]
+            )
+        )
+        result = populate_work_item_source_file_changes(session, commits_temp)
+        updated = result['updated']
+    return dict(
+        updated=updated
+    )
+
+
+def populate_work_item_source_file_changes_for_work_items(session, work_items_commits):
     updated = 0
     return dict(
         updated=updated

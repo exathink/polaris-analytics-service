@@ -829,6 +829,9 @@ class WorkItemSourceFileChange(Base):
 
 
 work_item_source_file_changes = WorkItemSourceFileChange.__table__
+UniqueConstraint(work_item_source_file_changes.c.work_item_id, work_item_source_file_changes.c.delivery_cycle_id, \
+                 work_item_source_file_changes.c.repository_id, work_item_source_file_changes.c.commit_id, \
+                 work_item_source_file_changes.c.source_file_id)
 
 
 class FeatureFlag(Base):

@@ -39,6 +39,7 @@ def upgrade():
     sa.ForeignKeyConstraint(['source_file_id'], ['analytics.source_files.id'], ),
     sa.ForeignKeyConstraint(['work_item_id'], ['analytics.work_items.id'], ),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('work_item_id', 'delivery_cycle_id', 'repository_id', 'commit_id', 'source_file_id', name=None),
     schema='analytics'
     )
 

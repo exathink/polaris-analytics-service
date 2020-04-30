@@ -7,8 +7,8 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, and_, Column, cast
-from sqlalchemy.dialects.postgresql import UUID, insert
+from sqlalchemy import select, func, and_, Column, cast, Integer
+from sqlalchemy.dialects.postgresql import UUID, insert, JSONB
 
 from polaris.analytics.db.model import Repository, source_files, work_items, commits, \
     work_items_commits as work_items_commits_table, work_item_delivery_cycles, \
@@ -92,10 +92,11 @@ def populate_work_item_source_file_changes(session, commits_temp):
     updated = 0
 
     source_files_json = select([
-        func.jsonb_array_elements(commits.c.source_files)
+        commits.c.id.label('commit_id'),
+        func.jsonb_array_elements(commits.c.source_files).label('source_file')
     ]).select_from(
         commits
-    ).alias()
+    ).alias('source_files_json')
     # select relevant rows to find various field values
     source_file_changes = select([
         commits.c.id.label('commit_id'),
@@ -108,27 +109,25 @@ def populate_work_item_source_file_changes(session, commits_temp):
         commits.c.committer_contributor_alias_id,
         commits.c.author_contributor_alias_id,
         commits.c.created_on_branch,
-        source_files_json['action'].label('file_action'),
-        source_files_json['stats']['lines'].label('total_lines_changed'),
-        source_files_json['stats']['deletions'].label('total_lines_deleted'),
-        source_files_json['stats']['insertions'].label('total_lines_added')
+        cast(source_files_json.c.source_file, JSONB)['action'].label('file_action'),
+        cast(cast(source_files_json.c.source_file, JSONB)['stats']['lines'].astext, Integer).label('total_lines_changed'),
+        cast(cast(source_files_json.c.source_file, JSONB)['stats']['deletions'].astext, Integer).label('total_lines_deleted'),
+        cast(cast(source_files_json.c.source_file, JSONB)['stats']['insertions'].astext, Integer).label('total_lines_added')
     ]).select_from(
-        commits_temp,
-        commits,
-        source_files,
-        work_items_commits_table,
-        work_items,
-        work_item_delivery_cycles,
-        source_files_json
-    ).where(
-        and_(
-            commits_temp.c.commit_key == commits.c.key,
-            commits.c.id == work_items_commits_table.c.id,
-            work_items.c.id == work_items_commits_table.c.work_item_id,
-            work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id,
-            cast(source_files_json['key'], UUID) == source_files.c.key
+        commits_temp.join(
+            commits, commits_temp.c.commit_key == commits.c.key
+        ).join(
+            work_items_commits_table, commits.c.id == work_items_commits_table.c.commit_id
+        ).join(
+            work_items, work_items.c.id == work_items_commits_table.c.work_item_id
+        ).join(
+            work_item_delivery_cycles, work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+        ).join(
+            source_files_json, source_files_json.c.commit_id == commits.c.id
+        ).join(
+            source_files, cast(cast(source_files_json.c.source_file, JSONB)['key'].astext, UUID) == source_files.c.key
         )
-    )
+    ).cte('source_file_changes')
 
     upsert_stmt = insert(work_item_source_file_changes).from_select(
         [
@@ -147,14 +146,26 @@ def populate_work_item_source_file_changes(session, commits_temp):
             'total_lines_deleted',
             'total_lines_added'
 
+        ],
+        select([
+            source_file_changes.c.commit_id,
+            source_file_changes.c.work_item_id,
+            source_file_changes.c.delivery_cycle_id,
+            source_file_changes.c.repository_id,
+            source_file_changes.c.source_file_id,
+            source_file_changes.c.source_commit_id,
+            source_file_changes.c.commit_date,
+            source_file_changes.c.committer_contributor_alias_id,
+            source_file_changes.c.author_contributor_alias_id,
+            source_file_changes.c.created_on_branch,
+            source_file_changes.c.file_action,
+            source_file_changes.c.total_lines_changed,
+            source_file_changes.c.total_lines_deleted,
+            source_file_changes.c.total_lines_added
         ]
-    ).select([
-        source_file_changes.c.commit_id,
-        source_file_changes.c.work_item_id,
-        source_file_changes.c.delivery_cycle_id,
-    ]
-    ).select_from(
-        source_file_changes
+        ).select_from(
+            source_file_changes
+        )
     )
 
     updated = session.connection().execute(

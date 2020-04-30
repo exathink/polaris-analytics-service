@@ -20,7 +20,11 @@ def upgrade():
     op.execute("""
         WITH source_files_details AS
          (SELECT work_items.id                as                 work_item_id,
-                 work_item_delivery_cycles.delivery_cycle_id,
+                 (CASE
+                        WHEN (commits.commit_date >= work_item_delivery_cycles.start_date 
+                        AND commits.commit_date <= work_item_delivery_cycles.end_date)
+                        THEN work_item_delivery_cycles.delivery_cycle_id
+                        ELSE NULL END) as delivery_cycle_id,
                  work_items_commits.commit_id as                 commit_id,
                  source_files.id              as                 source_file_id,
                  analytics.source_files.repository_id,
@@ -29,10 +33,10 @@ def upgrade():
                  committer_contributor_alias_id,
                  author_contributor_alias_id,
                  created_on_branch,
-                 sf ->> 'action'                                 file_action,
-                 CAST(sf -> 'stats' ->> 'lines' AS INTEGER)      total_lines_changed,
-                 CAST(sf -> 'stats' ->> 'deletions' As INTEGER)  total_lines_deleted,
-                 CAST(sf -> 'stats' ->> 'insertions' AS INTEGER) total_lines_added
+                 sf ->> 'action' as                              file_action,
+                 CAST(sf -> 'stats' ->> 'lines' AS INTEGER) as     total_lines_changed,
+                 CAST(sf -> 'stats' ->> 'deletions' As INTEGER) as total_lines_deleted,
+                 CAST(sf -> 'stats' ->> 'insertions' AS INTEGER) as total_lines_added
           FROM analytics.source_files,
                analytics.work_items,
                analytics.commits,
@@ -42,7 +46,8 @@ def upgrade():
           where UUID(sf ->> 'key') = source_files.key
             AND work_items.id = work_items_commits.work_item_id
             AND work_items_commits.commit_id = commits.id
-            AND work_items.id = work_item_delivery_cycles.work_item_id)
+            AND work_items.id = work_item_delivery_cycles.work_item_id
+            AND commits.num_parents = 1)
         INSERT
         INTO analytics.work_item_source_file_changes(work_item_id, delivery_cycle_id, repository_id, source_file_id, commit_id,
                                              source_commit_id, commit_date, committer_contributor_alias_id,

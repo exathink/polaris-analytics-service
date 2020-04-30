@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, and_, Column, cast, Integer
+from sqlalchemy import select, func, and_, Column, cast, Integer, case
 from sqlalchemy.dialects.postgresql import UUID, insert, JSONB
 
 from polaris.analytics.db.model import Repository, source_files, work_items, commits, \
@@ -101,7 +101,18 @@ def populate_work_item_source_file_changes(session, commits_temp):
     source_file_changes = select([
         commits.c.id.label('commit_id'),
         work_items.c.id.label('work_item_id'),
-        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        case(
+            [
+                (
+                    and_(
+                        commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
+                        commits.c.commit_date <= work_item_delivery_cycles.c.end_date
+                    ),
+                    work_item_delivery_cycles.c.delivery_cycle_id
+                )
+            ],
+            else_=None
+        ).label('delivery_cycle_id'),
         source_files.c.repository_id.label('repository_id'),
         source_files.c.id.label('source_file_id'),
         commits.c.source_commit_id,
@@ -121,12 +132,14 @@ def populate_work_item_source_file_changes(session, commits_temp):
         ).join(
             work_items, work_items.c.id == work_items_commits_table.c.work_item_id
         ).join(
-            work_item_delivery_cycles, work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
         ).join(
             source_files_json, source_files_json.c.commit_id == commits.c.id
         ).join(
             source_files, cast(cast(source_files_json.c.source_file, JSONB)['key'].astext, UUID) == source_files.c.key
         )
+    ).where(
+        commits.c.num_parents == 1
     ).cte('source_file_changes')
 
     upsert_stmt = insert(work_item_source_file_changes).from_select(

@@ -239,6 +239,35 @@ def populate_work_item_source_file_changes_for_commits(session, commit_details):
 
 def populate_work_item_source_file_changes_for_work_items(session, work_items_commits):
     updated = 0
+    if len(work_items_commits) > 0:
+        # create a temp table for commit ids from work_items_commits
+        commits_temp = db.create_temp_table(
+            table_name='commits_temp',
+            columns=[
+                Column('commit_key', UUID(as_uuid=True)),
+            ]
+        )
+        commits_temp.create(session.connection(), checkfirst=True)
+
+        # Get distinct commit keys from input
+        distinct_commits = []
+        for entry in work_items_commits:
+            if entry['commit_key'] not in distinct_commits:
+                distinct_commits.append(entry['commit_key'])
+
+        session.connection().execute(
+            commits_temp.insert().values(
+                [
+                    dict(
+                        commit_key=record
+                    )
+                    for record in distinct_commits
+                ]
+            )
+        )
+        result = populate_work_item_source_file_changes(session, commits_temp)
+        updated = result['updated']
+
     return dict(
         updated=updated
     )

@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, and_, Column, cast, Integer, case
+from sqlalchemy import select, func, and_, Column, cast, Integer, case, or_
 from sqlalchemy.dialects.postgresql import UUID, insert, JSONB
 
 from polaris.analytics.db.model import Repository, source_files, work_items, commits, \
@@ -104,9 +104,15 @@ def populate_work_item_source_file_changes(session, commits_temp):
         case(
             [
                 (
-                    and_(
-                        commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
-                        commits.c.commit_date <= work_item_delivery_cycles.c.end_date
+                    or_(
+                        and_(
+                            commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
+                            work_item_delivery_cycles.c.end_date is None
+                        ),
+                        and_(
+                            commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
+                            commits.c.commit_date <= work_item_delivery_cycles.c.end_date
+                        )
                     ),
                     work_item_delivery_cycles.c.delivery_cycle_id
                 )

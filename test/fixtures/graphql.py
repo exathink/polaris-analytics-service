@@ -93,6 +93,7 @@ def org_repo_fixture(setup_schema):
 
     yield organization, projects, repositories
 
+    db.connection().execute("delete from analytics.source_files")
     db.connection().execute("delete from analytics.projects_repositories")
     db.connection().execute("delete from analytics.commits")
     db.connection().execute("delete from analytics.repositories")
@@ -154,6 +155,7 @@ def commits_fixture(org_repo_fixture, cleanup):
 @pytest.yield_fixture()
 def cleanup():
     yield
+    db.connection().execute("delete from analytics.work_item_source_file_changes")
     db.connection().execute("delete from analytics.work_item_delivery_cycle_contributors")
     db.connection().execute("delete from analytics.work_item_delivery_cycles")
     db.connection().execute("delete from analytics.feature_flag_enablements")

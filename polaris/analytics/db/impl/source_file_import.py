@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, and_, Column, cast, Integer, case, or_
+from sqlalchemy import select, func, and_, Column, cast, Integer, case, or_, distinct
 from sqlalchemy.dialects.postgresql import UUID, insert, JSONB
 
 from polaris.analytics.db.model import Repository, source_files, work_items, commits, \
@@ -104,13 +104,10 @@ def populate_work_item_source_file_changes(session, commits_temp):
         case(
             [
                 (
-                    or_(
-                        and_(
-                            commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
-                            work_item_delivery_cycles.c.end_date is None
-                        ),
-                        and_(
-                            commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
+                    and_(
+                        commits.c.commit_date >= work_item_delivery_cycles.c.start_date,
+                        or_(
+                            work_item_delivery_cycles.c.end_date == None,
                             commits.c.commit_date <= work_item_delivery_cycles.c.end_date
                         )
                     ),
@@ -171,7 +168,7 @@ def populate_work_item_source_file_changes(session, commits_temp):
             source_file_changes.c.work_item_id,
             source_file_changes.c.delivery_cycle_id,
             source_file_changes.c.repository_id,
-            source_file_changes.c.source_file_id,
+            source_file_changes.c.source_file_id.label('source_file_id'),
             source_file_changes.c.source_commit_id,
             source_file_changes.c.commit_date,
             source_file_changes.c.committer_contributor_alias_id,

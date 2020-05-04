@@ -28,6 +28,7 @@ from datetime import datetime, timedelta
 
 from polaris.analytics.db.model import WorkItemDeliveryCycle
 
+
 earliest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=5)
 latest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=2)
 source_file_keys = [uuid.uuid4().hex, uuid.uuid4().hex]
@@ -132,10 +133,16 @@ def work_items_commits_source_files_fixture(contributor_commits_fixture, cleanup
         )
         for i in range(1000, 1005)]
 
-    # changing commit_dates, c1-c4 for w1
+    # changing commit_dates, num_parents to create test scenarios
     test_commits[0]['commit_date'] = earliest_commit_date
+
+    # This is a merge commit
     test_commits[1]['commit_date'] = earliest_commit_date + timedelta(days=1)
+    test_commits[1]['num_parents'] = 2
+
+    # This commit shall not map to any delivery cycle
     test_commits[2]['commit_date'] = latest_commit_date
+
     test_commits[3]['commit_date'] = latest_commit_date + timedelta(days=1)
     test_commits[4]['commit_date'] = earliest_commit_date
 
@@ -163,15 +170,6 @@ def work_items_commits_source_files_fixture(contributor_commits_fixture, cleanup
                         stats={"lines": 4, "insertions": 2, "deletions": 2}
                     )
                 ]
-
-    # Setting second contributor as committer for commit 3 and commit 4
-    test_commits[2]['committer_contributor_alias_id'] = contributor_list[1]['alias_id']
-    test_commits[2]['committer_contributor_key'] = contributor_list[1]['key']
-    test_commits[2]['committer_contributor_name'] = contributor_list[1]['name']
-    test_commits[3]['committer_contributor_alias_id'] = contributor_list[1]['alias_id']
-    test_commits[3]['committer_contributor_key'] = contributor_list[1]['key']
-    test_commits[3]['committer_contributor_name'] = contributor_list[1]['name']
-
 
     # Add commits
     create_test_commits(test_commits)
@@ -255,10 +253,10 @@ def work_items_commits_source_files_fixture(contributor_commits_fixture, cleanup
             WorkItemDeliveryCycle(
                     start_seq_no=0,
                     start_date=w1.created_at,
-                    end_date=latest_commit_date,
+                    end_date=latest_commit_date-timedelta(hours=1),
                     end_seq_no=2,
                     work_item_id=w1.id,
-                    lead_time=int((datetime.utcnow()-timedelta(hours=1)-w1.created_at).total_seconds())
+                    lead_time=int((latest_commit_date-timedelta(hours=1)-w1.created_at).total_seconds())
                 ),
             WorkItemDeliveryCycle(
                     start_seq_no=3,
@@ -279,4 +277,4 @@ def work_items_commits_source_files_fixture(contributor_commits_fixture, cleanup
         w1.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in w1.delivery_cycles])
         w2.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in w2.delivery_cycles])
 
-    yield organization, [w1.id, w2.id], test_commits, test_work_items, test_source_files, contributor_list
+    yield organization, [w1.id, w2.id], test_commits, test_work_items, contributor_list

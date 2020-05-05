@@ -218,10 +218,9 @@ def populate_work_item_source_file_changes_for_commits(session, commit_details):
         commits_temp.create(session.connection(), checkfirst=True)
 
         # Get distinct commit keys from input
-        distinct_commits = []
+        distinct_commits = set()
         for entry in commit_details:
-            if entry['key'] not in distinct_commits:
-                distinct_commits.append(entry['key'])
+            distinct_commits.add(entry['key'])
 
         session.connection().execute(
             commits_temp.insert().values(
@@ -253,10 +252,9 @@ def populate_work_item_source_file_changes_for_work_items(session, work_items_co
         commits_temp.create(session.connection(), checkfirst=True)
 
         # Get distinct commit keys from input
-        distinct_commits = []
+        distinct_commits = set()
         for entry in work_items_commits:
-            if entry['commit_key'] not in distinct_commits:
-                distinct_commits.append(entry['commit_key'])
+            distinct_commits.add(entry['commit_key'])
 
         session.connection().execute(
             commits_temp.insert().values(

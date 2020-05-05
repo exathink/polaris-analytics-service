@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, and_, Column, cast, Integer, case, or_, distinct
+from sqlalchemy import select, func, and_, Column, cast, Integer, or_, literal
 from sqlalchemy.dialects.postgresql import UUID, insert, JSONB
 
 from polaris.analytics.db.model import Repository, source_files, work_items, commits, \
@@ -168,7 +168,65 @@ def populate_work_item_source_file_changes(session, commits_temp):
                     )
                 )
             )
-        ))
+        )
+    )
+
+    # Find commits outside all delivery cycles
+    session.connection().execute(
+        work_item_source_file_changes_temp.insert().from_select([
+            'commit_id',
+            'work_item_id',
+            'delivery_cycle_id',
+            'repository_id',
+            'source_file_id',
+            'source_commit_id',
+            'commit_date',
+            'committer_contributor_alias_id',
+            'author_contributor_alias_id',
+            'created_on_branch',
+            'file_action',
+            'total_lines_changed',
+            'total_lines_deleted',
+            'total_lines_added'
+        ],
+            select([
+                commits.c.id.label('commit_id'),
+                work_items.c.id.label('work_item_id'),
+                literal(None).label('delivery_cycle_id'),
+                source_files.c.repository_id.label('repository_id'),
+                source_files.c.id.label('source_file_id'),
+                commits.c.source_commit_id,
+                commits.c.commit_date,
+                commits.c.committer_contributor_alias_id,
+                commits.c.author_contributor_alias_id,
+                commits.c.created_on_branch,
+                cast(source_files_json.c.source_file, JSONB)['action'].label('file_action'),
+                cast(cast(source_files_json.c.source_file, JSONB)['stats']['lines'].astext, Integer).label(
+                    'total_lines_changed'),
+                cast(cast(source_files_json.c.source_file, JSONB)['stats']['deletions'].astext, Integer).label(
+                    'total_lines_deleted'),
+                cast(cast(source_files_json.c.source_file, JSONB)['stats']['insertions'].astext, Integer).label(
+                    'total_lines_added')
+            ]).select_from(
+                commits_temp.join(
+                    commits, commits_temp.c.commit_key == commits.c.key
+                ).join(
+                    work_items_commits_table, commits.c.id == work_items_commits_table.c.commit_id
+                ).join(
+                    work_items, work_items.c.id == work_items_commits_table.c.work_item_id
+                ).outerjoin(
+                    work_item_source_file_changes_temp, commits.c.id == work_item_source_file_changes_temp.c.commit_id
+                ).join(
+                    source_files_json, source_files_json.c.commit_id == commits.c.id
+                ).join(
+                    source_files,
+                    cast(cast(source_files_json.c.source_file, JSONB)['key'].astext, UUID) == source_files.c.key
+                )
+            ).where(
+                    work_item_source_file_changes_temp.c.commit_id == None
+            )
+        )
+    )
 
     upsert_stmt = insert(work_item_source_file_changes).from_select(
         [

@@ -234,7 +234,7 @@ def populate_work_item_source_file_changes(session, commits_temp):
                     source_file_changes, source_file_changes.c.commit_id == commits.c.id
                 )
             ).where(
-                    work_item_source_file_changes_temp.c.commit_id == None
+                work_item_source_file_changes_temp.c.commit_id == None
             )
         )
     )

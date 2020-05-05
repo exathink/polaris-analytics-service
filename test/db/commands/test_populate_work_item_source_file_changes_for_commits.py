@@ -15,7 +15,8 @@ from test.fixtures.work_item_source_files import *
 
 class TestPopulateSourceFileChangesForCommits:
 
-    def it_populates_source_file_changes_for_one_commit_one_delivey_cycle_one_contributor(self, work_items_commits_source_files_fixture):
+    def it_populates_source_file_changes_for_one_commit_one_delivey_cycle_one_contributor(self,
+                                                                                          work_items_commits_source_files_fixture):
         organization, _, test_commits, _, _ = work_items_commits_source_files_fixture
         commit_details = [
             dict(
@@ -27,10 +28,11 @@ class TestPopulateSourceFileChangesForCommits:
         assert result['updated'] == 2
         assert db.connection().execute("select count(*) from analytics.work_item_source_file_changes").scalar() == 2
         # Check that each source file change is populated, also delivery cycle should be non null
-        assert db.connection().execute("select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is not NULL").scalar() == 2
+        assert db.connection().execute(
+            "select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is not NULL").scalar() == 2
 
-
-    def it_populates_source_file_changes_for_multiple_commits_multiple_delivery_cycles_multiple_contributors(self, work_items_commits_source_files_fixture):
+    def it_populates_source_file_changes_for_multiple_commits_multiple_delivery_cycles_multiple_contributors(self,
+                                                                                                             work_items_commits_source_files_fixture):
         organization, _, test_commits, _, _ = work_items_commits_source_files_fixture
         commit_details = [
             dict(
@@ -43,9 +45,11 @@ class TestPopulateSourceFileChangesForCommits:
         result = commands.populate_work_items_source_file_changes_for_commits(organization.key, commit_details)
         assert result['success']
         assert result['updated'] == 4
-        assert db.connection().execute("select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is not NULL").scalar() == 4
+        assert db.connection().execute(
+            "select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is not NULL").scalar() == 4
 
-    def it_populates_source_file_changes_for_commits_not_associated_with_delivery_cycle_id(self, work_items_commits_source_files_fixture):
+    def it_populates_source_file_changes_for_commits_not_associated_with_delivery_cycle_id(self,
+                                                                                           work_items_commits_source_files_fixture):
         organization, _, test_commits, _, _ = work_items_commits_source_files_fixture
         commit_details = [
             dict(
@@ -55,7 +59,8 @@ class TestPopulateSourceFileChangesForCommits:
         result = commands.populate_work_items_source_file_changes_for_commits(organization.key, commit_details)
         assert result['success']
         assert result['updated'] == 2
-        assert db.connection().execute("select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is NULL").scalar() == 2
+        assert db.connection().execute(
+            "select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is NULL").scalar() == 2
 
     def it_populates_source_file_changes_for_all_types_of_commits(self, work_items_commits_source_files_fixture):
         organization, _, test_commits, _, _ = work_items_commits_source_files_fixture
@@ -75,7 +80,8 @@ class TestPopulateSourceFileChangesForCommits:
         assert db.connection().execute(
             "select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is NULL").scalar() == 2
 
-    def it_populates_file_changes_when_a_single_commit_woth_delivery_cycle_maps_to_multiple_work_items(self, work_items_commits_source_files_fixture):
+    def it_populates_file_changes_when_a_single_commit_with_delivery_cycle_maps_to_multiple_work_items(self,
+                                                                                                       work_items_commits_source_files_fixture):
         organization, _, test_commits, _, _ = work_items_commits_source_files_fixture
 
         # Map commit 2 to work item 2
@@ -91,7 +97,8 @@ class TestPopulateSourceFileChangesForCommits:
         assert db.connection().execute(
             "select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is not NULL").scalar() == 4
 
-    def it_populates_file_changes_when_a_single_commit_without_delivery_cycle_maps_to_multiple_work_items(self, work_items_commits_source_files_fixture):
+    def it_populates_file_changes_when_a_single_commit_without_delivery_cycle_maps_to_multiple_work_items(self,
+                                                                                                          work_items_commits_source_files_fixture):
         organization, _, test_commits, _, _ = work_items_commits_source_files_fixture
 
         # Map commit 3 to work item 2 which also has an open delivery cycle, so for w1 its out of delivery cycle but for w2 its within
@@ -121,7 +128,8 @@ class TestPopulateSourceFileChangesForCommits:
         assert result['updated'] == 2
         assert db.connection().execute("select count(*) from analytics.work_item_source_file_changes").scalar() == 2
         # Check that each source file change is populated, also delivery cycle should be non null
-        assert db.connection().execute("select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is not NULL").scalar() == 2
+        assert db.connection().execute(
+            "select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is not NULL").scalar() == 2
         # Repeat
         result = commands.populate_work_items_source_file_changes_for_commits(organization.key, commit_details)
         assert result['success']

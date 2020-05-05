@@ -225,7 +225,11 @@ def populate_work_item_source_file_changes(session, commits_temp):
                 ).join(
                     work_items, work_items.c.id == work_items_commits_table.c.work_item_id
                 ).outerjoin(
-                    work_item_source_file_changes_temp, commits.c.id == work_item_source_file_changes_temp.c.commit_id
+                    work_item_source_file_changes_temp,
+                    and_(
+                        commits.c.id == work_item_source_file_changes_temp.c.commit_id,
+                        work_items.c.id == work_item_source_file_changes_temp.c.work_item_id
+                    )
                 ).join(
                     source_file_changes, source_file_changes.c.commit_id == commits.c.id
                 )

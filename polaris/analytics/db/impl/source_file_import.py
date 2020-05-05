@@ -95,8 +95,27 @@ def populate_work_item_source_file_changes(session, commits_temp):
         commits.c.id.label('commit_id'),
         func.jsonb_array_elements(commits.c.source_files).label('source_file')
     ]).select_from(
-        commits
+        commits_temp.join(
+            commits, commits.c.key == commits_temp.c.commit_key
+        )
     ).alias('source_files_json')
+
+    source_file_changes = select([
+        source_files_json.c.commit_id,
+        source_files.c.id.label('source_file_id'),
+        source_files.c.repository_id.label('repository_id'),
+        cast(source_files_json.c.source_file, JSONB)['action'].label('file_action'),
+        cast(cast(source_files_json.c.source_file, JSONB)['stats']['lines'].astext, Integer).label(
+            'total_lines_changed'),
+        cast(cast(source_files_json.c.source_file, JSONB)['stats']['deletions'].astext, Integer).label(
+            'total_lines_deleted'),
+        cast(cast(source_files_json.c.source_file, JSONB)['stats']['insertions'].astext, Integer).label(
+            'total_lines_added')
+    ]).select_from(
+        source_files_json.join(
+            source_files, cast(cast(source_files_json.c.source_file, JSONB)['key'].astext, UUID) == source_files.c.key
+        )
+    ).alias('source_file_changes')
 
     # Create a temp table to store data for commits within delivery cycles
     work_item_source_file_changes_temp = db.temp_table_from(
@@ -130,20 +149,17 @@ def populate_work_item_source_file_changes(session, commits_temp):
                 commits.c.id.label('commit_id'),
                 work_items.c.id.label('work_item_id'),
                 work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-                source_files.c.repository_id.label('repository_id'),
-                source_files.c.id.label('source_file_id'),
+                source_file_changes.c.repository_id.label('repository_id'),
+                source_file_changes.c.source_file_id.label('source_file_id'),
                 commits.c.source_commit_id,
                 commits.c.commit_date,
                 commits.c.committer_contributor_alias_id,
                 commits.c.author_contributor_alias_id,
                 commits.c.created_on_branch,
-                cast(source_files_json.c.source_file, JSONB)['action'].label('file_action'),
-                cast(cast(source_files_json.c.source_file, JSONB)['stats']['lines'].astext, Integer).label(
-                    'total_lines_changed'),
-                cast(cast(source_files_json.c.source_file, JSONB)['stats']['deletions'].astext, Integer).label(
-                    'total_lines_deleted'),
-                cast(cast(source_files_json.c.source_file, JSONB)['stats']['insertions'].astext, Integer).label(
-                    'total_lines_added')
+                source_file_changes.c.file_action.label('file_action'),
+                source_file_changes.c.total_lines_changed.label('total_lines_changed'),
+                source_file_changes.c.total_lines_deleted.label('total_lines_deleted'),
+                source_file_changes.c.total_lines_added.label('total_lines_added')
             ]).select_from(
                 commits_temp.join(
                     commits, commits_temp.c.commit_key == commits.c.key
@@ -154,10 +170,7 @@ def populate_work_item_source_file_changes(session, commits_temp):
                 ).join(
                     work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
                 ).join(
-                    source_files_json, source_files_json.c.commit_id == commits.c.id
-                ).join(
-                    source_files,
-                    cast(cast(source_files_json.c.source_file, JSONB)['key'].astext, UUID) == source_files.c.key
+                    source_file_changes, source_file_changes.c.commit_id == commits.c.id
                 )
             ).where(
                 and_(
@@ -193,20 +206,17 @@ def populate_work_item_source_file_changes(session, commits_temp):
                 commits.c.id.label('commit_id'),
                 work_items.c.id.label('work_item_id'),
                 literal(None).label('delivery_cycle_id'),
-                source_files.c.repository_id.label('repository_id'),
-                source_files.c.id.label('source_file_id'),
+                source_file_changes.c.repository_id.label('repository_id'),
+                source_file_changes.c.source_file_id.label('source_file_id'),
                 commits.c.source_commit_id,
                 commits.c.commit_date,
                 commits.c.committer_contributor_alias_id,
                 commits.c.author_contributor_alias_id,
                 commits.c.created_on_branch,
-                cast(source_files_json.c.source_file, JSONB)['action'].label('file_action'),
-                cast(cast(source_files_json.c.source_file, JSONB)['stats']['lines'].astext, Integer).label(
-                    'total_lines_changed'),
-                cast(cast(source_files_json.c.source_file, JSONB)['stats']['deletions'].astext, Integer).label(
-                    'total_lines_deleted'),
-                cast(cast(source_files_json.c.source_file, JSONB)['stats']['insertions'].astext, Integer).label(
-                    'total_lines_added')
+                source_file_changes.c.file_action.label('file_action'),
+                source_file_changes.c.total_lines_changed.label('total_lines_changed'),
+                source_file_changes.c.total_lines_deleted.label('total_lines_deleted'),
+                source_file_changes.c.total_lines_added.label('total_lines_added')
             ]).select_from(
                 commits_temp.join(
                     commits, commits_temp.c.commit_key == commits.c.key
@@ -217,10 +227,7 @@ def populate_work_item_source_file_changes(session, commits_temp):
                 ).outerjoin(
                     work_item_source_file_changes_temp, commits.c.id == work_item_source_file_changes_temp.c.commit_id
                 ).join(
-                    source_files_json, source_files_json.c.commit_id == commits.c.id
-                ).join(
-                    source_files,
-                    cast(cast(source_files_json.c.source_file, JSONB)['key'].astext, UUID) == source_files.c.key
+                    source_file_changes, source_file_changes.c.commit_id == commits.c.id
                 )
             ).where(
                     work_item_source_file_changes_temp.c.commit_id == None

@@ -139,7 +139,7 @@ def populate_work_item_source_file_changes(session, commits_temp):
             'commit_date',
             'committer_contributor_alias_id',
             'author_contributor_alias_id',
-            'num_parents'
+            'num_parents',
             'created_on_branch',
             'file_action',
             'total_lines_changed',

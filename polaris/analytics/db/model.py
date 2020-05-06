@@ -809,6 +809,7 @@ class WorkItemSourceFileChange(Base):
     commit_date = Column(DateTime, nullable=False)
     committer_contributor_alias_id = Column(Integer, nullable=False)
     author_contributor_alias_id = Column(Integer, nullable=False)
+    num_parents = Column(Integer, default=1)
     created_on_branch = Column(String, nullable=True)
     file_action = Column(String, nullable=False)
     total_lines_changed = Column(Integer, nullable=True)

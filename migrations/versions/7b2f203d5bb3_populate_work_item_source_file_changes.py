@@ -32,6 +32,7 @@ def upgrade():
                  source_commit_id,
                  committer_contributor_alias_id,
                  author_contributor_alias_id,
+                 num_parents,
                  created_on_branch,
                  sf ->> 'action' as                              file_action,
                  CAST(sf -> 'stats' ->> 'lines' AS INTEGER) as     total_lines_changed,
@@ -51,7 +52,7 @@ def upgrade():
         INSERT
         INTO analytics.work_item_source_file_changes(work_item_id, delivery_cycle_id, repository_id, source_file_id, commit_id,
                                              source_commit_id, commit_date, committer_contributor_alias_id,
-                                             author_contributor_alias_id, created_on_branch, file_action,
+                                             author_contributor_alias_id, num_parents, created_on_branch, file_action,
                                              total_lines_changed, total_lines_deleted, total_lines_added)
         SELECT work_item_id,
             delivery_cycle_id,
@@ -62,6 +63,7 @@ def upgrade():
             commit_date,
             committer_contributor_alias_id,
             author_contributor_alias_id,
+            num_parents,
             created_on_branch,
             file_action,
             total_lines_changed,

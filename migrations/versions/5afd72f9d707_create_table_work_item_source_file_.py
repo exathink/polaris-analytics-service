@@ -28,6 +28,7 @@ def upgrade():
     sa.Column('commit_date', sa.DateTime(), nullable=False),
     sa.Column('committer_contributor_alias_id', sa.Integer(), nullable=False),
     sa.Column('author_contributor_alias_id', sa.Integer(), nullable=False),
+    sa.Column('num_parents', sa.Integer(), default=1),
     sa.Column('created_on_branch', sa.String(), nullable=True),
     sa.Column('file_action', sa.String(), nullable=False),
     sa.Column('total_lines_changed', sa.Integer(), nullable=True),

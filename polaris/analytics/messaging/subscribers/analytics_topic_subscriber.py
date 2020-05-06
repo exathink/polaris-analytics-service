@@ -17,7 +17,9 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     InferProjectsRepositoriesRelationships, ResolveWorkItemsSourcesForRepositories, \
     UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, \
     RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits, \
-    ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems
+    ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
+    PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems
+
 from polaris.messaging.utils import raise_on_failure
 
 from polaris.analytics.db import api, commands
@@ -45,7 +47,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 ComputeImplementationComplexityMetricsForCommits,
                 RegisterSourceFileVersions,
                 ComputeContributorMetricsForWorkItems,
-                ComputeContributorMetricsForCommits
+                ComputeContributorMetricsForCommits,
+                PopulateWorkItemSourceFileChangesForCommits,
+                PopulateWorkItemSourceFileChangesForWorkItems
             ],
             publisher=publisher,
             exclusive=False
@@ -101,11 +105,16 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 send=message.dict,
                 in_response_to=message
             )
-
             self.publish(AnalyticsTopic, compute_contributor_metrics_for_commits_command)
 
+            populate_work_item_source_file_changes_for_commits_command = PopulateWorkItemSourceFileChangesForCommits(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, populate_work_item_source_file_changes_for_commits_command)
+
             return register_source_file_versions_command, compute_implementation_complexity_metrics_for_commits_command, \
-                   compute_contributor_metrics_for_commits_command
+                compute_contributor_metrics_for_commits_command, populate_work_item_source_file_changes_for_commits_command
 
         elif WorkItemsCommitsResolved.message_type == message.message_type:
             # Publish a sub command to update commit work items summaries
@@ -144,12 +153,17 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 send=message.dict,
                 in_response_to=message
             )
-
             self.publish(AnalyticsTopic, compute_contributor_metrics_for_work_items_command)
 
+            populate_work_item_source_file_changes_for_work_items_command = PopulateWorkItemSourceFileChangesForWorkItems(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, populate_work_item_source_file_changes_for_work_items_command)
+
             return update_commit_work_items_summaries_command, infer_projects_repositories_relationships, \
-                   update_work_items_commits_stats_command, compute_implementation_complexity_metrics_for_work_items_command, \
-                   compute_contributor_metrics_for_work_items_command
+                update_work_items_commits_stats_command, compute_implementation_complexity_metrics_for_work_items_command, \
+                compute_contributor_metrics_for_work_items_command, populate_work_item_source_file_changes_for_work_items_command
 
         elif RepositoriesImported.message_type == message.message_type:
             return self.publish(
@@ -185,6 +199,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         elif ComputeContributorMetricsForCommits.message_type == message.message_type:
             return self.process_compute_contributor_metrics_for_commits(channel, message)
 
+        elif PopulateWorkItemSourceFileChangesForWorkItems.message_type == message.message_type:
+            return self.process_populate_work_item_source_file_changes_for_work_items(channel, message)
+
         elif InferProjectsRepositoriesRelationships.message_type == message.message_type:
             result = self.process_infer_projects_repositories_relationships(channel, message)
             if result['success']:
@@ -200,6 +217,8 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
         elif ResolveWorkItemsSourcesForRepositories.message_type == message.message_type:
             return self.process_resolve_work_items_sources_for_repositories(channel, message)
+        elif PopulateWorkItemSourceFileChangesForCommits.message_type == message.message_type:
+            return self.process_populate_work_item_source_file_changes_for_commits(channel, message)
 
     @staticmethod
     def process_register_source_file_versions(channel, message):
@@ -216,6 +235,34 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                     organization_key=organization_key,
                     repository_key=message['repository_key'],
                     commit_details=commit_details
+                )
+            )
+
+    @staticmethod
+    def process_populate_work_item_source_file_changes_for_commits(channel, message):
+        organization_key = message['organization_key']
+        commit_details = message['commit_details']
+
+        if len(commit_details) > 0:
+            return raise_on_failure(
+                message,
+                commands.populate_work_items_source_file_changes_for_commits(
+                    organization_key=organization_key,
+                    commit_details=commit_details
+                )
+            )
+
+    @staticmethod
+    def process_populate_work_item_source_file_changes_for_work_items(channel, message):
+        organization_key = message['organization_key']
+        work_items_commits = message['work_items_commits']
+
+        if len(work_items_commits) > 0:
+            return raise_on_failure(
+                message,
+                commands.populate_work_items_source_file_changes_for_work_items(
+                    organization_key=organization_key,
+                    work_items_commits=work_items_commits
                 )
             )
 

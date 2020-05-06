@@ -8,29 +8,30 @@
 
 # Author: Pragya Goyal
 
-
 """
-# Fixture to test updating of contributor metrics for work items and commits:
-
-# Scenario
-# 2 work items: w1, w2
-# 5 commits: w1c1, w1c2, w1c3, w1c4, w2c1
-# 3 delivery cycles: w1d1, w1d2, w2d1
-# 2 contributors (2 aliases only): X, Y
-# Expected result: work_item_delivery_cycle_contributors table is populated with contributor metrics for all unique
-# combinations of (delivery_cycle_id, contributor_alias_id) which have commits associated with them
-# (X, w1d1), (X, w2d2)......so on
-
+Fixture to test population of work_item_source_file_changes. Requires following tables:
+repositories
+commits
+work_items
+work_item_delivery_cycles
+source_files
+contributor_aliases
 """
 
-import pytest
+from test.fixtures.graphql import *
+from datetime import datetime, timedelta
+
+from polaris.analytics.db.model import WorkItemDeliveryCycle, source_files
+
 from test.fixtures.graphql import *
 from datetime import datetime, timedelta
 
 from polaris.analytics.db.model import WorkItemDeliveryCycle
 
+
 earliest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=5)
 latest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=2)
+source_file_keys = [uuid.uuid4().hex, uuid.uuid4().hex]
 test_contributors_info =[
     dict(
         name='Joe Blow',
@@ -105,11 +106,19 @@ def commits_common_fields(contributor_commits_fixture):
         author_date_tz_offset=0,
         author_contributor_alias_id=contributor_alias,
         author_contributor_key=contributor_key,
-        author_contributor_name=contributor_name
+        author_contributor_name=contributor_name,
+
     )
 
+
+def create_source_files(test_source_files):
+    with db.create_session() as session:
+        session.connection.execute(
+            source_files.insert(test_source_files)
+        )
+
 @pytest.yield_fixture()
-def work_items_commits_contributors_fixture(contributor_commits_fixture):
+def work_items_commits_source_files_fixture(contributor_commits_fixture, cleanup):
     organization, projects, repositories, contributor_list = contributor_commits_fixture
     test_repo = repositories['alpha']
 
@@ -124,41 +133,68 @@ def work_items_commits_contributors_fixture(contributor_commits_fixture):
         )
         for i in range(1000, 1005)]
 
-    # changing commit_dates, c1-c4 for w1
+    # changing commit_dates, num_parents to create test scenarios
     test_commits[0]['commit_date'] = earliest_commit_date
+
+    # This is a merge commit
     test_commits[1]['commit_date'] = earliest_commit_date + timedelta(days=1)
+    test_commits[1]['num_parents'] = 2
+
+    # This commit shall not map to any delivery cycle
     test_commits[2]['commit_date'] = latest_commit_date
+
     test_commits[3]['commit_date'] = latest_commit_date + timedelta(days=1)
     test_commits[4]['commit_date'] = earliest_commit_date
 
-    # changing repo ids to test repository count
-    test_commits[1]['repository_id'] = repositories['beta'].id
-    test_commits[4]['repository_id'] = repositories['gamma'].id
-
-    # updating test commits for commits stats, 1 indicates non merge commits, >1 is merge commit
-    test_commits[0]['num_parents'] = 1
-    test_commits[1]['num_parents'] = 2
-    test_commits[2]['num_parents'] = 1
-    test_commits[3]['num_parents'] = 2
-    test_commits[4]['num_parents'] = 1
-
     for commit in test_commits:
         commit['stats'] = {"files": 1, "lines": 8, "deletions": 4, "insertions": 4}
-        # commit['author_contributor_alias_id'] = contributor_list[0]['alias_id']
-        # commit['author_contributor_key'] = contributor_list[0]['key']
-        # commit['author_contributor_name'] = contributor_list[0]['name']
-
-    # Setting second contributor as committer for commit 3 and commit 4
-    test_commits[2]['committer_contributor_alias_id'] = contributor_list[1]['alias_id']
-    test_commits[2]['committer_contributor_key'] = contributor_list[1]['key']
-    test_commits[2]['committer_contributor_name'] = contributor_list[1]['name']
-    test_commits[3]['committer_contributor_alias_id'] = contributor_list[1]['alias_id']
-    test_commits[3]['committer_contributor_key'] = contributor_list[1]['key']
-    test_commits[3]['committer_contributor_name'] = contributor_list[1]['name']
-
+        commit['source_files'] = [
+                    dict(
+                        key=source_file_keys[0],
+                        path='test/',
+                        name='files1.txt',
+                        file_type='txt',
+                        version_count=1,
+                        is_deleted=False,
+                        action='A',
+                        stats={"lines": 2, "insertions": 2, "deletions": 0}
+                    ),
+                    dict(
+                        key=source_file_keys[1],
+                        path='test/',
+                        name='files2.py',
+                        file_type='py',
+                        version_count=1,
+                        is_deleted=False,
+                        action='A',
+                        stats={"lines": 4, "insertions": 2, "deletions": 2}
+                    )
+                ]
 
     # Add commits
     create_test_commits(test_commits)
+
+    # Add source files
+    test_source_files = [
+        dict(
+            repository_id=test_repo.id,
+            key=source_file_keys[0],
+            path='test/',
+            name='files1.txt',
+            file_type='txt',
+            version_count=1
+        ),
+        dict(
+            repository_id=test_repo.id,
+            key=source_file_keys[1],
+            path='test/',
+            name='files2.py',
+            file_type='py',
+            version_count=1
+        )
+    ]
+
+    create_source_files(test_source_files)
 
     # Add work items
     create_work_items(
@@ -217,10 +253,10 @@ def work_items_commits_contributors_fixture(contributor_commits_fixture):
             WorkItemDeliveryCycle(
                     start_seq_no=0,
                     start_date=w1.created_at,
-                    end_date=latest_commit_date,
+                    end_date=latest_commit_date-timedelta(hours=1),
                     end_seq_no=2,
                     work_item_id=w1.id,
-                    lead_time=int((datetime.utcnow()-timedelta(hours=1)-w1.created_at).total_seconds())
+                    lead_time=int((latest_commit_date-timedelta(hours=1)-w1.created_at).total_seconds())
                 ),
             WorkItemDeliveryCycle(
                     start_seq_no=3,

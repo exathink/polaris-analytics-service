@@ -138,7 +138,7 @@ def update_work_items_setup(work_items_setup):
 
             # Adding delivery cycles
             work_item.delivery_cycles.extend([
-                model.WorkItemDeliveryCycles(
+                model.WorkItemDeliveryCycle(
                     start_seq_no=0,
                     start_date=work_item.created_at,
                 )
@@ -190,7 +190,7 @@ def update_closed_work_items_setup(work_items_setup):
 
             # Adding delivery cycles
             work_item.delivery_cycles.extend([
-                model.WorkItemDeliveryCycles(
+                model.WorkItemDeliveryCycle(
                     start_seq_no=0,
                     end_seq_no=1,
                     start_date=work_item.created_at,

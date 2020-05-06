@@ -119,3 +119,29 @@ def resolve_work_items_sources_for_repositories(organization_key, repositories):
         return db.process_exception("Resolve work items sources for repositories failed", exc)
     except Exception as e:
         return db.failure_message('Resolve work items sources for repositories failed', e)
+
+
+def populate_work_items_source_file_changes_for_commits(organization_key, commit_details):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.populate_work_item_source_file_changes_for_commits(
+                    session, commit_details)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Populate work items source file changes for commits failed", exc)
+    except Exception as e:
+        return db.failure_message('Populate work items source file changes for commits failed', e)
+
+
+def populate_work_items_source_file_changes_for_work_items(organization_key, work_items_commits):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.populate_work_item_source_file_changes_for_work_items(
+                    session, work_items_commits)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Populate work items source file changes for work items failed", exc)
+    except Exception as e:
+        return db.failure_message('Populate work items source file changes for work items failed', e)

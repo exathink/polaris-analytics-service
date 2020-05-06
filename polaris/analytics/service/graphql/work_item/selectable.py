@@ -8,27 +8,23 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam, and_, func, case
-from datetime import datetime, timedelta
+from sqlalchemy import select, bindparam, and_, func
 
-from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
-from polaris.utils.exceptions import ProcessingException
 from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
     work_items_commits, repositories, commits, \
-    work_items_sources, work_item_delivery_cycles, work_items_source_state_map,\
+    work_items_sources, work_item_delivery_cycles, work_items_source_state_map, \
     work_item_delivery_cycle_durations
-
-from polaris.analytics.db.enums import WorkItemsStateType
 
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
-    WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics
+    WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics, \
+    WorkItemStateDetails
 
+from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
     work_item_events_connection_apply_time_window_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
-
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 
 
@@ -232,6 +228,53 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
 # -----------------------------
 # Work Item Interface Resolvers
 # -----------------------------
+
+class WorkItemsWorkItemStateDetails(InterfaceResolver):
+    interface = WorkItemStateDetails
+
+    @staticmethod
+    def interface_selector(work_item_nodes, **kwargs):
+        return select([
+            work_item_nodes.c.id,
+            func.json_build_object(
+                'current_state_transition',
+                func.json_build_object(
+                    'event_date', func.min(work_item_state_transitions.c.created_at),
+                    'seq_no', func.min(work_item_state_transitions.c.seq_no),
+                    'previous_state', func.min(work_item_state_transitions.c.previous_state),
+                    'new_state', func.min(work_item_state_transitions.c.state)
+                ),
+                'current_delivery_cycle_durations',
+                func.json_agg(
+                    func.json_build_object(
+                        'state', work_item_delivery_cycle_durations.c.state,
+                        'state_type', work_items_source_state_map.c.state_type,
+                        'days_in_state', work_item_delivery_cycle_durations.c.cumulative_time_in_state/(1.0*3600*24)
+                    )
+                )
+            ).label('work_item_state_details')
+
+        ]).select_from(
+            work_item_nodes.outerjoin(
+                work_items, work_items.c.id == work_item_nodes.c.id
+            ).outerjoin(
+                work_item_state_transitions,
+                and_(
+                    work_item_state_transitions.c.work_item_id == work_items.c.id,
+                    work_item_state_transitions.c.seq_no == work_items.c.next_state_seq_no - 1
+                )
+            ).outerjoin(
+                work_item_delivery_cycle_durations,
+                work_item_delivery_cycle_durations.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+            ).outerjoin(
+                work_items_source_state_map,
+                and_(
+                    work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state,
+                    work_items_source_state_map.c.work_items_source_id == work_items.c.work_items_source_id
+                )
+            )
+        ).group_by(work_item_nodes.c.id)
+
 
 class WorkItemsCommitSummary(InterfaceResolver):
     interface = CommitSummary

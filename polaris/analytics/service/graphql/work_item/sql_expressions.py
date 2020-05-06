@@ -47,10 +47,23 @@ def work_item_info_columns(work_items):
         work_items.c.url,
         work_items.c.state,
         work_items.c.state_type,
-        work_items.c.tags,
         work_items.c.created_at,
         work_items.c.updated_at,
         work_items.c.is_bug
+    ]
+
+
+def work_item_info_group_expr_columns(work_items):
+    return [
+        func.min(work_items.c.display_id).label('display_id'),
+        func.min(work_items.c.description).label('description'),
+        func.min(work_items.c.work_item_type).label('work_item_type'),
+        func.min(work_items.c.url).label('url'),
+        func.min(work_items.c.state).label('state'),
+        func.min(work_items.c.state_type).label('state_type'),
+        func.min(work_items.c.created_at).label('created_at'),
+        func.min(work_items.c.updated_at).label('updated_at'),
+        func.bool_or(work_items.c.is_bug).label('is_bug')
     ]
 
 
@@ -64,7 +77,6 @@ def work_item_event_columns(work_items, work_item_state_transitions):
         work_items.c.url,
         work_items.c.state,
         work_items.c.state_type,
-        work_items.c.tags,
         work_items.c.created_at,
         work_items.c.updated_at,
         work_items.c.is_bug,
@@ -148,6 +160,15 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
     if 'defects_only' in kwargs:
         select_stmt = select_stmt.where(work_items.c.is_bug == True)
 
+    if 'active_only' in kwargs:
+        select_stmt = select_stmt.where(
+            work_items.c.state_type.in_([
+                WorkItemsStateType.open.value,
+                WorkItemsStateType.wip.value,
+                WorkItemsStateType.complete.value
+            ])
+        )
+
     return select_stmt
 
 
@@ -184,8 +205,6 @@ def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, 
         select_stmt = select_stmt.where(
             work_item_delivery_cycles.c.end_date >= window_start
         )
-    if 'active_only' in kwargs:
-        select_stmt = select_stmt.where(work_item_delivery_cycles.c.end_date == None)
 
     return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
 

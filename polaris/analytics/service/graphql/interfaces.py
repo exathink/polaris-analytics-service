@@ -9,6 +9,7 @@
 # Author: Krishna Kumar
 
 import graphene
+from datetime import datetime
 
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.graphql.interfaces import NamedNode
@@ -120,7 +121,6 @@ class WorkItemInfo(graphene.Interface):
     url = graphene.String(required=True)
     description = graphene.String(required=False)
     state = graphene.String(required=True)
-    tags = graphene.Field(graphene.List(graphene.String, required=True))
     created_at = graphene.DateTime(required=True)
     updated_at = graphene.DateTime(required=True)
     is_bug = graphene.Boolean(required=True)
@@ -134,9 +134,36 @@ class WorkItemStateTransition(graphene.Interface):
     new_state = graphene.String(required=True)
 
 
+class WorkItemStateTransitionImpl(graphene.ObjectType):
+    class Meta:
+        interfaces = (WorkItemStateTransition,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            self.event_date = datetime.strptime(self.event_date, "%Y-%m-%dT%H:%M:%S.%f")
+        except ValueError:
+            self.event_date = datetime.strptime(self.event_date, "%Y-%m-%dT%H:%M:%S")
+
+
 class WorkItemEventSpan(graphene.Interface):
     earliest_work_item_event = graphene.DateTime(required=False)
     latest_work_item_event = graphene.DateTime(required=False)
+
+
+class WorkItemDaysInState(graphene.ObjectType):
+    state = graphene.String(required=True)
+    state_type = graphene.String(required=True)
+    days_in_state = graphene.Float(required=False)
+
+
+class WorkItemStateDetail(graphene.ObjectType):
+    current_state_transition = graphene.Field(WorkItemStateTransitionImpl, required=False)
+    current_delivery_cycle_durations = graphene.List(WorkItemDaysInState, required=False)
+
+
+class WorkItemStateDetails(graphene.Interface):
+    work_item_state_details = graphene.Field(WorkItemStateDetail, required=False)
 
 
 class AccountInfo(graphene.Interface):

@@ -598,7 +598,7 @@ class WorkItemsSource(Base):
 
     def init_state_map(self, state_map_entries=None):
         entries = state_map_entries or self.get_default_state_map()
-        if len(entries) > 0:
+        if len(entries) >= 0:
             state_maps_keys = [mapping['state'] for mapping in entries]
             if len(set(state_maps_keys)) < len(state_maps_keys):
                 raise ProcessingException(f'Invalid state map: duplicate states in the input')
@@ -669,7 +669,6 @@ class WorkItem(Base):
 
     # Work Items Source File Relationship
     source_file_changes = relationship('WorkItemSourceFileChange', cascade='all, delete-orphan')
-
 
     @classmethod
     def find_by_work_item_key(cls, session, work_item_key):

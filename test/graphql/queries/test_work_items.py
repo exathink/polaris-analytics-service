@@ -8,10 +8,11 @@
 
 # Author: Krishna Kumar
 
-from test.fixtures.graphql import *
 from graphene.test import Client
-from polaris.analytics.service.graphql import schema
 
+from polaris.analytics.service.graphql import schema
+from test.fixtures.graphql import *
+from datetime import datetime, timedelta
 
 class TestWorkItemInstance:
 
@@ -47,7 +48,6 @@ class TestWorkItemInstance:
                     workItemType
                     updatedAt
                     url
-                    tags
                     stateType
                     isBug
                 }
@@ -62,7 +62,6 @@ class TestWorkItemInstance:
         assert work_item['workItemType'] == work_items_common['work_item_type']
         assert work_item['updatedAt'] == get_date("2018-12-03").isoformat()
         assert work_item['url'] == work_items_common['url']
-        assert work_item['tags'] == work_items_common['tags']
         assert work_item['stateType'] == work_items_common['state_type']
         assert work_item['isBug'] == work_items_common['is_bug']
 
@@ -78,7 +77,6 @@ class TestWorkItemInstance:
                     workItemType
                     updatedAt
                     url
-                    tags
                     earliestCommit
                     latestCommit
                     commitCount
@@ -95,7 +93,6 @@ class TestWorkItemInstance:
         assert work_item['workItemType'] == work_items_common['work_item_type']
         assert work_item['updatedAt'] == get_date("2018-12-03").isoformat()
         assert work_item['url'] == work_items_common['url']
-        assert work_item['tags'] == work_items_common['tags']
         assert work_item['earliestCommit'] == get_date("2020-01-29").isoformat()
         assert work_item['latestCommit'] == get_date("2020-02-05").isoformat()
         assert work_item['commitCount'] == 2
@@ -191,6 +188,90 @@ class TestWorkItemInstance:
             for node in map(lambda edge: edge['node'], edges):
                 assert node['workItemsSourceName']
                 assert node['workItemsSourceKey']
+
+    class TestWorkItemInstanceWorkItemStateDetails:
+
+        def it_returns_current_state_transition(self, setup_work_item_transitions):
+            new_work_items = setup_work_item_transitions
+            work_item_key = new_work_items[0]['key']
+
+            client = Client(schema)
+            query = """
+                        query getWorkItem($key:String!) {
+                            workItem(key: $key, interfaces:[WorkItemStateDetails]){
+                                ... on WorkItemStateDetails {
+                                    workItemStateDetails {
+                                        currentStateTransition {
+                                            eventDate
+                                            
+                                        }
+                                    }
+                                }
+                            }
+                        } 
+                    """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            work_item_state_details = result['data']['workItem']['workItemStateDetails']
+            assert work_item_state_details['currentStateTransition']['eventDate']
+
+        def it_returns_current_delivery_cycle_durations(self, api_work_items_import_fixture):
+            organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+            api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+            work_item_key = uuid.uuid4().hex
+            start_date = datetime.utcnow() - timedelta(days=10)
+            api_helper.import_work_items([
+                    dict(
+                        key=work_item_key,
+                        name='Issue 1',
+                        display_id='1000',
+                        state='backlog',
+                        created_at=start_date,
+                        updated_at=start_date,
+                        **work_items_common
+                    )
+                ]
+            )
+
+            api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+            api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+            api_helper.update_work_items([(0, 'done', start_date + timedelta(days=4))])
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces:[WorkItemStateDetails]){
+                            ... on WorkItemStateDetails {
+                                workItemStateDetails {
+                                    currentStateTransition {
+                                        eventDate
+                                    }
+                                    currentDeliveryCycleDurations {
+                                        state
+                                        stateType
+                                        daysInState
+                                    }
+                                }
+                            }
+                        }
+                    } 
+                """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            work_item_state_details = result['data']['workItem']['workItemStateDetails']
+            assert work_item_state_details['currentStateTransition']['eventDate']
+            assert {
+                (record['state'], record['daysInState'])
+                for record in work_item_state_details['currentDeliveryCycleDurations']
+            } == {
+                ('created', 0.0),
+                ('backlog', 1.0),
+                ('upnext', 1.0),
+                ('doing', 2.0),
+                ('done', None)
+            }
+
 
 
     class TestWorkItemInstanceCommits:

@@ -10,14 +10,16 @@
 
 import graphene
 
-from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin
+from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin, WorkItemStateDetailsResolverMixin
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, \
-    WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics
+    WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics, \
+    WorkItemStateDetails
 
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
-    WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics
+    WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics, \
+    WorkItemsWorkItemStateDetails
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -203,6 +205,7 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
 class WorkItem(
     # interface resolver mixins
     NamedNodeResolverMixin,
+    WorkItemStateDetailsResolverMixin,
 
     # Connection Mixins
     WorkItemEventsConnectionMixin,
@@ -212,10 +215,11 @@ class WorkItem(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef, CommitSummary)
+        interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef, CommitSummary, WorkItemStateDetails)
         named_node_resolver = WorkItemNode
         interface_resolvers = {
-            'CommitSummary': WorkItemsCommitSummary
+            'CommitSummary': WorkItemsCommitSummary,
+            'WorkItemStateDetails': WorkItemsWorkItemStateDetails,
         }
         connection_node_resolvers = {
             'work_item_events': WorkItemEventNodes,
@@ -246,10 +250,15 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             graphene.Int,
             required=False,
             description="Return work items last updated within the specified number of days. "
-                        "If before is specified, it returns work items with commit dates"
+                        "If before is specified, it returns work items updated "
                         "between (before - days) and before"
                         "If before is not specified the it returns work items for the"
                         "previous n days starting from utc now"
+        ),
+        active_only=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            description="Return only delivery cycles that are not closed"
         ),
         defects_only=graphene.Argument(
             graphene.Boolean,
@@ -267,6 +276,30 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
         return WorkItem.resolve_connection(
             self.get_connection_resolver_context('work_items'),
             self.get_connection_node_resolver('work_items'),
+            self.get_instance_query_params(),
+            **kwargs
+        )
+
+
+class RecentlyActiveWorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
+    recently_active_work_items = WorkItem.ConnectionField(
+        before=graphene.Argument(
+            graphene.DateTime,
+            required=False,
+            description="End date of period to search for commit activity. If not specified it defaults to utc now"
+        ),
+        days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            default_value=7,
+            description="Return work items with commits within the specified number of days"
+        )
+    )
+
+    def resolve_recently_active_work_items(self, info, **kwargs):
+        return WorkItem.resolve_connection(
+            self.get_connection_resolver_context('recently_active_work_items'),
+            self.get_connection_node_resolver('recently_active_work_items'),
             self.get_instance_query_params(),
             **kwargs
         )

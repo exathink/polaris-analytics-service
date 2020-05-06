@@ -26,24 +26,24 @@ from ..summary_mixins import \
 
 from ..selectable_field_mixins import CumulativeCommitCountResolverMixin, WeeklyContributorCountsResolverMixin
 
-
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
 from ..work_items_source import WorkItemsSourcesConnectionMixin
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin, \
-    WorkItemDeliveryCyclesConnectionMixin
+    WorkItemDeliveryCyclesConnectionMixin, RecentlyActiveWorkItemsConnectionMixin
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
     ProjectContributorNodes, \
-    ProjectCommitNodes,\
-    ProjectWorkItemsSourceNodes,\
+    ProjectCommitNodes, \
+    ProjectWorkItemsSourceNodes, \
     ProjectsContributorCount, \
     ProjectsCommitSummary, \
     ProjectsRepositoryCount, \
     ProjectsOrganizationRef, \
     ProjectsArchivedStatus, \
+    ProjectRecentlyActiveWorkItemsNodes, \
     ProjectRecentlyActiveRepositoriesNodes, \
     ProjectRecentlyActiveContributorNodes, \
     ProjectCumulativeCommitCount, \
@@ -56,7 +56,6 @@ from .selectables import ProjectNode, \
     ProjectCycleMetrics, \
     ProjectWorkItemDeliveryCycleNodes
 
-
 from polaris.graphql.connection_utils import CountableConnection
 
 
@@ -68,6 +67,7 @@ class Project(
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
+    RecentlyActiveWorkItemsConnectionMixin,
     RecentlyActiveRepositoriesConnectionMixin,
     RecentlyActiveContributorsConnectionMixin,
     CommitsConnectionMixin,
@@ -116,6 +116,7 @@ Implicit Interfaces: ArchivedStatus
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
             'contributors': ProjectContributorNodes,
+            'recently_active_work_items': ProjectRecentlyActiveWorkItemsNodes,
             'recently_active_repositories': ProjectRecentlyActiveRepositoriesNodes,
             'recently_active_contributors': ProjectRecentlyActiveContributorNodes,
             'commits': ProjectCommitNodes,
@@ -126,8 +127,8 @@ Implicit Interfaces: ArchivedStatus
             'work_item_delivery_cycles': ProjectWorkItemDeliveryCycleNodes
         }
         selectable_field_resolvers = {
-          'cumulative_commit_count': ProjectCumulativeCommitCount,
-          'weekly_contributor_counts': ProjectWeeklyContributorCount
+            'cumulative_commit_count': ProjectCumulativeCommitCount,
+            'weekly_contributor_counts': ProjectWeeklyContributorCount
         }
         connection_class = lambda: Projects
 
@@ -169,8 +170,6 @@ Implicit Interfaces: ArchivedStatus
         return cls.resolve_instance(key=project_key, **kwargs)
 
 
-
-
 class Projects(
     ActivityLevelSummaryResolverMixin,
     InceptionsResolverMixin,
@@ -182,7 +181,6 @@ class Projects(
 
 
 class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
-
     projects = Project.ConnectionField(
         contributor_count_days=graphene.Argument(
             graphene.Int,
@@ -203,7 +201,6 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
 
 class RecentlyActiveProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
-
     recently_active_projects = Project.ConnectionField(
         before=graphene.Argument(
             graphene.DateTime,

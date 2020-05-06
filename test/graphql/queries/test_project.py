@@ -160,51 +160,7 @@ class TestProjectContributorCount:
         project = result['data']['project']
         assert project['contributorCount'] == 0
 
-@pytest.yield_fixture
-def api_work_items_import_fixture(org_repo_fixture):
-    organization, projects, _ = org_repo_fixture
 
-    project = projects['mercury']
-    work_items_source = WorkItemsSource(
-        key=uuid.uuid4(),
-        organization_key=organization.key,
-        integration_type='jira',
-        commit_mapping_scope='repository',
-        commit_mapping_scope_key=None,
-        project_id=project.id,
-        **work_items_source_common
-    )
-    work_items_source.init_state_map(
-        [
-            dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
-            dict(state='upnext', state_type=WorkItemsStateType.open.value),
-            dict(state='doing', state_type=WorkItemsStateType.wip.value),
-            dict(state='done', state_type=WorkItemsStateType.complete.value),
-            dict(state='closed', state_type=WorkItemsStateType.closed.value),
-        ]
-    )
-
-    with db.orm_session() as session:
-        session.add(organization)
-        organization.work_items_sources.append(work_items_source)
-
-    work_items_common = dict(
-        is_bug=True,
-        work_item_type='issue',
-        url='http://foo.com',
-        tags=['ares2'],
-        description='foo',
-        source_id=str(uuid.uuid4()),
-    )
-
-    yield organization, project, work_items_source, work_items_common
-
-    db.connection().execute("delete  from analytics.work_item_state_transitions")
-    db.connection().execute("delete  from analytics.work_item_delivery_cycle_durations")
-    db.connection().execute("delete  from analytics.work_item_delivery_cycles")
-    db.connection().execute("delete  from analytics.work_items")
-    db.connection().execute("delete  from analytics.work_items_source_state_map")
-    db.connection().execute("delete  from analytics.work_items_sources")
 
 
 
@@ -225,7 +181,6 @@ class TestProjectWorkItems:
                               createdAt
                               updatedAt
                               url
-                              tags
                               stateType
                             }
                         }
@@ -242,7 +197,6 @@ class TestProjectWorkItems:
             assert node['displayId']
             assert node['state']
             assert node['workItemType']
-            assert node['tags']
             assert node['url']
             assert node['updatedAt']
             assert node['createdAt']
@@ -262,7 +216,6 @@ class TestProjectWorkItems:
                               state
                               workItemType
                               url
-                              tags
                               earliestCommit
                               latestCommit
                               commitCount
@@ -281,7 +234,6 @@ class TestProjectWorkItems:
             assert node['displayId'] == "1001"
             assert node['state'] == work_items_common['state']
             assert node['workItemType'] == work_items_common['work_item_type']
-            assert node['tags'] == work_items_common['tags']
             assert node['url'] == work_items_common['url']
             assert node['earliestCommit'] == get_date("2020-01-29").isoformat()
             assert node['latestCommit'] == get_date("2020-02-05").isoformat()
@@ -1476,7 +1428,6 @@ class TestProjectWorkItemDeliveryCycles:
                                                     url
                                                     description
                                                     state
-                                                    tags
                                                     createdAt
                                                     updatedAt
                                                     stateType
@@ -1497,7 +1448,6 @@ class TestProjectWorkItemDeliveryCycles:
             assert node['description']
             assert node['state']
             assert node['stateType']
-            assert node['tags']
             assert node['createdAt']
             assert node['updatedAt']
 

@@ -1095,11 +1095,12 @@ def populate_work_item_source_file_changes_for_work_items(session, work_items_co
 
 
 #####################################################################
-# Methods called from mutation update_work_items_source_state_mapping
+# Methods required to update all delivery cycle dependent data
+# whenever source state mapping is updated
 #####################################################################
 
 def delete_work_items_source_delivery_cycle_durations(session, work_items_source_id):
-    session.execute(
+    session.connection().execute(
         work_item_delivery_cycle_durations.delete().where(
             work_item_delivery_cycle_durations.c.delivery_cycle_id.in_(select([
                 work_item_delivery_cycles.c.delivery_cycle_id
@@ -1115,7 +1116,7 @@ def delete_work_items_source_delivery_cycle_durations(session, work_items_source
 
 
 def delete_work_items_source_delivery_cycle_contributors(session, work_items_source_id):
-    session.execute(
+    session.connection().execute(
         work_item_delivery_cycle_contributors.delete().where(
             work_item_delivery_cycle_contributors.c.delivery_cycle_id.in_(select([
                 work_item_delivery_cycles.c.delivery_cycle_id
@@ -1131,13 +1132,26 @@ def delete_work_items_source_delivery_cycle_contributors(session, work_items_sou
 
 
 def delete_work_items_source_source_file_changes(session, work_items_source_id):
-    session.execute(
+    session.connection().execute(
         work_item_source_file_changes.delete().where(
             work_item_source_file_changes.c.work_item_id.in_(select([
                 work_items.c.id
             ]).where(
                     work_items.c.work_items_source_id == work_items_source_id
                 )
+            )
+        )
+    )
+
+
+def delete_work_items_source_delivery_cycles(session, work_items_source_id):
+    session.connection().execute(
+        work_item_delivery_cycles.delete().where(
+            work_item_delivery_cycles.c.work_item_id.in_(select([
+                work_items.c.id
+            ]).where(
+                work_items.c.work_items_source_id == work_items_source_id
+            )
             )
         )
     )
@@ -1244,9 +1258,108 @@ def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id
     ).rowcount
 
 
+def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
+    # insert initial delivery cycles
+
+    session.connection().execute(
+        insert(work_item_delivery_cycles).from_select(
+            [
+                'work_item_id',
+                'start_seq_no',
+                'start_date'
+            ],
+            select([
+                work_item_state_transitions.c.work_item_id,
+                work_item_state_transitions.c.seq_no.label('start_seq_no'),
+                work_item_state_transitions.c.created_at.label('start_date')
+            ]).select_from(
+                work_item_state_transitions.join(
+                    work_items, work_items.c.id == work_item_state_transitions.c.work_item_id
+                )
+            ).where(
+                and_(
+                    work_item_state_transitions.c.seq_no == 0,
+                    work_items.c.work_items_source_id == work_items_source_id
+                )
+            )
+        )
+    )
+
+    # insert subsequent delivery cycles for reopened issues
+    session.connection().execute(
+        insert(work_item_delivery_cycles).from_select(
+            [
+                'work_item_id',
+                'start_seq_no',
+                'start_date'
+            ],
+            select([
+                work_item_state_transitions.c.work_item_id,
+                work_item_state_transitions.c.seq_no.label('start_seq_no'),
+                work_item_state_transitions.c.created_at.label('start_date')
+            ]).select_from(
+                work_item_state_transitions.join(
+                    work_items, work_items.c.id == work_item_state_transitions.c.work_item_id
+                )
+            ).where(
+                and_(
+                    work_item_state_transitions.c.previous_state == work_items_source_state_map.c.state,
+                    work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value,
+                    work_items_source_state_map.c.work_items_source_id == work_items_source_id,
+                    work_items.c.work_items_source_id == work_items_source_id
+                )
+            )
+        )
+    )
+
+    # update delivery cycles for work_items transitioning to closed state_type
+    session.connection().execute(
+        work_item_delivery_cycles.update().values(
+            end_seq_no=work_item_state_transitions.c.seq_no,
+            end_date=work_item_state_transitions.c.created_at,
+            lead_time=extract('epoch', work_item_state_transitions.c.created_at) - \
+                      extract('epoch', work_item_delivery_cycles.c.start_date)
+        ).where(
+            and_(
+                work_item_delivery_cycles.c.work_item_id == work_item_state_transitions.c.work_item_id,
+                work_item_state_transitions.c.state == work_items_source_state_map.c.state,
+                work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value,
+                work_items_source_state_map.c.work_items_source_id == work_items_source_id,
+                work_item_delivery_cycles.c.start_date < work_item_state_transitions.c.created_at
+            )
+        )
+    )
+
+    # update current_delivery_cycle_id for work items
+    latest_delivery_cycle = select([
+        work_item_delivery_cycles.c.work_item_id.label('work_item_id'),
+        (func.max(work_item_delivery_cycles.c.delivery_cycle_id)).label('delivery_cycle_id'),
+    ]).select_from(
+        work_item_delivery_cycles.join(
+            work_items, work_items.c.id == work_item_delivery_cycles.c.work_item_id
+        )).where(
+        work_items.c.work_items_source_id == work_items_source_id
+    ).group_by(
+        work_item_delivery_cycles.c.work_item_id
+    ).alias()
+
+    updated = session.connection().execute(
+        work_items.update().where(
+            work_items.c.work_items_source_id == work_items_source_id
+        ).values(
+            current_delivery_cycle_id=select([
+                latest_delivery_cycle.c.delivery_cycle_id.label('current_delivery_cycle_id')
+            ]).where(
+                latest_delivery_cycle.c.work_item_id == work_items.c.id
+            )
+        )
+    )
+    return updated
+
+
 def update_work_items_source_delivery_cycles(session, work_items_source_id):
     # set current_delivery_cycle_id to none for work items in given source
-    session.execute(
+    session.connection().execute(
         work_items.update().values(
             current_delivery_cycle_id=None
         ).where(
@@ -1310,7 +1423,7 @@ def update_work_items_source_delivery_cycles(session, work_items_source_id):
         )
     )
 
-    # delete work_item_source_file_changes for work items in given work items source
+    # delete work_item_source_file_changes for work items for given work items source
     delete_work_items_source_source_file_changes(session, work_items_source_id)
 
     # delete all work_item_delivery_cycle_contributors for given work items source
@@ -1320,120 +1433,21 @@ def update_work_items_source_delivery_cycles(session, work_items_source_id):
     delete_work_items_source_delivery_cycle_durations(session, work_items_source_id)
 
     # delete all delivery cycles for given work items source
-    session.execute(
-        work_item_delivery_cycles.delete().where(
-            work_item_delivery_cycles.c.work_item_id.in_(select([
-                work_items.c.id
-            ]).where(
-                work_items.c.work_items_source_id == work_items_source_id
-            )
-            )
-        )
-    )
+    delete_work_items_source_delivery_cycles(session, work_items_source_id)
 
-    # insert initial delivery cycles
-
-    session.execute(
-        insert(work_item_delivery_cycles).from_select(
-            [
-                'work_item_id',
-                'start_seq_no',
-                'start_date'
-            ],
-            select([
-                work_item_state_transitions.c.work_item_id,
-                work_item_state_transitions.c.seq_no.label('start_seq_no'),
-                work_item_state_transitions.c.created_at.label('start_date')
-            ]).select_from(
-                work_item_state_transitions.join(
-                    work_items, work_items.c.id == work_item_state_transitions.c.work_item_id
-                )
-            ).where(
-                and_(
-                    work_item_state_transitions.c.seq_no == 0,
-                    work_items.c.work_items_source_id == work_items_source_id
-                )
-            )
-        )
-    )
-
-    # insert subsequent delivery cycles for reopened issues
-    session.execute(
-        insert(work_item_delivery_cycles).from_select(
-            [
-                'work_item_id',
-                'start_seq_no',
-                'start_date'
-            ],
-            select([
-                work_item_state_transitions.c.work_item_id,
-                work_item_state_transitions.c.seq_no.label('start_seq_no'),
-                work_item_state_transitions.c.created_at.label('start_date')
-            ]).select_from(
-                work_item_state_transitions.join(
-                    work_items, work_items.c.id == work_item_state_transitions.c.work_item_id
-                )
-            ).where(
-                and_(
-                    work_item_state_transitions.c.previous_state == work_items_source_state_map.c.state,
-                    work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value,
-                    work_items_source_state_map.c.work_items_source_id == work_items_source_id,
-                    work_items.c.work_items_source_id == work_items_source_id
-                )
-            )
-        )
-    )
-
-    # update delivery cycles for work_items transitioning to closed state_type
-    session.execute(
-        work_item_delivery_cycles.update().values(
-            end_seq_no=work_item_state_transitions.c.seq_no,
-            end_date=work_item_state_transitions.c.created_at,
-            lead_time=extract('epoch', work_item_state_transitions.c.created_at) - \
-                      extract('epoch', work_item_delivery_cycles.c.start_date)
-        ).where(
-            and_(
-                work_item_delivery_cycles.c.work_item_id == work_item_state_transitions.c.work_item_id,
-                work_item_state_transitions.c.state == work_items_source_state_map.c.state,
-                work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value,
-                work_items_source_state_map.c.work_items_source_id == work_items_source_id,
-                work_item_delivery_cycles.c.start_date < work_item_state_transitions.c.created_at
-            )
-        )
-    )
-
-    # update current_delivery_cycle_id for work items
-    latest_delivery_cycle = select([
-        work_item_delivery_cycles.c.work_item_id.label('work_item_id'),
-        (func.max(work_item_delivery_cycles.c.delivery_cycle_id)).label('delivery_cycle_id'),
-    ]).select_from(
-        work_item_delivery_cycles.join(
-            work_items, work_items.c.id == work_item_delivery_cycles.c.work_item_id
-        )).where(
-        work_items.c.work_items_source_id == work_items_source_id
-    ).group_by(
-        work_item_delivery_cycles.c.work_item_id
-    ).alias()
-
-    updated = session.execute(
-        work_items.update().where(
-            work_items.c.work_items_source_id == work_items_source_id
-        ).values(
-            current_delivery_cycle_id=select([
-                latest_delivery_cycle.c.delivery_cycle_id.label('current_delivery_cycle_id')
-            ]).where(
-                latest_delivery_cycle.c.work_item_id == work_items.c.id
-            )
-        )
-    )
+    # Recreate delivery cycles for work items for given work items source
+    updated = recreate_work_items_source_delivery_cycles(session, work_items_source_id)
 
     # Recompute and insert the deleted delivery cycle durations, based on new delivery cycles
     recompute_work_items_delivery_cycle_durations(session, work_items_source_id)
+
     # Recompute other delivery cycle fields
     compute_work_item_delivery_cycle_commit_stats(session, work_items_temp)
     compute_implementation_complexity_metrics(session, work_items_temp)
+
     # Repopulate work_item_delivery_cycle_contributors
     compute_contributor_metrics(session, work_items_temp)
+
     # Repopulate work_item_source_file_changes
     populate_work_item_source_file_changes(session, commits_temp)
 

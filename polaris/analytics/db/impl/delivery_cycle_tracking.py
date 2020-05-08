@@ -78,103 +78,6 @@ def initialize_work_item_delivery_cycles(session, work_items_temp):
     )
 
 
-def initialize_work_item_delivery_cycle_durations(session, work_items_temp):
-    # Calculate the start and end date of each state transition from the state transitions table.
-    work_items_state_time_spans = select([
-        work_items.c.current_delivery_cycle_id,
-        work_item_state_transitions.c.state,
-        work_item_state_transitions.c.created_at.label('start_time'),
-        work_item_state_transitions.c.seq_no,
-        (func.lead(work_item_state_transitions.c.created_at).over(
-            partition_by=work_item_state_transitions.c.work_item_id,
-            order_by=work_item_state_transitions.c.seq_no
-        )).label('end_time')
-    ]).select_from(
-        work_items_temp.join(
-            work_items, work_items_temp.c.key == work_items.c.key
-        ).join(
-            work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
-        )
-    ).where(
-        work_items_temp.c.work_item_id == None
-    ).alias()
-
-    # compute the duration in each state from the time_span in each state.
-    work_items_duration_in_state = select([
-        work_items_state_time_spans.c.current_delivery_cycle_id,
-        work_items_state_time_spans.c.state,
-        work_items_state_time_spans.c.start_time,
-        work_items_state_time_spans.c.end_time,
-        (func.trunc(extract('epoch', work_items_state_time_spans.c.end_time) -
-                    extract('epoch', work_items_state_time_spans.c.start_time))).label('duration')
-    ]).select_from(
-        work_items_state_time_spans
-    ).alias()
-
-    # aggregate the cumulative time in each state and insert into the delivery cycle durations table.
-    session.connection().execute(
-        work_item_delivery_cycle_durations.insert().from_select([
-            'delivery_cycle_id',
-            'state',
-            'cumulative_time_in_state'
-        ],
-
-            select([
-                (func.min(work_items_duration_in_state.c.current_delivery_cycle_id)).label('delivery_cycle_id'),
-                work_items_duration_in_state.c.state.label('state'),
-                (func.sum(work_items_duration_in_state.c.duration)).label('cumulative_time_in_state')
-            ]).select_from(
-                work_items_duration_in_state
-            ).group_by(work_items_duration_in_state.c.current_delivery_cycle_id, work_items_duration_in_state.c.state)
-        )
-    )
-
-
-def compute_work_item_delivery_cycles_cycle_time(session, work_items_temp):
-    delivery_cycles_cycle_time = select([
-            work_items.c.current_delivery_cycle_id.label('current_delivery_cycle_id'),
-            func.sum(case(
-                [
-                    (
-                        or_(
-                            work_items_source_state_map.c.state_type == WorkItemsStateType.open.value,
-                            work_items_source_state_map.c.state_type == WorkItemsStateType.wip.value,
-                            work_items_source_state_map.c.state_type == WorkItemsStateType.complete.value
-                        ),
-                        work_item_delivery_cycle_durations.c.cumulative_time_in_state
-                    )
-                ],
-                else_=None
-            )).label('cycle_time')
-            ]).select_from(
-            work_items_temp.join(
-                work_items, work_items_temp.c.key == work_items.c.key
-            ).join(
-                work_item_delivery_cycles, work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
-            ).join(
-                work_item_delivery_cycle_durations, work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
-            ).join(
-                work_items_source_state_map, work_items_source_state_map.c.work_items_source_id == work_items.c.work_items_source_id
-            )).where(
-                and_(work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state,
-                work_item_delivery_cycles.c.end_date != None)
-            ).group_by(
-                work_items.c.current_delivery_cycle_id
-            ).cte('delivery_cycles_cycle_time')
-
-    updated = session.connection().execute(
-        work_item_delivery_cycles.update().where(
-            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_cycle_time.c.current_delivery_cycle_id
-        ).values(
-            cycle_time=delivery_cycles_cycle_time.c.cycle_time
-        )
-    ).rowcount
-
-    return dict(
-        updated=updated
-    )
-
-
 def update_work_item_delivery_cycles(session, work_items_temp):
     # Update end_date and lead_time in delivery cycles for work items transitioning to closed state
     session.connection().execute(
@@ -237,6 +140,58 @@ def update_work_item_delivery_cycles(session, work_items_temp):
 
     # Recompute cycle time for all updated delivery cycles
     compute_work_item_delivery_cycles_cycle_time(session, work_items_temp)
+
+
+def initialize_work_item_delivery_cycle_durations(session, work_items_temp):
+    # Calculate the start and end date of each state transition from the state transitions table.
+    work_items_state_time_spans = select([
+        work_items.c.current_delivery_cycle_id,
+        work_item_state_transitions.c.state,
+        work_item_state_transitions.c.created_at.label('start_time'),
+        work_item_state_transitions.c.seq_no,
+        (func.lead(work_item_state_transitions.c.created_at).over(
+            partition_by=work_item_state_transitions.c.work_item_id,
+            order_by=work_item_state_transitions.c.seq_no
+        )).label('end_time')
+    ]).select_from(
+        work_items_temp.join(
+            work_items, work_items_temp.c.key == work_items.c.key
+        ).join(
+            work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
+        )
+    ).where(
+        work_items_temp.c.work_item_id == None
+    ).alias()
+
+    # compute the duration in each state from the time_span in each state.
+    work_items_duration_in_state = select([
+        work_items_state_time_spans.c.current_delivery_cycle_id,
+        work_items_state_time_spans.c.state,
+        work_items_state_time_spans.c.start_time,
+        work_items_state_time_spans.c.end_time,
+        (func.trunc(extract('epoch', work_items_state_time_spans.c.end_time) -
+                    extract('epoch', work_items_state_time_spans.c.start_time))).label('duration')
+    ]).select_from(
+        work_items_state_time_spans
+    ).alias()
+
+    # aggregate the cumulative time in each state and insert into the delivery cycle durations table.
+    session.connection().execute(
+        work_item_delivery_cycle_durations.insert().from_select([
+            'delivery_cycle_id',
+            'state',
+            'cumulative_time_in_state'
+        ],
+
+            select([
+                (func.min(work_items_duration_in_state.c.current_delivery_cycle_id)).label('delivery_cycle_id'),
+                work_items_duration_in_state.c.state.label('state'),
+                (func.sum(work_items_duration_in_state.c.duration)).label('cumulative_time_in_state')
+            ]).select_from(
+                work_items_duration_in_state
+            ).group_by(work_items_duration_in_state.c.current_delivery_cycle_id, work_items_duration_in_state.c.state)
+        )
+    )
 
 
 def update_work_item_delivery_cycle_durations(session, work_items_temp):
@@ -308,6 +263,100 @@ def update_work_item_delivery_cycle_durations(session, work_items_temp):
     )
 
 
+def compute_work_item_delivery_cycles_cycle_time(session, work_items_temp):
+    delivery_cycles_cycle_time = select([
+            work_items.c.current_delivery_cycle_id.label('current_delivery_cycle_id'),
+            func.sum(case(
+                [
+                    (
+                        or_(
+                            work_items_source_state_map.c.state_type == WorkItemsStateType.open.value,
+                            work_items_source_state_map.c.state_type == WorkItemsStateType.wip.value,
+                            work_items_source_state_map.c.state_type == WorkItemsStateType.complete.value
+                        ),
+                        work_item_delivery_cycle_durations.c.cumulative_time_in_state
+                    )
+                ],
+                else_=None
+            )).label('cycle_time')
+            ]).select_from(
+            work_items_temp.join(
+                work_items, work_items_temp.c.key == work_items.c.key
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+            ).join(
+                work_item_delivery_cycle_durations, work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+            ).join(
+                work_items_source_state_map, work_items_source_state_map.c.work_items_source_id == work_items.c.work_items_source_id
+            )).where(
+                and_(work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state,
+                work_item_delivery_cycles.c.end_date != None)
+            ).group_by(
+                work_items.c.current_delivery_cycle_id
+            ).cte('delivery_cycles_cycle_time')
+
+    updated = session.connection().execute(
+        work_item_delivery_cycles.update().where(
+            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_cycle_time.c.current_delivery_cycle_id
+        ).values(
+            cycle_time=delivery_cycles_cycle_time.c.cycle_time
+        )
+    ).rowcount
+
+    return dict(
+        updated=updated
+    )
+
+
+def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
+
+    # select relevant rows to find various metrics
+    delivery_cycles_commits_rows = select([
+        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        func.min(commits.c.commit_date).label('earliest_commit'),
+        func.max(commits.c.commit_date).label('latest_commit'),
+        func.count(distinct(commits.c.id)).label('commit_count'),
+        func.count(distinct(commits.c.repository_id)).label('repository_count')
+    ]).select_from(
+        work_items_temp.join(
+            work_items, work_items.c.key == work_items_temp.c.work_item_key
+        ).join(
+            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+        ).join(
+            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+        ).join(
+            commits, work_items_commits_table.c.commit_id == commits.c.id
+        )
+    ).where(
+        and_(
+            work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
+            or_(
+                work_item_delivery_cycles.c.end_date == None,
+                commits.c.commit_date <= work_item_delivery_cycles.c.end_date
+            )
+        )
+    ).group_by(
+        work_item_delivery_cycles.c.delivery_cycle_id,
+
+    ).cte('delivery_cycles_commits_rows')
+
+    # update relevant work items delivery cycles with relevant metrics
+    updated = session.connection().execute(
+        work_item_delivery_cycles.update().where(
+            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
+        ).values(
+            earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
+            latest_commit=delivery_cycles_commits_rows.c.latest_commit,
+            commit_count=delivery_cycles_commits_rows.c.commit_count,
+            repository_count=delivery_cycles_commits_rows.c.repository_count,
+        )
+    ).rowcount
+
+    return dict(
+        updated=updated
+    )
+
+
 def update_work_items_commits_stats(session, organization_key, work_items_commits):
     # The following commit stats are calculated and updated for each work_item_delivery_cycle
     # 1. earliest_commit, latest_commit: earliest and latest commit for a work item delivery cycle
@@ -343,47 +392,9 @@ def update_work_items_commits_stats(session, organization_key, work_items_commit
             )
         )
 
-        # select relevant rows to find various metrics
-        delivery_cycles_commits_rows = select([
-            work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-            func.min(commits.c.commit_date).label('earliest_commit'),
-            func.max(commits.c.commit_date).label('latest_commit'),
-            func.count(distinct(commits.c.id)).label('commit_count'),
-            func.count(distinct(commits.c.repository_id)).label('repository_count')
-        ]).select_from(
-            work_items_temp.join(
-                work_items, work_items.c.key == work_items_temp.c.work_item_key
-            ).join(
-                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-            ).join(
-                work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
-            ).join(
-                commits, work_items_commits_table.c.commit_id == commits.c.id
-            )
-        ).where(
-            and_(
-                work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
-                or_(
-                    work_item_delivery_cycles.c.end_date == None,
-                    commits.c.commit_date <= work_item_delivery_cycles.c.end_date
-                )
-            )
-        ).group_by(
-            work_item_delivery_cycles.c.delivery_cycle_id,
+        result = compute_work_item_delivery_cycle_commit_stats(session, work_items_temp)
+        updated = result['updated']
 
-        ).cte('delivery_cycles_commits_rows')
-
-        # update relevant work items delivery cycles with relevant metrics
-        updated = session.connection().execute(
-            work_item_delivery_cycles.update().where(
-                work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
-            ).values(
-                earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
-                latest_commit=delivery_cycles_commits_rows.c.latest_commit,
-                commit_count=delivery_cycles_commits_rows.c.commit_count,
-                repository_count=delivery_cycles_commits_rows.c.repository_count,
-            )
-        ).rowcount
     return dict(
         updated=updated
     )
@@ -1085,7 +1096,6 @@ def populate_work_item_source_file_changes_for_work_items(session, work_items_co
 
 #####################################################################
 # Methods called from mutation update_work_items_source_state_mapping
-# All code duplicated below should be eliminated
 #####################################################################
 
 def delete_work_items_source_delivery_cycle_durations(session, work_items_source_id):
@@ -1095,7 +1105,6 @@ def delete_work_items_source_delivery_cycle_durations(session, work_items_source
                 work_item_delivery_cycles.c.delivery_cycle_id
             ]).where(
                 and_(
-                    work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id,
                     work_items.c.id == work_item_delivery_cycles.c.work_item_id,
                     work_items.c.work_items_source_id == work_items_source_id
                 )
@@ -1112,11 +1121,23 @@ def delete_work_items_source_delivery_cycle_contributors(session, work_items_sou
                 work_item_delivery_cycles.c.delivery_cycle_id
             ]).where(
                 and_(
-                    work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id,
                     work_items.c.id == work_item_delivery_cycles.c.work_item_id,
                     work_items.c.work_items_source_id == work_items_source_id
                 )
             )
+            )
+        )
+    )
+
+
+def delete_work_items_source_source_file_changes(session, work_items_source_id):
+    session.execute(
+        work_item_source_file_changes.delete().where(
+            work_item_source_file_changes.c.work_item_id.in_(select([
+                work_items.c.id
+            ]).where(
+                    work_items.c.work_items_source_id == work_items_source_id
+                )
             )
         )
     )
@@ -1177,102 +1198,6 @@ def recompute_work_items_delivery_cycle_durations(session, work_items_source_id)
     )
 
 
-def repopulate_work_item_delivery_cycle_contributors(session, work_items_source_id):
-    # The following metrics are calculated and updated for each work_item_delivery_cycle_contributor
-    # 1. total_lines_as_author
-    # 2. total_lines_as_reviewer
-
-    # select relevant rows to find various metrics
-    delivery_cycles_contributor_commits = select([
-        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-        contributor_aliases.c.id.label('contributor_alias_id'),
-        func.sum(
-            case(
-                [
-                    (
-                        and_(commits.c.num_parents == 1,
-                             contributor_aliases.c.id == commits.c.author_contributor_alias_id),
-                        cast(commits.c.stats["lines"].astext, Integer)
-                    )
-                ],
-                else_=0
-            )
-        ).label('total_lines_as_author'),
-        func.sum(
-            case(
-                [
-                    (
-                        or_(
-                            and_(
-                                commits.c.num_parents > 1,
-                                contributor_aliases.c.id == commits.c.committer_contributor_alias_id
-                            ),
-                            and_(
-                                commits.c.num_parents == 1,
-                                contributor_aliases.c.id == commits.c.committer_contributor_alias_id,
-                                commits.c.committer_contributor_alias_id != commits.c.author_contributor_alias_id
-                            )
-                        ),
-                        cast(commits.c.stats["lines"].astext, Integer)
-                    )
-                ],
-                else_=0
-            )
-        ).label('total_lines_as_reviewer'),
-    ]).select_from(
-        work_item_delivery_cycles.join(
-            work_items, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-        ).join(
-            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
-        ).join(
-            commits, work_items_commits_table.c.commit_id == commits.c.id
-        ).join(
-            contributor_aliases, or_(
-                contributor_aliases.c.id == commits.c.author_contributor_alias_id,
-                contributor_aliases.c.id == commits.c.committer_contributor_alias_id
-            )
-        )
-    ).where(
-        and_(
-            work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
-            or_(
-                work_item_delivery_cycles.c.end_date == None,
-                commits.c.commit_date <= work_item_delivery_cycles.c.end_date
-            ),
-            work_items.c.work_items_source_id == work_items_source_id
-        )
-    ).group_by(
-        work_item_delivery_cycles.c.delivery_cycle_id, contributor_aliases.c.id
-
-    ).cte('delivery_cycles_contributor_commits')
-
-    # upsert work items delivery cycle contributors with relevant metrics
-    upsert_stmt = insert(work_item_delivery_cycle_contributors).from_select(
-        ['delivery_cycle_id', 'contributor_alias_id', 'total_lines_as_author', 'total_lines_as_reviewer'],
-        select(
-            [
-                delivery_cycles_contributor_commits.c.delivery_cycle_id,
-                delivery_cycles_contributor_commits.c.contributor_alias_id,
-                delivery_cycles_contributor_commits.c.total_lines_as_author,
-                delivery_cycles_contributor_commits.c.total_lines_as_reviewer
-            ]
-        ).select_from(
-            delivery_cycles_contributor_commits
-        )
-
-    )
-
-    updated = session.connection().execute(
-        upsert_stmt.on_conflict_do_update(
-            index_elements=['delivery_cycle_id', 'contributor_alias_id'],
-            set_=dict(
-                total_lines_as_author=upsert_stmt.excluded.total_lines_as_author,
-                total_lines_as_reviewer=upsert_stmt.excluded.total_lines_as_reviewer
-            )
-        )
-    ).rowcount
-
-
 def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id):
     delivery_cycles_cycle_time = select([
         work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
@@ -1319,182 +1244,6 @@ def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id
     ).rowcount
 
 
-def recompute_work_item_delivery_cycles_commit_stats(session, work_items_source_id):
-    # The following commit stats are calculated and updated for each work_item_delivery_cycle
-    # 1. earliest_commit, latest_commit: earliest and latest commit for a work item delivery cycle
-    # 2. repository_count: distinct repository count over all commits during a delivery cycle for a work item
-    # 3. commit_count: distinct commit count over all commits during a delivery cycle for a work item
-
-    updated = 0
-
-    # select relevant rows to find various metrics
-    delivery_cycles_commits_rows = select([
-        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-        func.min(commits.c.commit_date).label('earliest_commit'),
-        func.max(commits.c.commit_date).label('latest_commit'),
-        func.count(distinct(commits.c.id)).label('commit_count'),
-        func.count(distinct(commits.c.repository_id)).label('repository_count')
-    ]).select_from(
-        work_item_delivery_cycles.join(
-            work_items, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-        ).join(
-            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
-        ).join(
-            commits, work_items_commits_table.c.commit_id == commits.c.id
-        )
-    ).where(
-        and_(
-            work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
-            or_(
-                work_item_delivery_cycles.c.end_date == None,
-                commits.c.commit_date <= work_item_delivery_cycles.c.end_date
-            ),
-            work_items.c.work_items_source_id == work_items_source_id
-        )
-    ).group_by(
-        work_item_delivery_cycles.c.delivery_cycle_id,
-
-    ).cte('delivery_cycles_commits_rows')
-
-    # update relevant work items delivery cycles with relevant metrics
-    updated = session.connection().execute(
-        work_item_delivery_cycles.update().where(
-            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
-        ).values(
-            earliest_commit=delivery_cycles_commits_rows.c.earliest_commit,
-            latest_commit=delivery_cycles_commits_rows.c.latest_commit,
-            commit_count=delivery_cycles_commits_rows.c.commit_count,
-            repository_count=delivery_cycles_commits_rows.c.repository_count,
-        )
-    ).rowcount
-
-
-def recompute_work_item_delivery_cycles_complexity_metrics(session, work_items_source_id):
-    # The following metrics are calculated and updated for each work_item_delivery_cycle
-    # 1. commit stats for non merge commits
-    # 2. commit stats for merge commits
-
-    updated = 0
-
-    # select relevant rows to find various metrics
-    delivery_cycles_commits_rows = select([
-        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
-        func.sum(
-            case(
-                [
-                    (
-                        commits.c.num_parents == 1,
-                        cast(commits.c.stats["lines"].astext, Integer)
-                    )
-                ],
-                else_=0
-            )
-        ).label('total_lines_changed_non_merge'),
-        func.sum(
-            case(
-                [
-                    (
-                        commits.c.num_parents == 1,
-                        cast(commits.c.stats["files"].astext, Integer)
-                    )
-                ],
-                else_=0
-            )
-        ).label('total_files_changed_non_merge'),
-        func.sum(
-            case(
-                [
-                    (
-                        commits.c.num_parents == 1,
-                        cast(commits.c.stats["deletions"].astext, Integer)
-                    )
-                ],
-                else_=0
-            )
-        ).label('total_lines_deleted_non_merge'),
-        func.sum(
-            case(
-                [
-                    (
-                        commits.c.num_parents == 1,
-                        cast(commits.c.stats["insertions"].astext, Integer)
-                    )
-                ],
-                else_=0
-            )
-        ).label('total_lines_inserted_non_merge'),
-        func.sum(
-            case(
-                [
-                    (
-                        commits.c.num_parents > 1,
-                        cast(commits.c.stats["lines"].astext, Integer)
-                    )
-                ],
-                else_=0
-            )
-        ).label('total_lines_changed_merge'),
-        func.sum(
-            case(
-                [
-                    (
-                        commits.c.num_parents > 1,
-                        cast(commits.c.stats["files"].astext, Integer)
-                    )
-                ],
-                else_=0
-            )
-        ).label('total_files_changed_merge'),
-        func.coalesce(func.trunc(func.avg(
-            case(
-                [
-                    (
-                        commits.c.num_parents > 1,
-                        cast(commits.c.stats["lines"].astext, Integer)
-                    )
-                ],
-                else_=None
-            )
-        )), 0).label('average_lines_changed_merge'),
-
-    ]).select_from(
-        work_item_delivery_cycles.join(
-            work_items, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-        ).join(
-            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
-        ).join(
-            commits, work_items_commits_table.c.commit_id == commits.c.id
-        )
-    ).where(
-        and_(
-            work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
-            or_(
-                work_item_delivery_cycles.c.end_date == None,
-                commits.c.commit_date <= work_item_delivery_cycles.c.end_date
-            ),
-            work_items.c.work_items_source_id == work_items_source_id
-        )
-    ).group_by(
-        work_item_delivery_cycles.c.delivery_cycle_id,
-
-    ).cte('delivery_cycles_commits_rows')
-
-    # update relevant work items delivery cycles with relevant metrics
-    updated = session.connection().execute(
-        work_item_delivery_cycles.update().where(
-            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
-        ).values(
-            total_lines_changed_non_merge=delivery_cycles_commits_rows.c.total_lines_changed_non_merge,
-            total_files_changed_non_merge=delivery_cycles_commits_rows.c.total_files_changed_non_merge,
-            total_lines_deleted_non_merge=delivery_cycles_commits_rows.c.total_lines_deleted_non_merge,
-            total_lines_inserted_non_merge=delivery_cycles_commits_rows.c.total_lines_inserted_non_merge,
-            total_lines_changed_merge=delivery_cycles_commits_rows.c.total_lines_changed_merge,
-            total_files_changed_merge=delivery_cycles_commits_rows.c.total_files_changed_merge,
-            average_lines_changed_merge=delivery_cycles_commits_rows.c.average_lines_changed_merge
-        )
-    ).rowcount
-
-
 def update_work_items_source_delivery_cycles(session, work_items_source_id):
     # set current_delivery_cycle_id to none for work items in given source
     session.execute(
@@ -1504,6 +1253,65 @@ def update_work_items_source_delivery_cycles(session, work_items_source_id):
             work_items.c.work_items_source_id == work_items_source_id
         )
     )
+
+    # create a temp table for work item keys of given source
+    work_items_temp = db.create_temp_table(
+        table_name='work_items_temp',
+        columns=[
+            Column('work_item_key', UUID(as_uuid=True)),
+            Column('work_item_id', Integer)
+        ]
+    )
+    work_items_temp.create(session.connection(), checkfirst=True)
+    # populate the temp table
+    session.connection().execute(
+        work_items_temp.insert().from_select(
+            [
+                'work_item_key',
+                'work_item_id'
+            ],
+            select([
+                work_items.c.key,
+                work_items.c.id
+            ]).select_from(
+                work_items
+            ).where(
+                work_items.c.work_items_source_id == work_items_source_id
+            )
+        )
+    )
+
+    # create a temp table for work item keys of given source
+    commits_temp = db.create_temp_table(
+        table_name='commits_temp',
+        columns=[
+            Column('commit_key', UUID(as_uuid=True)),
+        ]
+    )
+
+    commits_temp.create(session.connection(), checkfirst=True)
+    # populate the temp table
+    session.connection().execute(
+        commits_temp.insert().from_select(
+            [
+                'commit_key',
+            ],
+            select([
+                distinct(commits.c.key)
+            ]).select_from(
+                work_items.join(
+                    work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+                ).join(
+                    commits, commits.c.id == work_items_commits_table.c.commit_id
+                )
+            ).where(
+                work_items.c.work_items_source_id == work_items_source_id
+            )
+        )
+    )
+
+    # delete work_item_source_file_changes for work items in given work items source
+    delete_work_items_source_source_file_changes(session, work_items_source_id)
 
     # delete all work_item_delivery_cycle_contributors for given work items source
     delete_work_items_source_delivery_cycle_contributors(session, work_items_source_id)
@@ -1524,6 +1332,7 @@ def update_work_items_source_delivery_cycles(session, work_items_source_id):
     )
 
     # insert initial delivery cycles
+
     session.execute(
         insert(work_item_delivery_cycles).from_select(
             [
@@ -1621,11 +1430,12 @@ def update_work_items_source_delivery_cycles(session, work_items_source_id):
     # Recompute and insert the deleted delivery cycle durations, based on new delivery cycles
     recompute_work_items_delivery_cycle_durations(session, work_items_source_id)
     # Recompute other delivery cycle fields
-    recompute_work_item_delivery_cycles_commit_stats(session, work_items_source_id)
-    recompute_work_item_delivery_cycles_complexity_metrics(session, work_items_source_id)
-
+    compute_work_item_delivery_cycle_commit_stats(session, work_items_temp)
+    compute_implementation_complexity_metrics(session, work_items_temp)
     # Repopulate work_item_delivery_cycle_contributors
-    repopulate_work_item_delivery_cycle_contributors(session, work_items_source_id)
+    compute_contributor_metrics(session, work_items_temp)
+    # Repopulate work_item_source_file_changes
+    populate_work_item_source_file_changes(session, commits_temp)
 
     return updated
 

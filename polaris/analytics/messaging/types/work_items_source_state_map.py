@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright: © Exathink, LLC (2011-2018) All Rights Reserved
 
 # Unauthorized use or copying of this file and its contents, via any medium
@@ -8,12 +6,11 @@
 
 # Author: Pragya Goyal
 
-from polaris.analytics.messaging.messages import
+from marshmallow import Schema, fields
 
-def work_items_source_state_map_created(work_items_source_state_map, channel=None):
-    message = WorkItemsSourceStateMapCreated(
-        send=dict(
 
-        )
-    )
-    return
+class WorkItemsSourceStateMap(Schema):
+
+    source_id = fields.String(required=False, allow_none=True)
+
+

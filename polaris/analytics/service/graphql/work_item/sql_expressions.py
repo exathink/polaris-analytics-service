@@ -160,6 +160,9 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
     if 'defects_only' in kwargs:
         select_stmt = select_stmt.where(work_items.c.is_bug == True)
 
+    if 'work_item_types' in kwargs:
+        select_stmt = select_stmt.where(work_items.c.work_item_type.in_(kwargs.get('work_item_types')))
+
     if 'active_only' in kwargs:
         select_stmt = select_stmt.where(
             work_items.c.state_type.in_([

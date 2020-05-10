@@ -20,6 +20,8 @@ from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, C
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.utils import nulls_to_zero
 from polaris.utils.datetime_utils import time_window
+from polaris.utils.collections import dict_merge
+from polaris.analytics.db.enums import WorkItemTypesToIncludeInCycleMetrics
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
@@ -598,7 +600,10 @@ class ProjectCycleMetrics(InterfaceResolver):
     def interface_selector(project_nodes, **kwargs):
         target_percentile = kwargs.get('cycle_metrics_target_percentile')
         work_items_cycle_metrics = sql_expressions.work_items_cycle_metrics(
-            **kwargs
+            **dict_merge(
+                kwargs,
+                dict(work_item_types=WorkItemTypesToIncludeInCycleMetrics)
+            )
         ).alias()
 
         project_work_item_cycle_metrics = select([

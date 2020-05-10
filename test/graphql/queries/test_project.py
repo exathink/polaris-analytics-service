@@ -6,7 +6,7 @@ from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 from polaris.analytics.db.enums import WorkItemsStateType
 from test.fixtures.graphql import WorkItemImportApiHelper
-
+from polaris.common.enums import JiraWorkItemType
 
 @pytest.yield_fixture
 def projects_import_commits_fixture(org_repo_fixture, cleanup):
@@ -1347,6 +1347,114 @@ class TestProjectAggregateCycleMetrics:
         assert project['workItemsWithNullCycleTime'] == 0
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
         assert (graphql_date(project['latestClosedDate']) - start_date).days == 8
+
+    def it_excludes_jira_subtasks_and_epics_from_cycle_metrics_calculations(self, api_work_items_import_fixture):
+        organization, project, work_items_source, _ = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items_common = dict(
+            is_bug=True,
+            url='http://foo.com',
+            tags=['ares2'],
+            description='foo',
+            source_id=str(uuid.uuid4()),
+        )
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name='story 1',
+                work_item_type=JiraWorkItemType.story.value,
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='subtask 1',
+                work_item_type=JiraWorkItemType.sub_task.value,
+                display_id='1001',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='epic 1',
+                work_item_type=JiraWorkItemType.epic.value,
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+        api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(0, 'done', start_date + timedelta(days=4))])
+        api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=6))])
+
+        api_helper.update_work_items([(1, 'upnext', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'done', start_date + timedelta(days=6))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=8))])
+
+        api_helper.update_work_items([(2, 'upnext', start_date + timedelta(days=3))])
+        api_helper.update_work_items([(2, 'doing', start_date + timedelta(days=4))])
+        api_helper.update_work_items([(2, 'done', start_date + timedelta(days=5))])
+        api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=10))])
+
+        client = Client(schema)
+        query = """
+                    query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
+                        ) {
+                            ... on AggregateCycleMetrics {
+                                minLeadTime
+                                avgLeadTime
+                                maxLeadTime
+                                minCycleTime
+                                avgCycleTime
+                                maxCycleTime
+                                percentileLeadTime
+                                percentileCycleTime
+                                targetPercentile
+                                earliestClosedDate
+                                latestClosedDate
+                                workItemsInScope
+                                workItemsWithNullCycleTime
+
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(project_key=project.key, days=30, percentile=0.70))
+
+        assert result['data']
+        project = result['data']['project']
+        assert project['minLeadTime'] == 6.0
+        assert project['avgLeadTime'] == 6.0
+        assert project['maxLeadTime'] == 6.0
+        assert project['minCycleTime'] == 5.0
+        assert project['avgCycleTime'] == 5.0
+        assert project['maxCycleTime'] == 5.0
+        assert project['percentileLeadTime'] == 6.0
+        assert project['percentileCycleTime'] == 5.0
+        assert project['targetPercentile'] == 0.7
+        assert project['workItemsInScope'] == 1
+        assert project['workItemsWithNullCycleTime'] == 0
+        assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
+        assert (graphql_date(project['latestClosedDate']) - start_date).days == 6
 
 
 class TestProjectWorkItemDeliveryCycles:

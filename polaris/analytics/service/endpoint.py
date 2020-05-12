@@ -16,6 +16,8 @@ from polaris.utils.logging import config_logging
 
 from polaris.analytics.service.gql import graphql
 from polaris.flask.common import PolarisSecuredService
+from polaris.messaging.utils import init_topics_to_publish
+from polaris.messaging.topics import AnalyticsTopic
 
 config_logging()
 
@@ -42,6 +44,8 @@ if config_provider.get('DEBUG_SQL') == 'true':
 
 # Register endpoints
 app.register_blueprint(graphql, url_prefix='/graphql')
+
+init_topics_to_publish(AnalyticsTopic)
 
 
 if app.env == 'production':

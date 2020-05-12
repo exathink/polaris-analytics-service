@@ -7,10 +7,13 @@
 # Author: Pragya Goyal
 
 from marshmallow import Schema, fields
+from .state_mapping import StateMapping
 
 
 class WorkItemsSourceStateMap(Schema):
 
-    source_id = fields.String(required=False, allow_none=True)
+    work_items_source_key = fields.String(required=False, allow_none=True)
+    state_maps = fields.Nested(StateMapping, many=True, required=True)
+
 
 

@@ -16,6 +16,7 @@ from polaris.analytics.messaging.types import WorkItemsSourceStateMap
 
 
 class WorkItemsSourceStateMapUpdated(Message):
-    message_type = 'work_items.work_items_source_state_map_updated'
+    message_type = 'work_items.project_work_items_source_state_map_updated'
 
-    work_items_source_state_map = fields.Nested(WorkItemsSourceStateMap)
+    project_key = fields.String(required=True)
+    work_items_source_state_maps = fields.Nested(WorkItemsSourceStateMap, many=True, required=True)

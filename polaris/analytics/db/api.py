@@ -13,9 +13,7 @@ import logging
 from polaris.common import db
 from polaris.analytics.db import impl
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from .model import WorkItemsSourceStateMap
-import uuid
-from polaris.utils.collections import dict_select
+from polaris.analytics import publish
 
 logger = logging.getLogger('polaris.analytics.db.impl')
 
@@ -157,16 +155,23 @@ def import_project(organization_key, project_summary):
 def update_project_work_items_source_state_mappings(project_state_mappings):
     try:
         with db.orm_session() as session:
-            return success(
+            result = success(
                 impl.update_project_work_items_source_state_mappings(
                     session,
                     project_state_mappings
                 )
             )
+            logger.debug("Update project state map called, going to publish now")
+            publish.project_work_items_source_state_map_updated(project_state_mappings)
+            return result
     except SQLAlchemyError as exc:
-        return db.process_exception("Update project work items source state mappings", exc)
+        import traceback
+        logger.debug(f'Update project work items source state mappings failed {traceback.format_exc()}')
+        return db.process_exception("Update project work items source state mappings failed", exc)
     except Exception as e:
-        return db.failure_message('Update project work items source state mappings', e)
+        import traceback
+        logger.debug(f'Update project work items source state mappings failed {traceback.format_exc()}')
+        return db.failure_message('Update project work items source state mappings failed', e)
 
 
 def import_repositories(organization_key, repository_summaries):

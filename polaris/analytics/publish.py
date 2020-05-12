@@ -10,7 +10,7 @@
 
 from polaris.analytics.messaging.messages import WorkItemsSourceStateMapUpdated
 from polaris.messaging.utils import publish
-from polaris.messaging.utils import init_topics_to_publish
+
 from polaris.messaging.topics import AnalyticsTopic
 
 
@@ -33,11 +33,10 @@ def project_work_items_source_state_map_updated(project_state_mappings, channel=
             ]
         )
     )
-    #init_topics_to_publish(AnalyticsTopic)
-    AnalyticsTopic(channel).publish(message)
-    # publish(
-    #     AnalyticsTopic,
-    #     message,
-    #     channel=channel
-    # )
+
+    publish(
+        AnalyticsTopic,
+        message,
+        channel=channel
+    )
     return message

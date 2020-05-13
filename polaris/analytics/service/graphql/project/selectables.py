@@ -9,7 +9,7 @@
 from datetime import datetime, timedelta
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column
+from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, union_all
 
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
@@ -20,6 +20,8 @@ from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, C
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.utils import nulls_to_zero
 from polaris.utils.datetime_utils import time_window
+from polaris.utils.collections import dict_merge
+from polaris.analytics.db.enums import WorkItemTypesToIncludeInCycleMetrics
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
@@ -162,18 +164,50 @@ class ProjectCommitNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
-        select_stmt = select([
+
+        select_project_commits = select([
             *commit_info_columns(repositories, commits)
         ]).select_from(
             projects.join(
-                projects_repositories, projects_repositories.c.project_id == projects.c.id
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
-                repositories, projects_repositories.c.repository_id == repositories.c.id
-            ).join(commits)
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
+            ).join(
+                commits, work_items_commits.c.commit_id == commits.c.id
+            ).join(
+                repositories, commits.c.repository_id == repositories.c.id
+            )
         ).where(
             projects.c.key == bindparam('key')
         )
-        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+        project_commits = commits_connection_apply_time_window_filters(select_project_commits, commits, **kwargs)
+
+        select_untracked_commits = select([
+            *commit_info_columns(repositories, commits)
+        ]).select_from(
+            projects.join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id,
+            ).join(
+                repositories, projects_repositories.c.repository_id == repositories.c.id,
+            ).join(
+                commits, commits.c.repository_id == repositories.c.id
+            )
+        ).where(
+            and_(
+                projects.c.key == bindparam('key'),
+                commits.c.work_items_summaries == None
+            )
+        )
+
+        untracked_commits = commits_connection_apply_time_window_filters(select_untracked_commits, commits, **kwargs)
+        return union_all(
+            project_commits,
+            untracked_commits
+        )
+
+
 
     @staticmethod
     def sort_order(project_commit_nodes, **kwargs):
@@ -598,7 +632,10 @@ class ProjectCycleMetrics(InterfaceResolver):
     def interface_selector(project_nodes, **kwargs):
         target_percentile = kwargs.get('cycle_metrics_target_percentile')
         work_items_cycle_metrics = sql_expressions.work_items_cycle_metrics(
-            **kwargs
+            **dict_merge(
+                kwargs,
+                dict(work_item_types=WorkItemTypesToIncludeInCycleMetrics)
+            )
         ).alias()
 
         project_work_item_cycle_metrics = select([

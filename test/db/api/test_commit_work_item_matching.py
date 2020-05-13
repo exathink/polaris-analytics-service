@@ -120,6 +120,14 @@ class TestJiraWorkItemResolution:
         assert len(resolved) == 1
         assert resolved[0] == 'MONY-234'
 
+    def it_resolves_a_commit_with_a_numeric_project_key(self):
+        commit_message = "This fixes issue E3F-234. No other animals were harmed"
+
+        resolved = JiraWorkItemResolver.resolve(commit_message, 'master')
+
+        assert len(resolved) == 1
+        assert resolved[0] == 'E3F-234'
+
     def it_resolves_a_work_item_from_branch_name(self):
         commit_message = "This fixes issue. No other animals were harmed"
 

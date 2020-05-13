@@ -66,7 +66,7 @@ class GithubWorkItemResolver(WorkItemResolver):
 
 
 class JiraWorkItemResolver(WorkItemResolver):
-    matcher = re.compile('([A-Z]+-\d+)')
+    matcher = re.compile('([\S]+-\d+)')
 
     @classmethod
     def resolve(cls, commit_message, branch_name):

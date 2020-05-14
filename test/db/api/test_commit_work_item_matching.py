@@ -128,6 +128,14 @@ class TestJiraWorkItemResolution:
         assert len(resolved) == 1
         assert resolved[0] == 'E3F-234'
 
+    def it_resolves_a_commits_on_complex_branch_names(self):
+        branch_name = "feature/SHOP-731-go-to-today"
+
+        resolved = JiraWorkItemResolver.resolve(commit_message="test this", branch_name=branch_name)
+
+        assert len(resolved) == 1
+        assert resolved[0] == 'SHOP-731'
+
     def it_resolves_a_work_item_from_branch_name(self):
         commit_message = "This fixes issue. No other animals were harmed"
 

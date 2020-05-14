@@ -151,3 +151,11 @@ class TestJiraWorkItemResolution:
 
         assert len(resolved) == 2
         assert resolved == ['APPLE-10', 'ORANGE-2000']
+
+    def it_resolves_a_commit_with_same_work_item_id_multiple_times(self):
+        commit_message = "[story=PO-152 subject=jira_work_item_commit_matching story_url=https://urjuna.atlassian.net/browse/PO-152]"
+
+        resolved = JiraWorkItemResolver.resolve(commit_message, 'master')
+
+        assert len(resolved) == 2
+        assert resolved == ['PO-152', 'PO-152']

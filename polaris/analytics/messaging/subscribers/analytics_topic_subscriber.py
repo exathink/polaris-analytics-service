@@ -20,8 +20,6 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
     PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems
 
-from polaris.analytics.messaging.messages import WorkItemsSourceStateMapUpdated
-
 from polaris.messaging.utils import raise_on_failure
 
 from polaris.analytics.db import api, commands
@@ -179,8 +177,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 )
             )
 
-        elif WorkItemsSourceStateMapUpdated.message_type == message.message_type:
-            pass
 
         elif RegisterSourceFileVersions.message_type == message.message_type:
             return self.process_register_source_file_versions(channel, message)

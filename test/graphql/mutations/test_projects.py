@@ -287,7 +287,7 @@ class TestUpdateProjectStateMaps:
         assert 'data' in response
         result = response['data']['updateProjectStateMaps']
         assert result
-        assert not result['success']
+        assert result['success']
 
 
 @pytest.yield_fixture()

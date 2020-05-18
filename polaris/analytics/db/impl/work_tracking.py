@@ -291,11 +291,11 @@ def update_work_item_calculated_fields(work_items_source, work_item_summaries):
     # In the context of lead time, completed_at should be the 'closed'/'accepted' state only
     # Github equivalent 'closed', pivotal equivalent 'accepted', common jira equivalent 'closed'
     # state_type='closed'
+    # In case of multiple closed states, we should update completed_at only for the first transition to closed state
     return [
         dict(
             state_type=work_items_source.get_state_type(work_item['state']),
-            completed_at=work_item['updated_at']
-            if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.closed.value else None,
+            completed_at=work_item['updated_at'] if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.closed.value else None,
             **work_item
         )
         for work_item in work_item_summaries
@@ -880,7 +880,30 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     )
                 )
 
+                # Update complete_at only when transition is from closed to non-closed state or vice-versa
+                session.connection().execute(
+                    work_items.update().values(
+                        completed_at=work_items_temp.c.completed_at
+                    ).where(
+                        and_(
+                            work_items_temp.c.key == work_items.c.key,
+                            or_(
+                                and_(
+                                    work_items_temp.c.state_type == WorkItemsStateType.closed.value,
+                                    work_items.c.state_type != WorkItemsStateType.closed.value
+                                ),
+                                and_(
+                                    work_items_temp.c.state_type != WorkItemsStateType.closed.value,
+                                    work_items.c.state_type == WorkItemsStateType.closed.value
+                                )
+
+                            )
+                        )
+                    )
+                )
+
             # finally do the update of the changed rows.
+            # FIXME: Update completed_at only when it was previously None, or work item is reopened
             updated = session.connection().execute(
                 work_items.update().values(
                     url=work_items_temp.c.url,
@@ -891,13 +914,10 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     state=work_items_temp.c.state,
                     state_type=work_items_temp.c.state_type,
                     updated_at=work_items_temp.c.updated_at,
-                    completed_at=work_items_temp.c.completed_at,
                 ).where(
                     work_items_temp.c.key == work_items.c.key,
                 )
             ).rowcount
-
-
 
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")

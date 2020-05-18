@@ -177,6 +177,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 )
             )
 
+
         elif RegisterSourceFileVersions.message_type == message.message_type:
             return self.process_register_source_file_versions(channel, message)
 

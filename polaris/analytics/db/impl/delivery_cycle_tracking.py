@@ -1317,11 +1317,9 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
     # update delivery cycles for work_items transitioning to closed state_type
     # FIXME: Update only for the first occurrence of transition to closed state
     earliest_closed_state_transition = select([
+        work_item_delivery_cycles.c.work_item_id,
         work_item_delivery_cycles.c.delivery_cycle_id,
-        func.min(work_item_state_transitions.c.seq_no).label('end_seq_no'),
-        func.min(work_item_state_transitions.c.created_at).label('end_date'),
-        (extract('epoch', work_item_state_transitions.c.created_at) - \
-                      extract('epoch', work_item_delivery_cycles.c.start_date)).label('lead_time')
+        func.min(work_item_state_transitions.c.seq_no).label('end_seq_no')
     ]).select_from(
         work_item_state_transitions.join(
             work_item_delivery_cycles, work_item_state_transitions.c.work_item_id == work_item_delivery_cycles.c.work_item_id
@@ -1334,36 +1332,22 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
                 work_item_delivery_cycles.c.start_date < work_item_state_transitions.c.created_at
             )
         ).group_by(
-            work_item_delivery_cycles.c.delivery_cycle_id
-        ).order_by(
-            work_item_state_transitions.c.seq_no
+            work_item_delivery_cycles.c.delivery_cycle_id, work_item_delivery_cycles.c.work_item_id
         ).alias()
 
     session.connection().execute(
         work_item_delivery_cycles.update().where(
-            work_item_delivery_cycles.c.delivery_cycle_id == earliest_closed_state_transition.c.delivery_cycle_id
+            and_(
+                work_item_delivery_cycles.c.delivery_cycle_id == earliest_closed_state_transition.c.delivery_cycle_id,
+                work_item_state_transitions.c.seq_no == earliest_closed_state_transition.c.end_seq_no,
+                work_item_state_transitions.c.work_item_id == earliest_closed_state_transition.c.work_item_id
+            )
         ).values(
             end_seq_no=earliest_closed_state_transition.c.end_seq_no,
-            end_date=earliest_closed_state_transition.c.end_date,
-            lead_time=earliest_closed_state_transition.c.lead_time
+            end_date=work_item_state_transitions.c.created_at,
+            lead_time=(extract('epoch', work_item_state_transitions.c.created_at) - extract('epoch', work_item_delivery_cycles.c.start_date))
         )
     )
-    # session.connection().execute(
-    #     work_item_delivery_cycles.update().values(
-    #         end_seq_no=func.min(work_item_state_transitions.c.seq_no),
-    #         end_date=func.min(work_item_state_transitions.c.created_at),
-    #         lead_time=extract('epoch', func.min(work_item_state_transitions.c.created_at)) - \
-    #                   extract('epoch', work_item_delivery_cycles.c.start_date)
-    #     ).where(
-    #         and_(
-    #             work_item_delivery_cycles.c.work_item_id == work_item_state_transitions.c.work_item_id,
-    #             work_item_state_transitions.c.state == work_items_source_state_map.c.state,
-    #             work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value,
-    #             work_items_source_state_map.c.work_items_source_id == work_items_source_id,
-    #             work_item_delivery_cycles.c.start_date < work_item_state_transitions.c.created_at
-    #         )
-    #     )
-    # )
 
     # update current_delivery_cycle_id for work items
     latest_delivery_cycle = select([

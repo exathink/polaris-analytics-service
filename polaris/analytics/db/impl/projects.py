@@ -48,10 +48,14 @@ def update_work_items_computed_state_types(session, work_items_source_id):
 def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if work_items_source is not None:
-        old_closed_state = find(work_items_source.state_maps,
-                                lambda w: str(w.state_type) == str(WorkItemsStateType.closed.value))
-        new_closed_state = find(state_mappings,
-                                lambda w: str(w.state_type) == str(WorkItemsStateType.closed.value))
+        old_closed_states = set()
+        for w in work_items_source.state_maps:
+            if w.state_type == str(WorkItemsStateType.closed.value):
+                old_closed_states.add(w.state)
+        new_closed_states = set()
+        for w in state_mappings:
+            if w.state_type == str(WorkItemsStateType.closed.value):
+                new_closed_states.add(w.state)
         work_items_source.init_state_map(state_mappings)
         session.flush()
 
@@ -60,10 +64,10 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
 
         # If old closed state is not same as new closed state
         # FIXME: To handle multiple closed states
-        if (old_closed_state is None and new_closed_state is not None) \
-                or (old_closed_state is not None and new_closed_state is None) \
-                or (new_closed_state is not None and old_closed_state is not None \
-                    and old_closed_state.state != new_closed_state.state):
+        if (not old_closed_states and new_closed_states) \
+                or (old_closed_states and not new_closed_states) \
+                or (new_closed_states and old_closed_states \
+                    and old_closed_states != new_closed_states):
             update_work_items_source_delivery_cycles(session, work_items_source.id)
 
         # Recompute cycle time as it is dependent on state type mapping
@@ -82,11 +86,6 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
         # Find and update corresponding work items source state maps
         for work_items_source_state_mapping in project_state_maps.work_items_source_state_maps:
             source_key = work_items_source_state_mapping.work_items_source_key
-            # closed = [state_map for state_map in work_items_source_state_mapping.state_maps if
-            #           state_map.state_type == WorkItemsStateType.closed.value]
-            # if len(closed) > 1:
-            #     raise ProcessingException(f'Work Items Source can have only one closed state')
-            # else:
             work_items_source = find(project.work_items_sources,
                                      lambda work_item_source: str(work_item_source.key) == str(source_key))
             if work_items_source is not None:

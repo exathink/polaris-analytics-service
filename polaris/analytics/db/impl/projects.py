@@ -63,7 +63,6 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         update_work_items_computed_state_types(session, work_items_source.id)
 
         # If old closed state is not same as new closed state
-        # FIXME: To handle multiple closed states
         if (not old_closed_states and new_closed_states) \
                 or (old_closed_states and not new_closed_states) \
                 or (new_closed_states and old_closed_states \

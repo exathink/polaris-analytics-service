@@ -1315,7 +1315,7 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
     )
 
     # update delivery cycles for work_items transitioning to closed state_type
-    # FIXME: Update only for the first occurrence of transition to closed state
+    # Update only for the first occurrence of transition to closed state
     earliest_closed_state_transition = select([
         work_item_delivery_cycles.c.work_item_id,
         work_item_delivery_cycles.c.delivery_cycle_id,
@@ -1329,7 +1329,7 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
             and_(
                 work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value,
                 work_items_source_state_map.c.work_items_source_id == work_items_source_id,
-                work_item_delivery_cycles.c.start_date < work_item_state_transitions.c.created_at
+                work_item_delivery_cycles.c.start_date <= work_item_state_transitions.c.created_at
             )
         ).group_by(
             work_item_delivery_cycles.c.delivery_cycle_id, work_item_delivery_cycles.c.work_item_id

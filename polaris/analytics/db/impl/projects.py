@@ -24,7 +24,6 @@ logger = logging.getLogger('polaris.analytics.db.impl')
 
 
 def update_work_items_computed_state_types(session, work_items_source_id):
-    logger.debug("Inside update work items computed state types")
     updated = session.execute(
         work_items.update().values(
             state_type=None
@@ -48,14 +47,17 @@ def update_work_items_computed_state_types(session, work_items_source_id):
 def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if work_items_source is not None:
-        old_closed_states = set()
-        for w in work_items_source.state_maps:
-            if w.state_type == str(WorkItemsStateType.closed.value):
-                old_closed_states.add(w.state)
-        new_closed_states = set()
-        for w in state_mappings:
-            if w.state_type == str(WorkItemsStateType.closed.value):
-                new_closed_states.add(w.state)
+        old_closed_states = {
+            source_state_map.state
+            for source_state_map in work_items_source.state_maps
+            if source_state_map.state_type == WorkItemsStateType.closed.value
+        }
+        new_closed_states = {
+            source_state_map.state
+            for source_state_map in state_mappings
+            if source_state_map.state_type == WorkItemsStateType.closed.value
+        }
+
         work_items_source.init_state_map(state_mappings)
         session.flush()
 
@@ -63,10 +65,7 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         update_work_items_computed_state_types(session, work_items_source.id)
 
         # If old closed state is not same as new closed state
-        if (not old_closed_states and new_closed_states) \
-                or (old_closed_states and not new_closed_states) \
-                or (new_closed_states and old_closed_states \
-                    and old_closed_states != new_closed_states):
+        if old_closed_states != new_closed_states:
             update_work_items_source_delivery_cycles(session, work_items_source.id)
 
         # Recompute cycle time as it is dependent on state type mapping

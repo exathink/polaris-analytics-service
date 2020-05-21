@@ -317,6 +317,31 @@ class TestUpdateWorkItems:
         assert db.connection().execute(
             "select count(id) from analytics.work_items where completed_at is not null").scalar() == 2
 
+    def it_does_not_update_completed_at_when_state_transitions_from_closed_to_closed(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(state='closed')
+            )
+            for work_item in work_items[:1]
+        ])
+        assert result['success']
+        completed_at = db.connection().execute(
+            "select completed_at from analytics.work_items where completed_at is not null").fetchall()[0]
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(state='done')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        new_completed_at = db.connection().execute(
+            "select completed_at from analytics.work_items where completed_at is not null").fetchall()[0]
+        assert new_completed_at == completed_at
+
     def it_resets_completion_date_for_transition_from_complete_back_to_open(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
 
@@ -1106,6 +1131,24 @@ class TestUpdateWorkItemsDeliveryCycles:
         assert db.connection().execute('select count(DISTINCT current_delivery_cycle_id) from analytics.work_items\
          join analytics.work_item_delivery_cycles on work_items.id=work_item_delivery_cycles.work_item_id \
          where work_items.current_delivery_cycle_id > work_item_delivery_cycles.delivery_cycle_id').scalar() == 1
+
+    def it_does_not_create_new_or_change_old_delivery_cycle_when_state_type_changes_from_closed_to_another_closed_state(self,
+                                                                                        update_closed_work_items_setup):
+        organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
+        work_items_list[1]['state'] = 'done'
+        end_seq_no, end_date, lead_time = db.connection().execute(f"select end_seq_no, end_date, lead_time \
+            from analytics.work_item_delivery_cycles join analytics.work_items \
+            on work_items.id=work_item_delivery_cycles.work_item_id where work_items.key='{work_items_list[1]['key']}'").fetchall()[0]
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list[1:])
+        assert result['success']
+        assert db.connection().execute(
+            'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles').scalar() == 2
+        new_end_seq_no, new_end_date, new_lead_time = db.connection().execute(f"select end_seq_no, end_date, lead_time \
+            from analytics.work_item_delivery_cycles join analytics.work_items \
+            on work_items.id=work_item_delivery_cycles.work_item_id where work_items.key='{work_items_list[1]['key']}'").fetchall()[0]
+        assert end_seq_no == new_end_seq_no
+        assert end_date == new_end_date
+        assert lead_time == new_lead_time
 
     def it_sets_the_current_delivery_cycle_of_reopened_items_to_the_new_delivery_cycle(self,
                                                                                        update_closed_work_items_setup):

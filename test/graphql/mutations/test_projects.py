@@ -287,7 +287,7 @@ class TestUpdateProjectStateMaps:
         assert 'data' in response
         result = response['data']['updateProjectStateMaps']
         assert result
-        assert not result['success']
+        assert result['success']
 
 
 @pytest.yield_fixture()
@@ -384,7 +384,7 @@ def work_items_delivery_cycles_setup(setup_projects):
     ]
 
     work_items_state_transitions = [
-        dict (
+        dict(
             seq_no= 0,
             created_at=get_date("2020-03-20"),
             state='created',
@@ -392,9 +392,15 @@ def work_items_delivery_cycles_setup(setup_projects):
         ),
         dict(
             seq_no=1,
+            created_at=get_date("2020-03-20"),
+            state='doing',
+            previous_state='created'
+        ),
+        dict(
+            seq_no=2,
             created_at=get_date("2020-03-21"),
             state='done',
-            previous_state='created'
+            previous_state='doing'
         )
 
     ]
@@ -442,6 +448,10 @@ def work_items_delivery_cycles_setup(setup_projects):
                 model.WorkItemDeliveryCycleDuration(
                     state='created',
                     cumulative_time_in_state=None   # setting None, should be updated by test
+                ),
+                model.WorkItemDeliveryCycleDuration(
+                    state='doing',
+                    cumulative_time_in_state=None
                 ),
                 model.WorkItemDeliveryCycleDuration(
                     state='done',
@@ -604,7 +614,7 @@ class TestUpdateComputedWorkItemsStateTypes:
 class TestUpdateDeliveryCycles:
 
     def it_updates_delivery_cycles_when_closed_state_mapping_changes(self, work_items_delivery_cycles_setup):
-        # example case to tests:
+        # example case to test:
         # when there was a work item in state done (mapped to complete)
         # corresponding delivery cycle would have lead time and end_date as null
         # when done is mapped to closed in new mapping, the delivery cycle should have a lead time calculated and end_date set
@@ -643,6 +653,80 @@ class TestUpdateDeliveryCycles:
             f"select count(*) from analytics.work_item_delivery_cycles\
                      where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 1
 
+    def it_updates_delivery_cycles_at_first_closed_state_transition_when_mapping_changes(self, work_items_delivery_cycles_setup):
+        # example case to test:
+        # when there was a work item in state done (mapped to complete)
+        # corresponding delivery cycle would have lead time and end_date as null
+        # when done is mapped to closed in new mapping, the delivery cycle should have a lead time calculated and end_date set
+        client = Client(schema)
+        project = work_items_delivery_cycles_setup
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        response = client.execute("""
+                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                success
+                            }
+                        }
+                """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        end_seq_no, end_date, lead_time = db.connection().execute(
+            f"select end_seq_no, end_date, lead_time from analytics.work_item_delivery_cycles\
+                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").fetchall()[0]
+        # Tricking the setup to have multiple closed state transition by changing state mappings
+        # The delivery cycle should now have end_seq_no, end_date, lead_time calculated at first closed state transition
+        response = client.execute("""
+                            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                        success
+                                    }
+                                }
+                        """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.closed.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        new_end_seq_no, new_end_date, new_lead_time = db.connection().execute(
+            f"select end_seq_no, end_date, lead_time from analytics.work_item_delivery_cycles\
+                             where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").fetchall()[0]
+        assert new_end_seq_no < end_seq_no
+        assert new_end_date < end_date
+        assert new_lead_time < lead_time
+
     def it_does_not_update_delivery_cycle_when_closed_state_mapping_is_unchanged(self, work_items_delivery_cycles_setup):
         client = Client(schema)
         project = work_items_delivery_cycles_setup
@@ -676,7 +760,6 @@ class TestUpdateDeliveryCycles:
         result = response['data']['updateProjectStateMaps']
         assert result
         assert result['success']
-
         assert db.connection().execute(
             f"select count(*) from analytics.work_item_delivery_cycles\
              where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 0

@@ -78,7 +78,8 @@ def work_items_setup(setup_repo_org):
                 dict(state='open', state_type=WorkItemsStateType.open.value),
                 dict(state='wip', state_type=WorkItemsStateType.wip.value),
                 dict(state='complete', state_type=WorkItemsStateType.complete.value),
-                dict(state='closed', state_type=WorkItemsStateType.closed.value)
+                dict(state='closed', state_type=WorkItemsStateType.closed.value),
+                dict(state='done', state_type=WorkItemsStateType.closed.value)
             ]
         work_items_source.init_state_map(state_map_entries)
         session.add(

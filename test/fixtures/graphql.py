@@ -159,6 +159,7 @@ def cleanup():
     yield
     db.connection().execute("delete from analytics.work_item_source_file_changes")
     db.connection().execute("delete from analytics.work_item_delivery_cycle_contributors")
+    db.connection().execute("delete from analytics.work_item_delivery_cycle_durations")
     db.connection().execute("delete from analytics.work_item_delivery_cycles")
     db.connection().execute("delete from analytics.feature_flag_enablements")
     db.connection().execute("delete from analytics.feature_flags")

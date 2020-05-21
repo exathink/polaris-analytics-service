@@ -19,7 +19,7 @@ class Graphql(Blueprint):
 
     def register(self, app, options, first_registration=False):
         super().register(app, options, first_registration)
-        gql_view = GraphQLView.as_view('graphql', schema=schema, graphiql=(app.env == 'development'))
+        gql_view = GraphQLView.as_view('graphql', schema=schema, graphiql=True)
         view = cross_origin(supports_credentials=True)(
             login_required(
                 gql_view

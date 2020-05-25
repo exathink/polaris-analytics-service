@@ -225,7 +225,11 @@ def update_work_item_delivery_cycle_durations(session, work_items_temp):
     ).where(
         and_(
             work_items_temp.c.state != work_items.c.state,
-            work_item_state_transitions.c.created_at >= work_item_delivery_cycles.c.start_date
+            work_item_delivery_cycles.c.start_date <= work_item_state_transitions.c.created_at,
+            or_(
+                work_item_delivery_cycles.c.end_date == None,
+                work_item_state_transitions.c.created_at <= work_item_delivery_cycles.c.end_date
+            )
         )
     ).alias()
 
@@ -1180,7 +1184,14 @@ def recompute_work_items_delivery_cycle_durations(session, work_items_source_id)
         ).join(
             work_items, work_item_state_transitions.c.work_item_id == work_items.c.id
         )).where(
-        work_items.c.work_items_source_id == work_items_source_id
+            and_(
+                work_items.c.work_items_source_id == work_items_source_id,
+                work_item_delivery_cycles.c.start_date <= work_item_state_transitions.c.created_at,
+                or_(
+                    work_item_delivery_cycles.c.end_date == None,
+                    work_item_delivery_cycles.c.end_date >= work_item_state_transitions.c.created_at
+                )
+            )
     ).alias()
 
     # compute the duration in each state from the time_span in each state.

@@ -545,6 +545,40 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
             f"select count(*) from analytics.work_item_delivery_cycles\
              where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 0
 
+    def it_does_not_create_new_delivery_cycle_on_transition_from_closed_state_to_another_closed_state(self, work_items_delivery_cycles_setup):
+        client = Client(schema)
+        project = work_items_delivery_cycles_setup
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        response = client.execute("""
+                                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                                success
+                                            }
+                                        }
+                                """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.closed.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value)
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        assert db.connection().execute("select count(*) from analytics.work_item_delivery_cycles").scalar() == 1
+
     def it_is_idempotent(self, work_items_delivery_cycles_setup):
         # call twice with same inputs. Query both times to find same results in delivery cycle table
         # just to ensure there are no attempts to create duplicate entries or updates on lead time or end_date

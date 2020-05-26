@@ -115,7 +115,7 @@ def update_work_item_delivery_cycles(session, work_items_temp):
                     work_items_temp.c.key == work_items.c.key,
                     work_items.c.state != work_items_temp.c.state,
                     work_items.c.state_type == WorkItemsStateType.closed.value,
-                    work_items_temp.c.state_type != WorkItemsStateType.closed.value,
+                    work_items_temp.c.state_type != WorkItemsStateType.closed.value
                 )
             )
         )
@@ -1299,6 +1299,31 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
     )
 
     # insert subsequent delivery cycles for reopened issues
+    # this is to be done only when transition happens from closed to non closed state
+    # First getting previous state type by joining with source state map table
+    wist_with_previous_state_type = select([
+        work_item_state_transitions.c.work_item_id,
+        work_item_state_transitions.c.seq_no,
+        work_item_state_transitions.c.state,
+        work_item_state_transitions.c.created_at,
+        work_item_state_transitions.c.previous_state,
+        work_items_source_state_map.c.state_type.label('previous_state_type')
+    ]).select_from(
+        work_item_state_transitions.join(
+            work_items, work_items.c.id == work_item_state_transitions.c.work_item_id
+        ).join(
+            work_items_source_state_map, work_items_source_state_map.c.work_items_source_id == work_items.c.work_items_source_id
+        )
+    ).where(
+        and_(
+            work_item_state_transitions.c.previous_state == work_items_source_state_map.c.state,
+            work_items.c.work_items_source_id == work_items_source_id,
+            work_item_state_transitions.c.seq_no > 0,
+            work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value
+        )
+
+    ).alias()
+
     session.connection().execute(
         insert(work_item_delivery_cycles).from_select(
             [
@@ -1307,19 +1332,17 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
                 'start_date'
             ],
             select([
-                work_item_state_transitions.c.work_item_id,
-                work_item_state_transitions.c.seq_no.label('start_seq_no'),
-                work_item_state_transitions.c.created_at.label('start_date')
+                wist_with_previous_state_type.c.work_item_id,
+                wist_with_previous_state_type.c.seq_no.label('start_seq_no'),
+                wist_with_previous_state_type.c.created_at.label('start_date')
             ]).select_from(
-                work_item_state_transitions.join(
-                    work_items, work_items.c.id == work_item_state_transitions.c.work_item_id
+                wist_with_previous_state_type.join(
+                    work_items_source_state_map, wist_with_previous_state_type.c.state == work_items_source_state_map.c.state
                 )
             ).where(
                 and_(
-                    work_item_state_transitions.c.previous_state == work_items_source_state_map.c.state,
-                    work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value,
                     work_items_source_state_map.c.work_items_source_id == work_items_source_id,
-                    work_items.c.work_items_source_id == work_items_source_id
+                    work_items_source_state_map.c.state_type != WorkItemsStateType.closed.value
                 )
             )
         )

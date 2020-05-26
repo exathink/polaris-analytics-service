@@ -7,10 +7,12 @@
 # confidential.
 
 # Author: Krishna Kumar
-
-from polaris.analytics.db.model import WorkItemDeliveryCycle
-
-from test.fixtures.graphql import *
+import pytest
+from polaris.common import db
+from polaris.analytics.db.model import WorkItemDeliveryCycle, WorkItemsSource, WorkItem, WorkItemStateTransition
+from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.analytics.db import model
+from test.fixtures.graphql import commits_fixture, org_repo_fixture, get_date, create_test_commits, create_work_item_commits, commits_common_fields
 from test.constants import *
 
 
@@ -157,6 +159,6 @@ def project_work_items_commits_fixture(commits_fixture):
     create_test_commits(test_commits)
 
     # Add work item commits mapping
-    create_work_item_commits(new_work_items[0]['key'], [commit['key'] for commit in test_commits[0:2]])
+    create_work_item_commits(new_work_items[0]['key'], [commit['key'] for commit in test_commits[0:3]])
 
     yield project

@@ -11,9 +11,10 @@
 
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
+from datetime import datetime
 
 from test.fixtures.project_work_items import *
-from test.fixtures.project_work_items_commits import project_work_items_commits_fixture
+from test.fixtures.project_work_items_commits import *
 
 class TestArchiveProject:
 
@@ -782,7 +783,7 @@ class TestUpdateCommitStatsOnUpdateStateMaps:
         assert result['success']
         assert db.connection().execute(
             f"select count(*) from analytics.work_item_delivery_cycles\
-                                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and repository_count=2 and commit_count=3 and latest_commit={get_date('2020-01-05')} earliest_commit={get_date('2020-01-07')}").scalar() == 1
+                                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and repository_count=3 and commit_count=3 and latest_commit='2020-01-07 00:00:00.000000' and earliest_commit='2020-01-05 00:00:00.000000'").scalar() == 1
 
 
     def it_updates_commit_stats_for_recreated_delivery_cycles_for_multiple_closed_states(self, project_work_items_commits_fixture):
@@ -819,7 +820,7 @@ class TestUpdateCommitStatsOnUpdateStateMaps:
         assert result['success']
         assert db.connection().execute(
             f"select count(*) from analytics.work_item_delivery_cycles\
-                                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and repository_count=1 and commit_count=1 and latest_commit={get_date('2020-01-05')} earliest_commit={get_date('2020-01-05')}").scalar() == 1
+                                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and repository_count=1 and commit_count=1 and latest_commit='{get_date('2020-01-05')}' and earliest_commit='{get_date('2020-01-05')}'").scalar() == 1
 
 
 class TestComputeImplementationComplexityMetricsOnUpdateStateMaps:

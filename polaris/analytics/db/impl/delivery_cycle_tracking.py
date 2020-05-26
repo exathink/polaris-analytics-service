@@ -1357,12 +1357,15 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
         work_item_delivery_cycles.c.delivery_cycle_id,
         func.min(work_item_state_transitions.c.seq_no).label('end_seq_no')
     ]).select_from(
-        work_item_state_transitions.join(
+        work_items.join(
+            work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
+        ).join(
             work_item_delivery_cycles, work_item_state_transitions.c.work_item_id == work_item_delivery_cycles.c.work_item_id
         ).join(
             work_items_source_state_map, work_item_state_transitions.c.state == work_items_source_state_map.c.state
         )).where(
             and_(
+                work_items.c.work_items_source_id == work_items_source_id,
                 work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value,
                 work_items_source_state_map.c.work_items_source_id == work_items_source_id,
                 work_item_delivery_cycles.c.start_date <= work_item_state_transitions.c.created_at

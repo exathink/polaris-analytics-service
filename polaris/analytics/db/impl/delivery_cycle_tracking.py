@@ -1413,7 +1413,7 @@ def update_work_items_source_delivery_cycles(session, work_items_source_id):
         )
     )
 
-    # create a temp table for work item keys of given source
+    # create a temp table for commits from the given source
     commits_temp = db.create_temp_table(
         table_name='commits_temp',
         columns=[

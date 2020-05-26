@@ -1272,8 +1272,8 @@ def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id
 
 
 def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
-    # insert initial delivery cycles
 
+    # insert initial delivery cycles
     session.connection().execute(
         insert(work_item_delivery_cycles).from_select(
             [
@@ -1300,29 +1300,12 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
 
     # insert subsequent delivery cycles for reopened issues
     # this is to be done only when transition happens from closed to non closed state
-    # First getting previous state type by joining with source state map table
-    wist_with_previous_state_type = select([
-        work_item_state_transitions.c.work_item_id,
-        work_item_state_transitions.c.seq_no,
-        work_item_state_transitions.c.state,
-        work_item_state_transitions.c.created_at,
-        work_item_state_transitions.c.previous_state,
-        work_items_source_state_map.c.state_type.label('previous_state_type')
-    ]).select_from(
-        work_item_state_transitions.join(
-            work_items, work_items.c.id == work_item_state_transitions.c.work_item_id
-        ).join(
-            work_items_source_state_map, work_items_source_state_map.c.work_items_source_id == work_items.c.work_items_source_id
-        )
-    ).where(
-        and_(
-            work_item_state_transitions.c.previous_state == work_items_source_state_map.c.state,
-            work_items.c.work_items_source_id == work_items_source_id,
-            work_item_state_transitions.c.seq_no > 0,
-            work_items_source_state_map.c.state_type == WorkItemsStateType.closed.value
-        )
 
-    ).alias()
+    # To do this we will need to find the state types for current and previous states from
+    # work_items_state_transitions_table. So we prep convenient aliases
+    # for the source_map table so we can do the necessary joins.
+    current_state_types = work_items_source_state_map.alias('current_state_type')
+    previous_state_types = work_items_source_state_map.alias('previous_state_type')
 
     session.connection().execute(
         insert(work_item_delivery_cycles).from_select(
@@ -1331,18 +1314,37 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
                 'start_seq_no',
                 'start_date'
             ],
+            # Find work item state transition that goes from a non-closed state to closed state
+            # Add new delivery cycle for each such work item transition
             select([
-                wist_with_previous_state_type.c.work_item_id,
-                wist_with_previous_state_type.c.seq_no.label('start_seq_no'),
-                wist_with_previous_state_type.c.created_at.label('start_date')
+                work_item_state_transitions.c.work_item_id,
+                work_item_state_transitions.c.seq_no.label('start_seq_no'),
+                work_item_state_transitions.c.created_at.label('start_date')
+
             ]).select_from(
-                wist_with_previous_state_type.join(
-                    work_items_source_state_map, wist_with_previous_state_type.c.state == work_items_source_state_map.c.state
+                work_items.join(
+                    work_item_state_transitions,
+                    and_(
+                        work_items.c.work_items_source_id == work_items_source_id,
+                        work_items.c.id == work_item_state_transitions.c.work_item_id
+                    )
+                ).join(
+                    current_state_types,
+                    and_(
+                        current_state_types.c.work_items_source_id == work_items_source_id,
+                        current_state_types.c.state == work_item_state_transitions.c.state
+                    )
+                ).join(
+                    previous_state_types,
+                    and_(
+                        previous_state_types.c.work_items_source_id == work_items_source_id,
+                        previous_state_types.c.state == work_item_state_transitions.c.previous_state
+                    )
                 )
             ).where(
                 and_(
-                    work_items_source_state_map.c.work_items_source_id == work_items_source_id,
-                    work_items_source_state_map.c.state_type != WorkItemsStateType.closed.value
+                    previous_state_types.c.state_type == WorkItemsStateType.closed.value,
+                    current_state_types.c.state_type != WorkItemsStateType.closed.value,
                 )
             )
         )

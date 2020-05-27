@@ -892,7 +892,7 @@ class TestComputeImplementationComplexityMetricsOnUpdateStateMaps:
         assert result
         assert result['success']
         assert db.connection().execute(
-            f"select count(*) from analytics.work_item_delivery_cycles where total_lines_changed_merge=8 \
+            f"select count(*) from analytics.work_item_delivery_cycles where work_item_id={work_item_id} and total_lines_changed_merge=8 \
             and total_files_changed_merge=1 and average_lines_changed_merge=8 and total_lines_changed_non_merge=16 and \
             total_files_changed_non_merge=2 and total_lines_deleted_non_merge=8 \
             and total_lines_inserted_non_merge=8").scalar() == 1
@@ -930,18 +930,85 @@ class TestComputeImplementationComplexityMetricsOnUpdateStateMaps:
         assert result
         assert result['success']
         assert db.connection().execute(
-            f"select count(*) from analytics.work_item_delivery_cycles where total_lines_changed_merge=0 \
+            f"select count(*) from analytics.work_item_delivery_cycles where work_item_id={work_item_id} and total_lines_changed_merge=0 \
                     and total_files_changed_merge=0 and average_lines_changed_merge=0 and total_lines_changed_non_merge=8 and \
                     total_files_changed_non_merge=1 and total_lines_deleted_non_merge=4 \
                     and total_lines_inserted_non_merge=4").scalar() == 1
 
 class TestComputeContributorMetricsOnUpdateStateMaps:
 
-    def it_recomputes_contributor_metrics_for_recreated_delivery_cycles(self):
-        pass
+    def it_recomputes_contributor_metrics_for_recreated_delivery_cycles(self, project_work_items_commits_fixture):
+        client = Client(schema)
+        project = project_work_items_commits_fixture
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        response = client.execute("""
+                                            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                                        success
+                                                    }
+                                                }
+                                        """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        # single author/committer, 3 commits with 8 lines in each, 1 delivery cycle
+        assert db.connection().execute(
+            f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_contributors \
+            where total_lines_as_author=16 and total_lines_as_reviewer=8").scalar() == 1
 
 
 class TestPopulateWorkItemSourceFileChangesOnUpdateStateMaps:
 
-    def it_populates_work_item_source_file_changes_for_recreated_delivery_cycles(self):
-        pass
+    def it_populates_work_item_source_file_changes_for_recreated_delivery_cycles(self, project_work_items_commits_fixture):
+        client = Client(schema)
+        project = project_work_items_commits_fixture
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        response = client.execute("""
+                                                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                                                success
+                                                            }
+                                                        }
+                                                """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        # 2 source files each, for 3 commit, 1 work item
+        assert db.connection().execute(
+            "select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is not NULL").scalar() == 6

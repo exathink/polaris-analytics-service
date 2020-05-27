@@ -9,11 +9,20 @@
 # Author: Krishna Kumar
 import pytest
 from polaris.common import db
-from polaris.analytics.db.model import WorkItemDeliveryCycle, WorkItemsSource, WorkItem, WorkItemStateTransition
+from polaris.analytics.db.model import WorkItemDeliveryCycle, WorkItemsSource, WorkItem, WorkItemStateTransition, source_files
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db import model
 from test.fixtures.graphql import commits_fixture, org_repo_fixture, get_date, create_test_commits, create_work_item_commits, commits_common_fields
 from test.constants import *
+
+source_file_keys = [uuid.uuid4().hex, uuid.uuid4().hex]
+
+
+def create_source_files(test_source_files):
+    with db.create_session() as session:
+        session.connection.execute(
+            source_files.insert(test_source_files)
+        )
 
 
 @pytest.yield_fixture()
@@ -154,9 +163,53 @@ def project_work_items_commits_fixture(commits_fixture):
 
     for commit in test_commits:
         commit['stats'] = {"files": 1, "lines": 8, "deletions": 4, "insertions": 4}
+        commit['source_files'] = [
+            dict(
+                key=source_file_keys[0],
+                path='test/',
+                name='files1.txt',
+                file_type='txt',
+                version_count=1,
+                is_deleted=False,
+                action='A',
+                stats={"lines": 2, "insertions": 2, "deletions": 0}
+            ),
+            dict(
+                key=source_file_keys[1],
+                path='test/',
+                name='files2.py',
+                file_type='py',
+                version_count=1,
+                is_deleted=False,
+                action='A',
+                stats={"lines": 4, "insertions": 2, "deletions": 2}
+            )
+        ]
 
     # Add commits
     create_test_commits(test_commits)
+
+    # Add source files
+    test_source_files = [
+        dict(
+            repository_id=test_repo.id,
+            key=source_file_keys[0],
+            path='test/',
+            name='files1.txt',
+            file_type='txt',
+            version_count=1
+        ),
+        dict(
+            repository_id=test_repo.id,
+            key=source_file_keys[1],
+            path='test/',
+            name='files2.py',
+            file_type='py',
+            version_count=1
+        )
+    ]
+
+    create_source_files(test_source_files)
 
     # Add work item commits mapping
     create_work_item_commits(new_work_items[0]['key'], [commit['key'] for commit in test_commits[0:3]])

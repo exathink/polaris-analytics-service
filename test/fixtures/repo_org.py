@@ -23,6 +23,7 @@ def cleanup(setup_schema):
     db.connection().execute("delete from analytics.work_item_delivery_cycles")
     db.connection().execute("delete from analytics.work_items_source_state_map")
     db.connection().execute("delete from analytics.work_item_state_transitions")
+    db.connection().execute("delete from analytics.work_items_commits")
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")
     db.connection().execute("delete from analytics.commits")
@@ -32,6 +33,7 @@ def cleanup(setup_schema):
     db.connection().execute("delete from analytics.projects_repositories")
     db.connection().execute("delete from analytics.repositories")
     db.connection().execute("delete from analytics.projects")
+    db.connection().execute("delete from analytics.accounts_organizations")
     db.connection().execute("delete from analytics.organizations")
 
 @pytest.yield_fixture()

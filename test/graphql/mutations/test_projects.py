@@ -16,6 +16,7 @@ from datetime import datetime
 from test.fixtures.project_work_items import *
 from test.fixtures.project_work_items_commits import *
 
+
 class TestArchiveProject:
 
     def it_archives_a_project(self, setup_projects):
@@ -241,8 +242,6 @@ class TestUpdateProjectStateMaps:
         assert result['success']
 
 
-
-
 class TestUpdateComputedWorkItemsStateTypes:
 
     def it_updates_computed_state_types_when_a_state_map_is_initialized(self, setup_work_items):
@@ -280,19 +279,19 @@ class TestUpdateComputedWorkItemsStateTypes:
         assert result['success']
 
         work_items_result = db.connection().execute(f"select state, state_type from analytics.work_items "
-                                f"inner join analytics.work_items_sources "
-                                f"on work_items.work_items_source_id = work_items_sources.id "
-                                f"where work_items_sources.key = '{work_items_source_key}'").fetchall()
+                                                    f"inner join analytics.work_items_sources "
+                                                    f"on work_items.work_items_source_id = work_items_sources.id "
+                                                    f"where work_items_sources.key = '{work_items_source_key}'").fetchall()
 
         assert len(work_items_result) == 3
         assert set([
             (work_item.state, work_item.state_type)
             for work_item in work_items_result
         ]) == {
-            ('todo', WorkItemsStateType.open.value),
-            ('doing', WorkItemsStateType.wip.value),
-            ('done', WorkItemsStateType.complete.value)
-        }
+                   ('todo', WorkItemsStateType.open.value),
+                   ('doing', WorkItemsStateType.wip.value),
+                   ('done', WorkItemsStateType.complete.value)
+               }
 
     def it_updates_computed_state_types_after_initial_update(self, setup_work_items):
         client = Client(schema)
@@ -329,19 +328,19 @@ class TestUpdateComputedWorkItemsStateTypes:
         assert result['success']
 
         work_items_result = db.connection().execute(f"select state, state_type from analytics.work_items "
-                                f"inner join analytics.work_items_sources "
-                                f"on work_items.work_items_source_id = work_items_sources.id "
-                                f"where work_items_sources.key = '{work_items_source_key}'").fetchall()
+                                                    f"inner join analytics.work_items_sources "
+                                                    f"on work_items.work_items_source_id = work_items_sources.id "
+                                                    f"where work_items_sources.key = '{work_items_source_key}'").fetchall()
 
         assert len(work_items_result) == 3
         assert set([
             (work_item.state, work_item.state_type)
             for work_item in work_items_result
         ]) == {
-            ('todo', WorkItemsStateType.wip.value),
-            ('doing', WorkItemsStateType.complete.value),
-            ('done', WorkItemsStateType.open.value)
-        }
+                   ('todo', WorkItemsStateType.wip.value),
+                   ('doing', WorkItemsStateType.complete.value),
+                   ('done', WorkItemsStateType.open.value)
+               }
 
     def it_resets_unmapped_entries_to_null(self, setup_work_items):
         client = Client(schema)
@@ -434,7 +433,8 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
             f"select count(*) from analytics.work_item_delivery_cycles\
                      where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 1
 
-    def it_updates_delivery_cycles_at_first_closed_state_transition_when_mapping_changes(self, work_items_delivery_cycles_setup):
+    def it_updates_delivery_cycles_at_first_closed_state_transition_when_mapping_changes(self,
+                                                                                         work_items_delivery_cycles_setup):
         # example case to test:
         # when there was a work item in state done (mapped to complete)
         # corresponding delivery cycle would have lead time and end_date as null
@@ -472,7 +472,8 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
         assert result['success']
         end_seq_no, end_date, lead_time = db.connection().execute(
             f"select end_seq_no, end_date, lead_time from analytics.work_item_delivery_cycles\
-                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").fetchall()[0]
+                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").fetchall()[
+            0]
         # Tricking the setup to have multiple closed state transition by changing state mappings
         # The delivery cycle should now have end_seq_no, end_date, lead_time calculated at first closed state transition
         response = client.execute("""
@@ -503,12 +504,14 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
         assert result['success']
         new_end_seq_no, new_end_date, new_lead_time = db.connection().execute(
             f"select end_seq_no, end_date, lead_time from analytics.work_item_delivery_cycles\
-                             where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").fetchall()[0]
+                             where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").fetchall()[
+            0]
         assert new_end_seq_no < end_seq_no
         assert new_end_date < end_date
         assert new_lead_time < lead_time
 
-    def it_does_not_update_delivery_cycle_when_closed_state_mapping_is_unchanged(self, work_items_delivery_cycles_setup):
+    def it_does_not_update_delivery_cycle_when_closed_state_mapping_is_unchanged(self,
+                                                                                 work_items_delivery_cycles_setup):
         client = Client(schema)
         project = work_items_delivery_cycles_setup
         project_key = str(project.key)
@@ -545,7 +548,8 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
             f"select count(*) from analytics.work_item_delivery_cycles\
              where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 0
 
-    def it_does_not_create_new_delivery_cycle_on_transition_from_closed_state_to_another_closed_state(self, work_items_delivery_cycles_setup):
+    def it_does_not_create_new_delivery_cycle_on_transition_from_closed_state_to_another_closed_state(self,
+                                                                                                      work_items_delivery_cycles_setup):
         client = Client(schema)
         project = work_items_delivery_cycles_setup
         project_key = str(project.key)
@@ -656,7 +660,8 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
         project_key = str(project.key)
         work_items_source_key = project.work_items_sources[0].key
         work_item_id = project.work_items_sources[0].work_items[0].id
-        old_delivery_cycle_id = db.connection().execute("select current_delivery_cycle_id from analytics.work_items").fetchall()[0][0]
+        old_delivery_cycle_id = \
+        db.connection().execute("select current_delivery_cycle_id from analytics.work_items").fetchall()[0][0]
         response = client.execute("""
                     mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
                                     updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
@@ -683,15 +688,18 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
         result = response['data']['updateProjectStateMaps']
         assert result
         assert result['success']
-        assert db.connection().execute(f"select count(*) from analytics.work_items where current_delivery_cycle_id is not Null").scalar() == 1
-        new_delivery_cycle_id = db.connection().execute(f"select current_delivery_cycle_id from analytics.work_items where id='{work_item_id}'").fetchall()[0][0]
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_items where current_delivery_cycle_id is not Null").scalar() == 1
+        new_delivery_cycle_id = db.connection().execute(
+            f"select current_delivery_cycle_id from analytics.work_items where id='{work_item_id}'").fetchall()[0][0]
         assert new_delivery_cycle_id is not None
         assert new_delivery_cycle_id != old_delivery_cycle_id
 
 
 class TestUpdateDeliveryCycleDurationsOnUpdateStateMaps:
 
-    def it_recomputes_delivery_cycle_durations_when_closed_state_type_mapping_changes(self, work_items_delivery_cycles_setup):
+    def it_recomputes_delivery_cycle_durations_when_closed_state_type_mapping_changes(self,
+                                                                                      work_items_delivery_cycles_setup):
         client = Client(schema)
         project = work_items_delivery_cycles_setup
         project_key = str(project.key)
@@ -730,10 +738,11 @@ class TestUpdateDeliveryCycleDurationsOnUpdateStateMaps:
             f"select count(*) from analytics.work_item_delivery_cycle_durations\
                                      where cumulative_time_in_state is not null and state='created'").scalar() == 1
 
+
 class TestRecomputeDeliveryCyclesCycleTimeOnUpdateStateMaps:
 
     def it_recomputes_delivery_cycle_cycle_time_when_state_type_mapping_changes(self,
-                                                                                      work_items_delivery_cycles_setup):
+                                                                                work_items_delivery_cycles_setup):
         client = Client(schema)
         project = work_items_delivery_cycles_setup
         project_key = str(project.key)
@@ -774,10 +783,12 @@ class TestRecomputeDeliveryCyclesCycleTimeOnUpdateStateMaps:
         # note there is only 1 delivery cycle in this case
         _delivery_cycle_id, cycle_time = db.connection().execute(
             f"select delivery_cycle_id, cycle_time from analytics.work_item_delivery_cycles\
-                             where work_item_delivery_cycles.work_item_id='{work_item_id}' and cycle_time > 0").fetchall()[0]
+                             where work_item_delivery_cycles.work_item_id='{work_item_id}' and cycle_time > 0").fetchall()[
+            0]
         expected_cycle_time = db.connection().execute(
             f"select sum(cumulative_time_in_state) from analytics.work_item_delivery_cycle_durations\
-                                     where state in ('created', 'doing') and delivery_cycle_id={_delivery_cycle_id}").fetchall()[0][0]
+                                     where state in ('created', 'doing') and delivery_cycle_id={_delivery_cycle_id}").fetchall()[
+            0][0]
         assert expected_cycle_time == cycle_time
 
 
@@ -819,8 +830,8 @@ class TestUpdateCommitStatsOnUpdateStateMaps:
             f"select count(*) from analytics.work_item_delivery_cycles\
                                      where work_item_delivery_cycles.work_item_id='{work_item_id}' and repository_count=3 and commit_count=3 and latest_commit='2020-01-07 00:00:00.000000' and earliest_commit='2020-01-05 00:00:00.000000'").scalar() == 1
 
-
-    def it_updates_commit_stats_for_recreated_delivery_cycles_for_multiple_closed_states(self, project_work_items_commits_fixture):
+    def it_updates_commit_stats_for_recreated_delivery_cycles_for_multiple_closed_states(self,
+                                                                                         project_work_items_commits_fixture):
         client = Client(schema)
         project = project_work_items_commits_fixture
         project_key = str(project.key)
@@ -897,7 +908,8 @@ class TestComputeImplementationComplexityMetricsOnUpdateStateMaps:
             total_files_changed_non_merge=2 and total_lines_deleted_non_merge=8 \
             and total_lines_inserted_non_merge=8").scalar() == 1
 
-    def it_recomputes_complexity_metrics_for_recreated_delivery_cycles_for_multiple_closed_states(self, project_work_items_commits_fixture):
+    def it_recomputes_complexity_metrics_for_recreated_delivery_cycles_for_multiple_closed_states(self,
+                                                                                                  project_work_items_commits_fixture):
         client = Client(schema)
         project = project_work_items_commits_fixture
         project_key = str(project.key)
@@ -934,6 +946,7 @@ class TestComputeImplementationComplexityMetricsOnUpdateStateMaps:
                     and total_files_changed_merge=0 and average_lines_changed_merge=0 and total_lines_changed_non_merge=8 and \
                     total_files_changed_non_merge=1 and total_lines_deleted_non_merge=4 \
                     and total_lines_inserted_non_merge=4").scalar() == 1
+
 
 class TestComputeContributorMetricsOnUpdateStateMaps:
 
@@ -977,7 +990,8 @@ class TestComputeContributorMetricsOnUpdateStateMaps:
 
 class TestPopulateWorkItemSourceFileChangesOnUpdateStateMaps:
 
-    def it_populates_work_item_source_file_changes_for_recreated_delivery_cycles(self, project_work_items_commits_fixture):
+    def it_populates_work_item_source_file_changes_for_recreated_delivery_cycles(self,
+                                                                                 project_work_items_commits_fixture):
         client = Client(schema)
         project = project_work_items_commits_fixture
         project_key = str(project.key)

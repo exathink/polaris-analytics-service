@@ -9,10 +9,12 @@
 # Author: Krishna Kumar
 import pytest
 from polaris.common import db
-from polaris.analytics.db.model import WorkItemDeliveryCycle, WorkItemsSource, WorkItem, WorkItemStateTransition, source_files
+from polaris.analytics.db.model import WorkItemDeliveryCycle, WorkItemsSource, WorkItem, WorkItemStateTransition, \
+    source_files
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db import model
-from test.fixtures.graphql import commits_fixture, org_repo_fixture, get_date, create_test_commits, create_work_item_commits, commits_common_fields
+from test.fixtures.graphql import commits_fixture, org_repo_fixture, get_date, create_test_commits, \
+    create_work_item_commits, commits_common_fields
 from test.constants import *
 
 source_file_keys = [uuid.uuid4().hex, uuid.uuid4().hex]
@@ -100,12 +102,12 @@ def project_work_items_commits_fixture(commits_fixture):
         )
 
         project.work_items_sources[0].init_state_map(
-        [
-            dict(state='created', state_type=WorkItemsStateType.open.value),
-            dict(state='doing', state_type=WorkItemsStateType.wip.value),
-            dict(state='done', state_type=WorkItemsStateType.wip.value)
-        ]
-    )
+            [
+                dict(state='created', state_type=WorkItemsStateType.open.value),
+                dict(state='doing', state_type=WorkItemsStateType.wip.value),
+                dict(state='done', state_type=WorkItemsStateType.wip.value)
+            ]
+        )
         project.work_items_sources[0].work_items.extend([
             WorkItem(**item)
             for item in new_work_items
@@ -122,18 +124,18 @@ def project_work_items_commits_fixture(commits_fixture):
         ])
 
         project.work_items_sources[0].work_items[0].delivery_cycles[0].delivery_cycle_durations.extend([
-                model.WorkItemDeliveryCycleDuration(
-                    state='created',
-                    cumulative_time_in_state=None   # setting None, should be updated by test
-                ),
-                model.WorkItemDeliveryCycleDuration(
-                    state='doing',
-                    cumulative_time_in_state=None
-                ),
-                model.WorkItemDeliveryCycleDuration(
-                    state='done',
-                    cumulative_time_in_state=None
-                )
+            model.WorkItemDeliveryCycleDuration(
+                state='created',
+                cumulative_time_in_state=None  # setting None, should be updated by test
+            ),
+            model.WorkItemDeliveryCycleDuration(
+                state='doing',
+                cumulative_time_in_state=None
+            ),
+            model.WorkItemDeliveryCycleDuration(
+                state='done',
+                cumulative_time_in_state=None
+            )
         ])
 
     test_commits = [

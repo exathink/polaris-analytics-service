@@ -1381,7 +1381,8 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
             and_(
                 work_item_delivery_cycles.c.delivery_cycle_id == earliest_closed_state_transition.c.delivery_cycle_id,
                 work_item_state_transitions.c.seq_no == earliest_closed_state_transition.c.end_seq_no,
-                work_item_state_transitions.c.work_item_id == earliest_closed_state_transition.c.work_item_id
+                work_item_state_transitions.c.work_item_id == earliest_closed_state_transition.c.work_item_id,
+                work_item_delivery_cycles.c.start_seq_no < earliest_closed_state_transition.c.end_seq_no
             )
         ).values(
             end_seq_no=earliest_closed_state_transition.c.end_seq_no,

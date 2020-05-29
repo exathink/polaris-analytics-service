@@ -173,6 +173,12 @@ def work_items_delivery_cycles_setup(setup_projects):
             created_at=get_date("2020-03-21"),
             state='done',
             previous_state='doing'
+        ),
+        dict(
+            seq_no=3,
+            created_at=get_date("2020-03-21"),
+            state='selected for development', #unmapped state
+            previous_state='done'
         )
 
     ]

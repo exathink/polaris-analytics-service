@@ -9,11 +9,10 @@
 # Author: Krishna Kumar
 import logging
 
-
 from sqlalchemy.sql.expression import and_, select, distinct
 
 from polaris.analytics.db.enums import WorkItemsStateType
-from polaris.analytics.db.model import Project, WorkItemsSource, work_items, work_items_source_state_map,\
+from polaris.analytics.db.model import Project, WorkItemsSource, work_items, work_items_source_state_map, \
     work_item_state_transitions
 from polaris.utils.collections import find
 from polaris.utils.exceptions import ProcessingException
@@ -45,9 +44,48 @@ def update_work_items_computed_state_types(session, work_items_source_id):
     return updated
 
 
+def get_existing_work_item_states_from_transitions(session, work_items_source):
+    # Checking for any existing states in state transitions table, which are newly mapped or unmapped
+    # Getting all distinct states in work item state transitions for work items in work item source
+    existing_work_item_states = set([
+        state[0]
+        for state in session.connection().execute(
+            select([
+                distinct(work_item_state_transitions.c.state)
+            ]).select_from(
+                work_item_state_transitions.join(
+                    work_items, work_items.c.id == work_item_state_transitions.c.work_item_id
+                )
+            ).where(
+                work_items.c.work_items_source_id == work_items_source.id
+            )
+        ).fetchall()
+    ])
+    return existing_work_item_states
+
+
 def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if work_items_source is not None:
+        current_unmapped_states = None
+        existing_work_item_states = get_existing_work_item_states_from_transitions(session, work_items_source)
+        if len(existing_work_item_states) > 0:
+            # validate that all existing states are mapped in the new mapping.
+            new_mapped_states = {
+                source_state_map.state
+                for source_state_map in state_mappings
+            }
+            unmapped_states = existing_work_item_states - new_mapped_states
+            if len(unmapped_states) > 0:
+                raise ProcessingException(
+                    f"Invalid Mapping: The following states did not have a mapping specified {unmapped_states} "
+                )
+
+            current_unmapped_states = existing_work_item_states - {
+                source_state_map.state
+                for source_state_map in work_items_source.state_maps
+            }
+
         old_closed_states = {
             source_state_map.state
             for source_state_map in work_items_source.state_maps
@@ -58,46 +96,18 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
             for source_state_map in state_mappings
             if source_state_map.state_type == WorkItemsStateType.closed.value
         }
-        # Checking for any existing states in state transitions table, which are newly mapped or unmapped
-        # Getting all distinct states in work item state transitions for work items in work item source
-        states_in_work_item_state_transitions = set([
-            state[0]
-            for state in session.connection().execute(
-                select([
-                        distinct(work_item_state_transitions.c.state)
-                    ]).select_from(
-                        work_item_state_transitions.join(
-                            work_items, work_items.c.id == work_item_state_transitions.c.work_item_id
-                        )
-                    ).where(
-                        work_items.c.work_items_source_id == work_items_source.id
-                    )
-                ).fetchall()
-        ])
 
-        old_mapped_states = {
-            source_state_map.state
-            for source_state_map in work_items_source.state_maps
-        }
-        new_mapped_states = {
-            source_state_map.state
-            for source_state_map in state_mappings
-        }
-        transitioned_unmapped_states = states_in_work_item_state_transitions - old_mapped_states
-        transitioned_mapped_states = states_in_work_item_state_transitions.intersection(old_mapped_states)
-        # newly mapped states seen in state transitions
-        transitioned_unmapped_states_mapped_now = transitioned_unmapped_states.intersection(new_mapped_states)
-        # newly unmapped states seen in state transitions
-        transitioned_mapped_states_unmapped_now = transitioned_mapped_states - new_mapped_states
+        # Initialize the new state map
         work_items_source.init_state_map(state_mappings)
         session.flush()
 
         # update state type in work items based on new mapping
         update_work_items_computed_state_types(session, work_items_source.id)
 
-        # If old closed state is not same as new closed state
-        if old_closed_states != new_closed_states or transitioned_mapped_states_unmapped_now \
-                or transitioned_unmapped_states_mapped_now:
+        # If old closed state is not same as new closed state, or there were any unmapped states
+        # before the new mapping was initialized, we need to recreate the delivery cycles.
+
+        if old_closed_states != new_closed_states or current_unmapped_states:
             update_work_items_source_delivery_cycles(session, work_items_source.id)
 
         # Recompute cycle time as it is dependent on state type mapping

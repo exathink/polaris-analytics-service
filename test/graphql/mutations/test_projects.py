@@ -459,7 +459,8 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
                         stateMaps=[
                             dict(state="created", stateType=WorkItemsStateType.open.value),
                             dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                            dict(state="done", stateType=WorkItemsStateType.closed.value)                        ]
+                            dict(state="done", stateType=WorkItemsStateType.closed.value)
+                        ]
                     )
                 ]
             )
@@ -473,7 +474,18 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
             f"select delivery_cycle_id from analytics.work_item_delivery_cycles\
                      where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").fetchall()[0][0]
 
-        # changing mapping for "selected for development" state which exists in transition but is not mapped
+        # add an unmapped state to the db
+        with db.orm_session() as session:
+            session.add(project)
+            project.work_items_sources[0].work_items[0].state_transitions.extend([
+                WorkItemStateTransition(
+                    seq_no=3,
+                    created_at=get_date("2020-03-21"),
+                    state='selected for development',
+                    previous_state='done'
+                ),
+            ])
+
         response = client.execute("""
                             mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
                                             updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
@@ -507,7 +519,7 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
                                      where work_item_delivery_cycles.work_item_id='{work_item_id}' \
                                      and lead_time is null and delivery_cycle_id!={delivery_cycle_id}").scalar() == 1
 
-    def it_updates_delivery_cycles_when_an_existing_mapped_state_mapping_is_unmapped(self,
+    def it_raises_an_error_if_an_existing_state_does_not_have_a_mapping_defined(self,
                                                                                      work_items_delivery_cycles_setup):
         client = Client(schema)
         project = work_items_delivery_cycles_setup
@@ -515,12 +527,12 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
         work_items_source_key = project.work_items_sources[0].key
         work_item_id = project.work_items_sources[0].work_items[0].id
 
-        # changing mapping for "selected for development" state which exists in transition but is not mapped, also mapping "done" to closed
-        # 2 delivery cycles should be created
+
         response = client.execute("""
                             mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
                                             updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
                                         success
+                                        errorMessage
                                     }
                                 }
                         """, variable_values=dict(
@@ -532,8 +544,6 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
                         stateMaps=[
                             dict(state="created", stateType=WorkItemsStateType.open.value),
                             dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                            dict(state="done", stateType=WorkItemsStateType.closed.value),
-                            dict(state="selected for development", stateType=WorkItemsStateType.open.value)
                         ]
                     )
                 ]
@@ -543,42 +553,10 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
         assert 'data' in response
         result = response['data']['updateProjectStateMaps']
         assert result
-        assert result['success']
-        # new delivery cycle created
-        assert db.connection().execute(
-            f"select count(*) from analytics.work_item_delivery_cycles\
-                                     where work_item_delivery_cycles.work_item_id='{work_item_id}'").scalar() == 2
-        # again unmapping "selected for development"
-        response = client.execute("""
-                                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
-                                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
-                                                success
-                                            }
-                                        }
-                                """, variable_values=dict(
-            updateProjectStateMapsInput=dict(
-                projectKey=project_key,
-                workItemsSourceStateMaps=[
-                    dict(
-                        workItemsSourceKey=work_items_source_key,
-                        stateMaps=[
-                            dict(state="created", stateType=WorkItemsStateType.open.value),
-                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                            dict(state="done", stateType=WorkItemsStateType.closed.value)
-                        ]
-                    )
-                ]
-            )
-        )
-                                  )
-        assert 'data' in response
-        result = response['data']['updateProjectStateMaps']
-        assert result
-        assert result['success']
-        # new delivery cycle created
-        assert db.connection().execute(
-            f"select count(*) from analytics.work_item_delivery_cycles\
-                                             where work_item_delivery_cycles.work_item_id='{work_item_id}'").scalar() == 1
+        assert not result['success']
+        assert result['errorMessage'] == 'Invalid Mapping: The following states did not have a mapping specified {\'done\'} '
+
+
 
 
     def it_updates_delivery_cycles_at_first_closed_state_transition_when_mapping_changes(self,

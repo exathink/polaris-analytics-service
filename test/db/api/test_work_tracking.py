@@ -1132,6 +1132,18 @@ class TestUpdateWorkItemsDeliveryCycles:
          join analytics.work_item_delivery_cycles on work_items.id=work_item_delivery_cycles.work_item_id \
          where work_items.current_delivery_cycle_id > work_item_delivery_cycles.delivery_cycle_id').scalar() == 1
 
+    def it_does_not_create_new_delivery_cycle_when_state_type_changes_from_closed_to_a_non_mapped_state(self,
+                                                                                        update_closed_work_items_setup):
+        organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
+        work_items_list[0]['state'] = 'doing'
+        result = api.update_work_items(organization_key, work_items_source_key, work_items_list)
+        assert result['success']
+        assert db.connection().execute(
+            'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles').scalar() == 2
+        assert db.connection().execute('select count(DISTINCT current_delivery_cycle_id) from analytics.work_items\
+         join analytics.work_item_delivery_cycles on work_items.id=work_item_delivery_cycles.work_item_id \
+         where work_items.current_delivery_cycle_id > work_item_delivery_cycles.delivery_cycle_id').scalar() == 0
+
     def it_does_not_create_new_or_change_old_delivery_cycle_when_state_type_changes_from_closed_to_another_closed_state(self,
                                                                                         update_closed_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup

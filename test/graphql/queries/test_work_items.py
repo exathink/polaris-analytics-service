@@ -272,6 +272,60 @@ class TestWorkItemInstance:
                 ('done', None)
             }
 
+        def it_returns_null_state_types_when_there_are_unmapped_durations(self, api_work_items_import_fixture):
+            organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+            api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+            work_item_key = uuid.uuid4().hex
+            start_date = datetime.utcnow() - timedelta(days=10)
+            api_helper.import_work_items([
+                    dict(
+                        key=work_item_key,
+                        name='Issue 1',
+                        display_id='1000',
+                        state='backlog',
+                        created_at=start_date,
+                        updated_at=start_date,
+                        **work_items_common
+                    )
+                ]
+            )
+
+            api_helper.update_work_items([(0, 'unmapped_state', start_date + timedelta(days=1))])
+
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces:[WorkItemStateDetails]){
+                            ... on WorkItemStateDetails {
+                                workItemStateDetails {
+                                    currentStateTransition {
+                                        eventDate
+                                    }
+                                    currentDeliveryCycleDurations {
+                                        state
+                                        stateType
+                                        daysInState
+                                    }
+                                }
+                            }
+                        }
+                    } 
+                """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            work_item_state_details = result['data']['workItem']['workItemStateDetails']
+            assert work_item_state_details['currentStateTransition']['eventDate']
+            assert {
+                (record['state'], record['stateType'], record['daysInState'])
+                for record in work_item_state_details['currentDeliveryCycleDurations']
+            } == {
+                ('created', 'backlog', 0.0),
+                ('backlog', 'backlog', 1.0),
+                ('unmapped_state', None,  None)
+            }
+
 
 
     class TestWorkItemInstanceCommits:

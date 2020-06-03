@@ -153,7 +153,7 @@ class WorkItemEventSpan(graphene.Interface):
 
 class WorkItemDaysInState(graphene.ObjectType):
     state = graphene.String(required=True)
-    state_type = graphene.String(required=True)
+    state_type = graphene.String(required=False)
     days_in_state = graphene.Float(required=False)
 
 

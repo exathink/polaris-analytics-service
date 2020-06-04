@@ -1159,12 +1159,7 @@ def delete_work_items_source_source_file_changes(session, work_items_source_id):
 def delete_work_items_source_delivery_cycles(session, work_items_source_id):
     session.connection().execute(
         work_item_delivery_cycles.delete().where(
-            work_item_delivery_cycles.c.work_item_id.in_(select([
-                work_items.c.id
-            ]).where(
-                work_items.c.work_items_source_id == work_items_source_id
-            )
-            )
+            work_item_delivery_cycles.c.work_items_source_id == work_items_source_id
         )
     )
 

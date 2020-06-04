@@ -782,8 +782,8 @@ class WorkItemDeliveryCycleDuration(Base):
     cumulative_time_in_state = Column(Integer, nullable=True)
 
     # Work Item Delivery Cycles relationship
-    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), \
-                               primary_key=True, nullable=False)
+    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'),
+                               primary_key=True, index=True, nullable=False)
 
 
 work_item_delivery_cycle_durations = WorkItemDeliveryCycleDuration.__table__
@@ -795,8 +795,8 @@ class WorkItemDeliveryCycleContributor(Base):
     total_lines_as_author = Column(Integer, nullable=True)
     total_lines_as_reviewer = Column(Integer, nullable=True)
     # Work Item Delivery Cycles relationship
-    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), \
-                               primary_key=True, nullable=False)
+    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'),
+                               primary_key=True, index=True, nullable=False)
     # Contributor Alias relationship
     contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), primary_key=True, nullable=False)
     contributor_alias = relationship('ContributorAlias', back_populates='delivery_cycles')
@@ -823,7 +823,7 @@ class WorkItemSourceFileChange(Base):
     # relationships
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
     work_item = relationship('WorkItem', back_populates='source_file_changes')
-    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), nullable=True)
+    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), index=True, nullable=True)
     delivery_cycle = relationship('WorkItemDeliveryCycle', back_populates='source_file_changes')
     repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False)
     repository = relationship('Repository', back_populates='source_file_changes')

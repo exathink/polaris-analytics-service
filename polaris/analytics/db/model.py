@@ -757,7 +757,7 @@ class WorkItemDeliveryCycle(Base):
     average_lines_changed_merge = Column(Integer, nullable=True)
 
     # Work Items relationship
-    work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
+    work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False, index=True)
     work_item = relationship('WorkItem', back_populates='delivery_cycles')
 
     delivery_cycle_durations = relationship('WorkItemDeliveryCycleDuration', cascade="all, delete-orphan")

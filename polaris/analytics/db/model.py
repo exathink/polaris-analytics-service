@@ -555,6 +555,7 @@ class WorkItemsSource(Base):
     project = relationship('Project', back_populates='work_items_sources')
 
     work_items = relationship('WorkItem')
+    delivery_cycles = relationship('WorkItemDeliveryCycle')
     state_maps = relationship('WorkItemsSourceStateMap', cascade="all, delete-orphan")
 
     @classmethod
@@ -755,6 +756,10 @@ class WorkItemDeliveryCycle(Base):
     total_lines_changed_merge = Column(Integer, nullable=True)
     total_files_changed_merge = Column(Integer, nullable=True)
     average_lines_changed_merge = Column(Integer, nullable=True)
+
+    # Work Items Source relationship
+    work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'), nullable=False, index=True)
+    work_items_source = relationship('WorkItemsSource', back_populates='delivery_cycles')
 
     # Work Items relationship
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False, index=True)

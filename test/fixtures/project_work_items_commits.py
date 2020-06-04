@@ -100,30 +100,31 @@ def project_work_items_commits_fixture(commits_fixture):
                 source_id=str(uuid.uuid4())
             )
         )
-
-        project.work_items_sources[0].init_state_map(
+        session.flush()
+        work_items_source = project.work_items_sources[0]
+        work_items_source.init_state_map(
             [
                 dict(state='created', state_type=WorkItemsStateType.open.value),
                 dict(state='doing', state_type=WorkItemsStateType.wip.value),
                 dict(state='done', state_type=WorkItemsStateType.wip.value)
             ]
         )
-        project.work_items_sources[0].work_items.extend([
+        work_items_source.work_items.extend([
             WorkItem(**item)
             for item in new_work_items
         ])
 
-        project.work_items_sources[0].work_items[0].delivery_cycles.extend([
-            WorkItemDeliveryCycle(**cycle)
+        work_items_source.work_items[0].delivery_cycles.extend([
+            WorkItemDeliveryCycle(work_items_source_id=work_items_source.id, **cycle)
             for cycle in delivery_cycles
         ])
 
-        project.work_items_sources[0].work_items[0].state_transitions.extend([
+        work_items_source.work_items[0].state_transitions.extend([
             WorkItemStateTransition(**transition)
             for transition in work_items_state_transitions
         ])
 
-        project.work_items_sources[0].work_items[0].delivery_cycles[0].delivery_cycle_durations.extend([
+        work_items_source.work_items[0].delivery_cycles[0].delivery_cycle_durations.extend([
             model.WorkItemDeliveryCycleDuration(
                 state='created',
                 cumulative_time_in_state=None  # setting None, should be updated by test

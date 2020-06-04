@@ -16,7 +16,6 @@ from test.fixtures.graphql import get_date
 from test.fixtures.repo_org import *
 from test.constants import *
 
-
 test_projects = [
     dict(name='mercury', key=uuid.uuid4()),
     dict(name='venus', key=uuid.uuid4())
@@ -61,6 +60,7 @@ def setup_work_items_sources(setup_projects):
             )
         )
     yield project
+
 
 @pytest.yield_fixture()
 def setup_work_items(setup_projects):
@@ -122,6 +122,7 @@ def setup_work_items(setup_projects):
 
     yield project
 
+
 @pytest.yield_fixture()
 def work_items_delivery_cycles_setup(setup_projects):
     organization = setup_projects
@@ -157,7 +158,7 @@ def work_items_delivery_cycles_setup(setup_projects):
 
     work_items_state_transitions = [
         dict(
-            seq_no= 0,
+            seq_no=0,
             created_at=get_date("2020-03-20"),
             state='created',
             previous_state=None
@@ -174,7 +175,6 @@ def work_items_delivery_cycles_setup(setup_projects):
             state='done',
             previous_state='doing'
         ),
-
 
     ]
 
@@ -194,46 +194,47 @@ def work_items_delivery_cycles_setup(setup_projects):
                 source_id=str(uuid.uuid4())
             )
         )
+        session.flush()
 
-        project.work_items_sources[0].init_state_map(
-        [
-            dict(state='created', state_type=WorkItemsStateType.open.value),
-            dict(state='doing', state_type=WorkItemsStateType.wip.value),
-            dict(state='done', state_type=WorkItemsStateType.wip.value)
-        ]
-    )
-        project.work_items_sources[0].work_items.extend([
+        work_items_source = project.work_items_sources[0]
+        work_items_source.init_state_map(
+            [
+                dict(state='created', state_type=WorkItemsStateType.open.value),
+                dict(state='doing', state_type=WorkItemsStateType.wip.value),
+                dict(state='done', state_type=WorkItemsStateType.wip.value)
+            ]
+        )
+        work_items_source.work_items.extend([
             WorkItem(**item)
             for item in new_work_items
         ])
 
-        project.work_items_sources[0].work_items[0].delivery_cycles.extend([
-            WorkItemDeliveryCycle(**cycle)
+        work_items_source.work_items[0].delivery_cycles.extend([
+            WorkItemDeliveryCycle(work_items_source_id=work_items_source.id, **cycle)
             for cycle in delivery_cycles
         ])
 
-        project.work_items_sources[0].work_items[0].state_transitions.extend([
+        work_items_source.work_items[0].state_transitions.extend([
             WorkItemStateTransition(**transition)
             for transition in work_items_state_transitions
         ])
 
-        project.work_items_sources[0].work_items[0].delivery_cycles[0].delivery_cycle_durations.extend([
-                model.WorkItemDeliveryCycleDuration(
-                    state='created',
-                    cumulative_time_in_state=None   # setting None, should be updated by test
-                ),
-                model.WorkItemDeliveryCycleDuration(
-                    state='doing',
-                    cumulative_time_in_state=None
-                ),
-                model.WorkItemDeliveryCycleDuration(
-                    state='done',
-                    cumulative_time_in_state=None
-                )
+        work_items_source.work_items[0].delivery_cycles[0].delivery_cycle_durations.extend([
+            model.WorkItemDeliveryCycleDuration(
+                state='created',
+                cumulative_time_in_state=None  # setting None, should be updated by test
+            ),
+            model.WorkItemDeliveryCycleDuration(
+                state='doing',
+                cumulative_time_in_state=None
+            ),
+            model.WorkItemDeliveryCycleDuration(
+                state='done',
+                cumulative_time_in_state=None
+            )
         ])
 
     yield project
-
 
 # @pytest.yield_fixture()
 # def project_work_items_commits_fixture(commits_fixture):

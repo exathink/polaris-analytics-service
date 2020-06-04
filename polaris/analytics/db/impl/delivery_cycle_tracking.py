@@ -28,6 +28,7 @@ logger = logging.getLogger('polaris.analytics.db.work_tracking')
 def initialize_work_item_delivery_cycles(session, work_items_temp):
     session.connection().execute(
         work_item_delivery_cycles.insert().from_select([
+            'work_items_source_id',
             'work_item_id',
             'start_seq_no',
             'start_date',
@@ -36,6 +37,7 @@ def initialize_work_item_delivery_cycles(session, work_items_temp):
             'lead_time',
         ],
             select([
+                work_items.c.work_items_source_id,
                 work_items.c.id.label('work_item_id'),
                 literal('0').label('start_seq_no'),
                 work_items_temp.c.created_at.label('start_date'),
@@ -102,11 +104,13 @@ def update_work_item_delivery_cycles(session, work_items_temp):
     # create new delivery cycle when previous state_type is closed and new is non-closed
     session.connection().execute(
         work_item_delivery_cycles.insert().from_select([
+            'work_items_source_id',
             'work_item_id',
             'start_seq_no',
             'start_date',
         ],
             select([
+                work_items.c.work_items_source_id,
                 work_items.c.id.label('work_item_id'),
                 work_items.c.next_state_seq_no.label('start_seq_no'),
                 work_items_temp.c.updated_at.label('start_date'),
@@ -1278,11 +1282,13 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
     session.connection().execute(
         insert(work_item_delivery_cycles).from_select(
             [
+                'work_items_source_id',
                 'work_item_id',
                 'start_seq_no',
                 'start_date'
             ],
             select([
+                work_items.c.work_items_source_id,
                 work_item_state_transitions.c.work_item_id,
                 work_item_state_transitions.c.seq_no.label('start_seq_no'),
                 work_item_state_transitions.c.created_at.label('start_date')
@@ -1311,6 +1317,7 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
     session.connection().execute(
         insert(work_item_delivery_cycles).from_select(
             [
+                'work_items_source_id',
                 'work_item_id',
                 'start_seq_no',
                 'start_date'
@@ -1318,6 +1325,7 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
             # Find work item state transition that goes from a non-closed state to closed state
             # Add new delivery cycle for each such work item transition
             select([
+                work_items.c.work_items_source_id,
                 work_item_state_transitions.c.work_item_id,
                 work_item_state_transitions.c.seq_no.label('start_seq_no'),
                 work_item_state_transitions.c.created_at.label('start_date')

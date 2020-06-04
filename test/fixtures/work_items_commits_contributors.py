@@ -29,9 +29,9 @@ from datetime import datetime, timedelta
 
 from polaris.analytics.db.model import WorkItemDeliveryCycle
 
-earliest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=5)
-latest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=2)
-test_contributors_info =[
+earliest_commit_date = datetime.utcnow().replace(microsecond=0) - timedelta(days=5)
+latest_commit_date = datetime.utcnow().replace(microsecond=0) - timedelta(days=2)
+test_contributors_info = [
     dict(
         name='Joe Blow',
         key=uuid.uuid4().hex,
@@ -86,7 +86,8 @@ def contributor_commits_fixture(org_repo_fixture, cleanup):
                 )
             ).inserted_primary_key[0]
 
-            contributor_list.append(dict(alias_id=contributor_alias_id, key=test_contributor['key'], name=test_contributor['name']))
+            contributor_list.append(
+                dict(alias_id=contributor_alias_id, key=test_contributor['key'], name=test_contributor['name']))
     yield organization, projects, repositories, contributor_list
 
 
@@ -107,6 +108,7 @@ def commits_common_fields(contributor_commits_fixture):
         author_contributor_key=contributor_key,
         author_contributor_name=contributor_name
     )
+
 
 @pytest.yield_fixture()
 def work_items_commits_contributors_fixture(contributor_commits_fixture):
@@ -155,7 +157,6 @@ def work_items_commits_contributors_fixture(contributor_commits_fixture):
     test_commits[3]['committer_contributor_alias_id'] = contributor_list[1]['alias_id']
     test_commits[3]['committer_contributor_key'] = contributor_list[1]['key']
     test_commits[3]['committer_contributor_name'] = contributor_list[1]['name']
-
 
     # Add commits
     create_test_commits(test_commits)
@@ -215,25 +216,28 @@ def work_items_commits_contributors_fixture(contributor_commits_fixture):
 
         w1.delivery_cycles.extend([
             WorkItemDeliveryCycle(
-                    start_seq_no=0,
-                    start_date=w1.created_at,
-                    end_date=latest_commit_date,
-                    end_seq_no=2,
-                    work_item_id=w1.id,
-                    lead_time=int((datetime.utcnow()-timedelta(hours=1)-w1.created_at).total_seconds())
-                ),
+                work_items_source_id=w1.work_items_source_id,
+                start_seq_no=0,
+                start_date=w1.created_at,
+                end_date=latest_commit_date,
+                end_seq_no=2,
+                work_item_id=w1.id,
+                lead_time=int((datetime.utcnow() - timedelta(hours=1) - w1.created_at).total_seconds())
+            ),
             WorkItemDeliveryCycle(
-                    start_seq_no=3,
-                    start_date=latest_commit_date+timedelta(hours=1),
-                    work_item_id=w1.id
-                )
+                work_items_source_id=w1.work_items_source_id,
+                start_seq_no=3,
+                start_date=latest_commit_date + timedelta(hours=1),
+                work_item_id=w1.id
+            )
         ])
 
         w2.delivery_cycles.extend([
             WorkItemDeliveryCycle(
-                    start_seq_no=0,
-                    start_date=w2.created_at,
-                    work_item_id=w2.id
+                work_items_source_id=w2.work_items_source_id,
+                start_seq_no=0,
+                start_date=w2.created_at,
+                work_item_id=w2.id
             )
         ])
         session.flush()

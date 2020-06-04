@@ -24,9 +24,8 @@ from datetime import datetime, timedelta
 
 from polaris.analytics.db.model import WorkItemDeliveryCycle
 
-earliest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=5)
-latest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=2)
-
+earliest_commit_date = datetime.utcnow().replace(microsecond=0) - timedelta(days=5)
+latest_commit_date = datetime.utcnow().replace(microsecond=0) - timedelta(days=2)
 
 test_work_items = [
     dict(
@@ -77,7 +76,6 @@ def work_items_commits_fixture(commits_fixture):
 
     for commit in test_commits:
         commit['stats'] = {"files": 1, "lines": 8, "deletions": 4, "insertions": 4}
-
 
     # Add commits
     create_test_commits(test_commits)
@@ -137,25 +135,28 @@ def work_items_commits_fixture(commits_fixture):
 
         w1.delivery_cycles.extend([
             WorkItemDeliveryCycle(
-                    start_seq_no=0,
-                    start_date=w1.created_at,
-                    end_date=latest_commit_date,
-                    end_seq_no=2,
-                    work_item_id=w1.id,
-                    lead_time=int((datetime.utcnow()-timedelta(hours=1)-w1.created_at).total_seconds())
-                ),
+                work_items_source_id=w1.work_items_source_id,
+                start_seq_no=0,
+                start_date=w1.created_at,
+                end_date=latest_commit_date,
+                end_seq_no=2,
+                work_item_id=w1.id,
+                lead_time=int((datetime.utcnow() - timedelta(hours=1) - w1.created_at).total_seconds())
+            ),
             WorkItemDeliveryCycle(
-                    start_seq_no=3,
-                    start_date=latest_commit_date+timedelta(hours=1),
-                    work_item_id=w1.id
-                )
+                work_items_source_id=w1.work_items_source_id,
+                start_seq_no=3,
+                start_date=latest_commit_date + timedelta(hours=1),
+                work_item_id=w1.id
+            )
         ])
 
         w2.delivery_cycles.extend([
             WorkItemDeliveryCycle(
-                    start_seq_no=0,
-                    start_date=w2.created_at,
-                    work_item_id=w2.id
+                work_items_source_id=w2.work_items_source_id,
+                start_seq_no=0,
+                start_date=w2.created_at,
+                work_item_id=w2.id
             )
         ])
         session.flush()

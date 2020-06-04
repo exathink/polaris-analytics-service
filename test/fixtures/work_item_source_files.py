@@ -28,11 +28,10 @@ from datetime import datetime, timedelta
 
 from polaris.analytics.db.model import WorkItemDeliveryCycle
 
-
-earliest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=5)
-latest_commit_date = datetime.utcnow().replace(microsecond=0)-timedelta(days=2)
+earliest_commit_date = datetime.utcnow().replace(microsecond=0) - timedelta(days=5)
+latest_commit_date = datetime.utcnow().replace(microsecond=0) - timedelta(days=2)
 source_file_keys = [uuid.uuid4().hex, uuid.uuid4().hex]
-test_contributors_info =[
+test_contributors_info = [
     dict(
         name='Joe Blow',
         key=uuid.uuid4().hex,
@@ -87,7 +86,8 @@ def contributor_commits_fixture(org_repo_fixture, cleanup):
                 )
             ).inserted_primary_key[0]
 
-            contributor_list.append(dict(alias_id=contributor_alias_id, key=test_contributor['key'], name=test_contributor['name']))
+            contributor_list.append(
+                dict(alias_id=contributor_alias_id, key=test_contributor['key'], name=test_contributor['name']))
     yield organization, projects, repositories, contributor_list
 
 
@@ -116,6 +116,7 @@ def create_source_files(test_source_files):
         session.connection.execute(
             source_files.insert(test_source_files)
         )
+
 
 @pytest.yield_fixture()
 def work_items_commits_source_files_fixture(contributor_commits_fixture, cleanup):
@@ -149,27 +150,27 @@ def work_items_commits_source_files_fixture(contributor_commits_fixture, cleanup
     for commit in test_commits:
         commit['stats'] = {"files": 1, "lines": 8, "deletions": 4, "insertions": 4}
         commit['source_files'] = [
-                    dict(
-                        key=source_file_keys[0],
-                        path='test/',
-                        name='files1.txt',
-                        file_type='txt',
-                        version_count=1,
-                        is_deleted=False,
-                        action='A',
-                        stats={"lines": 2, "insertions": 2, "deletions": 0}
-                    ),
-                    dict(
-                        key=source_file_keys[1],
-                        path='test/',
-                        name='files2.py',
-                        file_type='py',
-                        version_count=1,
-                        is_deleted=False,
-                        action='A',
-                        stats={"lines": 4, "insertions": 2, "deletions": 2}
-                    )
-                ]
+            dict(
+                key=source_file_keys[0],
+                path='test/',
+                name='files1.txt',
+                file_type='txt',
+                version_count=1,
+                is_deleted=False,
+                action='A',
+                stats={"lines": 2, "insertions": 2, "deletions": 0}
+            ),
+            dict(
+                key=source_file_keys[1],
+                path='test/',
+                name='files2.py',
+                file_type='py',
+                version_count=1,
+                is_deleted=False,
+                action='A',
+                stats={"lines": 4, "insertions": 2, "deletions": 2}
+            )
+        ]
 
     # Add commits
     create_test_commits(test_commits)
@@ -251,25 +252,28 @@ def work_items_commits_source_files_fixture(contributor_commits_fixture, cleanup
 
         w1.delivery_cycles.extend([
             WorkItemDeliveryCycle(
-                    start_seq_no=0,
-                    start_date=w1.created_at,
-                    end_date=latest_commit_date-timedelta(hours=1),
-                    end_seq_no=2,
-                    work_item_id=w1.id,
-                    lead_time=int((latest_commit_date-timedelta(hours=1)-w1.created_at).total_seconds())
-                ),
+                work_items_source_id=w1.work_items_source_id,
+                start_seq_no=0,
+                start_date=w1.created_at,
+                end_date=latest_commit_date - timedelta(hours=1),
+                end_seq_no=2,
+                work_item_id=w1.id,
+                lead_time=int((latest_commit_date - timedelta(hours=1) - w1.created_at).total_seconds())
+            ),
             WorkItemDeliveryCycle(
-                    start_seq_no=3,
-                    start_date=latest_commit_date+timedelta(hours=1),
-                    work_item_id=w1.id
-                )
+                work_items_source_id=w1.work_items_source_id,
+                start_seq_no=3,
+                start_date=latest_commit_date + timedelta(hours=1),
+                work_item_id=w1.id
+            )
         ])
 
         w2.delivery_cycles.extend([
             WorkItemDeliveryCycle(
-                    start_seq_no=0,
-                    start_date=w2.created_at,
-                    work_item_id=w2.id
+                work_items_source_id=w2.work_items_source_id,
+                start_seq_no=0,
+                start_date=w2.created_at,
+                work_item_id=w2.id
             )
         ])
         session.flush()

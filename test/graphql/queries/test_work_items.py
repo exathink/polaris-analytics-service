@@ -97,6 +97,27 @@ class TestWorkItemInstance:
         assert work_item['latestCommit'] == get_date("2020-02-05").isoformat()
         assert work_item['commitCount'] == 2
 
+    def it_implements_work_item_event_span_interface(self, setup_work_item_transitions):
+        new_work_items = setup_work_item_transitions
+        work_item_key = new_work_items[0]['key']
+
+        client = Client(schema)
+        query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces: [WorkItemEventSpan]){
+                            earliestWorkItemEvent
+                            latestWorkItemEvent
+                        }
+                    } 
+                """
+        result = client.execute(query, variable_values=dict(key=work_item_key))
+        assert 'data' in result
+        work_item = result['data']['workItem']
+        assert work_item
+        assert work_item['earliestWorkItemEvent'] == '2018-12-02T00:00:00'
+        assert work_item['latestWorkItemEvent'] == '2018-12-03T00:00:00'
+
+
     class TestWorkItemInstanceEvents:
 
         def it_returns_work_item_event_named_nodes(self, setup_work_item_transitions):

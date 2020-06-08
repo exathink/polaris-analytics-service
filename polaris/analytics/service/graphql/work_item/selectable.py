@@ -19,7 +19,7 @@ from polaris.analytics.db.model import \
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics, \
-    WorkItemStateDetails
+    WorkItemStateDetails, WorkItemEventSpan
 
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
@@ -292,5 +292,22 @@ class WorkItemsCommitSummary(InterfaceResolver):
                 work_items_commits, work_items_commits.c.work_item_id == work_item_nodes.c.id
             ).join(
                 commits, commits.c.id == work_items_commits.c.commit_id
+            )
+        ).group_by(work_item_nodes.c.id)
+
+
+class WorkItemsWorkItemEventSpan(InterfaceResolver):
+    interface = WorkItemEventSpan
+
+    @staticmethod
+    def interface_selector(work_item_nodes, **kwargs):
+        return select([
+            work_item_nodes.c.id,
+            func.min(work_item_state_transitions.c.created_at).label('earliest_work_item_event'),
+            func.max(work_item_state_transitions.c.created_at).label('latest_work_item_event')
+
+        ]).select_from(
+            work_item_nodes.join(
+                work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_item_nodes.c.id
             )
         ).group_by(work_item_nodes.c.id)

@@ -110,6 +110,11 @@ class OrganizationRef(graphene.Interface):
     organization_key = graphene.String(required=True)
 
 
+class ProjectRef(graphene.Interface):
+    project_name = graphene.String(required=True)
+    project_key = graphene.String(required=True)
+
+
 class WorkItemsSourceRef(graphene.Interface):
     work_items_source_name = graphene.String(required=True)
     work_items_source_key = graphene.String(required=True)

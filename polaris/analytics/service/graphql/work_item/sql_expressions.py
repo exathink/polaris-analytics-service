@@ -41,6 +41,7 @@ def work_item_delivery_cycle_key_columns(work_items, work_item_delivery_cycles):
 
 def work_item_info_columns(work_items):
     return [
+        work_items.c.work_items_source_id,
         work_items.c.display_id,
         work_items.c.description,
         work_items.c.work_item_type,

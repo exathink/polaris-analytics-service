@@ -14,12 +14,12 @@ from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolver
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, \
     WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics, \
-    WorkItemStateDetails, WorkItemEventSpan
+    WorkItemStateDetails, WorkItemEventSpan, ProjectRef
 
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
     WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics, \
-    WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan
+    WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -215,12 +215,13 @@ class WorkItem(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef, WorkItemEventSpan,  CommitSummary, WorkItemStateDetails)
+        interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef, WorkItemEventSpan,  ProjectRef, CommitSummary, WorkItemStateDetails)
         named_node_resolver = WorkItemNode
         interface_resolvers = {
             'CommitSummary': WorkItemsCommitSummary,
             'WorkItemStateDetails': WorkItemsWorkItemStateDetails,
             'WorkItemEventSpan': WorkItemsWorkItemEventSpan,
+            'ProjectRef': WorkItemsProjectRef
         }
         connection_node_resolvers = {
             'work_item_events': WorkItemEventNodes,

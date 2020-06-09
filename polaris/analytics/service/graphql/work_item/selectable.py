@@ -8,18 +8,18 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam, and_, func
+from sqlalchemy import select, bindparam, and_, func, cast, Text
 
 from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
     work_items_commits, repositories, commits, \
     work_items_sources, work_item_delivery_cycles, work_items_source_state_map, \
-    work_item_delivery_cycle_durations
+    work_item_delivery_cycle_durations, projects
 
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics, \
-    WorkItemStateDetails, WorkItemEventSpan
+    WorkItemStateDetails, WorkItemEventSpan, ProjectRef
 
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
@@ -37,7 +37,7 @@ class WorkItemNode(NamedNodeResolver):
             work_items.c.id,
             work_items.c.key,
             work_items.c.name,
-            *work_item_info_columns(work_items)
+            *work_item_info_columns(work_items),
         ]).where(
             work_items.c.key == bindparam('key')
         )
@@ -309,5 +309,23 @@ class WorkItemsWorkItemEventSpan(InterfaceResolver):
         ]).select_from(
             work_item_nodes.join(
                 work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_item_nodes.c.id
+            )
+        ).group_by(work_item_nodes.c.id)
+
+
+class WorkItemsProjectRef(InterfaceResolver):
+    interface = ProjectRef
+
+    @staticmethod
+    def interface_selector(work_item_nodes, **kwargs):
+        return select([
+            work_item_nodes.c.id,
+            func.min(cast(projects.c.key, Text)).label('project_key'),
+            func.min(projects.c.name).label('project_name')
+        ]).select_from(
+            work_item_nodes.join(
+                work_items_sources, work_item_nodes.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                projects, work_items_sources.c.project_id == projects.c.id
             )
         ).group_by(work_item_nodes.c.id)

@@ -41,6 +41,8 @@ def work_item_delivery_cycle_key_columns(work_items, work_item_delivery_cycles):
 
 def work_item_info_columns(work_items):
     return [
+        work_items.c.key.label('work_item_key'),
+        work_items.c.work_items_source_id,
         work_items.c.display_id,
         work_items.c.description,
         work_items.c.work_item_type,
@@ -55,6 +57,7 @@ def work_item_info_columns(work_items):
 
 def work_item_info_group_expr_columns(work_items):
     return [
+        func.min(cast(work_items.c.key, Text)).label('work_item_key'),
         func.min(work_items.c.display_id).label('display_id'),
         func.min(work_items.c.description).label('description'),
         func.min(work_items.c.work_item_type).label('work_item_type'),
@@ -70,6 +73,7 @@ def work_item_info_group_expr_columns(work_items):
 def work_item_event_columns(work_items, work_item_state_transitions):
     return [
         work_item_event_key_column(work_items, work_item_state_transitions),
+        work_items.c.key.label('work_item_key'),
         work_items.c.name,
         work_items.c.display_id,
         work_items.c.description,
@@ -94,7 +98,6 @@ def work_item_commit_info_columns(work_items, repositories, commits):
         commits.c.key.label('commit_key'),
         commits.c.source_commit_id.label('commit_hash'),
         work_items.c.name.label('work_item_name'),
-        work_items.c.key.label('work_item_key'),
         repositories.c.name.label('repository'),
         repositories.c.integration_type.label('integration_type'),
         repositories.c.url.label('repository_url'),

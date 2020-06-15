@@ -53,16 +53,30 @@ class WorkItemEventNode(NamedNodeResolver):
 
     @staticmethod
     def named_node_selector(**kwargs):
+        previous_state_type = work_items_source_state_map.alias()
+        new_state_type = work_items_source_state_map.alias()
         return select([
             *work_item_event_columns(work_items, work_item_state_transitions),
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
+            previous_state_type.c.state_type.label('previous_state_type'),
+            new_state_type.c.state_type.label('new_state_type')
 
         ]).select_from(
             work_items.join(
                 work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
             ).join(
                 work_items_sources, work_items_sources.c.id == work_items.c.work_items_source_id
+            ).outerjoin(
+                previous_state_type, and_(
+                    previous_state_type.c.work_items_source_id == work_items_sources.c.id,
+                    work_item_state_transitions.c.previous_state == previous_state_type.c.state
+                )
+            ).outerjoin(
+                new_state_type, and_(
+                    new_state_type.c.work_items_source_id == work_items_sources.c.id,
+                    work_item_state_transitions.c.state == new_state_type.c.state
+                )
             )
         ).where(
             and_(
@@ -77,16 +91,32 @@ class WorkItemEventNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
+        previous_state_type = work_items_source_state_map.alias()
+        new_state_type = work_items_source_state_map.alias()
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
-            *work_item_event_columns(work_items, work_item_state_transitions)
-        ]).where(
-            and_(
-                work_items_sources.c.id == work_items.c.work_items_source_id,
-                work_item_state_transitions.c.work_item_id == work_items.c.id,
-                work_items.c.key == bindparam('key')
+            *work_item_event_columns(work_items, work_item_state_transitions),
+            previous_state_type.c.state_type.label('previous_state_type'),
+            new_state_type.c.state_type.label('new_state_type')
+        ]).select_from(
+            work_items.join(
+                work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
+            ).join(
+                work_items_sources, work_items_sources.c.id == work_items.c.work_items_source_id
+            ).outerjoin(
+                previous_state_type, and_(
+                    previous_state_type.c.work_items_source_id == work_items_sources.c.id,
+                    work_item_state_transitions.c.previous_state == previous_state_type.c.state
+                )
+            ).outerjoin(
+                new_state_type, and_(
+                    new_state_type.c.work_items_source_id == work_items_sources.c.id,
+                    work_item_state_transitions.c.state == new_state_type.c.state
+                )
             )
+        ).where(
+            work_items.c.key == bindparam('key')
         )
 
         return work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions, **kwargs)
@@ -249,7 +279,8 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                     func.json_build_object(
                         'state', work_item_delivery_cycle_durations.c.state,
                         'state_type', work_items_source_state_map.c.state_type,
-                        'days_in_state', work_item_delivery_cycle_durations.c.cumulative_time_in_state/(1.0*3600*24)
+                        'days_in_state',
+                        work_item_delivery_cycle_durations.c.cumulative_time_in_state / (1.0 * 3600 * 24)
                     )
                 )
             ).label('work_item_state_details')

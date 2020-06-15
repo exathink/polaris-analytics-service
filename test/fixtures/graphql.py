@@ -236,6 +236,7 @@ def create_work_items(organization, source_data, items_data):
             WorkItem(**item)
             for item in items_data
         ])
+        source.init_state_map()
         session.add(source)
         return source
 

@@ -166,7 +166,9 @@ class TestWorkItemInstance:
                                             seqNo
                                             eventDate
                                             previousState
+                                            previousStateType
                                             newState
+                                            newStateType
                                         }
                                     }
                                 }
@@ -181,6 +183,11 @@ class TestWorkItemInstance:
                 assert node['seqNo'] is not None
                 assert node['eventDate']
                 assert node['newState']
+                assert node['newStateType']
+                if node['seqNo'] == 1:
+                    assert node['previousState']
+                    assert node['previousStateType']
+
 
 
         def it_returns_work_item_events_source_refs(self, setup_work_item_transitions):

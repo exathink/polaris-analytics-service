@@ -21,7 +21,8 @@ from polaris.analytics.db.model import \
     organizations, projects, projects_repositories, \
     repositories, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases, \
-    work_items_sources, work_items, work_item_state_transitions, work_items_commits
+    work_items_sources, work_items, work_item_state_transitions, work_items_commits, \
+    work_items_source_state_map
  
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
     ProjectCount, RepositoryCount, WorkItemsSourceCount,  \
@@ -241,10 +242,15 @@ class OrganizationWorkItemEventNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
+        previous_state_type = work_items_source_state_map.alias()
+        new_state_type = work_items_source_state_map.alias()
+
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
-            *work_item_event_columns(work_items, work_item_state_transitions)
+            *work_item_event_columns(work_items, work_item_state_transitions),
+            previous_state_type.c.state_type.label('previous_state_type'),
+            new_state_type.c.state_type.label('new_state_type')
         ]).select_from(
             organizations.join(
                 work_items_sources, work_items_sources.c.organization_id == organizations.c.id
@@ -252,6 +258,16 @@ class OrganizationWorkItemEventNodes(ConnectionResolver):
                 work_items
             ).join(
                 work_item_state_transitions
+            ).outerjoin(
+                previous_state_type, and_(
+                    previous_state_type.c.work_items_source_id == work_items_sources.c.id,
+                    work_item_state_transitions.c.previous_state == previous_state_type.c.state
+                )
+            ).outerjoin(
+                new_state_type, and_(
+                    new_state_type.c.work_items_source_id == work_items_sources.c.id,
+                    work_item_state_transitions.c.state == new_state_type.c.state
+                )
             )
         ).where(
             organizations.c.key == bindparam('key')

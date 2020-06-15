@@ -137,7 +137,9 @@ class WorkItemStateTransition(graphene.Interface):
     event_date = graphene.DateTime(required=True)
     seq_no = graphene.Int(required=True)
     previous_state = graphene.String(required=False)
+    previous_state_type = graphene.String(required=False)
     new_state = graphene.String(required=True)
+    new_state_type = graphene.String(required=False)
 
 
 class WorkItemStateTransitionImpl(graphene.ObjectType):

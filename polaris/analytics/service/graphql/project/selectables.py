@@ -288,6 +288,7 @@ class ProjectWorkItemNodes(ConnectionResolver):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
+            work_items_sources.c.integration_type.label('work_tracking_integration_type'),
             work_items.c.name,
             work_items.c.key,
             *work_item_info_columns(work_items),
@@ -319,6 +320,7 @@ class ProjectWorkItemEventNodes(ConnectionResolver):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
+            work_items_sources.c.integration_type.label('work_tracking_integration_type'),
             *work_item_event_columns(work_items, work_item_state_transitions),
             previous_state_type.c.state_type.label('previous_state_type'),
             new_state_type.c.state_type.label('new_state_type')
@@ -358,6 +360,7 @@ class ProjectWorkItemCommitNodes(ConnectionResolver):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
+            work_items_sources.c.integration_type.label('work_tracking_integration_type'),
             *work_item_info_columns(work_items),
             *work_item_commit_info_columns(work_items, repositories, commits)
         ]).select_from(

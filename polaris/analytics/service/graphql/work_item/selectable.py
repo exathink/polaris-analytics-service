@@ -29,7 +29,7 @@ from ..commit.sql_expressions import commit_info_columns, commits_connection_app
 
 
 class WorkItemNode(NamedNodeResolver):
-    interfaces = (NamedNode, WorkItemInfo)
+    interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
 
     @staticmethod
     def named_node_selector(**kwargs):
@@ -38,7 +38,14 @@ class WorkItemNode(NamedNodeResolver):
             work_items.c.key,
             work_items.c.name,
             *work_item_info_columns(work_items),
-        ]).where(
+            work_items_sources.c.key.label('work_items_source_key'),
+            work_items_sources.c.name.label('work_items_source_name'),
+            work_items_sources.c.integration_type.label('work_tracking_integration_type')
+        ]).select_from(
+            work_items.join(
+                work_items_sources, work_items.c.work_items_source_id == work_items_sources.c.id
+            )
+        ).where(
             work_items.c.key == bindparam('key')
         )
 
@@ -59,6 +66,7 @@ class WorkItemEventNode(NamedNodeResolver):
             *work_item_event_columns(work_items, work_item_state_transitions),
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
+            work_items_sources.c.integration_type.label('work_tracking_integration_type'),
             previous_state_type.c.state_type.label('previous_state_type'),
             new_state_type.c.state_type.label('new_state_type')
 
@@ -96,6 +104,7 @@ class WorkItemEventNodes(ConnectionResolver):
         select_stmt = select([
             work_items_sources.c.key.label('work_items_source_key'),
             work_items_sources.c.name.label('work_items_source_name'),
+            work_items_sources.c.integration_type.label('work_tracking_integration_type'),
             *work_item_event_columns(work_items, work_item_state_transitions),
             previous_state_type.c.state_type.label('previous_state_type'),
             new_state_type.c.state_type.label('new_state_type')

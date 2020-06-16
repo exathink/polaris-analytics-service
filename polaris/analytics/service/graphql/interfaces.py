@@ -118,6 +118,7 @@ class ProjectRef(graphene.Interface):
 class WorkItemsSourceRef(graphene.Interface):
     work_items_source_name = graphene.String(required=True)
     work_items_source_key = graphene.String(required=True)
+    work_tracking_integration_type = graphene.String(required=True)
 
 
 class WorkItemInfo(graphene.Interface):

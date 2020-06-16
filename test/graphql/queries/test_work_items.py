@@ -65,6 +65,25 @@ class TestWorkItemInstance:
         assert work_item['stateType'] == work_items_common['state_type']
         assert work_item['isBug'] == work_items_common['is_bug']
 
+    def it_implements_work_items_source_ref_interface(self, work_items_fixture):
+        work_item_key, _ , _= work_items_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItem($key:String!) {
+                workItem(key: $key, interfaces: [WorkItemsSourceRef]){
+                    workItemsSourceKey
+                    workItemsSourceName
+                    workTrackingIntegrationType
+                }
+            } 
+        """
+        result = client.execute(query, variable_values=dict(key=work_item_key))
+        assert 'data' in result
+        work_item = result['data']['workItem']
+        assert work_item['workItemsSourceKey']
+        assert work_item['workItemsSourceName']
+        assert work_item['workTrackingIntegrationType']
+
     def it_implements_commit_summary_info_interface(self, work_items_commit_summary_fixture):
         work_item_key, _, _ = work_items_commit_summary_fixture
         client = Client(schema)
@@ -203,6 +222,7 @@ class TestWorkItemInstance:
                                         node {
                                             workItemsSourceName
                                             workItemsSourceKey
+                                            workTrackingIntegrationType
                                         }
                                     }
                                 }
@@ -216,6 +236,7 @@ class TestWorkItemInstance:
             for node in map(lambda edge: edge['node'], edges):
                 assert node['workItemsSourceName']
                 assert node['workItemsSourceKey']
+                assert node['workTrackingIntegrationType']
 
     class TestWorkItemInstanceWorkItemStateDetails:
 

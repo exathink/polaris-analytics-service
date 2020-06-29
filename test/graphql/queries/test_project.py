@@ -714,6 +714,8 @@ class TestProjectAggregateCycleMetrics:
                                         closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                                 ) {
                                     ... on AggregateCycleMetrics {
+                                        measurementDate
+                                        measurementWindow
                                         minLeadTime
                                         avgLeadTime
                                         maxLeadTime
@@ -735,6 +737,8 @@ class TestProjectAggregateCycleMetrics:
         result = client.execute(query, variable_values=dict(project_key=project.key, days=30, percentile=0.70))
         assert result['data']
         project = result['data']['project']
+        assert project['measurementDate']
+        assert project['measurementWindow']
         assert not project['minLeadTime']
         assert not project['avgLeadTime']
         assert not project['maxLeadTime']

@@ -257,6 +257,8 @@ class CycleMetrics(graphene.Interface):
 
 
 class AggregateCycleMetrics(graphene.Interface):
+    measurement_date = graphene.DateTime(required=True)
+    measurement_window = graphene.Int(required=True)
     min_lead_time = graphene.Float(required=False)
     avg_lead_time = graphene.Float(required=False)
     max_lead_time = graphene.Float(required=False)
@@ -283,3 +285,6 @@ class StateMapping(graphene.ObjectType):
 
 class WorkItemStateMappings(graphene.Interface):
     work_item_state_mappings = graphene.Field(graphene.List(StateMapping))
+
+
+

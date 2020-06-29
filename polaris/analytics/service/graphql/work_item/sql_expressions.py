@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 from datetime import datetime, timedelta
-from sqlalchemy import and_, cast, Text, func, case, select
+from sqlalchemy import and_, cast, Text, func, case, select, literal
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.utils.exceptions import ProcessingException
 
@@ -221,6 +221,7 @@ def work_items_cycle_metrics(**kwargs):
         raise ProcessingException(
             "The argument 'closedWithinDays' must be specified when computing cycle metrics"
         )
+    measurement_date = datetime.utcnow()
 
     select_stmt = select([
         *work_items.columns,

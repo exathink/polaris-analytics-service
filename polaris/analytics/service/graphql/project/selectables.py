@@ -9,7 +9,7 @@
 from datetime import datetime, timedelta
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, union_all
+from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, union_all, literal
 
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
@@ -671,6 +671,8 @@ class ProjectCycleMetrics(InterfaceResolver):
 
         return select([
             project_nodes.c.id,
+            literal(datetime.utcnow()).label('measurement_date'),
+            literal(kwargs.get('closed_within_days')).label('measurement_window'),
             func.min(project_work_item_cycle_metrics.c.lead_time).label('min_lead_time'),
             func.avg(project_work_item_cycle_metrics.c.lead_time).label('avg_lead_time'),
             func.max(project_work_item_cycle_metrics.c.lead_time).label('max_lead_time'),

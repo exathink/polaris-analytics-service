@@ -24,7 +24,10 @@ from ..summary_mixins import \
     ActivityLevelSummaryResolverMixin, \
     InceptionsResolverMixin
 
-from ..selectable_field_mixins import CumulativeCommitCountResolverMixin, WeeklyContributorCountsResolverMixin
+from ..selectable_field_mixins import \
+    CumulativeCommitCountResolverMixin, \
+    WeeklyContributorCountsResolverMixin, \
+    CycleMetricsTrendsResolverMixin
 
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
@@ -48,6 +51,7 @@ from .selectables import ProjectNode, \
     ProjectRecentlyActiveContributorNodes, \
     ProjectCumulativeCommitCount, \
     ProjectWeeklyContributorCount, \
+    ProjectCycleMetricsTrends, \
     ProjectWorkItemEventSpan, \
     ProjectWorkItemNodes, \
     ProjectWorkItemEventNodes, \
@@ -79,6 +83,7 @@ class Project(
     # field mixins
     CumulativeCommitCountResolverMixin,
     WeeklyContributorCountsResolverMixin,
+    CycleMetricsTrendsResolverMixin,
 
     #
     Selectable
@@ -128,7 +133,8 @@ Implicit Interfaces: ArchivedStatus
         }
         selectable_field_resolvers = {
             'cumulative_commit_count': ProjectCumulativeCommitCount,
-            'weekly_contributor_counts': ProjectWeeklyContributorCount
+            'weekly_contributor_counts': ProjectWeeklyContributorCount,
+            'cycle_metrics_trends': ProjectCycleMetricsTrends
         }
         connection_class = lambda: Projects
 

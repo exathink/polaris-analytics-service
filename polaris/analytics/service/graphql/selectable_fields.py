@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 import graphene
-from .interfaces import CumulativeCommitCount, WeeklyContributorCount
+from .interfaces import CumulativeCommitCount, WeeklyContributorCount, AggregateCycleMetrics
 
 
 class CumulativeCommitCountField(graphene.ObjectType):
@@ -22,6 +22,9 @@ class WeeklyContributorCountsField(graphene.ObjectType):
         interfaces = (CumulativeCommitCount, WeeklyContributorCount)
 
 
+class CycleMetricsTrendsField(graphene.ObjectType):
+    class Meta:
+        interfaces = (AggregateCycleMetrics, )
 
 
 

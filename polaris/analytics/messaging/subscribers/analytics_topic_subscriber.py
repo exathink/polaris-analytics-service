@@ -11,14 +11,15 @@
 import logging
 from polaris.messaging.topics import TopicSubscriber, AnalyticsTopic
 from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, WorkItemsCreated, WorkItemsCommitsResolved, \
-    ProjectsRepositoriesAdded, RepositoriesImported
+    ProjectsRepositoriesAdded, RepositoriesImported, PullRequestsCreated
 
 from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, \
     InferProjectsRepositoriesRelationships, ResolveWorkItemsSourcesForRepositories, \
     UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, \
     RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits, \
     ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
-    PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems
+    PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems, \
+    ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests
 
 from polaris.messaging.utils import raise_on_failure
 
@@ -72,17 +73,26 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 return response
 
         elif WorkItemsCreated.message_type == message.message_type:
-            result = self.process_resolve_commits_for_work_items(channel, message)
-            if result is not None and len(result['resolved']) > 0:
-                response = WorkItemsCommitsResolved(
-                    send=dict(
-                        organization_key=message['organization_key'],
-                        work_items_commits=result['resolved']
-                    ),
-                    in_response_to=message
-                )
-                self.publish(AnalyticsTopic, response)
-                return response
+            resolve_commits_for_work_items_command = ResolveCommitsForWorkItems(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, resolve_commits_for_work_items_command)
+
+            resolve_pull_requests_for_work_items_command = ResolvePullRequestsForWorkItems(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, resolve_pull_requests_for_work_items_command)
+
+            return resolve_commits_for_work_items_command, resolve_pull_requests_for_work_items_command
+
+        elif PullRequestsCreated.message_type == message.message_type:
+            resolve_work_items_for_pull_requests_command = ResolveWorkItemsForPullRequests(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, resolve_work_items_for_pull_requests_command)
 
         elif CommitDetailsCreated.message_type == message.message_type:
             #  register_source_file_versions
@@ -177,11 +187,19 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 )
             )
 
+        # Commands
+        elif ResolveCommitsForWorkItems.message_type == message.message_type:
+            return self.process_resolve_commits_for_work_items(channel, message)
+
+        elif ResolvePullRequestsForWorkItems.message_type == message.message_type:
+            return self.process_resolve_pull_requests_for_work_items(channel, message)
+
+        elif ResolveWorkItemsForPullRequests.message_type == message.message_type:
+            return self.process_resolve_work_items_for_pull_requests(channel, message)
 
         elif RegisterSourceFileVersions.message_type == message.message_type:
             return self.process_register_source_file_versions(channel, message)
 
-        # Commands
         elif UpdateCommitsWorkItemsSummaries.message_type == message.message_type:
             return self.process_update_commits_work_items_summaries(channel, message)
 
@@ -276,9 +294,65 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             f'Process WorkItemsCreated for Organization {organization_key} work item source {work_item_source_key}')
 
         if len(new_work_items) > 0:
-            return raise_on_failure(
+            result = raise_on_failure(
                 message,
                 api.resolve_commits_for_new_work_items(
+                    organization_key=organization_key,
+                    work_item_source_key=work_item_source_key,
+                    work_item_summaries=new_work_items
+                )
+            )
+            if result is not None and len(result['resolved']) > 0:
+                response = WorkItemsCommitsResolved(
+                    send=dict(
+                        organization_key=message['organization_key'],
+                        work_items_commits=result['resolved']
+                    ),
+                    in_response_to=message
+                )
+                return response
+
+    @staticmethod
+    def process_resolve_pull_requests_for_work_items(channel, message):
+        # TODO: Edit for pull requests
+        organization_key = message['organization_key']
+        work_item_source_key = message['work_items_source_key']
+        new_work_items = message['new_work_items']
+        logger.info(
+            f'Process WorkItemsCreated for Organization {organization_key} work item source {work_item_source_key}')
+
+        if len(new_work_items) > 0:
+            result = raise_on_failure(
+                message,
+                api.resolve_pull_requests_for_new_work_items(
+                    organization_key=organization_key,
+                    work_item_source_key=work_item_source_key,
+                    work_item_summaries=new_work_items
+                )
+            )
+            if result is not None and len(result['resolved']) > 0:
+                response = WorkItemsCommitsResolved(
+                    send=dict(
+                        organization_key=message['organization_key'],
+                        work_items_commits=result['resolved']
+                    ),
+                    in_response_to=message
+                )
+                return response
+
+    @staticmethod
+    def process_resolve_work_items_for_pull_requests(channel, message):
+        # TODO: Edit for pull requests
+        organization_key = message['organization_key']
+        work_item_source_key = message['work_items_source_key']
+        new_work_items = message['new_work_items']
+        logger.info(
+            f'Process WorkItemsCreated for Organization {organization_key} work item source {work_item_source_key}')
+
+        if len(new_work_items) > 0:
+            return raise_on_failure(
+                message,
+                api.resolve_work_items_for_pull_requests(
                     organization_key=organization_key,
                     work_item_source_key=work_item_source_key,
                     work_item_summaries=new_work_items

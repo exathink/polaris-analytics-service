@@ -12,6 +12,7 @@ from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
 from polaris.messaging.messages import WorkItemsCreated, WorkItemsCommitsResolved
 from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
 from polaris.messaging.topics import AnalyticsTopic
+from polaris.analytics.messaging.commands import ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems
 
 from test.fixtures.work_item_commit_resolution import *
 
@@ -71,6 +72,8 @@ class TestWorkItemsCreated:
         publisher = mock_publisher()
         channel = mock_channel()
 
-        AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsCommitsResolved)
+        result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        assert len(result) == 2
+        publisher.assert_topic_called_with_message(AnalyticsTopic, ResolveCommitsForWorkItems, call=0)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, ResolvePullRequestsForWorkItems, call=1)
 

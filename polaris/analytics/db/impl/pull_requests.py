@@ -55,7 +55,6 @@ def import_new_pull_requests(session, repository_key, pull_request_summaries):
                             'source_branch',
                             'target_branch',
                             'source_repository_key',
-                            'source_branch_latest_commit'
                         ])
                     )
                     for pull_request in pull_request_summaries
@@ -102,7 +101,6 @@ def import_new_pull_requests(session, repository_key, pull_request_summaries):
                         'source_branch',
                         'target_branch',
                         'source_repository_id',
-                        'source_branch_latest_commit',
                         'repository_id'
                     ],
                     select(
@@ -122,7 +120,6 @@ def import_new_pull_requests(session, repository_key, pull_request_summaries):
                             pull_requests_temp.c.source_branch,
                             pull_requests_temp.c.target_branch,
                             pull_requests_temp.c.source_repository_id,
-                            pull_requests_temp.c.source_branch_latest_commit,
                             pull_requests_temp.c.repository_id
                         ]
                     ).where(
@@ -164,7 +161,6 @@ def update_pull_requests(session, repository_key, pull_request_summaries):
                             'deleted_at',
                             'merge_status',
                             'merged_at',
-                            'source_branch_latest_commit'
                         ])
                     )
                     for pull_request in pull_request_summaries
@@ -182,7 +178,6 @@ def update_pull_requests(session, repository_key, pull_request_summaries):
                     deleted_at=pull_requests_temp.c.deleted_at,
                     merge_status=pull_requests_temp.c.merge_status,
                     merged_at=pull_requests_temp.c.merged_at,
-                    source_branch_latest_commit=pull_requests_temp.c.source_branch_latest_commit,
                 ).where(
                     pull_requests_temp.c.key == pull_requests.c.key
                 )

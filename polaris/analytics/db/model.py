@@ -823,7 +823,8 @@ class WorkItemSourceFileChange(Base):
     # relationships
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
     work_item = relationship('WorkItem', back_populates='source_file_changes')
-    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), index=True, nullable=True)
+    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), index=True,
+                               nullable=True)
     delivery_cycle = relationship('WorkItemDeliveryCycle', back_populates='source_file_changes')
     repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False)
     repository = relationship('Repository', back_populates='source_file_changes')
@@ -867,16 +868,9 @@ class PullRequest(Base):
 
     # Source(Branch/Repo from which PR originates) and target branch and repository details
     source_branch = Column(String, nullable=False)
-    # Denormalized branch id from repos.branch table
-    source_branch_id = Column(Integer, nullable=True)
     target_branch = Column(String, nullable=False)
-    # Denormalized branch id from repos.branch table
-    target_branch_id = Column(Integer, nullable=True)
 
     source_repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=True)
-
-    # Commit related info
-    source_branch_latest_commit = Column(String, nullable=True)
 
     # Repository Relationship
     repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False)

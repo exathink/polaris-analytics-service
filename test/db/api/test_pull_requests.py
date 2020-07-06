@@ -204,26 +204,3 @@ class TestUpdatePullRequests:
         assert result['success']
         assert db.connection().execute(
             f"select count(id) from analytics.pull_requests where key='{test_pr_key}' and title='WIP: PR'").scalar() == 1
-
-    def it_updates_source_branch_latest_commit(self, setup_repo_org):
-        repository_id, organization_id = setup_repo_org
-        pr_summaries = [
-            dict(
-                key=uuid.uuid4().hex,
-                source_id=str(i),
-                display_id=str(i),
-                **pull_requests_common()
-            )
-            for i in range(0, 10)
-        ]
-
-        result = api.import_new_pull_requests(rails_repository_key, pr_summaries)
-        assert result['success']
-        assert db.connection().execute('select count(id) from analytics.pull_requests').scalar() == 10
-
-        test_pr_key = pr_summaries[0]['key']
-        pr_summaries[0]['source_branch_latest_commit'] = "NewCommit"
-        result = api.update_pull_requests(rails_repository_key, [pr_summaries[0]])
-        assert result['success']
-        assert db.connection().execute(
-            f"select count(id) from analytics.pull_requests where key='{test_pr_key}' and source_branch_latest_commit='NewCommit'").scalar() == 1

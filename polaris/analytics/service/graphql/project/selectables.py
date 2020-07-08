@@ -508,28 +508,17 @@ class ProjectCycleMetricsTrends(SelectableFieldResolver):
         measurement_period_start_date = measurement_period_end_date - timedelta(
             days=days
         )
-        # The candidate work items need to be selected taking into the account the measurement window
-        # starting with the beginning of the measurement period.
-        candidate_selection_start_date = measurement_period_start_date - timedelta(days=measurement_window)
 
-        # The first query selects the measurement dates for which we want to display the trend values.
-        # This is simply all the dates that we had work items closed within the measurement_period
         timeline_dates = select([
-            cast(work_item_delivery_cycles.c.end_date, Date).distinct().label('measurement_date')
-        ]).select_from(
-            work_item_delivery_cycles.join(
-                work_items, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-            ).join(
-                work_items_sources, work_items.c.work_items_source_id == work_items_sources.c.id
-            ).join(
-                projects, work_items_sources.c.project_id == projects.c.id
-            )
-        ).where(
-            and_(
-                work_item_delivery_cycles.c.end_date >= measurement_period_start_date,
-                projects.c.key == bindparam('key')
-            )
-        ).alias()
+            cast(
+                func.generate_series(
+                    measurement_period_start_date,
+                    measurement_period_end_date,
+                    timedelta(days=7)
+                ),
+                Date
+            ).label('measurement_date')
+        ]).alias()
 
         # Now for each of these dates, we are going to be aggregating the measurements for work items
         # within the measurement window for that date. We will be using a *lateral* join for doing the full aggregation
@@ -554,6 +543,7 @@ class ProjectCycleMetricsTrends(SelectableFieldResolver):
                     timeline_dates.c.measurement_date - timedelta(days=measurement_window),
                     timeline_dates.c.measurement_date
                 ),
+                work_items.c.work_item_type.in_(WorkItemTypesToIncludeInCycleMetrics),
                 projects.c.key == bindparam('key')
 
             )

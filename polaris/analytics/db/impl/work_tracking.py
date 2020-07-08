@@ -483,13 +483,6 @@ def resolve_commits_for_work_items(session, organization_key, work_items_source_
             )
 
 
-def resolve_pull_requests_for_work_items(session, organization_key, work_items_source_key, work_item_summaries):
-    resolved = []
-    return dict(
-        resolved=resolved
-    )
-
-
 # -----------------------------------------------
 #
 # ------------------------------------------------
@@ -772,14 +765,6 @@ def resolve_work_items_for_commits(session, organization_key, repository_key, co
                         )
 
             resolved = update_commits_work_items(session, repository_key, commits_display_ids)
-
-    return dict(
-        resolved=resolved
-    )
-
-
-def resolve_work_items_for_pull_requests(session, organization_key, repository_key, commit_summaries):
-    resolved = []
 
     return dict(
         resolved=resolved

@@ -314,35 +314,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
     @staticmethod
     def process_resolve_pull_requests_for_work_items(channel, message):
-        # TODO: Edit for pull requests
-        organization_key = message['organization_key']
-        work_item_source_key = message['work_items_source_key']
-        new_work_items = message['new_work_items']
-        logger.info(
-            f'Process WorkItemsCreated for Organization {organization_key} work item source {work_item_source_key}')
-
-        if len(new_work_items) > 0:
-            result = raise_on_failure(
-                message,
-                api.resolve_pull_requests_for_new_work_items(
-                    organization_key=organization_key,
-                    work_item_source_key=work_item_source_key,
-                    work_item_summaries=new_work_items
-                )
-            )
-            if result is not None and len(result['resolved']) > 0:
-                response = WorkItemsCommitsResolved(
-                    send=dict(
-                        organization_key=message['organization_key'],
-                        work_items_commits=result['resolved']
-                    ),
-                    in_response_to=message
-                )
-                return response
-
-    @staticmethod
-    def process_resolve_work_items_for_pull_requests(channel, message):
-        # TODO: Edit for pull requests
         organization_key = message['organization_key']
         work_item_source_key = message['work_items_source_key']
         new_work_items = message['new_work_items']
@@ -352,10 +323,30 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         if len(new_work_items) > 0:
             return raise_on_failure(
                 message,
-                api.resolve_work_items_for_pull_requests(
+                api.resolve_pull_requests_for_new_work_items(
                     organization_key=organization_key,
                     work_item_source_key=work_item_source_key,
                     work_item_summaries=new_work_items
+                )
+            )
+
+    @staticmethod
+    def process_resolve_work_items_for_pull_requests(channel, message):
+        organization_key = message['organization_key']
+        repository_key = message['repository_key']
+        # TODO: May need to change new_pull_requests/updated_pull_requests field name \
+        #  to pull_request_summaries in the messages, so that same function can be used to handle both
+        pull_request_summaries = message['new_pull_requests']
+        logger.info(
+            f'Process PullRequestsCreated for Organization {organization_key} repository {repository_key}')
+
+        if len(pull_request_summaries) > 0:
+            return raise_on_failure(
+                message,
+                api.resolve_work_items_for_pull_requests(
+                    organization_key=organization_key,
+                    repository_key=repository_key,
+                    pull_request_summaries=pull_request_summaries
                 )
             )
 

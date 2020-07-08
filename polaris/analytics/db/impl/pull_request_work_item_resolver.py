@@ -6,17 +6,16 @@
 # is strictly prohibited. The work product in this file is proprietary and
 # confidential.
 
-# Author: Krishna Kumar
+# Author: Pragya Goyal
 
 import re
 from polaris.utils.exceptions import ProcessingException
-from polaris.common.enums import WorkTrackingIntegrationType
 
 
-class WorkItemResolver:
+class PullRequestWorkItemResolver:
 
     @classmethod
-    def resolve(cls, commit_message, branch_name):
+    def resolve(cls, title, description, source_branch):
         raise NotImplementedError
 
     @classmethod
@@ -35,45 +34,48 @@ class WorkItemResolver:
             raise ProcessingException(f'WorkItemResolver: Cannot resolve null integration type')
 
 
-class PivotalTrackerWorkItemResolver(WorkItemResolver):
+class PivotalTrackerWorkItemResolver(PullRequestWorkItemResolver):
     stories = re.compile("[#'](\d+)")
     branch = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names
 
     @classmethod
-    def resolve(cls, commit_message, branch_name):
+    def resolve(cls, title, description, source_branch):
         resolved = []
         # check commit message for matches
-        resolved.extend(cls.stories.findall(commit_message))
+        resolved.extend(cls.stories.findall(title))
+        resolved.extend(cls.stories.findall(description))
         # check branch name for matches
-        if branch_name is not None:
-            resolved.extend(cls.branch.findall(branch_name))
+        if source_branch is not None:
+            resolved.extend(cls.branch.findall(source_branch))
         return resolved
 
 
-class GithubWorkItemResolver(WorkItemResolver):
-    commit_message_matcher = re.compile('#(\d+)')
+class GithubWorkItemResolver(PullRequestWorkItemResolver):
+    pr_title_description_matcher = re.compile('#(\d+)')
     branch = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names
 
     @classmethod
-    def resolve(cls, commit_message, branch_name):
+    def resolve(cls, title, description, source_branch):
         resolved = []
-        resolved.extend(cls.commit_message_matcher.findall(commit_message))
+        resolved.extend(cls.pr_title_description_matcher.findall(title))
+        resolved.extend(cls.pr_title_description_matcher.findall(description))
 
-        if branch_name is not None:
-            resolved.extend(cls.branch.findall(branch_name))
+        if source_branch is not None:
+            resolved.extend(cls.branch.findall(source_branch))
 
         return resolved
 
 
-class JiraWorkItemResolver(WorkItemResolver):
+class JiraWorkItemResolver(PullRequestWorkItemResolver):
     matcher = re.compile('([\w]+-\d+)')
 
     @classmethod
-    def resolve(cls, commit_message, branch_name):
+    def resolve(cls, title, description, source_branch):
         resolved = []
-        resolved.extend(cls.matcher.findall(commit_message))
-        if branch_name is not None:
-            resolved.extend(cls.matcher.findall(branch_name))
+        resolved.extend(cls.matcher.findall(title))
+        resolved.extend(cls.matcher.findall(description))
+        if source_branch is not None:
+            resolved.extend(cls.matcher.findall(source_branch))
 
         return resolved
 

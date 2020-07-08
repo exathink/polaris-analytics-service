@@ -11,7 +11,7 @@
 import logging
 from polaris.messaging.topics import TopicSubscriber, AnalyticsTopic
 from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, WorkItemsCreated, WorkItemsCommitsResolved, \
-    ProjectsRepositoriesAdded, RepositoriesImported, PullRequestsCreated
+    ProjectsRepositoriesAdded, RepositoriesImported, PullRequestsCreated, PullRequestsUpdated
 
 from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, \
     InferProjectsRepositoriesRelationships, ResolveWorkItemsSourcesForRepositories, \
@@ -88,6 +88,16 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             return resolve_commits_for_work_items_command, resolve_pull_requests_for_work_items_command
 
         elif PullRequestsCreated.message_type == message.message_type:
+            resolve_work_items_for_pull_requests_command = ResolveWorkItemsForPullRequests(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, resolve_work_items_for_pull_requests_command)
+
+        elif PullRequestsUpdated.message_type == message.message_type:
+            # TODO: Using the same resolve method as new prs. Discuss if we need another one,\
+            #  particularly if there is a scenario when we need to remove old mappings \
+            #  (not sure if this is already taken care of)
             resolve_work_items_for_pull_requests_command = ResolveWorkItemsForPullRequests(
                 send=message.dict,
                 in_response_to=message
@@ -334,9 +344,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     def process_resolve_work_items_for_pull_requests(channel, message):
         organization_key = message['organization_key']
         repository_key = message['repository_key']
-        # TODO: May need to change new_pull_requests/updated_pull_requests field name \
+        # FIXME: Need to change new_pull_requests/updated_pull_requests field name \
         #  to pull_request_summaries in the messages, so that same function can be used to handle both
-        pull_request_summaries = message['new_pull_requests']
+        pull_request_summaries = message['updated_pull_requests']
         logger.info(
             f'Process PullRequestsCreated for Organization {organization_key} repository {repository_key}')
 

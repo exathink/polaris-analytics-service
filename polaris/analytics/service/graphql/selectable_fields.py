@@ -22,9 +22,7 @@ class WeeklyContributorCountsField(graphene.ObjectType):
         interfaces = (CumulativeCommitCount, WeeklyContributorCount)
 
 
-class CycleMetricsTrendsField(graphene.ObjectType):
-    class Meta:
-        interfaces = (AggregateCycleMetrics, )
+
 
 
 

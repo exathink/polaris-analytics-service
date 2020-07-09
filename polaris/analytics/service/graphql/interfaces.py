@@ -278,6 +278,32 @@ class AggregateCycleMetrics(graphene.Interface):
     work_items_with_null_cycle_time = graphene.Int(required=False)
 
 
+class AggregateCycleMetricsImpl(graphene.ObjectType):
+    class Meta:
+        interfaces = (AggregateCycleMetrics,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            self.measurement_date = datetime.strptime(self.measurement_date, "%Y-%m-%d")
+        except ValueError:
+            self.measurement_date = datetime.strptime(self.measurement_date, "%Y-%m-%dT%H:%M:%S")
+
+        try:
+            self.earliest_closed_date = datetime.strptime(self.earliest_closed_date, "%Y-%m-%d")
+        except ValueError:
+            self.earliest_closed_date = datetime.strptime(self.earliest_closed_date, "%Y-%m-%dT%H:%M:%S")
+            
+        try:
+            self.latest_closed_date = datetime.strptime(self.latest_closed_date, "%Y-%m-%d")
+        except ValueError:
+            self.latest_closed_date = datetime.strptime(self.latest_closed_date, "%Y-%m-%dT%H:%M:%S")
+            
+            
+class CycleMetricsTrends(graphene.Interface):
+    cycle_metrics_trends = graphene.List(AggregateCycleMetricsImpl)
+
+
 class StateMapping(graphene.ObjectType):
     state = graphene.String(required=True)
     state_type = graphene.String(required=False)
@@ -285,6 +311,3 @@ class StateMapping(graphene.ObjectType):
 
 class WorkItemStateMappings(graphene.Interface):
     work_item_state_mappings = graphene.Field(graphene.List(StateMapping))
-
-
-

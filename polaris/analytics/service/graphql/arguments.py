@@ -1,0 +1,52 @@
+# -*- coding: utf-8 -*-
+
+# Copyright: © Exathink, LLC (2011-2018) All Rights Reserved
+
+# Unauthorized use or copying of this file and its contents, via any medium
+# is strictly prohibited. The work product in this file is proprietary and
+# confidential.
+
+# Author: Krishna Kumar
+
+
+import graphene
+
+
+class AggregateMetricsTrendsParameters(graphene.InputObjectType):
+    before = graphene.DateTime(
+        required=False,
+        description="The end datetime of the period for which the trends are measured. Defaults to datetime.utcnow()"
+    )
+    days = graphene.Int(
+        required=True,
+        description="Days back from the before date for which trends should be measured. "
+                    "Trends are reported for the dates drawn from the closed interval (R_start, R_end) where"
+                    "R_start = before - days and R_end = before"
+    )
+    sampling_frequency = graphene.Int(
+        required=False,
+        description="Determines which dates within the reporting interval are chosen to report trend data. "
+                    "This value K is specified in days. The reporting period (R_start, R_end) "
+                    "is sampled at intervals of K days starting from "
+                    "R_end and ending with R_start and aggregate metrics is reported for each such date. For example"
+                    "If days = 30 and sampling_frequency is 7, then metrics are reported for dates ("
+                    "before, -7, before -14, before - 21, before - 28) etc."
+                    "The default value of the parameter is 1 day, but if you are reporting trends over larger period, "
+                    " this "
+                    "value can be used to reduce the number of data points returned by sampling less frequently over "
+                    "the interval",
+        default_value=1
+    )
+    measurement_window = graphene.Int(
+        required=True,
+        description="When measuring aggregate metrics like average_cycle_time, this parameter specifies how "
+                    "many days back "
+                    "from a sample date the underlying data set should be aggregated to compute the metric. "
+                    "For example if"
+                    "days = 30, sampling_frequency=7 and measurement_window=15, for each of the 4 dates in the window,"
+                    "we will aggregate the underlying data set looking back 15 days from the sample date. "
+                    "So we will be computing the average cycle times for the  work items that have "
+                    "closed in the 15 days "
+                    "prior to each sample date in the interval"
+
+    )

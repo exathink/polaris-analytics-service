@@ -7,11 +7,12 @@
 # confidential.
 
 # Author: Krishna Kumar
-
+import graphene
 from polaris.graphql.mixins import *
+from datetime import datetime
 
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
-    WorkItemDaysInState
+    WorkItemDaysInState, AggregateCycleMetricsImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -66,4 +67,17 @@ class WorkItemStateMappingsResolverMixin(KeyIdResolverMixin):
         return [
             StateMapping(**state_mapping)
             for state_mapping in self.work_item_state_mappings if state_mapping is not None
+        ]
+
+
+class CycleMetricsTrendsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.cycle_metrics_trends = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_cycle_metrics_trends(self, info, **kwargs):
+        return [
+            AggregateCycleMetricsImpl(**cycle_metrics)
+            for cycle_metrics in self.cycle_metrics_trends
         ]

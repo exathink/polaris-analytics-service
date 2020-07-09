@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 # Author: Krishna Kumar
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
     union_all, literal, Date
-from sqlalchemy.dialects.postgresql import INTERVAL
 
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
@@ -31,7 +30,7 @@ from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo
+    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
@@ -473,7 +472,7 @@ class ProjectWeeklyContributorCount(SelectableFieldResolver):
         )
 
 
-class ProjectCycleMetricsTrends(SelectableFieldResolver):
+class ProjectCycleMetricsTrendsSF(SelectableFieldResolver):
     interface = AggregateCycleMetrics
 
     @staticmethod
@@ -786,4 +785,110 @@ class ProjectCycleMetrics(InterfaceResolver):
             )
         ).group_by(
             project_nodes.c.id
+        )
+
+
+class ProjectCycleMetricsTrends(InterfaceResolver):
+    interface = CycleMetricsTrends
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+
+        cycle_metrics_trends_args = kwargs.get('cycle_metrics_trends_args')
+        if cycle_metrics_trends_args is None:
+            raise ProcessingException(
+                "'cycle_metrics_trends_args is a required arg to resolve the "
+                "CycleMetricsTrends interface"
+            )
+
+        # The end date of the measurement period.
+        measurement_period_end_date = cycle_metrics_trends_args.before or datetime.utcnow()
+
+        # This parameter specified the window of time for which we are reporting
+        # the trends - so for example, average cycle time over the past 15 days
+        # => days = 15. We will take a set of measurements over the
+        # the 15 day period and report metrics for each measurement date.
+        days = cycle_metrics_trends_args.days
+        if days is None:
+            raise ProcessingException(
+                "The argument 'days' must be specified when cycle metrics trends"
+            )
+
+        # This metric specifies the window over which values are aggregated for *each* point in the measurement window.
+        # So for example if we are reporting the 30 day average cycle time over the past 15 days,
+        # days = 15 and cycle_metric_trends_measurement_window = 30. For each
+        # measurement date in the 15 day measurement period, we will find the average cycle time of
+        # the work items that have closed in the previous 30 days. The idea is to replicate the trend values
+        # that we are seeing in the snapshot Flow Metrics view over time.
+        measurement_window = cycle_metrics_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "The argument 'measurementWindow' must be specified when requesting cycle metrics trends"
+            )
+
+        # the start date of the measurement period
+        measurement_period_start_date = measurement_period_end_date - timedelta(
+            days=days
+        )
+
+        timeline_dates = select([
+            cast(
+                func.generate_series(
+                    measurement_period_start_date,
+                    measurement_period_end_date,
+                    timedelta(days=cycle_metrics_trends_args.sampling_frequency)
+                ),
+                Date
+            ).label('measurement_date')
+        ]).alias()
+
+        # Now for each of these dates, we are going to be aggregating the measurements for work items
+        # within the measurement window for that date. We will be using a *lateral* join for doing the full aggregation
+        # so note the lateral clause at the end instead of the usual alias.
+        cycle_metrics = select([
+            project_nodes.c.id.label('project_id'),
+            func.avg(work_item_delivery_cycles.c.cycle_time / (1.0 * 3600 * 24)).label('avg_cycle_time'),
+            func.avg(work_item_delivery_cycles.c.lead_time / (1.0 * 3600 * 24)).label('avg_lead_time'),
+            func.count(work_item_delivery_cycles.c.delivery_cycle_id).label('work_items_in_scope'),
+            func.max(work_item_delivery_cycles.c.end_date).label('latest_closed_date'),
+            func.min(work_item_delivery_cycles.c.end_date).label('earliest_closed_date')
+        ]).select_from(
+            project_nodes.join(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            )
+        ).where(
+            and_(
+                cast(work_item_delivery_cycles.c.end_date, Date).between(
+                    timeline_dates.c.measurement_date - timedelta(days=measurement_window),
+                    timeline_dates.c.measurement_date
+                ),
+                work_items.c.work_item_type.in_(WorkItemTypesToIncludeInCycleMetrics)
+            )
+        ).group_by(
+            project_nodes.c.id
+        ).lateral()
+
+        return select([
+            cycle_metrics.c.project_id.label('id'),
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', timeline_dates.c.measurement_date,
+                    'avg_cycle_time', cycle_metrics.c.avg_cycle_time,
+                    'avg_lead_time', cycle_metrics.c.avg_lead_time,
+                    'earliest_closed_date', cast(cycle_metrics.c.earliest_closed_date, Date),
+                    'latest_closed_date', cast(cycle_metrics.c.latest_closed_date, Date),
+                    'work_items_in_scope', cycle_metrics.c.work_items_in_scope
+                )
+
+            ).label('cycle_metrics_trends')
+        ]).select_from(
+            timeline_dates.outerjoin(
+                cycle_metrics, literal(True)
+            )
+        ).group_by(
+            cycle_metrics.c.project_id
         )

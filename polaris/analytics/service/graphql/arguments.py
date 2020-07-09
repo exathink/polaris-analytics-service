@@ -15,7 +15,8 @@ import graphene
 class AggregateMetricsTrendsParameters(graphene.InputObjectType):
     before = graphene.DateTime(
         required=False,
-        description="The end datetime of the period for which the trends are measured. Defaults to datetime.utcnow()"
+        description="The end datetime of the period for which the trends are measured. Defaults to "
+                    "datetime.utcnow() + 1 day"
     )
     days = graphene.Int(
         required=True,

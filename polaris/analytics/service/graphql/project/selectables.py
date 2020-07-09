@@ -715,7 +715,8 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             )
 
         # The end date of the measurement period.
-        measurement_period_end_date = cycle_metrics_trends_args.before or datetime.utcnow()
+
+        measurement_period_end_date = cycle_metrics_trends_args.before or (datetime.utcnow() + timedelta(days=1))
 
         # This parameter specified the window of time for which we are reporting
         # the trends - so for example, average cycle time over the past 15 days
@@ -790,6 +791,7 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             func.json_agg(
                 func.json_build_object(
                     'measurement_date', timeline_dates.c.measurement_date,
+                    'measurement_window', measurement_window,
                     'avg_cycle_time', cycle_metrics.c.avg_cycle_time,
                     'avg_lead_time', cycle_metrics.c.avg_lead_time,
                     'earliest_closed_date', cast(cycle_metrics.c.earliest_closed_date, Date),

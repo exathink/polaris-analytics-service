@@ -204,7 +204,12 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             default_value=30,
             description="When evaluating contributor count "
                         "return only contributors that have committed code to the project in this many days"
-        )
+        ),
+        cycle_metrics_trends_args=graphene.Argument(
+            AggregateMetricsTrendsParameters,
+            required=False,
+            description='Required when resolving CycleMetricsTrends interface'
+        ),
     )
 
     def resolve_projects(self, info, **kwargs):

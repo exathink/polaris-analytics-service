@@ -79,5 +79,5 @@ class CycleMetricsTrendsResolverMixin(KeyIdResolverMixin):
     def resolve_cycle_metrics_trends(self, info, **kwargs):
         return [
             AggregateCycleMetricsImpl(**cycle_metrics)
-            for cycle_metrics in self.cycle_metrics_trends
+            for cycle_metrics in self.cycle_metrics_trends or []
         ]

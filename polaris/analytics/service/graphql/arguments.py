@@ -10,6 +10,7 @@
 
 
 import graphene
+from enum import Enum
 
 
 class AggregateMetricsTrendsParameters(graphene.InputObjectType):
@@ -50,4 +51,32 @@ class AggregateMetricsTrendsParameters(graphene.InputObjectType):
                     "closed in the 15 days "
                     "prior to each sample date in the interval"
 
+    )
+
+
+class CycleMetricsEnum(Enum):
+    min_lead_time = 'min_lead_time'
+    avg_lead_time = 'avg_lead_time'
+    percentile_lead_time = 'percentile_lead_time'
+    max_lead_time = 'max_lead_time'
+
+    min_cycle_time = 'min_cycle_time'
+    avg_cycle_time = 'avg_cycle_time'
+    percentile_cycle_time = 'percentile_cycle_time'
+    max_cycle_time = 'max_cycle_time'
+
+
+class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters):
+    metrics = graphene.List(
+        graphene.Enum.from_enum(CycleMetricsEnum),
+        required=True,
+        description="Specify a list of the metrics that should be returned"
+    )
+    lead_time_target_percentile = graphene.Float(
+        required=False,
+        description="If percentile lead time is requested, then this specifies the target percentile value"
+    )
+    cycle_time_target_percentile = graphene.Float(
+        required=False,
+        description="If percentile cycle time is requested, then this specifies the target percentile value"
     )

@@ -36,7 +36,7 @@ from ..work_items_source import WorkItemsSourcesConnectionMixin
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin, \
     WorkItemDeliveryCyclesConnectionMixin, RecentlyActiveWorkItemsConnectionMixin
 
-from ..arguments import AggregateMetricsTrendsParameters
+from ..arguments import CycleMetricsTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -174,7 +174,7 @@ Implicit Interfaces: ArchivedStatus
                             "include only defects"
             ),
             cycle_metrics_trends_args=graphene.Argument(
-                AggregateMetricsTrendsParameters,
+                CycleMetricsTrendsParameters,
                 required=False,
                 description='Required when resolving CycleMetricsTrends interface'
             ),
@@ -206,7 +206,7 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
                         "return only contributors that have committed code to the project in this many days"
         ),
         cycle_metrics_trends_args=graphene.Argument(
-            AggregateMetricsTrendsParameters,
+            CycleMetricsTrendsParameters,
             required=False,
             description='Required when resolving CycleMetricsTrends interface'
         ),

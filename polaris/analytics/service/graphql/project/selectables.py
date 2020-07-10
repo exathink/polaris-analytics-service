@@ -787,6 +787,8 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             days=days
         )
 
+        # First we generate a series of dates between the period start and end dates
+        # at the granularity of the sampling frequency parameter.
         timeline_dates = select([
             cast(
                 func.generate_series(
@@ -803,9 +805,14 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
         # so note the lateral clause at the end instead of the usual alias.
         cycle_metrics = select([
             project_nodes.c.id.label('project_id'),
+
+            # These are standard attributes returned for the the AggregateCycleMetricsInterface
             func.count(work_item_delivery_cycles.c.delivery_cycle_id).label('work_items_in_scope'),
             func.max(work_item_delivery_cycles.c.end_date).label('latest_closed_date'),
             func.min(work_item_delivery_cycles.c.end_date).label('earliest_closed_date'),
+
+            # This interpolates columns that calculate the specific
+            # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
             *ProjectCycleMetricsTrends.get_cycle_metrics_columns(cycle_metrics_trends_args)
 
         ]).select_from(
@@ -828,6 +835,8 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             project_nodes.c.id
         ).lateral()
 
+        # Finally we do the lateral join and roll up the trend metrics for each project into a json_agg array so that
+        # each project has a single json column representing its cycle_metrics_trend attribute.
         return select([
             cycle_metrics.c.project_id.label('id'),
             func.json_agg(
@@ -844,6 +853,7 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
 
             ).label('cycle_metrics_trends')
         ]).select_from(
+            # This is a lateral cross join.
             timeline_dates.outerjoin(
                 cycle_metrics, literal(True)
             )

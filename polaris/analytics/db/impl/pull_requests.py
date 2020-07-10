@@ -14,8 +14,8 @@ from polaris.analytics.db.model import organizations, pull_requests, repositorie
 from polaris.analytics.db.impl.pull_request_work_item_resolver import PullRequestWorkItemResolver
 from polaris.utils.collections import dict_select
 from polaris.utils.exceptions import ProcessingException
-from sqlalchemy import Integer, insert, select, Column, bindparam
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Integer, select, Column, bindparam, String, BigInteger, and_
+from sqlalchemy.dialects.postgresql import UUID, insert
 
 
 logger = logging.getLogger('polaris.analytics.db.impl.pull_requests')

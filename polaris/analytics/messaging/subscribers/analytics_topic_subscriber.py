@@ -50,7 +50,12 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 ComputeContributorMetricsForWorkItems,
                 ComputeContributorMetricsForCommits,
                 PopulateWorkItemSourceFileChangesForCommits,
-                PopulateWorkItemSourceFileChangesForWorkItems
+                PopulateWorkItemSourceFileChangesForWorkItems,
+                ResolveCommitsForWorkItems,
+                PullRequestsCreated,
+                PullRequestsUpdated,
+                ResolveWorkItemsForPullRequests,
+                ResolvePullRequestsForWorkItems
             ],
             publisher=publisher,
             exclusive=False
@@ -344,9 +349,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     def process_resolve_work_items_for_pull_requests(channel, message):
         organization_key = message['organization_key']
         repository_key = message['repository_key']
-        # FIXME: Need to change new_pull_requests/updated_pull_requests field name \
-        #  to pull_request_summaries in the messages, so that same function can be used to handle both
-        pull_request_summaries = message['updated_pull_requests']
+        pull_request_summaries = message['pull_request_summaries']
         logger.info(
             f'Process PullRequestsCreated for Organization {organization_key} repository {repository_key}')
 

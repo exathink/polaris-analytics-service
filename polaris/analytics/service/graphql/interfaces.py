@@ -276,6 +276,8 @@ class AggregateCycleMetrics(graphene.Interface):
 
     work_items_in_scope = graphene.Int(required=False)
     work_items_with_null_cycle_time = graphene.Int(required=False)
+    lead_time_target_percentile = graphene.Float(required=False)
+    cycle_time_target_percentile = graphene.Float(required=False)
 
 
 class AggregateCycleMetricsImpl(graphene.ObjectType):
@@ -290,12 +292,14 @@ class AggregateCycleMetricsImpl(graphene.ObjectType):
             self.measurement_date = datetime.strptime(self.measurement_date, "%Y-%m-%dT%H:%M:%S")
 
         try:
-            self.earliest_closed_date = datetime.strptime(self.earliest_closed_date, "%Y-%m-%d")
+            if self.earliest_closed_date is not None:
+                self.earliest_closed_date = datetime.strptime(self.earliest_closed_date, "%Y-%m-%d")
         except ValueError:
             self.earliest_closed_date = datetime.strptime(self.earliest_closed_date, "%Y-%m-%dT%H:%M:%S")
             
         try:
-            self.latest_closed_date = datetime.strptime(self.latest_closed_date, "%Y-%m-%d")
+            if self.latest_closed_date is not None:
+                self.latest_closed_date = datetime.strptime(self.latest_closed_date, "%Y-%m-%d")
         except ValueError:
             self.latest_closed_date = datetime.strptime(self.latest_closed_date, "%Y-%m-%dT%H:%M:%S")
             

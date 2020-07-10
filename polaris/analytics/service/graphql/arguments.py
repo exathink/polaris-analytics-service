@@ -64,6 +64,7 @@ class CycleMetricsEnum(Enum):
     avg_cycle_time = 'avg_cycle_time'
     percentile_cycle_time = 'percentile_cycle_time'
     max_cycle_time = 'max_cycle_time'
+    work_items_with_null_cycle_time = 'work_items_with_null_cycle_time'
 
 
 class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters):

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 # Author: Krishna Kumar
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
-    union_all, literal, Date
+    union_all, literal, Date, true
 
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
@@ -693,7 +693,9 @@ class ProjectCycleMetrics(InterfaceResolver):
                           project_work_item_cycle_metrics.c.cycle_time == None), 1)
                 ], else_=0)
             ).label('work_items_with_null_cycle_time'),
-            literal_column(f'{target_percentile}').label('target_percentile')
+            literal_column(f'{target_percentile}').label('target_percentile'),
+            literal_column(f'{target_percentile}').label('cycle_time_target_percentile'),
+            literal_column(f'{target_percentile}').label('lead_time_target_percentile')
         ]).select_from(
             project_nodes.outerjoin(
                 project_work_item_cycle_metrics, project_nodes.c.id == project_work_item_cycle_metrics.c.project_id
@@ -713,6 +715,12 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
         min_cycle_time=func.min(work_item_delivery_cycles.c.cycle_time).label('min_cycle_time'),
         avg_cycle_time=func.avg(work_item_delivery_cycles.c.cycle_time).label('avg_cycle_time'),
         max_cycle_time=func.max(work_item_delivery_cycles.c.cycle_time).label('max_cycle_time'),
+        work_items_with_null_cycle_time=func.sum(
+                case([
+                    (and_(work_item_delivery_cycles.c.work_item_id != None,
+                          work_item_delivery_cycles.c.cycle_time == None), 1)
+                ], else_=0)
+            ).label('work_items_with_null_cycle_time'),
     )
 
     @staticmethod
@@ -758,7 +766,7 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
 
         # The end date of the measurement period.
 
-        measurement_period_end_date = cycle_metrics_trends_args.before or (datetime.utcnow() + timedelta(days=1))
+        measurement_period_end_date = cycle_metrics_trends_args.before or datetime.utcnow()
 
         # This parameter specified the window of time for which we are reporting
         # the trends - so for example, average cycle time over the past 15 days
@@ -819,24 +827,28 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             project_nodes.join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
             ).join(
-                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
-            ).join(
-                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-            )
-        ).where(
-            and_(
-                cast(work_item_delivery_cycles.c.end_date, Date).between(
-                    timeline_dates.c.measurement_date - timedelta(days=measurement_window),
-                    timeline_dates.c.measurement_date
-                ),
-                work_items.c.work_item_type.in_(WorkItemTypesToIncludeInCycleMetrics)
+                work_items,
+                and_(
+                    work_items.c.work_items_source_id == work_items_sources.c.id,
+                    work_items.c.work_item_type.in_(WorkItemTypesToIncludeInCycleMetrics)
+                )
+            ).outerjoin(
+                # outer join here because we want to report timelines dates even
+                # when there are no work items closed in that period.
+                work_item_delivery_cycles,
+                and_(
+                    work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                    cast(work_item_delivery_cycles.c.end_date, Date).between(
+                        timeline_dates.c.measurement_date - timedelta(days=measurement_window),
+                        timeline_dates.c.measurement_date
+                    )
+                )
             )
         ).group_by(
             project_nodes.c.id
         ).lateral()
 
-        # Finally we do the lateral join and roll up the trend metrics for each project into a json_agg array so that
-        # each project has a single json column representing its cycle_metrics_trend attribute.
+
         return select([
             cycle_metrics.c.project_id.label('id'),
             func.json_agg(
@@ -846,6 +858,8 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                     'earliest_closed_date', cast(cycle_metrics.c.earliest_closed_date, Date),
                     'latest_closed_date', cast(cycle_metrics.c.latest_closed_date, Date),
                     'work_items_in_scope', cycle_metrics.c.work_items_in_scope,
+                    'lead_time_target_percentile', cycle_metrics_trends_args.lead_time_target_percentile,
+                    'cycle_time_target_percentile', cycle_metrics_trends_args.cycle_time_target_percentile,
                     *ProjectCycleMetricsTrends.get_cycle_metrics_json_object_columns(
                         cycle_metrics_trends_args, cycle_metrics
                     )
@@ -853,10 +867,7 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
 
             ).label('cycle_metrics_trends')
         ]).select_from(
-            # This is a lateral cross join.
-            timeline_dates.outerjoin(
-                cycle_metrics, literal(True)
-            )
+            timeline_dates.join(cycle_metrics, true())
         ).group_by(
             cycle_metrics.c.project_id
         )

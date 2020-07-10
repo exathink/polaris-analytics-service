@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 from datetime import datetime, timedelta
-from sqlalchemy import and_, cast, Text, func, case, select
+from sqlalchemy import and_, cast, Text, func, case, select, literal
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.utils.exceptions import ProcessingException
 
@@ -232,16 +232,8 @@ def work_items_cycle_metrics(**kwargs):
     ]).select_from(
         work_items.join(
             work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
-        ).join(
-            work_item_delivery_cycle_durations,
-            work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
-        ).join(
-            work_items_source_state_map,
-            and_(
-                work_items.c.work_items_source_id == work_items_source_state_map.c.work_items_source_id,
-                work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state
-            )
-        ))
+        )
+    )
 
     select_stmt = work_item_delivery_cycles_connection_apply_filters(
         select_stmt, work_items, work_item_delivery_cycles, **kwargs

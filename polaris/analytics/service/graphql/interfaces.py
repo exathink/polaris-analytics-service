@@ -257,6 +257,8 @@ class CycleMetrics(graphene.Interface):
 
 
 class AggregateCycleMetrics(graphene.Interface):
+    measurement_date = graphene.DateTime(required=True)
+    measurement_window = graphene.Int(required=True)
     min_lead_time = graphene.Float(required=False)
     avg_lead_time = graphene.Float(required=False)
     max_lead_time = graphene.Float(required=False)
@@ -274,6 +276,36 @@ class AggregateCycleMetrics(graphene.Interface):
 
     work_items_in_scope = graphene.Int(required=False)
     work_items_with_null_cycle_time = graphene.Int(required=False)
+    lead_time_target_percentile = graphene.Float(required=False)
+    cycle_time_target_percentile = graphene.Float(required=False)
+
+
+class AggregateCycleMetricsImpl(graphene.ObjectType):
+    class Meta:
+        interfaces = (AggregateCycleMetrics,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            self.measurement_date = datetime.strptime(self.measurement_date, "%Y-%m-%d")
+        except ValueError:
+            self.measurement_date = datetime.strptime(self.measurement_date, "%Y-%m-%dT%H:%M:%S")
+
+        try:
+            if self.earliest_closed_date is not None:
+                self.earliest_closed_date = datetime.strptime(self.earliest_closed_date, "%Y-%m-%d")
+        except ValueError:
+            self.earliest_closed_date = datetime.strptime(self.earliest_closed_date, "%Y-%m-%dT%H:%M:%S")
+            
+        try:
+            if self.latest_closed_date is not None:
+                self.latest_closed_date = datetime.strptime(self.latest_closed_date, "%Y-%m-%d")
+        except ValueError:
+            self.latest_closed_date = datetime.strptime(self.latest_closed_date, "%Y-%m-%dT%H:%M:%S")
+            
+            
+class CycleMetricsTrends(graphene.Interface):
+    cycle_metrics_trends = graphene.List(AggregateCycleMetricsImpl)
 
 
 class StateMapping(graphene.ObjectType):

@@ -27,7 +27,7 @@ class CumulativeCommitCountResolverMixin(SelectablePropertyResolverMixin):
     cumulative_commit_count = graphene.Field(graphene.List(CumulativeCommitCountField))
 
     def resolve_cumulative_commit_count(self, info, **kwargs):
-        return self.resolve_selectable_field('cumulative_commit_count')
+        return self.resolve_selectable_field('cumulative_commit_count', **kwargs)
 
 
 class WeeklyContributorCountsResolverMixin(SelectablePropertyResolverMixin):
@@ -35,6 +35,7 @@ class WeeklyContributorCountsResolverMixin(SelectablePropertyResolverMixin):
     weekly_contributor_counts = graphene.Field(graphene.List(WeeklyContributorCountsField))
 
     def resolve_weekly_contributor_counts(self, info, **kwargs):
-        return self.resolve_selectable_field('weekly_contributor_counts')
+        return self.resolve_selectable_field('weekly_contributor_counts', **kwargs)
+
 
 

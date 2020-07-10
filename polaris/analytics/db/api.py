@@ -182,6 +182,38 @@ def import_repositories(organization_key, repository_summaries):
         return db.failure_message('', e)
 
 
+def import_new_pull_requests(repository_key, pull_request_summaries):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.import_new_pull_requests(
+                    session,
+                    repository_key,
+                    pull_request_summaries
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Import new pull requests", exc)
+    except Exception as e:
+        return db.failure_message('', e)
+
+
+def update_pull_requests(repository_key, pull_request_summaries):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.update_pull_requests(
+                    session,
+                    repository_key,
+                    pull_request_summaries
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Update pull requests", exc)
+    except Exception as e:
+        return db.failure_message('', e)
+
+
 def create_feature_flag(create_feature_flag_input):
     try:
         with db.orm_session() as session:

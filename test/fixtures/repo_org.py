@@ -30,6 +30,7 @@ def cleanup(setup_schema):
     db.connection().execute("delete from analytics.source_files")
     db.connection().execute("delete from analytics.contributor_aliases")
     db.connection().execute("delete from analytics.contributors")
+    db.connection().execute("delete from analytics.pull_requests")
     db.connection().execute("delete from analytics.projects_repositories")
     db.connection().execute("delete from analytics.repositories")
     db.connection().execute("delete from analytics.projects")

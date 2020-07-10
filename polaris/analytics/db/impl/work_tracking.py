@@ -903,7 +903,6 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                 )
 
             # finally do the update of the changed rows.
-            # FIXME: Update completed_at only when it was previously None, or work item is reopened
             updated = session.connection().execute(
                 work_items.update().values(
                     url=work_items_temp.c.url,

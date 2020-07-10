@@ -10,10 +10,11 @@
 
 import logging
 from polaris.messaging.topics import TopicSubscriber, VcsTopic, AnalyticsTopic
-from polaris.messaging.messages import RepositoriesImported
+from polaris.messaging.messages import RepositoriesImported, PullRequestsCreated, PullRequestsUpdated
 from polaris.analytics.db import api
 
 logger = logging.getLogger('polaris.analytics.messaging.VcsTopicSubscriber')
+
 
 class VcsTopicSubscriber(TopicSubscriber):
     def __init__(self, channel, publisher=None):
@@ -22,7 +23,9 @@ class VcsTopicSubscriber(TopicSubscriber):
             subscriber_queue='vcs_analytics',
             message_classes=[
                 # Events
-                RepositoriesImported
+                RepositoriesImported,
+                PullRequestsCreated,
+                PullRequestsUpdated
 
             ],
             publisher=publisher,
@@ -37,7 +40,20 @@ class VcsTopicSubscriber(TopicSubscriber):
 
                 response = RepositoriesImported(send=message.dict, in_response_to=message)
                 self.publish(AnalyticsTopic, response, channel=channel)
+        if PullRequestsCreated.message_type == message.message_type:
+            result = self.process_pull_requests_created(message)
+            if result['success']:
+                logger.info(f"Imported {result} new and updated pull requests")
 
+                response = PullRequestsCreated(send=message.dict, in_response_to=message)
+                self.publish(AnalyticsTopic, response, channel=channel)
+        if PullRequestsUpdated.message_type == message.message_type:
+            result = self.process_pull_requests_updated(message)
+            if result['success']:
+                logger.info(f"Imported {result} new and updated pull requests")
+
+                response = PullRequestsUpdated(send=message.dict, in_response_to=message)
+                self.publish(AnalyticsTopic, response, channel=channel)
 
     @staticmethod
     def process_repositories_imported(message):
@@ -48,4 +64,20 @@ class VcsTopicSubscriber(TopicSubscriber):
             repository_summaries=message['imported_repositories']
         )
 
+    @staticmethod
+    def process_pull_requests_created(message):
+        logger.info(f"Repository Key: {message['repository_key']}")
 
+        return api.import_new_pull_requests(
+            message['repository_key'],
+            message['new_pull_requests']
+        )
+
+    @staticmethod
+    def process_pull_requests_updated(message):
+        logger.info(f"Repository Key: {message['repository_key']}")
+
+        return api.update_pull_requests(
+            message['repository_key'],
+            message['updated_pull_requests']
+        )

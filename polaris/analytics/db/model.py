@@ -823,7 +823,8 @@ class WorkItemSourceFileChange(Base):
     # relationships
     work_item_id = Column(Integer, ForeignKey('work_items.id'), nullable=False)
     work_item = relationship('WorkItem', back_populates='source_file_changes')
-    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), index=True, nullable=True)
+    delivery_cycle_id = Column(Integer, ForeignKey('work_item_delivery_cycles.delivery_cycle_id'), index=True,
+                               nullable=True)
     delivery_cycle = relationship('WorkItemDeliveryCycle', back_populates='source_file_changes')
     repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False)
     repository = relationship('Repository', back_populates='source_file_changes')
@@ -837,6 +838,49 @@ work_item_source_file_changes = WorkItemSourceFileChange.__table__
 UniqueConstraint(work_item_source_file_changes.c.work_item_id, work_item_source_file_changes.c.delivery_cycle_id, \
                  work_item_source_file_changes.c.repository_id, work_item_source_file_changes.c.commit_id, \
                  work_item_source_file_changes.c.source_file_id)
+
+
+class PullRequest(Base):
+    __tablename__ = 'pull_requests'
+
+    id = Column(Integer, primary_key=True)
+    key = Column(UUID(as_uuid=True), nullable=False, unique=True)
+
+    # ID of the item in the source system, used to cross ref this instance for updates etc.
+    source_id = Column(String, nullable=False)
+    display_id = Column(String, nullable=True)
+    # PR details
+    title = Column(String(256), nullable=False)
+    description = Column(Text, nullable=True)
+    # PR web url
+    web_url = Column(String, nullable=True)
+
+    # timestamps for synchronization
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=True)
+    # Date when system marks PR for deletion
+    deleted_at = Column(DateTime, nullable=True)
+
+    # State and status updates from source system
+    state = Column(String, nullable=False)
+    merge_status = Column(String, nullable=True)
+    merged_at = Column(DateTime, nullable=True)
+
+    # Source(Branch/Repo from which PR originates) and target branch and repository details
+    source_branch = Column(String, nullable=False)
+    target_branch = Column(String, nullable=False)
+
+    source_repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=True)
+
+    # Repository Relationship
+    repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False)
+    repository = relationship('Repository', foreign_keys=[repository_id])
+
+    source_repository = relationship('Repository', foreign_keys=[source_repository_id])
+
+
+pull_requests = PullRequest.__table__
+UniqueConstraint(pull_requests.c.repository_id, pull_requests.c.source_id)
 
 
 class FeatureFlag(Base):

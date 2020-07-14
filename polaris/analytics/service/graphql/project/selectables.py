@@ -715,12 +715,6 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
         min_cycle_time=func.min(work_item_delivery_cycles.c.cycle_time).label('min_cycle_time'),
         avg_cycle_time=func.avg(work_item_delivery_cycles.c.cycle_time).label('avg_cycle_time'),
         max_cycle_time=func.max(work_item_delivery_cycles.c.cycle_time).label('max_cycle_time'),
-        work_items_with_null_cycle_time=func.sum(
-                case([
-                    (and_(work_item_delivery_cycles.c.work_item_id != None,
-                          work_item_delivery_cycles.c.cycle_time == None), 1)
-                ], else_=0)
-            ).label('work_items_with_null_cycle_time'),
     )
 
     @staticmethod
@@ -751,7 +745,7 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
     def get_cycle_metrics_json_object_columns(cycle_metrics_trends_args, cycle_metrics_query):
         columns = []
         for metric in cycle_metrics_trends_args.metrics:
-            columns.extend([metric, (cycle_metrics_query.c[metric]/(1.0*24*3600)).label(metric)])
+            columns.extend([metric, (cycle_metrics_query.c[metric] / (1.0 * 24 * 3600)).label(metric)])
         return columns
 
     @staticmethod
@@ -818,6 +812,16 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             func.count(work_item_delivery_cycles.c.delivery_cycle_id).label('work_items_in_scope'),
             func.max(work_item_delivery_cycles.c.end_date).label('latest_closed_date'),
             func.min(work_item_delivery_cycles.c.end_date).label('earliest_closed_date'),
+            func.sum(
+                case([
+                    (
+                        and_(
+                            work_item_delivery_cycles.c.end_date != None,
+                            work_item_delivery_cycles.c.cycle_time == None
+                        ), 1
+                    )
+                ], else_=0)
+            ).label('work_items_with_null_cycle_time'),
 
             # This interpolates columns that calculate the specific
             # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
@@ -848,7 +852,6 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             project_nodes.c.id
         ).lateral()
 
-
         return select([
             cycle_metrics.c.project_id.label('id'),
             func.json_agg(
@@ -858,6 +861,7 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                     'earliest_closed_date', cast(cycle_metrics.c.earliest_closed_date, Date),
                     'latest_closed_date', cast(cycle_metrics.c.latest_closed_date, Date),
                     'work_items_in_scope', cycle_metrics.c.work_items_in_scope,
+                    'work_items_with_null_cycle_time', cycle_metrics.c.work_items_with_null_cycle_time,
                     'lead_time_target_percentile', cycle_metrics_trends_args.lead_time_target_percentile,
                     'cycle_time_target_percentile', cycle_metrics_trends_args.cycle_time_target_percentile,
                     *ProjectCycleMetricsTrends.get_cycle_metrics_json_object_columns(

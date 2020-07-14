@@ -2288,7 +2288,7 @@ class TestProjectCycleMetricsTrends:
                                     avg_cycle_time,
                                     max_cycle_time,
                                     percentile_cycle_time
-                                    work_items_with_null_cycle_time
+                    
                                 ],
                                 leadTimeTargetPercentile: $percentile,
                                 cycleTimeTargetPercentile: $percentile
@@ -2400,7 +2400,7 @@ class TestProjectCycleMetricsTrends:
                                     avg_cycle_time,
                                     max_cycle_time,
                                     percentile_cycle_time
-                                    work_items_with_null_cycle_time
+        
                                 ],
                                 leadTimeTargetPercentile: $percentile,
                                 cycleTimeTargetPercentile: $percentile
@@ -2522,7 +2522,7 @@ class TestProjectCycleMetricsTrends:
                                     avg_cycle_time,
                                     max_cycle_time,
                                     percentile_cycle_time
-                                    work_items_with_null_cycle_time
+                                    
                                 ],
                                 leadTimeTargetPercentile: $percentile,
                                 cycleTimeTargetPercentile: $percentile
@@ -2651,7 +2651,7 @@ class TestProjectCycleMetricsTrends:
                                     avg_cycle_time,
                                     max_cycle_time,
                                     percentile_cycle_time
-                                    work_items_with_null_cycle_time
+                                    
                                 ],
                                 leadTimeTargetPercentile: $percentile,
                                 cycleTimeTargetPercentile: $percentile
@@ -2772,7 +2772,7 @@ class TestProjectCycleMetricsTrends:
                 assert measurement['workItemsWithNullCycleTime'] == 0
 
     # same test as last one but with a different window size
-    def it_returns_correct_results_for_multuple_points_for_a_different_window_size(self, api_work_items_import_fixture):
+    def it_returns_correct_results_for_multiple_points_for_a_different_window_size(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
@@ -2829,7 +2829,7 @@ class TestProjectCycleMetricsTrends:
                                     avg_cycle_time,
                                     max_cycle_time,
                                     percentile_cycle_time
-                                    work_items_with_null_cycle_time
+                                
                                 ],
                                 leadTimeTargetPercentile: $percentile,
                                 cycleTimeTargetPercentile: $percentile
@@ -2935,3 +2935,88 @@ class TestProjectCycleMetricsTrends:
                 assert measurement['latestClosedDate']
                 assert measurement['workItemsInScope'] == 2
                 assert measurement['workItemsWithNullCycleTime'] == 0
+
+    def it_reports_work_items_with_null_cycle_times_correctly(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+        # move from open to closed directly so there is no cycle time recorded.
+        api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=6))])
+
+        client = Client(schema)
+        query = """
+                    query getProjectCycleMetricsTrends(
+                        $project_key:String!, 
+                        $days: Int!, 
+                        $window: Int!,
+                        $sample: Int,
+                        $percentile: Float
+                    ) {
+                        project(
+                            key: $project_key, 
+                            interfaces: [CycleMetricsTrends], 
+                            cycleMetricsTrendsArgs: {
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                                metrics: [
+                                    max_lead_time,
+                                    max_cycle_time,
+                                ],
+                                leadTimeTargetPercentile: $percentile,
+                                cycleTimeTargetPercentile: $percentile
+                            }
+
+                        ) {
+                            cycleMetricsTrends {
+                                measurementDate
+                                measurementWindow
+                                maxLeadTime
+                                maxCycleTime
+                                workItemsWithNullCycleTime
+                                workItemsInScope
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(
+            project_key=project.key,
+            days=30,
+            window=7,
+            sample=7,
+            percentile=0.70
+        ))
+        assert result['data']
+        project = result['data']['project']
+        # we expect one measurement for each point in the window including the end points.
+        assert len(project['cycleMetricsTrends']) == 5
+        # there is one work item that closed 6 days before the end of the measurement period
+        # so the last 6 dates will record the metrics for this work item, the rest will
+        # be empty
+        for index, measurement in enumerate(project['cycleMetricsTrends']):
+            if index < 4:
+                assert not measurement['maxLeadTime']
+                assert not measurement['maxCycleTime']
+                assert measurement['workItemsWithNullCycleTime'] == 0
+            else:
+                # last period should record one work item with null cycle time.
+                assert measurement['maxLeadTime'] == 6.0
+                assert not measurement['maxCycleTime']
+                assert measurement['workItemsInScope'] == 1
+                assert measurement['workItemsWithNullCycleTime'] == 1

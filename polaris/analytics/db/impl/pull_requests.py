@@ -8,15 +8,15 @@
 
 # Author: Pragya Goyal
 import logging
+from functools import reduce
 from polaris.common import db
 from polaris.analytics.db.model import organizations, pull_requests, repositories, projects, projects_repositories, \
     Repository, WorkItemsSource, work_items, work_items_pull_requests as work_items_pull_requests_table
 from polaris.analytics.db.impl.pull_request_work_item_resolver import PullRequestWorkItemResolver
 from polaris.utils.collections import dict_select
 from polaris.utils.exceptions import ProcessingException
-from sqlalchemy import Integer, select, Column, bindparam, String, BigInteger, and_
+from sqlalchemy import Integer, select, Column, bindparam, String, BigInteger, and_, func
 from sqlalchemy.dialects.postgresql import UUID, insert
-
 
 logger = logging.getLogger('polaris.analytics.db.impl.pull_requests')
 
@@ -262,25 +262,52 @@ def resolve_display_id_pull_requests(pull_requests_batch, integration_type, inpu
     return resolved
 
 
+map_display_ids_to_pull_requests_page_size = 1000
+
+
 def map_display_ids_to_pull_requests(session, work_item_summaries, work_items_source):
     # get pull requests query for given work_item_source/repository
     # skipping pagination in first go, as PRs will be much lesser than commits
-    resolved = []
     pull_request_query = get_pull_requests_query(work_items_source)
-    # Skipping pagination in first run. Will add if required later
+    earliest_created = reduce(
+        lambda earliest, work_item: min(earliest, work_item['created_at']),
+        work_item_summaries,
+        work_item_summaries[0]['created_at']
+    )
+    # first get a total so we can paginate through commits
+    total = session.connection().execute(
+        select([func.count()]).select_from(
+            pull_request_query.alias('T')
+        ), dict(
+            commit_mapping_scope_key=work_items_source.commit_mapping_scope_key,
+            earliest_created=earliest_created
+        )
+    ).scalar()
+
     input_display_id_to_key_map = {work_item['display_id']: work_item['key'] for work_item in work_item_summaries}
     resolved = []
-    pull_requests_batch = session.connection().execute(
-        pull_request_query,
-        dict(
-            pull_request_mapping_scope_key=work_items_source.commit_mapping_scope_key
+
+    fetched = 0
+    batch_size = map_display_ids_to_pull_requests_page_size
+    offset = 0
+    while fetched < total:
+        pull_requests_batch = session.connection().execute(
+            pull_request_query.limit(batch_size).offset(offset),
+            dict(
+                pull_request_mapping_scope_key=work_items_source.commit_mapping_scope_key,
+                earliest_created=earliest_created
+            )
+        ).fetchall()
+
+        resolved.extend(
+            resolve_display_id_pull_requests(
+                pull_requests_batch,
+                work_items_source.integration_type,
+                input_display_id_to_key_map
+            )
         )
-    )
-    resolved = resolve_display_id_pull_requests(
-        pull_requests_batch,
-        work_items_source.integration_type,
-        input_display_id_to_key_map
-    )
+        offset = offset + batch_size
+        fetched = fetched + len(pull_requests_batch)
 
     return resolved
 

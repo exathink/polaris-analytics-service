@@ -12,7 +12,7 @@ from functools import reduce
 from polaris.common import db
 from polaris.analytics.db.model import organizations, pull_requests, repositories, projects, projects_repositories, \
     Repository, WorkItemsSource, work_items, work_items_pull_requests as work_items_pull_requests_table
-from polaris.analytics.db.impl.pull_request_work_item_resolver import PullRequestWorkItemResolver
+from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.utils.collections import dict_select
 from polaris.utils.exceptions import ProcessingException
 from sqlalchemy import Integer, select, Column, bindparam, String, BigInteger, and_, func
@@ -244,11 +244,11 @@ def get_pull_requests_query(work_items_source):
 
 
 def resolve_display_id_pull_requests(pull_requests_batch, integration_type, input_display_id_to_key_map):
-    resolver = PullRequestWorkItemResolver.get_resolver(integration_type)
+    resolver = WorkItemResolver.get_resolver(integration_type)
     assert resolver, f"No work item resolver registered for integration type {integration_type}"
     resolved = []
     for pr in pull_requests_batch:
-        display_ids = resolver.resolve(pr.title, pr.description, pr.source_branch)
+        display_ids = resolver.resolve(pr.title, pr.description, branch_name=pr.source_branch)
         if len(display_ids) > 0:
             for display_id in display_ids:
                 if display_id in input_display_id_to_key_map:
@@ -279,7 +279,7 @@ def map_display_ids_to_pull_requests(session, work_item_summaries, work_items_so
         select([func.count()]).select_from(
             pull_request_query.alias('T')
         ), dict(
-            commit_mapping_scope_key=work_items_source.commit_mapping_scope_key,
+            pull_request_mapping_scope_key=work_items_source.commit_mapping_scope_key,
             earliest_created=earliest_created
         )
     ).scalar()
@@ -484,9 +484,9 @@ def resolve_work_items_for_pull_requests(session, organization_key, repository_k
         if len(work_items_sources) > 0:
             prs_display_ids = []
             for work_items_source in work_items_sources:
-                work_item_resolver = PullRequestWorkItemResolver.get_resolver(work_items_source.integration_type)
+                work_item_resolver = WorkItemResolver.get_resolver(work_items_source.integration_type)
                 for pr in pull_request_summaries:
-                    for display_id in work_item_resolver.resolve(pr['title'], pr['description'], pr['source_branch']):
+                    for display_id in work_item_resolver.resolve(pr['title'], pr['description'], branch_name=pr['source_branch']):
                         prs_display_ids.append(
                             dict(
                                 repository_id=repository.id,

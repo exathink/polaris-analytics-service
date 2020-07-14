@@ -16,7 +16,7 @@ from polaris.common.enums import WorkTrackingIntegrationType
 class WorkItemResolver:
 
     @classmethod
-    def resolve(cls, commit_message, branch_name):
+    def resolve(cls, *text_tokens, branch_name=None):
         raise NotImplementedError
 
     @classmethod
@@ -40,10 +40,11 @@ class PivotalTrackerWorkItemResolver(WorkItemResolver):
     branch = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names
 
     @classmethod
-    def resolve(cls, commit_message, branch_name):
+    def resolve(cls, *text_tokens, branch_name=None):
         resolved = []
         # check commit message for matches
-        resolved.extend(cls.stories.findall(commit_message))
+        for text_token in text_tokens:
+            resolved.extend(cls.stories.findall(text_token))
         # check branch name for matches
         if branch_name is not None:
             resolved.extend(cls.branch.findall(branch_name))
@@ -55,9 +56,10 @@ class GithubWorkItemResolver(WorkItemResolver):
     branch = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names
 
     @classmethod
-    def resolve(cls, commit_message, branch_name):
+    def resolve(cls, *text_tokens, branch_name=None):
         resolved = []
-        resolved.extend(cls.commit_message_matcher.findall(commit_message))
+        for text_token in text_tokens:
+            resolved.extend(cls.commit_message_matcher.findall(text_token))
 
         if branch_name is not None:
             resolved.extend(cls.branch.findall(branch_name))
@@ -69,9 +71,10 @@ class JiraWorkItemResolver(WorkItemResolver):
     matcher = re.compile('([\w]+-\d+)')
 
     @classmethod
-    def resolve(cls, commit_message, branch_name):
+    def resolve(cls, *text_tokens, branch_name=None):
         resolved = []
-        resolved.extend(cls.matcher.findall(commit_message))
+        for text_token in text_tokens:
+            resolved.extend(cls.matcher.findall(text_token))
         if branch_name is not None:
             resolved.extend(cls.matcher.findall(branch_name))
 

@@ -369,7 +369,7 @@ def resolve_display_id_commits(commits_batch, integration_type, input_display_id
     assert resolver, f"No work item resolver registered for integration type {integration_type}"
     resolved = []
     for commit in commits_batch:
-        display_ids = resolver.resolve(commit.commit_message, commit.created_on_branch)
+        display_ids = resolver.resolve(commit.commit_message, branch_name=commit.created_on_branch)
         if len(display_ids) > 0:
             for display_id in display_ids:
                 if display_id in input_display_id_to_key_map:
@@ -752,7 +752,7 @@ def resolve_work_items_for_commits(session, organization_key, repository_key, co
             for work_items_source in work_items_sources:
                 work_item_resolver = WorkItemResolver.get_resolver(work_items_source.integration_type)
                 for commit in commit_summaries:
-                    for display_id in work_item_resolver.resolve(commit['commit_message'], commit['created_on_branch']):
+                    for display_id in work_item_resolver.resolve(commit['commit_message'], branch_name=commit['created_on_branch']):
                         commits_display_ids.append(
                             dict(
                                 repository_id=repository.id,

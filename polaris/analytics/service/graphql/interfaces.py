@@ -275,6 +275,7 @@ class AggregateCycleMetrics(graphene.Interface):
     latest_closed_date = graphene.DateTime(required=False)
 
     work_items_in_scope = graphene.Int(required=False)
+    work_items_with_commits = graphene.Int(required=False)
     work_items_with_null_cycle_time = graphene.Int(required=False)
     lead_time_target_percentile = graphene.Float(required=False)
     cycle_time_target_percentile = graphene.Float(required=False)

@@ -1149,7 +1149,7 @@ class TestProjectAggregateCycleMetrics:
                                 closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
                         ) {
                             ... on AggregateCycleMetrics {
-
+                                avgCycleTime
                                 workItemsWithNullCycleTime
 
 
@@ -2287,7 +2287,9 @@ class TestProjectCycleMetricsTrends:
                                     min_cycle_time,
                                     avg_cycle_time,
                                     max_cycle_time,
-                                    percentile_cycle_time
+                                    percentile_cycle_time,
+                                    work_items_in_scope,
+                                    work_items_with_null_cycle_time
                     
                                 ],
                                 leadTimeTargetPercentile: $percentile,
@@ -2399,7 +2401,9 @@ class TestProjectCycleMetricsTrends:
                                     min_cycle_time,
                                     avg_cycle_time,
                                     max_cycle_time,
-                                    percentile_cycle_time
+                                    percentile_cycle_time,
+                                    work_items_in_scope,
+                                    work_items_with_null_cycle_time
         
                                 ],
                                 leadTimeTargetPercentile: $percentile,
@@ -2523,7 +2527,9 @@ class TestProjectCycleMetricsTrends:
                                     min_cycle_time,
                                     avg_cycle_time,
                                     max_cycle_time,
-                                    percentile_cycle_time
+                                    percentile_cycle_time,
+                                    work_items_in_scope,
+                                    work_items_with_null_cycle_time
                                     
                                 ],
                                 leadTimeTargetPercentile: $percentile,
@@ -2652,7 +2658,9 @@ class TestProjectCycleMetricsTrends:
                                     min_cycle_time,
                                     avg_cycle_time,
                                     max_cycle_time,
-                                    percentile_cycle_time
+                                    percentile_cycle_time,
+                                    work_items_in_scope,
+                                    work_items_with_null_cycle_time
                                     
                                 ],
                                 leadTimeTargetPercentile: $percentile,
@@ -2832,7 +2840,9 @@ class TestProjectCycleMetricsTrends:
                                     min_cycle_time,
                                     avg_cycle_time,
                                     max_cycle_time,
-                                    percentile_cycle_time
+                                    percentile_cycle_time,
+                                    work_items_in_scope,
+                                    work_items_with_null_cycle_time
                                 
                                 ],
                                 leadTimeTargetPercentile: $percentile,
@@ -2984,6 +2994,8 @@ class TestProjectCycleMetricsTrends:
                                 metrics: [
                                     max_lead_time,
                                     max_cycle_time,
+                                    work_items_in_scope,
+                                    work_items_with_null_cycle_time
                                 ],
                                 leadTimeTargetPercentile: $percentile,
                                 cycleTimeTargetPercentile: $percentile

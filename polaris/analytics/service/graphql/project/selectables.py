@@ -794,9 +794,9 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
         timeline_dates = select([
             cast(
                 func.generate_series(
-                    measurement_period_start_date,
                     measurement_period_end_date,
-                    timedelta(days=cycle_metrics_trends_args.sampling_frequency)
+                    measurement_period_start_date,
+                    timedelta(days=-1*cycle_metrics_trends_args.sampling_frequency)
                 ),
                 Date
             ).label('measurement_date')
@@ -858,8 +858,8 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                 func.json_build_object(
                     'measurement_date', timeline_dates.c.measurement_date,
                     'measurement_window', measurement_window,
-                    'earliest_closed_date', cast(cycle_metrics.c.earliest_closed_date, Date),
-                    'latest_closed_date', cast(cycle_metrics.c.latest_closed_date, Date),
+                    'earliest_closed_date', cycle_metrics.c.earliest_closed_date,
+                    'latest_closed_date', cycle_metrics.c.latest_closed_date,
                     'work_items_in_scope', cycle_metrics.c.work_items_in_scope,
                     'work_items_with_null_cycle_time', cycle_metrics.c.work_items_with_null_cycle_time,
                     'lead_time_target_percentile', cycle_metrics_trends_args.lead_time_target_percentile,

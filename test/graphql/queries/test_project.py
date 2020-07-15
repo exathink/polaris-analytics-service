@@ -2440,23 +2440,10 @@ class TestProjectCycleMetricsTrends:
         # we expect one measurement for each point in the window including the end points.
         assert len(project['cycleMetricsTrends']) == 31
         # there is one work item that closed 6 days before the end of the measurement period
-        # so the last 6 dates will record the metrics for this work item, the rest will
+        # so the last 5 dates will record the metrics for this work item, the rest will
         # be empty
         for index, measurement in enumerate(project['cycleMetricsTrends']):
-            if index < 26:
-                assert not measurement['minLeadTime']
-                assert not measurement['avgLeadTime']
-                assert not measurement['maxLeadTime']
-                assert not measurement['percentileLeadTime']
-                assert not measurement['minCycleTime']
-                assert not measurement['avgCycleTime']
-                assert not measurement['maxCycleTime']
-                assert not measurement['percentileCycleTime']
-                assert not measurement['earliestClosedDate']
-                assert not measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 0
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            else:
+            if index < 5:
                 assert measurement['minLeadTime'] == 6.0
                 assert measurement['avgLeadTime'] == 6.0
                 assert measurement['maxLeadTime'] == 6.0
@@ -2469,6 +2456,21 @@ class TestProjectCycleMetricsTrends:
                 assert measurement['latestClosedDate']
                 assert measurement['workItemsInScope'] == 1
                 assert measurement['workItemsWithNullCycleTime'] == 0
+            else:
+                assert not measurement['minLeadTime']
+                assert not measurement['avgLeadTime']
+                assert not measurement['maxLeadTime']
+                assert not measurement['percentileLeadTime']
+                assert not measurement['minCycleTime']
+                assert not measurement['avgCycleTime']
+                assert not measurement['maxCycleTime']
+                assert not measurement['percentileCycleTime']
+                assert not measurement['earliestClosedDate']
+                assert not measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 0
+                assert measurement['workItemsWithNullCycleTime'] == 0
+
+
 
 
     def it_return_correct_results_when_there_are_closed_item_on_the_end_date_of_the_measurement_period(self, api_work_items_import_fixture):
@@ -2565,20 +2567,7 @@ class TestProjectCycleMetricsTrends:
         # so the last entry will record the metrics for this work item, the rest will
         # be empty
         for index, measurement in enumerate(project['cycleMetricsTrends']):
-            if index < 30:
-                assert not measurement['minLeadTime']
-                assert not measurement['avgLeadTime']
-                assert not measurement['maxLeadTime']
-                assert not measurement['percentileLeadTime']
-                assert not measurement['minCycleTime']
-                assert not measurement['avgCycleTime']
-                assert not measurement['maxCycleTime']
-                assert not measurement['percentileCycleTime']
-                assert not measurement['earliestClosedDate']
-                assert not measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 0
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            else:
+            if index < 1:
                 assert measurement['minLeadTime'] == 10.0
                 assert measurement['avgLeadTime'] == 10.0
                 assert measurement['maxLeadTime'] == 10.0
@@ -2590,6 +2579,19 @@ class TestProjectCycleMetricsTrends:
                 assert measurement['earliestClosedDate']
                 assert measurement['latestClosedDate']
                 assert measurement['workItemsInScope'] == 1
+                assert measurement['workItemsWithNullCycleTime'] == 0
+            else:
+                assert not measurement['minLeadTime']
+                assert not measurement['avgLeadTime']
+                assert not measurement['maxLeadTime']
+                assert not measurement['percentileLeadTime']
+                assert not measurement['minCycleTime']
+                assert not measurement['avgCycleTime']
+                assert not measurement['maxCycleTime']
+                assert not measurement['percentileCycleTime']
+                assert not measurement['earliestClosedDate']
+                assert not measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 0
                 assert measurement['workItemsWithNullCycleTime'] == 0
 
 
@@ -2692,72 +2694,7 @@ class TestProjectCycleMetricsTrends:
         assert len(project['cycleMetricsTrends']) == 31
 
         for index, measurement in enumerate(project['cycleMetricsTrends']):
-            if index < 10:
-                assert not measurement['minLeadTime']
-                assert not measurement['avgLeadTime']
-                assert not measurement['maxLeadTime']
-                assert not measurement['percentileLeadTime']
-                assert not measurement['minCycleTime']
-                assert not measurement['avgCycleTime']
-                assert not measurement['maxCycleTime']
-                assert not measurement['percentileCycleTime']
-                assert not measurement['earliestClosedDate']
-                assert not measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 0
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            elif index < 18:
-                assert measurement['minLeadTime'] == 10.0
-                assert measurement['avgLeadTime'] == 10.0
-                assert measurement['maxLeadTime'] == 10.0
-                assert measurement['percentileLeadTime']
-                assert measurement['minCycleTime'] == 9.0
-                assert measurement['avgCycleTime'] == 9.0
-                assert measurement['maxCycleTime'] == 9.0
-                assert measurement['percentileCycleTime'] == 9.0
-                assert measurement['earliestClosedDate']
-                assert measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 1
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            elif index < 20:
-                assert not measurement['minLeadTime']
-                assert not measurement['avgLeadTime']
-                assert not measurement['maxLeadTime']
-                assert not measurement['percentileLeadTime']
-                assert not measurement['minCycleTime']
-                assert not measurement['avgCycleTime']
-                assert not measurement['maxCycleTime']
-                assert not measurement['percentileCycleTime']
-                assert not measurement['earliestClosedDate']
-                assert not measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 0
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            elif index < 25:
-                assert measurement['minLeadTime'] == 20.0
-                assert measurement['avgLeadTime'] == 20.0
-                assert measurement['maxLeadTime'] == 20.0
-                assert measurement['percentileLeadTime']
-                assert measurement['minCycleTime'] == 19.0
-                assert measurement['avgCycleTime'] == 19.0
-                assert measurement['maxCycleTime'] == 19.0
-                assert measurement['percentileCycleTime'] == 19.0
-                assert measurement['earliestClosedDate']
-                assert measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 1
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            elif index < 28:
-                assert measurement['minLeadTime'] == 20.0
-                assert measurement['avgLeadTime'] == 22.5
-                assert measurement['maxLeadTime'] == 25.0
-                assert measurement['percentileLeadTime']
-                assert measurement['minCycleTime'] == 19.0
-                assert measurement['avgCycleTime'] == 21.5
-                assert measurement['maxCycleTime'] == 24.0
-                assert measurement['percentileCycleTime'] == 24.0
-                assert measurement['earliestClosedDate']
-                assert measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 2
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            else:
+            if index < 3:
                 assert measurement['minLeadTime'] == 25.0
                 assert measurement['avgLeadTime'] == 25.0
                 assert measurement['maxLeadTime'] == 25.0
@@ -2770,6 +2707,73 @@ class TestProjectCycleMetricsTrends:
                 assert measurement['latestClosedDate']
                 assert measurement['workItemsInScope'] == 1
                 assert measurement['workItemsWithNullCycleTime'] == 0
+            elif index < 6:
+                assert measurement['minLeadTime'] == 20.0
+                assert measurement['avgLeadTime'] == 22.5
+                assert measurement['maxLeadTime'] == 25.0
+                assert measurement['percentileLeadTime']
+                assert measurement['minCycleTime'] == 19.0
+                assert measurement['avgCycleTime'] == 21.5
+                assert measurement['maxCycleTime'] == 24.0
+                assert measurement['percentileCycleTime'] == 24.0
+                assert measurement['earliestClosedDate']
+                assert measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 2
+                assert measurement['workItemsWithNullCycleTime'] == 0
+            elif index < 11:
+                assert measurement['minLeadTime'] == 20.0
+                assert measurement['avgLeadTime'] == 20.0
+                assert measurement['maxLeadTime'] == 20.0
+                assert measurement['percentileLeadTime']
+                assert measurement['minCycleTime'] == 19.0
+                assert measurement['avgCycleTime'] == 19.0
+                assert measurement['maxCycleTime'] == 19.0
+                assert measurement['percentileCycleTime'] == 19.0
+                assert measurement['earliestClosedDate']
+                assert measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 1
+                assert measurement['workItemsWithNullCycleTime'] == 0
+            elif index < 13:
+                assert not measurement['minLeadTime']
+                assert not measurement['avgLeadTime']
+                assert not measurement['maxLeadTime']
+                assert not measurement['percentileLeadTime']
+                assert not measurement['minCycleTime']
+                assert not measurement['avgCycleTime']
+                assert not measurement['maxCycleTime']
+                assert not measurement['percentileCycleTime']
+                assert not measurement['earliestClosedDate']
+                assert not measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 0
+                assert measurement['workItemsWithNullCycleTime'] == 0
+            elif index < 21:
+                assert measurement['minLeadTime'] == 10.0
+                assert measurement['avgLeadTime'] == 10.0
+                assert measurement['maxLeadTime'] == 10.0
+                assert measurement['percentileLeadTime']
+                assert measurement['minCycleTime'] == 9.0
+                assert measurement['avgCycleTime'] == 9.0
+                assert measurement['maxCycleTime'] == 9.0
+                assert measurement['percentileCycleTime'] == 9.0
+                assert measurement['earliestClosedDate']
+                assert measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 1
+                assert measurement['workItemsWithNullCycleTime'] == 0
+            else:
+                assert not measurement['minLeadTime']
+                assert not measurement['avgLeadTime']
+                assert not measurement['maxLeadTime']
+                assert not measurement['percentileLeadTime']
+                assert not measurement['minCycleTime']
+                assert not measurement['avgCycleTime']
+                assert not measurement['maxCycleTime']
+                assert not measurement['percentileCycleTime']
+                assert not measurement['earliestClosedDate']
+                assert not measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 0
+                assert measurement['workItemsWithNullCycleTime'] == 0
+
+
 
     # same test as last one but with a different window size
     def it_returns_correct_results_for_multiple_points_for_a_different_window_size(self, api_work_items_import_fixture):
@@ -2870,59 +2874,7 @@ class TestProjectCycleMetricsTrends:
         assert len(project['cycleMetricsTrends']) == 31
 
         for index, measurement in enumerate(project['cycleMetricsTrends']):
-            if index < 10:
-                assert not measurement['minLeadTime']
-                assert not measurement['avgLeadTime']
-                assert not measurement['maxLeadTime']
-                assert not measurement['percentileLeadTime']
-                assert not measurement['minCycleTime']
-                assert not measurement['avgCycleTime']
-                assert not measurement['maxCycleTime']
-                assert not measurement['percentileCycleTime']
-                assert not measurement['earliestClosedDate']
-                assert not measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 0
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            elif index < 20:
-                assert measurement['minLeadTime'] == 10.0
-                assert measurement['avgLeadTime'] == 10.0
-                assert measurement['maxLeadTime'] == 10.0
-                assert measurement['percentileLeadTime']
-                assert measurement['minCycleTime'] == 9.0
-                assert measurement['avgCycleTime'] == 9.0
-                assert measurement['maxCycleTime'] == 9.0
-                assert measurement['percentileCycleTime'] == 9.0
-                assert measurement['earliestClosedDate']
-                assert measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 1
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            elif index < 25:
-                assert measurement['minLeadTime'] == 10.0
-                assert measurement['avgLeadTime'] == 15.0
-                assert measurement['maxLeadTime'] == 20.0
-                assert measurement['percentileLeadTime']
-                assert measurement['minCycleTime'] == 9.0
-                assert measurement['avgCycleTime'] == 14.0
-                assert measurement['maxCycleTime'] == 19.0
-                assert measurement['percentileCycleTime'] == 19.0
-                assert measurement['earliestClosedDate']
-                assert measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 2
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            elif index < 26:
-                assert measurement['minLeadTime'] == 10.0
-                assert measurement['avgLeadTime'] - 18.33 < 1
-                assert measurement['maxLeadTime'] == 25.0
-                assert measurement['percentileLeadTime']
-                assert measurement['minCycleTime'] == 9.0
-                assert measurement['avgCycleTime'] - 17.333 < 1
-                assert measurement['maxCycleTime'] == 24.0
-                assert measurement['percentileCycleTime'] == 24.0
-                assert measurement['earliestClosedDate']
-                assert measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 3
-                assert measurement['workItemsWithNullCycleTime'] == 0
-            else:
+            if index < 5:
                 assert measurement['minLeadTime'] == 20.0
                 assert measurement['avgLeadTime'] == 22.5
                 assert measurement['maxLeadTime'] == 25.0
@@ -2935,6 +2887,60 @@ class TestProjectCycleMetricsTrends:
                 assert measurement['latestClosedDate']
                 assert measurement['workItemsInScope'] == 2
                 assert measurement['workItemsWithNullCycleTime'] == 0
+            elif index < 6:
+                assert measurement['minLeadTime'] == 10.0
+                assert measurement['avgLeadTime'] - 18.33 < 1
+                assert measurement['maxLeadTime'] == 25.0
+                assert measurement['percentileLeadTime']
+                assert measurement['minCycleTime'] == 9.0
+                assert measurement['avgCycleTime'] - 17.333 < 1
+                assert measurement['maxCycleTime'] == 24.0
+                assert measurement['percentileCycleTime'] == 24.0
+                assert measurement['earliestClosedDate']
+                assert measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 3
+                assert measurement['workItemsWithNullCycleTime'] == 0
+            elif index < 11:
+                assert measurement['minLeadTime'] == 10.0
+                assert measurement['avgLeadTime'] == 15.0
+                assert measurement['maxLeadTime'] == 20.0
+                assert measurement['percentileLeadTime']
+                assert measurement['minCycleTime'] == 9.0
+                assert measurement['avgCycleTime'] == 14.0
+                assert measurement['maxCycleTime'] == 19.0
+                assert measurement['percentileCycleTime'] == 19.0
+                assert measurement['earliestClosedDate']
+                assert measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 2
+                assert measurement['workItemsWithNullCycleTime'] == 0
+            elif index < 21:
+                assert measurement['minLeadTime'] == 10.0
+                assert measurement['avgLeadTime'] == 10.0
+                assert measurement['maxLeadTime'] == 10.0
+                assert measurement['percentileLeadTime']
+                assert measurement['minCycleTime'] == 9.0
+                assert measurement['avgCycleTime'] == 9.0
+                assert measurement['maxCycleTime'] == 9.0
+                assert measurement['percentileCycleTime'] == 9.0
+                assert measurement['earliestClosedDate']
+                assert measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 1
+                assert measurement['workItemsWithNullCycleTime'] == 0
+            else:
+                assert not measurement['minLeadTime']
+                assert not measurement['avgLeadTime']
+                assert not measurement['maxLeadTime']
+                assert not measurement['percentileLeadTime']
+                assert not measurement['minCycleTime']
+                assert not measurement['avgCycleTime']
+                assert not measurement['maxCycleTime']
+                assert not measurement['percentileCycleTime']
+                assert not measurement['earliestClosedDate']
+                assert not measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 0
+                assert measurement['workItemsWithNullCycleTime'] == 0
+
+
 
     def it_reports_work_items_with_null_cycle_times_correctly(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
@@ -3010,7 +3016,7 @@ class TestProjectCycleMetricsTrends:
         # so the last 6 dates will record the metrics for this work item, the rest will
         # be empty
         for index, measurement in enumerate(project['cycleMetricsTrends']):
-            if index < 4:
+            if index > 0:
                 assert not measurement['maxLeadTime']
                 assert not measurement['maxCycleTime']
                 assert measurement['workItemsWithNullCycleTime'] == 0

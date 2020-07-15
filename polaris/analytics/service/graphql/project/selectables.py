@@ -662,6 +662,7 @@ class ProjectCycleMetrics(InterfaceResolver):
             work_items_cycle_metrics.c.id.label('work_item_id'),
             work_items_cycle_metrics.c.lead_time,
             work_items_cycle_metrics.c.cycle_time,
+            work_items_cycle_metrics.c.commit_count,
             work_items_cycle_metrics.c.end_date,
         ]).select_from(
             project_nodes.join(
@@ -698,7 +699,7 @@ class ProjectCycleMetrics(InterfaceResolver):
                     (
                         and_(
                             project_work_item_cycle_metrics.c.work_item_id != None,
-                            work_item_delivery_cycles.c.commit_count > 0
+                            project_work_item_cycle_metrics.c.commit_count > 0
                         ), 1
                     )
                 ], else_=0

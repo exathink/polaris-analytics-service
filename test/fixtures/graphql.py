@@ -18,7 +18,7 @@ from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
     commits, \
-    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag, FeatureFlagEnablement
+    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag, FeatureFlagEnablement, WorkItemDeliveryCycle
 from polaris.common import db
 from polaris.utils.collections import find
 from polaris.common.enums import WorkTrackingIntegrationType
@@ -984,3 +984,15 @@ class WorkItemImportApiHelper:
             self.work_items[index]['updated_at'] = updated
 
         api.update_work_items(self.organization.key, self.work_items_source.key, self.work_items)
+
+    def update_delivery_cycles(self, updates):
+        with db.orm_session() as session:
+            for index, update in updates:
+                work_item = WorkItem.find_by_work_item_key(session, self.work_items[index]['key'])
+                if work_item:
+                    delivery_cycle=session.query(WorkItemDeliveryCycle).filter(
+                        WorkItemDeliveryCycle.delivery_cycle_id == work_item.current_delivery_cycle_id
+                    ).first()
+                    if delivery_cycle:
+                        setattr(delivery_cycle, update['property'],  update['value'])
+

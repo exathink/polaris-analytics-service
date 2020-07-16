@@ -3038,3 +3038,107 @@ class TestProjectCycleMetricsTrends:
                 assert not measurement['maxCycleTime']
                 assert measurement['workItemsInScope'] == 1
                 assert measurement['workItemsWithNullCycleTime'] == 1
+
+
+    def it_reports_work_items_with_commits_correctly(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id=f'1000{i}',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 4)
+        ]
+
+
+        api_helper.import_work_items(work_items)
+        # move from open to closed directly so there is no cycle time recorded.
+        api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=6))])
+        # update commit count for item 0
+        api_helper.update_delivery_cycles(([(0, dict(property='commit_count', value=3))]))
+        # the next work item has a valid cycle time, but either should be reported in the cycle metrics trends.
+        api_helper.update_work_items([(1, 'upnext', start_date + timedelta(days=1))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=5))])
+        # add some commits to this one too.
+        api_helper.update_delivery_cycles(([(1, dict(property='commit_count', value=1))]))
+        # work item 3 on the other hand has commits but is not closed, so it should not be reported in the result
+        api_helper.update_delivery_cycles(([(2, dict(property='commit_count', value=2))]))
+
+        # work item 4 has not commits and is closed so it should not be reported as a work item in scope but
+        # not as one which has commit counts > 0
+        api_helper.update_work_items([(3, 'closed', start_date + timedelta(days=6))])
+
+        client = Client(schema)
+        query = """
+                    query getProjectCycleMetricsTrends(
+                        $project_key:String!, 
+                        $days: Int!, 
+                        $window: Int!,
+                        $sample: Int,
+                        $percentile: Float
+                    ) {
+                        project(
+                            key: $project_key, 
+                            interfaces: [CycleMetricsTrends], 
+                            cycleMetricsTrendsArgs: {
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                                metrics: [
+                                    max_lead_time,
+                                    max_cycle_time,
+                                    work_items_in_scope,
+                                    work_items_with_commits
+                                ],
+                                leadTimeTargetPercentile: $percentile,
+                                cycleTimeTargetPercentile: $percentile
+                            }
+
+                        ) {
+                            cycleMetricsTrends {
+                                measurementDate
+                                measurementWindow
+                                maxLeadTime
+                                maxCycleTime
+                                workItemsWithCommits
+                                workItemsInScope
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(
+            project_key=project.key,
+            days=30,
+            window=7,
+            sample=7,
+            percentile=0.70
+        ))
+        assert result['data']
+        project = result['data']['project']
+        # we expect one measurement for each point in the window including the end points.
+        assert len(project['cycleMetricsTrends']) == 5
+        # there is one work item that closed 6 days before the end of the measurement period
+        # so the last 6 dates will record the metrics for this work item, the rest will
+        # be empty
+        for index, measurement in enumerate(project['cycleMetricsTrends']):
+            if index > 0:
+                assert not measurement['maxLeadTime']
+                assert not measurement['maxCycleTime']
+                assert measurement['workItemsInScope'] == 0
+                assert measurement['workItemsWithCommits'] == 0
+            else:
+
+                assert measurement['maxLeadTime'] == 6.0
+                assert measurement['maxCycleTime'] == 4.0
+                assert measurement['workItemsInScope'] == 3
+                assert measurement['workItemsWithCommits'] == 2

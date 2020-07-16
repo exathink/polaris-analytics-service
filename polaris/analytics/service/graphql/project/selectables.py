@@ -709,7 +709,9 @@ class ProjectCycleMetrics(InterfaceResolver):
             literal_column(f'{target_percentile}').label('cycle_time_target_percentile'),
             literal_column(f'{target_percentile}').label('lead_time_target_percentile')
         ]).select_from(
-            project_work_item_cycle_metrics
+            project_nodes.outerjoin(
+                project_work_item_cycle_metrics, project_work_item_cycle_metrics.c.project_id == project_nodes.c.id
+            )
         ).group_by(
             project_nodes.c.id
         )

@@ -63,6 +63,9 @@ class CycleMetricsEnum(Enum):
     min_cycle_time = 'min_cycle_time'
     avg_cycle_time = 'avg_cycle_time'
     percentile_cycle_time = 'percentile_cycle_time'
+    q1_cycle_time = 'q1_cycle_time'
+    median_cycle_time = 'median_cycle_time'
+    q3_cycle_time = 'q3_cycle_time'
     max_cycle_time = 'max_cycle_time'
 
     work_items_in_scope = 'work_items_in_scope'

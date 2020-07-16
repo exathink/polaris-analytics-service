@@ -3142,3 +3142,100 @@ class TestProjectCycleMetricsTrends:
                 assert measurement['maxCycleTime'] == 4.0
                 assert measurement['workItemsInScope'] == 3
                 assert measurement['workItemsWithCommits'] == 2
+
+
+    def it_reports_quartiles_correctly(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id=f'1000{i}',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 5)
+        ]
+
+
+        api_helper.import_work_items(work_items)
+        for i in range(0,5):
+            # move it into open phase so it has a cycle time
+            api_helper.update_work_items([(i, 'upnext', start_date + timedelta(days=1))])
+            # close them so that cycle times are distributed in the sequence (1,2,3,4,5)
+            api_helper.update_work_items([(i, 'closed', start_date + timedelta(days=i + 2))])
+
+        client = Client(schema)
+        query = """
+                    query getProjectCycleMetricsTrends(
+                        $project_key:String!, 
+                        $days: Int!, 
+                        $window: Int!,
+                        $sample: Int,
+                        $percentile: Float
+                    ) {
+                        project(
+                            key: $project_key, 
+                            interfaces: [CycleMetricsTrends], 
+                            cycleMetricsTrendsArgs: {
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                                metrics: [
+                                    min_cycle_time, 
+                                    q1_cycle_time, 
+                                    median_cycle_time, 
+                                    q3_cycle_time, 
+                                    max_cycle_time
+                                ],
+                                leadTimeTargetPercentile: $percentile,
+                                cycleTimeTargetPercentile: $percentile
+                            }
+
+                        ) {
+                            cycleMetricsTrends {
+                                measurementDate
+                                measurementWindow
+                                minCycleTime
+                                q1CycleTime
+                                medianCycleTime
+                                q3CycleTime
+                                maxCycleTime
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(
+            project_key=project.key,
+            days=30,
+            window=10,
+            sample=10,
+            percentile=0.70
+        ))
+        assert result['data']
+        project = result['data']['project']
+        # we expect one measurement for each point in the window including the end points.
+        assert len(project['cycleMetricsTrends']) == 4
+        # there is one work item that closed 6 days before the end of the measurement period
+        # so the last 6 dates will record the metrics for this work item, the rest will
+        # be empty
+        for index, measurement in enumerate(project['cycleMetricsTrends']):
+            if index == 0:
+                assert measurement['minCycleTime'] == 1.0
+                assert measurement['q1CycleTime'] == 2.0
+                assert measurement['medianCycleTime'] == 3.0
+                assert measurement['q3CycleTime'] == 4.0
+                assert measurement['maxCycleTime'] == 5.0
+            else:
+                assert not measurement['minCycleTime']
+                assert not measurement['q1CycleTime']
+                assert not measurement['medianCycleTime']
+                assert not measurement['q3CycleTime']
+                assert not measurement['maxCycleTime']

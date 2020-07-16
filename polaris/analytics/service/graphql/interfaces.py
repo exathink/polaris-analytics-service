@@ -266,6 +266,9 @@ class AggregateCycleMetrics(graphene.Interface):
     min_cycle_time = graphene.Float(required=False)
     avg_cycle_time = graphene.Float(required=False)
     max_cycle_time = graphene.Float(required=False)
+    q1_cycle_time = graphene.Float(required=False)
+    median_cycle_time = graphene.Float(required=False)
+    q3_cycle_time = graphene.Float(required=False)
 
     percentile_lead_time = graphene.Float(required=False)
     percentile_cycle_time = graphene.Float(required=False)

@@ -729,6 +729,27 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
         max_lead_time=func.max(work_item_delivery_cycles.c.lead_time).label('max_lead_time'),
         min_cycle_time=func.min(work_item_delivery_cycles.c.cycle_time).label('min_cycle_time'),
         avg_cycle_time=func.avg(work_item_delivery_cycles.c.cycle_time).label('avg_cycle_time'),
+        q1_cycle_time=func.percentile_disc(
+            0.25
+        ).within_group(
+            work_item_delivery_cycles.c.cycle_time
+        ).label(
+            'q1_cycle_time'
+        ),
+        median_cycle_time=func.percentile_disc(
+            0.50
+        ).within_group(
+            work_item_delivery_cycles.c.cycle_time
+        ).label(
+            'median_cycle_time'
+        ),
+        q3_cycle_time=func.percentile_disc(
+            0.75
+        ).within_group(
+            work_item_delivery_cycles.c.cycle_time
+        ).label(
+            'q3_cycle_time'
+        ),
         max_cycle_time=func.max(work_item_delivery_cycles.c.cycle_time).label('max_cycle_time'),
     )
 

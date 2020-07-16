@@ -18,7 +18,6 @@ from polaris.common import db
 
 from datetime import datetime
 
-
 test_organization_key = uuid.uuid4().hex
 test_repositories = ['alpha', 'beta', 'gamma', 'delta']
 test_projects = ['mercury', 'venus']
@@ -93,6 +92,7 @@ def pull_requests_common_fields():
         web_url="https://gitlab.com/polaris-services/polaris-analytics-service/-/merge_requests/69"
     )
 
+
 @pytest.yield_fixture()
 def cleanup():
     yield
@@ -113,6 +113,7 @@ def create_test_pull_requests(test_pull_requests):
         session.connection.execute(
             pull_requests.insert(test_pull_requests)
         )
+
 
 @pytest.yield_fixture()
 def pull_requests_fixture(org_repo_fixture, cleanup):
@@ -149,7 +150,3 @@ def setup_work_items(organization, source_data, items_data, project_key=None):
             project.work_items_sources.append(source)
 
         return source
-
-
-
-

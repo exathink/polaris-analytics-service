@@ -246,10 +246,10 @@ def get_pull_requests_query(work_items_source):
                 pull_requests, pull_requests.c.repository_id == repositories.c.id
             )
         ).where(
-                and_(
-                    repositories.c.key == bindparam('pull_request_mapping_scope_key'),
-                    pull_requests.c.created_at >= bindparam('earliest_created')
-                )
+            and_(
+                repositories.c.key == bindparam('pull_request_mapping_scope_key'),
+                pull_requests.c.created_at >= bindparam('earliest_created')
+            )
         )
 
 
@@ -496,7 +496,8 @@ def resolve_work_items_for_pull_requests(session, organization_key, repository_k
             for work_items_source in work_items_sources:
                 work_item_resolver = WorkItemResolver.get_resolver(work_items_source.integration_type)
                 for pr in pull_request_summaries:
-                    for display_id in work_item_resolver.resolve(pr['title'], pr['description'], branch_name=pr['source_branch']):
+                    for display_id in work_item_resolver.resolve(pr['title'], pr['description'],
+                                                                 branch_name=pr['source_branch']):
                         prs_display_ids.append(
                             dict(
                                 repository_id=repository.id,

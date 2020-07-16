@@ -216,7 +216,7 @@ class TestSingleRepo:
                 key=pr_1002_key,
                 source_id=pr_1002_key,
                 source_repository_id=test_repo.id,
-                title="First commit",
+                title="Another change. Fixes no issues",
                 created_at=get_date("2018-12-03"),
                 **pull_requests_common_fields()
             ),
@@ -307,6 +307,7 @@ class TestSingleRepo:
                 repository_id=test_repo.id,
                 key=uuid.uuid4(),
                 source_id=test_pr_key,
+                source_repository_id=test_repo.id,
                 title="Another change. Fixes issue #1000",
                 created_at=get_date("2018-12-01"),
                 **pull_requests_common_fields()
@@ -352,23 +353,19 @@ class TestMultipleRepos:
                 repository_id=alpha.id,
                 key=uuid.uuid4(),
                 source_id=test_pr_key,
+                source_repository_id=alpha.id,
                 title="Another change. Fixes issue #1000",
                 created_at=get_date("2018-12-03"),
-                **dict_merge(
-                    pull_requests_common_fields(),
-                    dict(source_repository_id=alpha.id)
-                )
+                **pull_requests_common_fields()
             ),
             dict(
                 repository_id=beta.id,
                 key=uuid.uuid4(),
                 source_id=test_pr_key,
+                source_repository_id=beta.id,
                 title="Also changed here to Fixes issue #1000",
                 created_at=get_date("2018-12-04"),
-                **dict_merge(
-                    pull_requests_common_fields(),
-                    dict(source_repository_id=beta.id)
-                )
+                **pull_requests_common_fields()
             )
         ])
 
@@ -379,7 +376,7 @@ class TestMultipleRepos:
 
     def it_returns_a_valid_match_when_there_is_a_pull_request_matching_the_work_item_at_repo_scope(self, pull_requests_fixture):
         organization, _, repositories = pull_requests_fixture
-        # There are two repos with commits
+        # There are two repos with pull requests
         alpha = repositories['alpha']
         beta = repositories['beta']
 
@@ -393,7 +390,7 @@ class TestMultipleRepos:
             )
         ]
         # Work item source is scoped at alpha, so it should only match work items
-        # for commits from alpha
+        # for pull requests to alpha
         work_item_source = setup_work_items(
             organization,
             source_data=dict(
@@ -414,30 +411,26 @@ class TestMultipleRepos:
                 repository_id=alpha.id,
                 key=alpha_pr_key,
                 source_id=test_pr_key,
+                source_repository_id=alpha.id,
                 title="Another change. Fixes issue #1000",
                 created_at=get_date("2018-12-03"),
-                **dict_merge(
-                    pull_requests_common_fields(),
-                    dict(source_repository_id=alpha.id)
-                )
+                **pull_requests_common_fields()
             ),
             dict(
                 repository_id=beta.id,
                 key=uuid.uuid4(),
                 source_id=test_pr_key,
+                source_repository_id=alpha.id,
                 title="Also changed here to Fixes issue #1000",
                 created_at=get_date("2018-12-04"),
-                **dict_merge(
-                    pull_requests_common_fields(),
-                    dict(source_repository_id=alpha.id)
-                )
+                **pull_requests_common_fields()
             )
         ])
 
         result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
         assert result['success']
 
-        # only alpha commit should be matched.
+        # only alpha pull requests should be matched.
         assert len(result['resolved']) == 1
         assert result['resolved'][0]['pull_request_key'] == str(alpha_pr_key)
         assert result['resolved'][0]['work_item_key'] == str(new_key)
@@ -476,6 +469,7 @@ class TestMultipleRepos:
                 repository_id=alpha.id,
                 key=uuid.uuid4(),
                 source_id=test_pr_key,
+                source_repository_id=alpha.id,
                 title="Another change. Fixes issue #1000",
                 created_at=get_date("2018-12-03"),
                 **pull_requests_common_fields()
@@ -484,6 +478,7 @@ class TestMultipleRepos:
                 repository_id=beta.id,
                 key=uuid.uuid4(),
                 source_id=test_pr_key,
+                source_repository_id=alpha.id,
                 title="Also changed here to Fixes issue #1000",
                 created_at=get_date("2018-12-04"),
                 **pull_requests_common_fields()
@@ -541,6 +536,7 @@ class TestPaging:
                 repository_id=test_repo.id,
                 key=uuid.uuid4(),
                 source_id=uuid.uuid4(),
+                source_repository_id=test_repo.id,
                 title=f"Change {i}. Fixes issue #1000",
                 created_at=get_date("2018-12-03"),
                 **pull_requests_common_fields()

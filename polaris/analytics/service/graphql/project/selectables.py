@@ -662,6 +662,7 @@ class ProjectCycleMetrics(InterfaceResolver):
             work_items_cycle_metrics.c.id.label('work_item_id'),
             work_items_cycle_metrics.c.lead_time,
             work_items_cycle_metrics.c.cycle_time,
+            work_items_cycle_metrics.c.commit_count,
             work_items_cycle_metrics.c.end_date,
         ]).select_from(
             project_nodes.join(
@@ -693,12 +694,23 @@ class ProjectCycleMetrics(InterfaceResolver):
                           project_work_item_cycle_metrics.c.cycle_time == None), 1)
                 ], else_=0)
             ).label('work_items_with_null_cycle_time'),
+            func.sum(
+                case([
+                    (
+                        and_(
+                            project_work_item_cycle_metrics.c.work_item_id != None,
+                            project_work_item_cycle_metrics.c.commit_count > 0
+                        ), 1
+                    )
+                ], else_=0
+                )
+            ).label('work_items_with_commits'),
             literal_column(f'{target_percentile}').label('target_percentile'),
             literal_column(f'{target_percentile}').label('cycle_time_target_percentile'),
             literal_column(f'{target_percentile}').label('lead_time_target_percentile')
         ]).select_from(
             project_nodes.outerjoin(
-                project_work_item_cycle_metrics, project_nodes.c.id == project_work_item_cycle_metrics.c.project_id
+                project_work_item_cycle_metrics, project_work_item_cycle_metrics.c.project_id == project_nodes.c.id
             )
         ).group_by(
             project_nodes.c.id
@@ -708,7 +720,9 @@ class ProjectCycleMetrics(InterfaceResolver):
 class ProjectCycleMetricsTrends(InterfaceResolver):
     interface = CycleMetricsTrends
 
-    metrics_map = dict(
+    # Cycle Metrics
+
+    cycle_metrics_map = dict(
         min_lead_time=func.min(work_item_delivery_cycles.c.lead_time).label('min_lead_time'),
         avg_lead_time=func.avg(work_item_delivery_cycles.c.lead_time).label('avg_lead_time'),
         max_lead_time=func.max(work_item_delivery_cycles.c.lead_time).label('max_lead_time'),
@@ -719,6 +733,14 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
 
     @staticmethod
     def get_cycle_metrics_columns(cycle_metrics_trends_args):
+        metrics_map = ProjectCycleMetricsTrends.get_cycle_metrics_map(cycle_metrics_trends_args)
+        return [
+            metrics_map[metric]
+            for metric in cycle_metrics_trends_args.metrics if metric in metrics_map
+        ]
+
+    @staticmethod
+    def get_cycle_metrics_map(cycle_metrics_trends_args):
         metrics_map = dict(
             percentile_lead_time=func.percentile_disc(
                 cycle_metrics_trends_args.lead_time_target_percentile
@@ -734,18 +756,63 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             ).label(
                 'percentile_cycle_time'
             ),
-            **ProjectCycleMetricsTrends.metrics_map
+            **ProjectCycleMetricsTrends.cycle_metrics_map
         )
+        return metrics_map
+
+    @staticmethod
+    def get_cycle_metrics_json_object_columns(cycle_metrics_trends_args, cycle_metrics_query):
+        columns = []
+        metrics_map = ProjectCycleMetricsTrends.get_cycle_metrics_map(cycle_metrics_trends_args)
+        for metric in cycle_metrics_trends_args.metrics:
+            if metric in metrics_map:
+                columns.extend([metric, (cycle_metrics_query.c[metric] / (1.0 * 24 * 3600)).label(metric)])
+        return columns
+
+    # Work Item Count Metrics
+
+    work_item_count_metrics_map = dict(
+        work_items_in_scope=func.count(
+            work_item_delivery_cycles.c.delivery_cycle_id
+        ).label('work_items_in_scope'),
+
+        work_items_with_null_cycle_time=func.sum(
+            case([
+                (
+                    and_(
+                        work_item_delivery_cycles.c.end_date != None,
+                        work_item_delivery_cycles.c.cycle_time == None
+                    ), 1
+                )
+            ], else_=0)
+        ).label('work_items_with_null_cycle_time'),
+
+        work_items_with_commits=func.sum(
+            case([
+                (
+                    and_(
+                        work_item_delivery_cycles.c.end_date != None,
+                        work_item_delivery_cycles.c.commit_count > 0
+                    ), 1
+                )
+            ], else_=0)
+        ).label('work_items_with_commits')
+    )
+
+    @staticmethod
+    def get_work_item_count_metrics_columns(cycle_metrics_trends_args):
+        metrics_map = ProjectCycleMetricsTrends.work_item_count_metrics_map
         return [
             metrics_map[metric]
             for metric in cycle_metrics_trends_args.metrics if metric in metrics_map
         ]
 
     @staticmethod
-    def get_cycle_metrics_json_object_columns(cycle_metrics_trends_args, cycle_metrics_query):
+    def get_work_item_count_metrics_json_object_columns(cycle_metrics_trends_args, cycle_metrics_query):
         columns = []
         for metric in cycle_metrics_trends_args.metrics:
-            columns.extend([metric, (cycle_metrics_query.c[metric] / (1.0 * 24 * 3600)).label(metric)])
+            if metric in ProjectCycleMetricsTrends.work_item_count_metrics_map:
+                columns.extend([metric, cycle_metrics_query.c[metric]])
         return columns
 
     @staticmethod
@@ -796,7 +863,7 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                 func.generate_series(
                     measurement_period_end_date,
                     measurement_period_start_date,
-                    timedelta(days=-1*cycle_metrics_trends_args.sampling_frequency)
+                    timedelta(days=-1 * cycle_metrics_trends_args.sampling_frequency)
                 ),
                 Date
             ).label('measurement_date')
@@ -809,23 +876,18 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             project_nodes.c.id.label('project_id'),
 
             # These are standard attributes returned for the the AggregateCycleMetricsInterface
-            func.count(work_item_delivery_cycles.c.delivery_cycle_id).label('work_items_in_scope'),
+
             func.max(work_item_delivery_cycles.c.end_date).label('latest_closed_date'),
             func.min(work_item_delivery_cycles.c.end_date).label('earliest_closed_date'),
-            func.sum(
-                case([
-                    (
-                        and_(
-                            work_item_delivery_cycles.c.end_date != None,
-                            work_item_delivery_cycles.c.cycle_time == None
-                        ), 1
-                    )
-                ], else_=0)
-            ).label('work_items_with_null_cycle_time'),
+            *[
+                # This interpolates columns that calculate the specific
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *ProjectCycleMetricsTrends.get_cycle_metrics_columns(cycle_metrics_trends_args),
 
-            # This interpolates columns that calculate the specific
-            # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
-            *ProjectCycleMetricsTrends.get_cycle_metrics_columns(cycle_metrics_trends_args)
+                # This interpolates columns that calculate the specific
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *ProjectCycleMetricsTrends.get_work_item_count_metrics_columns(cycle_metrics_trends_args)
+            ]
 
         ]).select_from(
             project_nodes.join(
@@ -860,13 +922,16 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                     'measurement_window', measurement_window,
                     'earliest_closed_date', cycle_metrics.c.earliest_closed_date,
                     'latest_closed_date', cycle_metrics.c.latest_closed_date,
-                    'work_items_in_scope', cycle_metrics.c.work_items_in_scope,
-                    'work_items_with_null_cycle_time', cycle_metrics.c.work_items_with_null_cycle_time,
                     'lead_time_target_percentile', cycle_metrics_trends_args.lead_time_target_percentile,
                     'cycle_time_target_percentile', cycle_metrics_trends_args.cycle_time_target_percentile,
-                    *ProjectCycleMetricsTrends.get_cycle_metrics_json_object_columns(
-                        cycle_metrics_trends_args, cycle_metrics
-                    )
+                    *[
+                        *ProjectCycleMetricsTrends.get_cycle_metrics_json_object_columns(
+                            cycle_metrics_trends_args, cycle_metrics
+                        ),
+                        *ProjectCycleMetricsTrends.get_work_item_count_metrics_json_object_columns(
+                            cycle_metrics_trends_args, cycle_metrics
+                        )
+                    ],
                 )
 
             ).label('cycle_metrics_trends')

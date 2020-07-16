@@ -80,12 +80,16 @@ def org_repo_fixture(setup_schema):
     db.connection().execute("delete from analytics.organizations")
 
 
+def get_date(str_date):
+    return datetime.strptime(str_date, "%Y-%m-%d")
+
+
 def pull_requests_common_fields():
     return dict(
         state="opened",
-        updated_at=datetime.strptime("2020-06-23 01:53:48.171000", "%Y-%m-%d %H:%M:%S.%f"),
+        updated_at=get_date("2020-06-23"),
         merge_status="can_be_merged",
-        merged_at=datetime.strptime("2020-06-11 18:57:08.818000", "%Y-%m-%d %H:%M:%S.%f"),
+        merged_at=get_date("2020-06-11"),
         source_branch='test',
         target_branch="master",
         description='',
@@ -119,10 +123,6 @@ def create_test_pull_requests(test_pull_requests):
 def pull_requests_fixture(org_repo_fixture, cleanup):
     organization, projects, repositories = org_repo_fixture
     yield organization, projects, repositories
-
-
-def get_date(str_date):
-    return datetime.strptime(str_date, "%Y-%m-%d")
 
 
 work_items_source_common = dict(

@@ -6,6 +6,7 @@
 # is strictly prohibited. The work product in this file is proprietary and
 # confidential.
 
+from abc import abstractmethod
 from datetime import datetime, timedelta
 
 # Author: Krishna Kumar
@@ -37,7 +38,7 @@ from ..work_item.sql_expressions import work_item_events_connection_apply_time_w
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
     work_item_info_group_expr_columns
 
-from ..arguments import CycleMetricsEnum
+from .sql_expressions import get_timeline_dates_for_trending
 
 
 class ProjectNode(NamedNodeResolver):
@@ -819,56 +820,14 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
     def interface_selector(project_nodes, **kwargs):
 
         cycle_metrics_trends_args = kwargs.get('cycle_metrics_trends_args')
-        if cycle_metrics_trends_args is None:
-            raise ProcessingException(
-                "'cycle_metrics_trends_args is a required arg to resolve the "
-                "CycleMetricsTrends interface"
-            )
 
-        # The end date of the measurement period.
-
-        measurement_period_end_date = cycle_metrics_trends_args.before or datetime.utcnow()
-
-        # This parameter specified the window of time for which we are reporting
-        # the trends - so for example, average cycle time over the past 15 days
-        # => days = 15. We will take a set of measurements over the
-        # the 15 day period and report metrics for each measurement date.
-        days = cycle_metrics_trends_args.days
-        if days is None:
-            raise ProcessingException(
-                "The argument 'days' must be specified when cycle metrics trends"
-            )
-
-        # This metric specifies the window over which values are aggregated for *each* point in the measurement window.
-        # So for example if we are reporting the 30 day average cycle time over the past 15 days,
-        # days = 15 and cycle_metric_trends_measurement_window = 30. For each
-        # measurement date in the 15 day measurement period, we will find the average cycle time of
-        # the work items that have closed in the previous 30 days. The idea is to replicate the trend values
-        # that we are seeing in the snapshot Flow Metrics view over time.
-        measurement_window = cycle_metrics_trends_args.measurement_window
-        if measurement_window is None:
-            raise ProcessingException(
-                "The argument 'measurementWindow' must be specified when requesting cycle metrics trends"
-            )
-
-        # the start date of the measurement period
-        measurement_period_start_date = measurement_period_end_date - timedelta(
-            days=days
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            cycle_metrics_trends_args,
+            arg_name='cycle_metrics_trends',
+            interface_name='CycleMetricTrends'
         )
-
-        # First we generate a series of dates between the period start and end dates
-        # at the granularity of the sampling frequency parameter.
-        timeline_dates = select([
-            cast(
-                func.generate_series(
-                    measurement_period_end_date,
-                    measurement_period_start_date,
-                    timedelta(days=-1 * cycle_metrics_trends_args.sampling_frequency)
-                ),
-                Date
-            ).label('measurement_date')
-        ]).alias()
-
+        measurement_window = cycle_metrics_trends_args.measurement_window
         # Now for each of these dates, we are going to be aggregating the measurements for work items
         # within the measurement window for that date. We will be using a *lateral* join for doing the full aggregation
         # so note the lateral clause at the end instead of the usual alias.
@@ -905,7 +864,9 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                 and_(
                     work_item_delivery_cycles.c.work_item_id == work_items.c.id,
                     cast(work_item_delivery_cycles.c.end_date, Date).between(
-                        timeline_dates.c.measurement_date - timedelta(days=measurement_window),
+                        timeline_dates.c.measurement_date - timedelta(
+                            days=measurement_window
+                        ),
                         timeline_dates.c.measurement_date
                     )
                 )

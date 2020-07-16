@@ -215,21 +215,28 @@ def get_pull_requests_query(work_items_source):
                 pull_requests, pull_requests.c.repository_id == repositories.c.id
             )
         ).where(
-            organizations.c.key == bindparam('pull_request_mapping_scope_key')
+            and_(
+                organizations.c.key == bindparam('pull_request_mapping_scope_key'),
+                pull_requests.c.created_at >= bindparam('earliest_created')
+            )
+
         )
     elif mapping_scope == 'project':
         return select(
             output_cols
         ).select_from(
             projects.join(
-                projects_repositories, projects_repositories.c.prjoect_id == projects.c.id
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
             ).join(
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             ).join(
                 pull_requests, pull_requests.c.repository_id == repositories.c.id
             )
         ).where(
-            projects.c.key == bindparam('pull_request_mapping_scope_key')
+            and_(
+                projects.c.key == bindparam('pull_request_mapping_scope_key'),
+                pull_requests.c.created_at >= bindparam('earliest_created')
+            )
         )
     elif mapping_scope == 'repository':
         return select(
@@ -237,9 +244,12 @@ def get_pull_requests_query(work_items_source):
         ).select_from(
             repositories.join(
                 pull_requests, pull_requests.c.repository_id == repositories.c.id
-            ).where(
-                repositories.c.key == bindparam('pull_request_mapping_scope_key')
             )
+        ).where(
+                and_(
+                    repositories.c.key == bindparam('pull_request_mapping_scope_key'),
+                    pull_requests.c.created_at >= bindparam('earliest_created')
+                )
         )
 
 

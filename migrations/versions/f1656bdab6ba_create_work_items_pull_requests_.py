@@ -28,6 +28,13 @@ def upgrade():
     op.create_index(op.f('ix_analytics_work_items_pull_requests_pull_request_id'), 'work_items_pull_requests', ['pull_request_id'], unique=False, schema='analytics')
     op.create_index(op.f('ix_analytics_work_items_pull_requests_work_item_id'), 'work_items_pull_requests', ['work_item_id'], unique=False, schema='analytics')
 
+    # Update this migration to restart pull request resolution from scratch
+    # Technically, what we are doing here is not cool - updating data in the repos schema in an
+    # analytics-service migration, but this is probably the safest and most straightforward way
+    # of doing this at this point.
+    op.execute("delete from repos.pull_requests")
+    op.execute("delete from analytics.pull_requests")
+
 
 def downgrade():
     op.drop_index(op.f('ix_analytics_work_items_pull_requests_work_item_id'), table_name='work_items_pull_requests', schema='analytics')

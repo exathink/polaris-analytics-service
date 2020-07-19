@@ -95,5 +95,5 @@ class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters):
     defects_only = graphene.Boolean(
         required=False,
         description="Limit analysis to only defects. Defaults to false",
-        default_value="false"
+        default_value=False
     )

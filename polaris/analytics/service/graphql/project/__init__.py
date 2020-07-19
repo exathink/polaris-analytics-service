@@ -14,17 +14,20 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
-    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics
+    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
+    CycleMetricsTrends
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
-    ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin
+    ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
     ActivityLevelSummaryResolverMixin, \
     InceptionsResolverMixin
 
-from ..selectable_field_mixins import CumulativeCommitCountResolverMixin, WeeklyContributorCountsResolverMixin
+from ..selectable_field_mixins import \
+    CumulativeCommitCountResolverMixin, \
+    WeeklyContributorCountsResolverMixin
 
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
@@ -32,6 +35,8 @@ from ..commit import CommitsConnectionMixin
 from ..work_items_source import WorkItemsSourcesConnectionMixin
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin, \
     WorkItemDeliveryCyclesConnectionMixin, RecentlyActiveWorkItemsConnectionMixin
+
+from ..arguments import CycleMetricsTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -48,6 +53,7 @@ from .selectables import ProjectNode, \
     ProjectRecentlyActiveContributorNodes, \
     ProjectCumulativeCommitCount, \
     ProjectWeeklyContributorCount, \
+    ProjectCycleMetricsTrends, \
     ProjectWorkItemEventSpan, \
     ProjectWorkItemNodes, \
     ProjectWorkItemEventNodes, \
@@ -64,6 +70,7 @@ class Project(
     NamedNodeResolverMixin,
     ContributorCountResolverMixin,
     WorkItemStateTypeSummaryResolverMixin,
+    CycleMetricsTrendsResolverMixin,
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
@@ -102,6 +109,8 @@ Implicit Interfaces: ArchivedStatus
             WorkItemEventSpan,
             WorkItemStateTypeCounts,
             AggregateCycleMetrics,
+            CycleMetricsTrends
+
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -111,7 +120,8 @@ Implicit Interfaces: ArchivedStatus
             'OrganizationRef': ProjectsOrganizationRef,
             'WorkItemEventSpan': ProjectWorkItemEventSpan,
             'WorkItemStateTypeCounts': ProjectWorkItemStateTypeCounts,
-            'AggregateCycleMetrics': ProjectCycleMetrics
+            'AggregateCycleMetrics': ProjectCycleMetrics,
+            'CycleMetricsTrends': ProjectCycleMetricsTrends
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -128,7 +138,8 @@ Implicit Interfaces: ArchivedStatus
         }
         selectable_field_resolvers = {
             'cumulative_commit_count': ProjectCumulativeCommitCount,
-            'weekly_contributor_counts': ProjectWeeklyContributorCount
+            'weekly_contributor_counts': ProjectWeeklyContributorCount,
+
         }
         connection_class = lambda: Projects
 
@@ -162,6 +173,11 @@ Implicit Interfaces: ArchivedStatus
                 description="When evaluating cycle metrics "
                             "include only defects"
             ),
+            cycle_metrics_trends_args=graphene.Argument(
+                CycleMetricsTrendsParameters,
+                required=False,
+                description='Required when resolving CycleMetricsTrends interface'
+            ),
             **kwargs
         )
 
@@ -188,7 +204,12 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             default_value=30,
             description="When evaluating contributor count "
                         "return only contributors that have committed code to the project in this many days"
-        )
+        ),
+        cycle_metrics_trends_args=graphene.Argument(
+            CycleMetricsTrendsParameters,
+            required=False,
+            description='Required when resolving CycleMetricsTrends interface'
+        ),
     )
 
     def resolve_projects(self, info, **kwargs):

@@ -28,7 +28,7 @@ class TestPullRequestsUpdated:
                 send=dict(
                     organization_key=rails_organization_key,
                     repository_key=rails_repository_key,
-                    updated_pull_requests=[
+                    pull_request_summaries=[
                         dict(
                             key=uuid.uuid4().hex,
                             source_id=str(i),

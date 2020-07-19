@@ -51,6 +51,12 @@ work_items_commits = Table(
     Column('commit_id', ForeignKey('commits.id'), primary_key=True, index=True)
 )
 
+work_items_pull_requests = Table(
+    'work_items_pull_requests', Base.metadata,
+    Column('work_item_id', ForeignKey('work_items.id'), primary_key=True, index=True),
+    Column('pull_request_id', ForeignKey('pull_requests.id'), primary_key=True, index=True)
+)
+
 repositories_contributor_aliases = Table(
     'repositories_contributor_aliases', Base.metadata,
     Column('repository_id', Integer, ForeignKey('repositories.id', ondelete='CASCADE'), primary_key=True),

@@ -106,6 +106,32 @@ def resolve_work_items_for_commits(organization_key, repository_key, commit_summ
         return db.failure_message('Resolve work items for commits', e)
 
 
+def resolve_pull_requests_for_new_work_items(organization_key, work_item_source_key, work_item_summaries):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.resolve_pull_requests_for_work_items(session, organization_key, work_item_source_key,
+                                                          work_item_summaries)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Resolve pull requests for new work_items", exc)
+    except Exception as e:
+        return db.failure_message('Resolve pull requests for new work_items', e)
+
+
+def resolve_work_items_for_pull_requests(organization_key, repository_key, pull_request_summaries):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.resolve_work_items_for_pull_requests(session, organization_key, repository_key,
+                                                          pull_request_summaries)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Resolve work items for pull requests", exc)
+    except Exception as e:
+        return db.failure_message('Resolve work items for pull requests', e)
+
+
 def update_work_items(organization_key, work_item_source_key, work_item_summaries):
     try:
         with db.orm_session() as session:

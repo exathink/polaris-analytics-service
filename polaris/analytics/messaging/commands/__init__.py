@@ -4,6 +4,8 @@ from .on_work_items_commits_resolved import UpdateCommitsWorkItemsSummaries, Inf
     UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, ComputeContributorMetricsForWorkItems, PopulateWorkItemSourceFileChangesForWorkItems
 from .on_commit_details_created import RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits, \
     ComputeContributorMetricsForCommits, PopulateWorkItemSourceFileChangesForCommits
+from .on_work_items_created import ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems
+from .on_pull_requests_created import ResolveWorkItemsForPullRequests
 
 from .resolve_work_items_sources_for_repositories import ResolveWorkItemsSourcesForRepositories
 __exported__ = [
@@ -18,7 +20,10 @@ __exported__ = [
     ComputeContributorMetricsForWorkItems,
     ComputeContributorMetricsForCommits,
     PopulateWorkItemSourceFileChangesForCommits,
-    PopulateWorkItemSourceFileChangesForWorkItems
+    PopulateWorkItemSourceFileChangesForWorkItems,
+    ResolveCommitsForWorkItems,
+    ResolvePullRequestsForWorkItems,
+    ResolveWorkItemsForPullRequests
 ]
 
 register_messages(__exported__)

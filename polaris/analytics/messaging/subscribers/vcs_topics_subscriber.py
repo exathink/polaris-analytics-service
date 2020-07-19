@@ -70,7 +70,7 @@ class VcsTopicSubscriber(TopicSubscriber):
 
         return api.import_new_pull_requests(
             message['repository_key'],
-            message['new_pull_requests']
+            message['pull_request_summaries']
         )
 
     @staticmethod
@@ -79,5 +79,5 @@ class VcsTopicSubscriber(TopicSubscriber):
 
         return api.update_pull_requests(
             message['repository_key'],
-            message['updated_pull_requests']
+            message['pull_request_summaries']
         )

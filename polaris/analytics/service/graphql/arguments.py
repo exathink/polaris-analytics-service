@@ -87,3 +87,18 @@ class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters):
         required=False,
         description="If percentile cycle time is requested, then this specifies the target percentile value"
     )
+    include_epics_and_subtasks = graphene.Boolean(
+        required=False,
+        description='Include epics and subtasks in the analysis. Defaults to false',
+        default_value=False
+    )
+    defects_only = graphene.Boolean(
+        required=False,
+        description="Limit analysis to only defects. Defaults to false",
+        default_value=False
+    )
+    specs_only = graphene.Boolean(
+        required=False,
+        description="Limit analysis to only specs (work_items with commit_count >0). Defaults to false",
+        default_value=False
+    )

@@ -24,7 +24,7 @@ from polaris.graphql.utils import nulls_to_zero
 from polaris.utils.datetime_utils import time_window
 from polaris.utils.collections import dict_merge
 from polaris.utils.exceptions import ProcessingException
-from polaris.analytics.db.enums import WorkItemTypesToIncludeInCycleMetrics
+from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
@@ -837,6 +837,36 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                 columns.extend([metric, cycle_metrics_query.c[metric]])
         return columns
 
+
+    @staticmethod
+    def get_work_item_filter_clauses(cycle_metrics_trends_args):
+
+        columns = []
+        if not cycle_metrics_trends_args.include_epics_and_subtasks:
+            # the default value is false, so we filter out epics and subtasks unless it
+            # it is explicitly requested.
+            columns.append(
+                work_items.c.work_item_type.notin_([
+                        JiraWorkItemType.epic.value,
+                        JiraWorkItemType.sub_task.value
+                    ]
+                )
+            )
+        if cycle_metrics_trends_args.defects_only:
+            columns.append(
+                work_items.c.is_bug == True
+            )
+        return columns
+
+    @staticmethod
+    def get_work_item_delivery_cycle_filter_clauses(cycle_metrics_trends_args):
+
+        columns = []
+        if cycle_metrics_trends_args.specs_only:
+            columns.append(work_item_delivery_cycles.c.commit_count > 0)
+
+        return columns
+
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
 
@@ -876,7 +906,7 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                 work_items,
                 and_(
                     work_items.c.work_items_source_id == work_items_sources.c.id,
-                    work_items.c.work_item_type.in_(WorkItemTypesToIncludeInCycleMetrics)
+                    *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args)
                 )
             ).outerjoin(
                 # outer join here because we want to report timelines dates even
@@ -889,6 +919,9 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                             days=measurement_window
                         ),
                         timeline_dates.c.measurement_date
+                    ),
+                    *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
+                        cycle_metrics_trends_args
                     )
                 )
             )

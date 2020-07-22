@@ -856,6 +856,14 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             columns.append(
                 work_items.c.is_bug == True
             )
+        return columns
+
+    @staticmethod
+    def get_work_item_delivery_cycle_filter_clauses(cycle_metrics_trends_args):
+
+        columns = []
+        if cycle_metrics_trends_args.specs_only:
+            columns.append(work_item_delivery_cycles.c.commit_count > 0)
 
         return columns
 
@@ -911,6 +919,9 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                             days=measurement_window
                         ),
                         timeline_dates.c.measurement_date
+                    ),
+                    *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
+                        cycle_metrics_trends_args
                     )
                 )
             )

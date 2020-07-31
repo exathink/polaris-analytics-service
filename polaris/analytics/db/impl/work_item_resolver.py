@@ -40,7 +40,7 @@ class PivotalTrackerWorkItemResolver(WorkItemResolver):
     branch = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names
 
     @classmethod
-    def resolve(cls, *text_tokens, branch_name=None):
+    def resolve(cls, *text_tokens, display_id=None, branch_name=None):
         resolved = []
         # check commit message for matches
         for text_token in text_tokens:
@@ -53,16 +53,21 @@ class PivotalTrackerWorkItemResolver(WorkItemResolver):
 
 class GithubWorkItemResolver(WorkItemResolver):
     commit_message_matcher = re.compile('#(\d+)')
-    branch = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names
+    branch_or_display_id = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names or display ids
 
     @classmethod
-    def resolve(cls, *text_tokens, branch_name=None):
+    def resolve(cls, *text_tokens, display_id=None, branch_name=None):
         resolved = []
         for text_token in text_tokens:
             resolved.extend(cls.commit_message_matcher.findall(text_token))
 
         if branch_name is not None:
-            resolved.extend(cls.branch.findall(branch_name))
+            resolved.extend(cls.branch_or_display_id.findall(branch_name))
+
+        # NOTE: Display ids for github match corresponding github work items. \
+        # So this parameter is used only for Github.
+        if display_id is not None:
+            resolved.extend(cls.branch_or_display_id.findall(display_id))
 
         return resolved
 
@@ -71,7 +76,7 @@ class JiraWorkItemResolver(WorkItemResolver):
     matcher = re.compile('([\w]+-\d+)')
 
     @classmethod
-    def resolve(cls, *text_tokens, branch_name=None):
+    def resolve(cls, *text_tokens, display_id=None, branch_name=None):
         resolved = []
         for text_token in text_tokens:
             resolved.extend(cls.matcher.findall(text_token))

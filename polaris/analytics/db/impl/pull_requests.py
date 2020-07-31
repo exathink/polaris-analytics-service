@@ -203,6 +203,7 @@ def get_pull_requests_query(work_items_source):
         pull_requests.c.title,
         pull_requests.c.description,
         pull_requests.c.source_branch,
+        pull_requests.c.display_id,
         repositories.c.key.label('repository_key')
     ]
     if mapping_scope == 'organization':
@@ -258,7 +259,7 @@ def resolve_display_id_pull_requests(pull_requests_batch, integration_type, inpu
     assert resolver, f"No work item resolver registered for integration type {integration_type}"
     resolved = []
     for pr in pull_requests_batch:
-        display_ids = resolver.resolve(pr.title, pr.description, branch_name=pr.source_branch)
+        display_ids = resolver.resolve(pr.title, pr.description, str(pr.display_id), branch_name=pr.source_branch)
         if len(display_ids) > 0:
             for display_id in display_ids:
                 if display_id in input_display_id_to_key_map:
@@ -496,7 +497,7 @@ def resolve_work_items_for_pull_requests(session, organization_key, repository_k
             for work_items_source in work_items_sources:
                 work_item_resolver = WorkItemResolver.get_resolver(work_items_source.integration_type)
                 for pr in pull_request_summaries:
-                    for display_id in work_item_resolver.resolve(pr['title'], pr['description'],
+                    for display_id in work_item_resolver.resolve(pr['title'], pr['description'], display_id=str(pr['display_id']),
                                                                  branch_name=pr['source_branch']):
                         prs_display_ids.append(
                             dict(

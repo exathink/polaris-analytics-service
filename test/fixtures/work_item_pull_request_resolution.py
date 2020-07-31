@@ -93,6 +93,7 @@ def pull_requests_common_fields():
         source_branch='test',
         target_branch="master",
         description='',
+        display_id='1010',
         web_url="https://gitlab.com/polaris-services/polaris-analytics-service/-/merge_requests/69"
     )
 

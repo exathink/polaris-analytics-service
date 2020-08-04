@@ -31,7 +31,7 @@ from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends
+    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, TraceabilityTrends
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
@@ -646,7 +646,6 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
 
 
 class ProjectCycleMetrics(InterfaceResolver):
-    interface = AggregateCycleMetrics
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
@@ -837,7 +836,6 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
                 columns.extend([metric, cycle_metrics_query.c[metric]])
         return columns
 
-
     @staticmethod
     def get_work_item_filter_clauses(cycle_metrics_trends_args):
 
@@ -847,9 +845,9 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             # it is explicitly requested.
             columns.append(
                 work_items.c.work_item_type.notin_([
-                        JiraWorkItemType.epic.value,
-                        JiraWorkItemType.sub_task.value
-                    ]
+                    JiraWorkItemType.epic.value,
+                    JiraWorkItemType.sub_task.value
+                ]
                 )
             )
         if cycle_metrics_trends_args.defects_only:
@@ -955,3 +953,11 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
         ).group_by(
             cycle_metrics.c.project_id
         )
+
+
+class ProjectTraceabilityTrends(InterfaceResolver):
+    interface = TraceabilityTrends
+
+    @staticmethod
+    def interface_selector(named_node_cte, **kwargs):
+        pass

@@ -15,10 +15,11 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
-    CycleMetricsTrends
+    CycleMetricsTrends, TraceabilityTrends
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
-    ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin
+    ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
+    TraceabilityTrendsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -36,7 +37,7 @@ from ..work_items_source import WorkItemsSourcesConnectionMixin
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin, \
     WorkItemDeliveryCyclesConnectionMixin, RecentlyActiveWorkItemsConnectionMixin
 
-from ..arguments import CycleMetricsTrendsParameters
+from ..arguments import AggregateMetricsTrendsParameters, CycleMetricsTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -60,7 +61,8 @@ from .selectables import ProjectNode, \
     ProjectWorkItemCommitNodes, \
     ProjectWorkItemStateTypeCounts, \
     ProjectCycleMetrics, \
-    ProjectWorkItemDeliveryCycleNodes
+    ProjectWorkItemDeliveryCycleNodes, \
+    ProjectTraceabilityTrends
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -71,6 +73,7 @@ class Project(
     ContributorCountResolverMixin,
     WorkItemStateTypeSummaryResolverMixin,
     CycleMetricsTrendsResolverMixin,
+    TraceabilityTrendsResolverMixin,
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
@@ -109,7 +112,8 @@ Implicit Interfaces: ArchivedStatus
             WorkItemEventSpan,
             WorkItemStateTypeCounts,
             AggregateCycleMetrics,
-            CycleMetricsTrends
+            CycleMetricsTrends,
+            TraceabilityTrends
 
         )
         named_node_resolver = ProjectNode
@@ -121,7 +125,8 @@ Implicit Interfaces: ArchivedStatus
             'WorkItemEventSpan': ProjectWorkItemEventSpan,
             'WorkItemStateTypeCounts': ProjectWorkItemStateTypeCounts,
             'AggregateCycleMetrics': ProjectCycleMetrics,
-            'CycleMetricsTrends': ProjectCycleMetricsTrends
+            'CycleMetricsTrends': ProjectCycleMetricsTrends,
+            'TraceabilityTrends': ProjectTraceabilityTrends
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -178,6 +183,11 @@ Implicit Interfaces: ArchivedStatus
                 required=False,
                 description='Required when resolving CycleMetricsTrends interface'
             ),
+            traceability_trends_args=graphene.Argument(
+                AggregateMetricsTrendsParameters,
+                required=False,
+                description='Required when resolving TraceabilityTrends interface'
+            ),
             **kwargs
         )
 
@@ -209,6 +219,11 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             CycleMetricsTrendsParameters,
             required=False,
             description='Required when resolving CycleMetricsTrends interface'
+        ),
+        traceability_trends_args=graphene.Argument(
+            AggregateMetricsTrendsParameters,
+            required=False,
+            description='Required when resolving TraceabilityTrends interface'
         ),
     )
 

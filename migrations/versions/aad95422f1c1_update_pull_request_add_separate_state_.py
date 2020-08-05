@@ -17,16 +17,17 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('pull_requests', sa.Column('source_state', sa.String(), nullable=True), schema='analytics')
     op.alter_column('pull_requests', 'state',
-               existing_type=sa.VARCHAR(),
-               nullable=True,
-               schema='analytics')
+                    existing_type=sa.VARCHAR(),
+                    new_column_name='source_state',
+                    schema='analytics')
+    op.add_column('pull_requests', sa.Column('state', sa.String(), nullable=True), schema='analytics')
 
 
 def downgrade():
-    op.alter_column('pull_requests', 'state',
+    op.drop_column('pull_requests', 'state', schema='analytics')
+    op.alter_column('pull_requests', 'source_state',
                existing_type=sa.VARCHAR(),
-               nullable=False,
+               new_column_name='state',
                schema='analytics')
-    op.drop_column('pull_requests', 'source_state', schema='analytics')
+

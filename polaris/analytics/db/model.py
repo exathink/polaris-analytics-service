@@ -868,7 +868,7 @@ class PullRequest(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     # State and status updates from source system
-    source_state = Column(String, nullable=True)
+    source_state = Column(String, nullable=False)
     merge_status = Column(String, nullable=True)
     merged_at = Column(DateTime, nullable=True)
 

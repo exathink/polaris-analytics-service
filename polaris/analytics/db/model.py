@@ -868,9 +868,11 @@ class PullRequest(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     # State and status updates from source system
-    state = Column(String, nullable=False)
+    source_state = Column(String, nullable=True)
     merge_status = Column(String, nullable=True)
     merged_at = Column(DateTime, nullable=True)
+
+    state = Column(String, nullable=True)
 
     # Source(Branch/Repo from which PR originates) and target branch and repository details
     source_branch = Column(String, nullable=False)

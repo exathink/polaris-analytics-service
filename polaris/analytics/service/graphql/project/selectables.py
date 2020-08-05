@@ -8,7 +8,7 @@
 
 from abc import abstractmethod
 from datetime import datetime, timedelta
-
+from polaris.common import db
 # Author: Krishna Kumar
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
     union_all, literal, Date, true
@@ -1004,7 +1004,6 @@ class ProjectTraceabilityTrends(InterfaceResolver):
         # Calculate the commits that are associated with work items in this project.
         spec_count_lateral = select([
             project_nodes.c.id,
-            timeline_dates.c.measurement_date,
             func.count(commits.c.id.distinct()).label('spec_count')
         ]).select_from(
             project_nodes.join(
@@ -1037,7 +1036,6 @@ class ProjectTraceabilityTrends(InterfaceResolver):
 
         total_commit_count_lateral = select([
             project_nodes.c.id,
-            timeline_dates.c.measurement_date,
             func.count(commits.c.id.distinct()).label('total_commits')
         ]).select_from(
             commits.join(
@@ -1064,7 +1062,7 @@ class ProjectTraceabilityTrends(InterfaceResolver):
         spec_count = select(spec_count_lateral.columns).select_from(
             timeline_dates.join(spec_count_lateral, true())).alias()
         total_commit_count = select(total_commit_count_lateral.columns).select_from(
-            timeline_dates.join(total_commit_count_lateral, true())).alias()
+            timeline_dates.outerjoin(total_commit_count_lateral, true())).alias()
 
         return select([
             spec_count.c.id,
@@ -1072,30 +1070,35 @@ class ProjectTraceabilityTrends(InterfaceResolver):
                 func.json_build_object(
                     'measurement_date', spec_count.c.measurement_date,
                     'measurement_window', measurement_window,
-                    'spec_count', spec_count.c.spec_count,
-                    'nospec_count', nospec_count.c.nospec_count,
-                    'total_commits', total_commit_count.c.total_commits,
+                    'spec_count', func.coalesce(spec_count.c.spec_count, 0) ,
+                    'nospec_count', func.coalesce(nospec_count.c.nospec_count, 0),
+                    'total_commits', func.coalesce(total_commit_count.c.total_commits,0),
                     'traceability',
                     # we calculated traceability as a ratio of the commits associated with work items
                     # in our project relative to the universe of commits that includes this set and the set
                     # associated with no work items. Thus if there are many projects that share a repository with a
                     # a lot of unspec'ed commits, it will affect the traceability of ALL of the projects that share this
                     # repo.
-                    spec_count.c.spec_count / (1.0 * (spec_count.c.spec_count + nospec_count.c.nospec_count))
+                    case([
+                        (
+                            func.coalesce(nospec_count.c.nospec_count,0) + func.coalesce(spec_count.c.spec_count) != 0,
+                            func.coalesce(spec_count.c.spec_count, 0) / (1.0 * (func.coalesce(spec_count.c.spec_count,0) + func.coalesce(nospec_count.c.nospec_count,0)))
+                        )
+                    ], else_=0),
                 )
             ).label('traceability_trends')
         ]).select_from(
-            spec_count.join(
+            total_commit_count.outerjoin(
                 nospec_count,
-                and_(
-                    spec_count.c.id == nospec_count.c.id,
-                    spec_count.c.measurement_date == nospec_count.c.measurement_date
-                )
-            ).join(
-                total_commit_count,
                 and_(
                     total_commit_count.c.id == nospec_count.c.id,
                     total_commit_count.c.measurement_date == nospec_count.c.measurement_date
+                )
+            ).outerjoin(
+                spec_count,
+                and_(
+                    total_commit_count.c.id == spec_count.c.id,
+                    total_commit_count.c.measurement_date == spec_count.c.measurement_date
                 )
             )
         ).group_by(

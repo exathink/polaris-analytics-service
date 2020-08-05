@@ -3557,3 +3557,198 @@ class TestProjectCycleMetricsTrends:
                 assert measurement['avgCycleTime'] == 3.0
             else:
                 assert not measurement['workItemsInScope']
+
+
+
+@pytest.yield_fixture
+def api_project_traceability_test_fixture(org_repo_fixture):
+    organization, projects, repositories = org_repo_fixture
+
+    mercury = projects['mercury']
+    work_items_source = WorkItemsSource(
+        key=uuid.uuid4(),
+        organization_key=organization.key,
+        integration_type='jira',
+        commit_mapping_scope='repository',
+        commit_mapping_scope_key=None,
+        project_id=mercury.id,
+        **work_items_source_common
+    )
+    work_items_source.init_state_map(
+        [
+            dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
+            dict(state='upnext', state_type=WorkItemsStateType.open.value),
+            dict(state='doing', state_type=WorkItemsStateType.wip.value),
+            dict(state='done', state_type=WorkItemsStateType.complete.value),
+            dict(state='closed', state_type=WorkItemsStateType.closed.value),
+        ]
+    )
+
+    with db.orm_session() as session:
+        session.add(organization)
+        organization.work_items_sources.append(work_items_source)
+
+    work_items_common = dict(
+        is_bug=True,
+        work_item_type='issue',
+        url='http://foo.com',
+        tags=['ares2'],
+        description='foo',
+        source_id=str(uuid.uuid4()),
+    )
+
+    api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+    start_date = datetime.utcnow() - timedelta(days=10)
+
+    work_items = [
+        dict(
+            key=uuid.uuid4().hex,
+            name=f'Issue {0}',
+            display_id='1000',
+            state='doing',
+            created_at=start_date,
+            updated_at=start_date,
+            **work_items_common
+        )
+    ]
+
+    api_helper.import_work_items(work_items)
+
+    commit_common_fields = dict(
+        commit_date_tz_offset=0,
+        committer_alias_key=test_contributor_key,
+        author_date=datetime.utcnow(),
+        author_date_tz_offset=0,
+        author_alias_key=test_contributor_key,
+        created_at=datetime.utcnow(),
+        commit_message='a change'
+
+    )
+
+    alpha_commits = [
+        dict(
+            source_commit_id='a-XXXX',
+            commit_date=start_date + timedelta(days=1),
+            key=uuid.uuid4().hex,
+            **commit_common_fields
+        ),
+        dict(
+            source_commit_id='a-YYYY',
+            commit_date=start_date + timedelta(days=2),
+            key=uuid.uuid4().hex,
+            **commit_common_fields
+        )
+    ]
+
+    api.import_new_commits(
+        organization_key=test_organization_key,
+        repository_key=repositories['alpha'].key,
+        new_commits=alpha_commits,
+        new_contributors=[
+            dict(
+                name='Joe Blow',
+                key=test_contributor_key,
+                alias='joe@blow.com'
+            )
+        ]
+    )
+
+    gamma_commits = [
+        dict(
+            source_commit_id='b-XXXX',
+            commit_date="10/1/2019",
+            key=uuid.uuid4().hex,
+            **commit_common_fields
+        ),
+        dict(
+            source_commit_id='b-YYYY',
+            commit_date="11/1/2019",
+            key=uuid.uuid4().hex,
+            **commit_common_fields
+        )
+    ]
+
+    api.import_new_commits(
+        organization_key=test_organization_key,
+        repository_key=repositories['gamma'].key,
+        new_commits=gamma_commits,
+        new_contributors=[
+            dict(
+                name='Joe Blow',
+                key=test_contributor_key,
+                alias='joe@blow.com'
+            )
+        ]
+    )
+
+    yield dict(
+        projects=projects,
+        mercury=projects['mercury'],
+        venus=projects['venus'],
+        alpha_commits=alpha_commits,
+        gamma_commits=gamma_commits,
+        work_items=work_items
+    )
+
+    db.connection().execute("delete  from analytics.work_items_commits")
+    db.connection().execute("delete  from analytics.work_item_state_transitions")
+    db.connection().execute("delete  from analytics.work_item_delivery_cycle_durations")
+    db.connection().execute("delete  from analytics.work_item_delivery_cycles")
+    db.connection().execute("delete  from analytics.work_items")
+    db.connection().execute("delete  from analytics.work_items_source_state_map")
+    db.connection().execute("delete  from analytics.work_items_sources")
+
+
+def add_work_item_commits(work_items_commits):
+    with db.orm_session() as session:
+        for work_item_key, commit_key in work_items_commits:
+            work_item = WorkItem.find_by_work_item_key(session, work_item_key)
+            commit = Commit.find_by_commit_key(session, commit_key)
+            work_item.commits.append(commit)
+
+
+class TestProjectTraceabilityTrends:
+
+    def it_reports_traceability_of_zero_when_there_are_no_specs_in_the_project(self,  api_project_traceability_test_fixture):
+
+        fixture = api_project_traceability_test_fixture
+
+        client = Client(schema)
+        query = """
+                        query getProjectTraceabilityTrends(
+                            $project_key:String!, 
+                            $days: Int!, 
+                            $window: Int!,
+                            $sample: Int
+                        ) {
+                            project(
+                                key: $project_key, 
+                                interfaces: [TraceabilityTrends], 
+                                traceabilityTrendsArgs: {
+                                    days: $days,
+                                    measurementWindow: $window,
+                                    samplingFrequency: $sample,
+                                }
+
+                            ) {
+                                traceabilityTrends {
+                                    measurementDate
+                                    traceability
+                                    specCount
+                                    nospecCount
+                                    totalCommits
+                                }
+                            }
+                        }
+                    """
+        result = client.execute(query, variable_values=dict(
+            project_key=fixture['mercury'].key,
+            days=30,
+            window=30,
+            sample=30
+        ))
+        assert result['data']
+        project = result['data']['project']
+
+

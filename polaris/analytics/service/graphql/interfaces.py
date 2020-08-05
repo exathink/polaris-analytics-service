@@ -331,6 +331,11 @@ class Traceability(graphene.Interface):
     measurement_date = graphene.Date(required=True)
     measurement_window = graphene.Int(required=True)
     traceability = graphene.Float(required=True)
+    nospec_count = graphene.Int(required=True)
+    spec_count = graphene.Int(required=True)
+    total_commits = graphene.Int(required=True)
+
+
 
 
 class TraceabilityImpl(TrendMeasurementImpl):

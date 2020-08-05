@@ -646,6 +646,7 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
 
 
 class ProjectCycleMetrics(InterfaceResolver):
+    interface = AggregateCycleMetrics
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
@@ -959,5 +960,144 @@ class ProjectTraceabilityTrends(InterfaceResolver):
     interface = TraceabilityTrends
 
     @staticmethod
-    def interface_selector(named_node_cte, **kwargs):
-        pass
+    def interface_selector(project_nodes, **kwargs):
+        traceability_trends_args = kwargs.get('traceability_trends_args')
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            traceability_trends_args,
+            arg_name='traceability_trends',
+            interface_name='TraceabilityTrends'
+        )
+        measurement_window = traceability_trends_args.measurement_window
+        # calculate the commits for repositories in this project (the potential universe of commits) that
+        # are not associated with any work items.
+        nospec_count_lateral = select([
+            project_nodes.c.id,
+            timeline_dates.c.measurement_date,
+            func.count(commits.c.id.distinct()).label('nospec_count')
+        ]).select_from(
+            commits.join(
+                repositories, commits.c.repository_id == repositories.c.id
+            ).join(
+                projects_repositories, projects_repositories.c.repository_id == repositories.c.id
+            ).join(
+                project_nodes, projects_repositories.c.project_id == project_nodes.c.id
+            ).outerjoin(
+                work_items_commits, work_items_commits.c.commit_id == commits.c.id
+            )
+        ).where(
+            and_(
+                commits.c.commit_date.between(
+                    timeline_dates.c.measurement_date - timedelta(
+                        days=measurement_window
+                    ),
+                    timeline_dates.c.measurement_date
+                ),
+                work_items_commits.c.work_item_id == None
+            )
+        ).group_by(
+            project_nodes.c.id,
+            timeline_dates.c.measurement_date
+        ).lateral()
+
+        # Calculate the commits that are associated with work items in this project.
+        spec_count_lateral = select([
+            project_nodes.c.id,
+            timeline_dates.c.measurement_date,
+            func.count(commits.c.id.distinct()).label('spec_count')
+        ]).select_from(
+            project_nodes.join(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
+            ).join(
+                commits, work_items_commits.c.commit_id == commits.c.id
+            )
+        ).where(
+            commits.c.commit_date.between(
+                timeline_dates.c.measurement_date - timedelta(
+                    days=measurement_window
+                ),
+                timeline_dates.c.measurement_date
+            )
+        ).group_by(
+            project_nodes.c.id,
+            timeline_dates.c.measurement_date
+        ).lateral()
+
+        # calculate the total number of commits in the window that are associated with repositories
+        # in this project. spec_count + nospec_count = total_commit_count only in the case that
+        # all the commits come from repos that are exclusively shared with this project.
+        # when there are shared repositories, spec_count + no_spec_count <= total_commit_count, and if this
+        # is a strict inequality then the difference is the commits that are associated with work items that
+        # belong to some other project that shares the same repository.
+
+        total_commit_count_lateral = select([
+            project_nodes.c.id,
+            timeline_dates.c.measurement_date,
+            func.count(commits.c.id.distinct()).label('total_commits')
+        ]).select_from(
+            commits.join(
+                repositories, commits.c.repository_id == repositories.c.id
+            ).join(
+                projects_repositories, projects_repositories.c.repository_id == repositories.c.id
+            ).join(
+                project_nodes, projects_repositories.c.project_id == project_nodes.c.id
+            )
+        ).where(
+            commits.c.commit_date.between(
+                timeline_dates.c.measurement_date - timedelta(
+                    days=measurement_window
+                ),
+                timeline_dates.c.measurement_date
+            )
+        ).group_by(
+            project_nodes.c.id,
+            timeline_dates.c.measurement_date
+        ).lateral()
+
+        nospec_count = select(nospec_count_lateral.columns).select_from(
+            timeline_dates.join(nospec_count_lateral, true())).alias()
+        spec_count = select(spec_count_lateral.columns).select_from(
+            timeline_dates.join(spec_count_lateral, true())).alias()
+        total_commit_count = select(total_commit_count_lateral.columns).select_from(
+            timeline_dates.join(total_commit_count_lateral, true())).alias()
+
+        return select([
+            spec_count.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', spec_count.c.measurement_date,
+                    'measurement_window', measurement_window,
+                    'spec_count', spec_count.c.spec_count,
+                    'nospec_count', nospec_count.c.nospec_count,
+                    'total_commits', total_commit_count.c.total_commits,
+                    'traceability',
+                    # we calculated traceability as a ratio of the commits associated with work items
+                    # in our project relative to the universe of commits that includes this set and the set
+                    # associated with no work items. Thus if there are many projects that share a repository with a
+                    # a lot of unspec'ed commits, it will affect the traceability of ALL of the projects that share this
+                    # repo.
+                    spec_count.c.spec_count / (1.0 * (spec_count.c.spec_count + nospec_count.c.nospec_count))
+                )
+            ).label('traceability_trends')
+        ]).select_from(
+            spec_count.join(
+                nospec_count,
+                and_(
+                    spec_count.c.id == nospec_count.c.id,
+                    spec_count.c.measurement_date == nospec_count.c.measurement_date
+                )
+            ).join(
+                total_commit_count,
+                and_(
+                    total_commit_count.c.id == nospec_count.c.id,
+                    total_commit_count.c.measurement_date == nospec_count.c.measurement_date
+                )
+            )
+        ).group_by(
+            spec_count.c.id
+        )

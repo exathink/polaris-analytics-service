@@ -12,7 +12,7 @@ from polaris.graphql.mixins import *
 from datetime import datetime
 
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
-    WorkItemDaysInState, AggregateCycleMetricsImpl
+    WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -80,4 +80,17 @@ class CycleMetricsTrendsResolverMixin(KeyIdResolverMixin):
         return [
             AggregateCycleMetricsImpl(**cycle_metrics)
             for cycle_metrics in self.cycle_metrics_trends or []
+        ]
+
+
+class TraceabilityTrendsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.traceability_trends = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_traceability_trends(self, info, **kwargs):
+        return [
+            TraceabilityImpl(**measurement)
+            for measurement in self.traceability_trends or []
         ]

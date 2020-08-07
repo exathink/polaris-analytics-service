@@ -86,7 +86,8 @@ def get_date(str_date):
 
 def pull_requests_common_fields():
     return dict(
-        state="opened",
+        source_state='opened',
+        state="open",
         updated_at=get_date("2020-06-23"),
         merge_status="can_be_merged",
         merged_at=get_date("2020-06-11"),

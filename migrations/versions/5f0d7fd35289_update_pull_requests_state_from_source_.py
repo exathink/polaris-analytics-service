@@ -6,7 +6,6 @@ Create Date: 2020-08-05 07:58:11.850194
 
 """
 from alembic import op
-import sqlalchemy as sa
 from polaris.common.enums import GithubPullRequestState, GitlabPullRequestState, VcsIntegrationTypes
 
 # revision identifiers, used by Alembic.
@@ -19,9 +18,9 @@ depends_on = None
 def update_pull_request_state():
     # gitlab
     op.execute(f"""
-                update analytics.pull_requests set state='{GitlabPullRequestState.open.value}' 
+                update analytics.pull_requests set state='{GitlabPullRequestState.opened.value}' 
                 from analytics.repositories 
-                where source_state='open' 
+                where source_state='opened' 
                 and analytics.repositories.id = analytics.pull_requests.repository_id 
                 and analytics.repositories.integration_type='{VcsIntegrationTypes.gitlab.value}'
             """)

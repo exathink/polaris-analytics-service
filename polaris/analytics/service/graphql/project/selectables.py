@@ -980,16 +980,14 @@ class ProjectTraceabilityTrends(InterfaceResolver):
             ).outerjoin(
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             ).outerjoin(
-                commits,
-                and_(
-                    commits.c.repository_id == repositories.c.id,
-                    commits.c.commit_date.between(
-                        projects_timeline_dates.c.measurement_date - timedelta(
-                            days=measurement_window
-                        ),
-                        projects_timeline_dates.c.measurement_date
-                    )
-                )
+                commits, commits.c.repository_id == repositories.c.id
+            )
+        ).where(
+            commits.c.commit_date.between(
+                projects_timeline_dates.c.measurement_date - timedelta(
+                    days=measurement_window
+                ),
+                projects_timeline_dates.c.measurement_date
             )
         ).group_by(
             projects_timeline_dates.c.id,
@@ -1025,16 +1023,14 @@ class ProjectTraceabilityTrends(InterfaceResolver):
             ).outerjoin(
                 work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
             ).outerjoin(
-                commits,
-                and_(
-                    work_items_commits.c.commit_id == commits.c.id,
-                    commits.c.commit_date.between(
-                        projects_timeline_dates.c.measurement_date - timedelta(
-                            days=measurement_window
-                        ),
-                        projects_timeline_dates.c.measurement_date
-                    )
-                )
+                commits, work_items_commits.c.commit_id == commits.c.id
+            )
+        ).where(
+            commits.c.commit_date.between(
+                projects_timeline_dates.c.measurement_date - timedelta(
+                    days=measurement_window
+                ),
+                projects_timeline_dates.c.measurement_date
             )
         ).group_by(
             projects_timeline_dates.c.id,
@@ -1072,18 +1068,21 @@ class ProjectTraceabilityTrends(InterfaceResolver):
                 commits,
                 and_(
                     commits.c.repository_id == repositories.c.id,
-                    commits.c.commit_date.between(
-                        projects_timeline_dates.c.measurement_date - timedelta(
-                            days=measurement_window
-                        ),
-                        projects_timeline_dates.c.measurement_date
-                    )
+
                 )
             ).outerjoin(
                 work_items_commits, work_items_commits.c.commit_id == commits.c.id
             )
         ).where(
-            work_items_commits.c.work_item_id == None
+            and_(
+                work_items_commits.c.work_item_id == None,
+                commits.c.commit_date.between(
+                    projects_timeline_dates.c.measurement_date - timedelta(
+                        days=measurement_window
+                    ),
+                    projects_timeline_dates.c.measurement_date
+                )
+            )
         ).group_by(
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date

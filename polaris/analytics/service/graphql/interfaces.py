@@ -267,7 +267,7 @@ class CycleMetrics(graphene.Interface):
 
 class AggregateCycleMetrics(graphene.Interface):
     measurement_date = graphene.Date(required=True)
-    measurement_window = graphene.Int(required=True)
+    measurement_window = graphene.Int(required=False)
     min_lead_time = graphene.Float(required=False)
     avg_lead_time = graphene.Float(required=False)
     max_lead_time = graphene.Float(required=False)

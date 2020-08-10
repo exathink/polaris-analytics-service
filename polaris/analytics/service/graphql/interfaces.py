@@ -245,6 +245,15 @@ class WorkItemStateTypeCounts(graphene.Interface):
     work_item_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=True)
 
 
+class StateMapping(graphene.ObjectType):
+    state = graphene.String(required=True)
+    state_type = graphene.String(required=False)
+
+
+class WorkItemStateMappings(graphene.Interface):
+    work_item_state_mappings = graphene.Field(graphene.List(StateMapping))
+
+
 class DeliveryCycleInfo(graphene.Interface):
     closed = graphene.Boolean(required=False)
     start_date = graphene.DateTime(required=False)
@@ -318,15 +327,6 @@ class CycleMetricsTrends(graphene.Interface):
     cycle_metrics_trends = graphene.List(AggregateCycleMetricsImpl)
 
 
-class StateMapping(graphene.ObjectType):
-    state = graphene.String(required=True)
-    state_type = graphene.String(required=False)
-
-
-class WorkItemStateMappings(graphene.Interface):
-    work_item_state_mappings = graphene.Field(graphene.List(StateMapping))
-
-
 class Traceability(graphene.Interface):
     measurement_date = graphene.Date(required=True)
     measurement_window = graphene.Int(required=True)
@@ -334,8 +334,6 @@ class Traceability(graphene.Interface):
     nospec_count = graphene.Int(required=True)
     spec_count = graphene.Int(required=True)
     total_commits = graphene.Int(required=True)
-
-
 
 
 class TraceabilityImpl(TrendMeasurementImpl):

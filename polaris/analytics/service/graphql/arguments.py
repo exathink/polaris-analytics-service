@@ -40,7 +40,7 @@ class AggregateMetricsTrendsParameters(graphene.InputObjectType):
         default_value=1
     )
     measurement_window = graphene.Int(
-        required=True,
+        required=False,
         description="When measuring aggregate metrics like average_cycle_time, this parameter specifies how "
                     "many days back "
                     "from a sample date the underlying data set should be aggregated to compute the metric. "
@@ -49,7 +49,10 @@ class AggregateMetricsTrendsParameters(graphene.InputObjectType):
                     "we will aggregate the underlying data set looking back 15 days from the sample date. "
                     "So we will be computing the average cycle times for the  work items that have "
                     "closed in the 15 days "
-                    "prior to each sample date in the interval"
+                    "prior to each sample date in the interval. "
+                    ""
+                    "This parameter is required when calculating metrics for closed work items, but not for active work items"
+                    "since the set over which we are aggregating is defined by the state of the work items based on the before date"
 
     )
 

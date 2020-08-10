@@ -83,6 +83,19 @@ class CycleMetricsTrendsResolverMixin(KeyIdResolverMixin):
         ]
 
 
+class PipelineCycleMetricsTrendsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.pipeline_cycle_metrics_trends = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_pipeline_cycle_metrics_trends(self, info, **kwargs):
+        return [
+            AggregateCycleMetricsImpl(**cycle_metrics)
+            for cycle_metrics in self.pipeline_cycle_metrics_trends or []
+        ]
+
+
 class TraceabilityTrendsResolverMixin(KeyIdResolverMixin):
 
     def __init__(self, *args, **kwargs):

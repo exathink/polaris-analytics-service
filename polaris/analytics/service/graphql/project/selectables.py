@@ -6,39 +6,47 @@
 # is strictly prohibited. The work product in this file is proprietary and
 # confidential.
 
-from abc import abstractmethod
-from datetime import datetime, timedelta
-from polaris.common import db
 # Author: Krishna Kumar
+
+
+from datetime import datetime, timedelta
+import abc
+
+from polaris.common import db
+
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
     union_all, literal, Date, true
 
+from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
-    work_items, work_item_state_transitions, work_items_commits, work_item_delivery_cycles, work_items_source_state_map
+    work_items, work_item_state_transitions, work_items_commits, work_item_delivery_cycles, work_items_source_state_map, \
+    work_item_delivery_cycle_durations
+
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
     SelectableFieldResolver
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.utils import nulls_to_zero
-from polaris.utils.datetime_utils import time_window
 from polaris.utils.collections import dict_merge
+from polaris.utils.datetime_utils import time_window
 from polaris.utils.exceptions import ProcessingException
-from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics
+from polaris.analytics.db.enums import WorkItemsStateType
+from .sql_expressions import get_timeline_dates_for_trending
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, TraceabilityTrends
+    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetricsTrends, \
+    TraceabilityTrends
+
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
     work_item_info_group_expr_columns
-
-from .sql_expressions import get_timeline_dates_for_trending
 
 
 class ProjectNode(NamedNodeResolver):
@@ -718,77 +726,67 @@ class ProjectCycleMetrics(InterfaceResolver):
         )
 
 
-class ProjectCycleMetricsTrends(InterfaceResolver):
-    interface = CycleMetricsTrends
-
-    # Cycle Metrics
-
-    cycle_metrics_map = dict(
-        min_lead_time=func.min(work_item_delivery_cycles.c.lead_time).label('min_lead_time'),
-        avg_lead_time=func.avg(work_item_delivery_cycles.c.lead_time).label('avg_lead_time'),
-        max_lead_time=func.max(work_item_delivery_cycles.c.lead_time).label('max_lead_time'),
-        min_cycle_time=func.min(work_item_delivery_cycles.c.cycle_time).label('min_cycle_time'),
-        avg_cycle_time=func.avg(work_item_delivery_cycles.c.cycle_time).label('avg_cycle_time'),
-        q1_cycle_time=func.percentile_disc(
-            0.25
-        ).within_group(
-            work_item_delivery_cycles.c.cycle_time
-        ).label(
-            'q1_cycle_time'
-        ),
-        median_cycle_time=func.percentile_disc(
-            0.50
-        ).within_group(
-            work_item_delivery_cycles.c.cycle_time
-        ).label(
-            'median_cycle_time'
-        ),
-        q3_cycle_time=func.percentile_disc(
-            0.75
-        ).within_group(
-            work_item_delivery_cycles.c.cycle_time
-        ).label(
-            'q3_cycle_time'
-        ),
-        max_cycle_time=func.max(work_item_delivery_cycles.c.cycle_time).label('max_cycle_time'),
-    )
+class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
 
     @staticmethod
-    def get_cycle_metrics_columns(cycle_metrics_trends_args):
-        metrics_map = ProjectCycleMetricsTrends.get_cycle_metrics_map(cycle_metrics_trends_args)
-        return [
-            metrics_map[metric]
-            for metric in cycle_metrics_trends_args.metrics if metric in metrics_map
-        ]
-
-    @staticmethod
-    def get_cycle_metrics_map(cycle_metrics_trends_args):
-        metrics_map = dict(
+    def get_cycle_metrics_map(cycle_metrics_trends_args, cycle_time_query):
+        return dict(
             percentile_lead_time=func.percentile_disc(
                 cycle_metrics_trends_args.lead_time_target_percentile
             ).within_group(
-                work_item_delivery_cycles.c.lead_time
+                cycle_time_query.c.lead_time
             ).label(
                 'percentile_lead_time'
             ),
             percentile_cycle_time=func.percentile_disc(
                 cycle_metrics_trends_args.cycle_time_target_percentile
             ).within_group(
-                work_item_delivery_cycles.c.cycle_time
+                cycle_time_query.c.cycle_time
             ).label(
                 'percentile_cycle_time'
             ),
-            **ProjectCycleMetricsTrends.cycle_metrics_map
+            min_lead_time=func.min(cycle_time_query.c.lead_time).label('min_lead_time'),
+            avg_lead_time=func.avg(cycle_time_query.c.lead_time).label('avg_lead_time'),
+            max_lead_time=func.max(cycle_time_query.c.lead_time).label('max_lead_time'),
+            min_cycle_time=func.min(cycle_time_query.c.cycle_time).label('min_cycle_time'),
+            avg_cycle_time=func.avg(cycle_time_query.c.cycle_time).label('avg_cycle_time'),
+            q1_cycle_time=func.percentile_disc(
+                0.25
+            ).within_group(
+                cycle_time_query.c.cycle_time
+            ).label(
+                'q1_cycle_time'
+            ),
+            median_cycle_time=func.percentile_disc(
+                0.50
+            ).within_group(
+                cycle_time_query.c.cycle_time
+            ).label(
+                'median_cycle_time'
+            ),
+            q3_cycle_time=func.percentile_disc(
+                0.75
+            ).within_group(
+                cycle_time_query.c.cycle_time
+            ).label(
+                'q3_cycle_time'
+            ),
+            max_cycle_time=func.max(cycle_time_query.c.cycle_time).label('max_cycle_time'),
         )
-        return metrics_map
 
-    @staticmethod
-    def get_cycle_metrics_json_object_columns(cycle_metrics_trends_args, cycle_metrics_query):
+    @classmethod
+    def get_cycle_metrics_columns(cls, cycle_metrics_trends_args, cycle_time_query):
+        metrics_map = cls.get_cycle_metrics_map(cycle_metrics_trends_args, cycle_time_query)
+        return [
+            metrics_map[metric]
+            for metric in cycle_metrics_trends_args.metrics if metric in metrics_map
+        ]
+
+    @classmethod
+    def get_cycle_metrics_json_object_columns(cls, cycle_metrics_trends_args, cycle_metrics_query):
         columns = []
-        metrics_map = ProjectCycleMetricsTrends.get_cycle_metrics_map(cycle_metrics_trends_args)
         for metric in cycle_metrics_trends_args.metrics:
-            if metric in metrics_map:
-                columns.extend([metric, (cycle_metrics_query.c[metric] / (1.0 * 24 * 3600)).label(metric)])
+            columns.extend([metric, (cycle_metrics_query.c[metric] / (1.0 * 24 * 3600)).label(metric)])
         return columns
 
     # Work Item Count Metrics
@@ -823,7 +821,7 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
 
     @staticmethod
     def get_work_item_count_metrics_columns(cycle_metrics_trends_args):
-        metrics_map = ProjectCycleMetricsTrends.work_item_count_metrics_map
+        metrics_map = ProjectCycleMetricsTrendsBase.work_item_count_metrics_map
         return [
             metrics_map[metric]
             for metric in cycle_metrics_trends_args.metrics if metric in metrics_map
@@ -833,7 +831,7 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
     def get_work_item_count_metrics_json_object_columns(cycle_metrics_trends_args, cycle_metrics_query):
         columns = []
         for metric in cycle_metrics_trends_args.metrics:
-            if metric in ProjectCycleMetricsTrends.work_item_count_metrics_map:
+            if metric in ProjectCycleMetricsTrendsBase.work_item_count_metrics_map:
                 columns.extend([metric, cycle_metrics_query.c[metric]])
         return columns
 
@@ -866,9 +864,12 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
 
         return columns
 
+
+class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
+    interface = CycleMetricsTrends
+
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
-
         cycle_metrics_trends_args = kwargs.get('cycle_metrics_trends_args')
 
         # Get the a list of dates for trending using the trends_args for control
@@ -878,6 +879,10 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             interface_name='CycleMetricTrends'
         )
         measurement_window = cycle_metrics_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+            )
         # Now for each of these dates, we are going to be aggregating the measurements for work items
         # within the measurement window for that date. We will be using a *lateral* join for doing the full aggregation
         # so note the lateral clause at the end instead of the usual alias.
@@ -891,7 +896,9 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
             *[
                 # This interpolates columns that calculate the specific
                 # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
-                *ProjectCycleMetricsTrends.get_cycle_metrics_columns(cycle_metrics_trends_args),
+                *ProjectCycleMetricsTrends.get_cycle_metrics_columns(
+                    cycle_metrics_trends_args, work_item_delivery_cycles
+                ),
 
                 # This interpolates columns that calculate the specific
                 # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
@@ -954,6 +961,116 @@ class ProjectCycleMetricsTrends(InterfaceResolver):
         ).group_by(
             cycle_metrics.c.project_id
         )
+
+
+class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
+    interface = PipelineCycleMetricsTrends
+
+    @classmethod
+    def get_current_pipeline_cycle_metrics_trends(cls, project_nodes, cycle_metrics_trends_args):
+
+        measurement_date = datetime.utcnow()
+
+        cycle_times = select([
+            project_nodes.c.id,
+            work_items.c.id,
+            # the time from the start of the delivery cycle to the measurement date is the elapsed lead time for this
+            # work item
+            func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)).label('lead_time'),
+            # This is the cycle time = lead_time - backlog time if it has a non-null backlog time, otherwise it is
+            # 0. This is just an way of explicitly encoding this in a sql column expression
+            (
+                func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)) -
+                func.coalesce(
+                    func.min(work_item_delivery_cycle_durations.c.cumulative_time_in_state),
+                    func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date))
+                )
+            ).label('cycle_time')
+
+        ]).select_from(
+            project_nodes.join(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
+            ).join(
+                work_items,
+                work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_items_source_state_map, work_items_source_state_map.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_delivery_cycles,
+                work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+            ).join(
+                work_item_delivery_cycle_durations,
+                and_(
+                    work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id,
+                    work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state
+                )
+            )
+        ).where(
+            and_(
+                # we include work items that are not in backlog or closed
+                work_items.c.state_type.notin_([WorkItemsStateType.backlog.value, WorkItemsStateType.closed.value]),
+                # filter out the work items durations that are in backlog
+                # This gives us the time in backlog so that we can subtract this from lead time to get cycle time
+                work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
+                # add any other work item filters that we need.
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args)
+            )
+        ).group_by(
+            project_nodes.c.id,
+            work_items.c.id,
+        ).alias()
+
+        cycle_metrics = select([
+            project_nodes.c.id.label('project_id'),
+            *[
+                # This interpolates columns that calculate the specific
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *cls.get_cycle_metrics_columns(cycle_metrics_trends_args, cycle_times),
+
+                # This interpolates columns that calculate the specific
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *cls.get_work_item_count_metrics_columns(cycle_metrics_trends_args)
+            ]
+
+        ]).group_by(
+            project_nodes.c.id
+        ).alias()
+
+        return select([
+            cycle_metrics.c.project_id.label('id'),
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(measurement_date, Date),
+                    'lead_time_target_percentile', cycle_metrics_trends_args.lead_time_target_percentile,
+                    'cycle_time_target_percentile', cycle_metrics_trends_args.cycle_time_target_percentile,
+                    *[
+                        *ProjectCycleMetricsTrends.get_cycle_metrics_json_object_columns(
+                            cycle_metrics_trends_args, cycle_metrics
+                        ),
+                        *ProjectCycleMetricsTrends.get_work_item_count_metrics_json_object_columns(
+                            cycle_metrics_trends_args, cycle_metrics
+                        )
+                    ],
+                )
+
+            ).label('pipeline_cycle_metrics_trends')
+        ]).select_from(
+            cycle_metrics
+        ).group_by(
+            cycle_metrics.c.project_id
+        )
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        cycle_metrics_trends_args = kwargs.get('pipeline_cycle_metrics_trends_args')
+
+        if cycle_metrics_trends_args.before is None:
+            return ProjectPipelineCycleMetricsTrends.get_current_pipeline_cycle_metrics_trends(
+                project_nodes,
+                cycle_metrics_trends_args
+            )
+        else:
+            raise ProcessingException("PipelineCyclemetricsTrends are not implemented for arbitrary dates (yet)")
 
 
 class ProjectTraceabilityTrends(InterfaceResolver):
@@ -1113,6 +1230,12 @@ class ProjectTraceabilityTrends(InterfaceResolver):
             arg_name='traceability_trends',
             interface_name='TraceabilityTrends'
         )
+
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+            )
+
         projects_timeline_dates = select([project_nodes, timeline_dates]).alias()
 
         # Calculate the trendlines for the total commits in each project for each

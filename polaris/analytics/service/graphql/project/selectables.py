@@ -979,7 +979,7 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
 
         cycle_times = select([
             project_nodes.c.id,
-            work_items.c.id,
+            work_items.c.id.label('work_item_id'),
             # we need these columns to satisfy the delivery_cycle_relation contract for computing metrics
             func.min(work_item_delivery_cycles.c.delivery_cycle_id).label('delivery_cycle_id'),
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
@@ -988,14 +988,16 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
             # work item
             func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)).label(
                 'lead_time'),
-            # This is the cycle time = lead_time - backlog time if it has a non-null backlog time, otherwise it is
-            # 0. This is just an way of explicitly encoding this in a sql column expression
+            func.max(work_item_delivery_cycle_durations.c.cumulative_time_in_state).label('backlog_time'),
+            # This is the cycle time = lead_time - backlog time.
             (
                     func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)) -
-                    func.coalesce(
-                        func.min(work_item_delivery_cycle_durations.c.cumulative_time_in_state),
-                        func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date))
-                    )
+                    # we are filtering out backlog work items items
+                    # so the only items we can see here will have non null backlog time.
+                    # also the only durations we are looking are the backlog durations, there
+                    # can be multiple backlog states, so we could have a duration in each one,
+                    # so taking the sum correctly gets you the current backlog duration.
+                    func.sum(work_item_delivery_cycle_durations.c.cumulative_time_in_state)
             ).label('cycle_time')
 
         ]).select_from(
@@ -1025,7 +1027,11 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
                 # This gives us the time in backlog so that we can subtract this from lead time to get cycle time
                 work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
                 # add any other work item filters that we need.
-                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args)
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args),
+                # add delivery cycle related filters
+                *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
+                    cycle_metrics_trends_args
+                )
             )
         ).group_by(
             project_nodes.c.id,
@@ -1049,7 +1055,11 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
                 *cls.get_metrics_columns(cycle_metrics_trends_args, metrics_map, 'work_item_counts'),
             ]
 
-        ]).group_by(
+        ]).select_from(
+           project_nodes.outerjoin(
+               cycle_times, project_nodes.c.id == cycle_times.c.id
+           )
+        ).group_by(
             project_nodes.c.id
         ).alias()
 

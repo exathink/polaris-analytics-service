@@ -976,6 +976,10 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
         cycle_times = select([
             project_nodes.c.id,
             work_items.c.id,
+            # we need these columns to satisfy the delivery_cycle_relation contract for computing metrics
+            func.min(work_item_delivery_cycles.c.delivery_cycle_id).label('delivery_cycle_id'),
+            func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
+            func.min(work_item_delivery_cycles.c.commit_count).label('commit_count'),
             # the time from the start of the delivery cycle to the measurement date is the elapsed lead time for this
             # work item
             func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)).label(
@@ -1024,16 +1028,21 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
             work_items.c.id,
         ).alias()
 
+        metrics_map = ProjectCycleMetricsTrends.get_metrics_map(
+            cycle_metrics_trends_args,
+            delivery_cycles_relation=cycle_times
+        )
+
         cycle_metrics = select([
             project_nodes.c.id.label('project_id'),
             *[
-                # This interpolates columns that calculate the specific
+                # This interpolates columns that calculate the specific cycle
                 # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
-                *cls.get_cycle_metrics_columns(cycle_metrics_trends_args, cycle_times),
+                *cls.get_metrics_columns(cycle_metrics_trends_args, metrics_map, 'cycle_metrics'),
 
-                # This interpolates columns that calculate the specific
+                # This interpolates columns that calculate the specific work item count
                 # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
-                *cls.get_work_item_count_metrics_columns(cycle_metrics_trends_args)
+                *cls.get_metrics_columns(cycle_metrics_trends_args, metrics_map, 'work_item_counts'),
             ]
 
         ]).group_by(
@@ -1049,10 +1058,10 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
                     'cycle_time_target_percentile', cycle_metrics_trends_args.cycle_time_target_percentile,
                     *[
                         *ProjectCycleMetricsTrends.get_cycle_metrics_json_object_columns(
-                            cycle_metrics_trends_args, cycle_metrics
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
                         ),
                         *ProjectCycleMetricsTrends.get_work_item_count_metrics_json_object_columns(
-                            cycle_metrics_trends_args, cycle_metrics
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
                         )
                     ],
                 )

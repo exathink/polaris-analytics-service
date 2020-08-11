@@ -785,6 +785,12 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                     case([
                         (
                             and_(
+                                # we need this and clause here, because we are
+                                # counting a value that is None, but since this
+                                # is invoked typically in a outerjoin, we need to
+                                # qualify it with some non-null value. This implementation
+                                # work correctly only for the closed items case, but this is
+                                # the only case where it makes sense to compute this metric anyway.
                                 delivery_cycles_relation.c.end_date != None,
                                 delivery_cycles_relation.c.cycle_time == None
                             ), 1
@@ -795,10 +801,7 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                 work_items_with_commits=func.sum(
                     case([
                         (
-                            and_(
-                                delivery_cycles_relation.c.end_date != None,
-                                delivery_cycles_relation.c.commit_count > 0
-                            ), 1
+                            delivery_cycles_relation.c.commit_count > 0, 1
                         )
                     ], else_=0)
                 ).label('work_items_with_commits')
@@ -922,6 +925,7 @@ class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
                 work_item_delivery_cycles,
                 and_(
                     work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+
                     cast(work_item_delivery_cycles.c.end_date, Date).between(
                         timeline_dates.c.measurement_date - timedelta(
                             days=measurement_window

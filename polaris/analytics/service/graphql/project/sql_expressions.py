@@ -36,18 +36,6 @@ def get_timeline_dates_for_trending(trends_args, arg_name=None, interface_name=N
             f"The argument 'days' must be specified when resolving the interface {interface_name}"
         )
 
-    # This metric specifies the window over which values are aggregated for *each* point in the measurement window.
-    # So for example if we are reporting the 30 day average cycle time over the past 15 days,
-    # days = 15 and cycle_metric_trends_measurement_window = 30. For each
-    # measurement date in the 15 day measurement period, we will find the average cycle time of
-    # the work items that have closed in the previous 30 days. The idea is to replicate the trend values
-    # that we are seeing in the snapshot Flow Metrics view over time.
-    measurement_window = trends_args.measurement_window
-    if measurement_window is None:
-        raise ProcessingException(
-            f"The argument 'measurementWindow' must be specified when resolving the interface {interface_name}"
-        )
-
     # the start date of the measurement period
     measurement_period_start_date = measurement_period_end_date - timedelta(
         days=days

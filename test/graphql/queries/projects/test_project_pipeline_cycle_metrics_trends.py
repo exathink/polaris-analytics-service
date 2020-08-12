@@ -14,7 +14,7 @@ from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 
 
-class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
+class TestProjectPipelineCycleMetricsCurrentPipeline:
     # Initially test the case for the current pipeline
 
     # Initially testing that it returns the right number of measurements
@@ -43,7 +43,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                    query getProjectPipelinePipelineCycleMetricsTrends(
+                    query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
                         $days: Int!, 
                         
@@ -51,8 +51,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                     ) {
                         project(
                             key: $project_key, 
-                            interfaces: [PipelineCycleMetricsTrends], 
-                            pipelineCycleMetricsTrendsArgs: {
+                            interfaces: [PipelineCycleMetrics], 
+                            pipelineCycleMetricsArgs: {
                                 days: $days,
                                 
                                 samplingFrequency: $sample,
@@ -60,7 +60,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                             }
 
                         ) {
-                            pipelineCycleMetricsTrends {
+                            pipelineCycleMetrics {
                                 measurementDate
                             }
                         }
@@ -74,7 +74,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         ))
         assert result['data']
         project = result['data']['project']
-        assert len(project['pipelineCycleMetricsTrends']) == 1
+        assert project['pipelineCycleMetrics']
 
     def it_return_correct_results_when_there_is_one_active_and_no_closed_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
@@ -103,7 +103,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                    query getProjectPipelinePipelineCycleMetricsTrends(
+                    query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
                         $days: Int!, 
                         
@@ -112,8 +112,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                     ) {
                         project(
                             key: $project_key, 
-                            interfaces: [PipelineCycleMetricsTrends], 
-                            pipelineCycleMetricsTrendsArgs: {
+                            interfaces: [PipelineCycleMetrics], 
+                            pipelineCycleMetricsArgs: {
                                 days: $days,
                                 
                                 samplingFrequency: $sample,
@@ -138,7 +138,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                             id
                             name
                             key
-                            pipelineCycleMetricsTrends {
+                            pipelineCycleMetrics {
                                 measurementDate
                                 measurementWindow
                                 minLeadTime
@@ -169,21 +169,21 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         assert result['data']
         project = result['data']['project']
         # we expect one measurement for each point in the window including the end points.
-        assert len(project['pipelineCycleMetricsTrends']) == 1
+        assert project['pipelineCycleMetrics']
         # since there are no work items in the whole range, the metrics for each point will be None.
-        for measurement in project['pipelineCycleMetricsTrends']:
-            assert measurement['minLeadTime'] - 10 < 1
-            assert measurement['avgLeadTime'] - 10 < 1
-            assert measurement['maxLeadTime'] - 10 < 1
-            assert measurement['percentileCycleTime'] - 9 < 1
-            assert measurement['minCycleTime'] - 9 < 1
-            assert measurement['avgCycleTime'] - 9 < 1
-            assert measurement['maxCycleTime'] - 9 < 1
-            assert measurement['percentileCycleTime'] - 9 < 1
-            assert not measurement['earliestClosedDate']
-            assert not measurement['latestClosedDate']
-            assert measurement['workItemsInScope'] == 1
-            assert measurement['workItemsWithNullCycleTime'] == 0
+        measurement = project['pipelineCycleMetrics']
+        assert measurement['minLeadTime'] - 10 < 1
+        assert measurement['avgLeadTime'] - 10 < 1
+        assert measurement['maxLeadTime'] - 10 < 1
+        assert measurement['percentileCycleTime'] - 9 < 1
+        assert measurement['minCycleTime'] - 9 < 1
+        assert measurement['avgCycleTime'] - 9 < 1
+        assert measurement['maxCycleTime'] - 9 < 1
+        assert measurement['percentileCycleTime'] - 9 < 1
+        assert not measurement['earliestClosedDate']
+        assert not measurement['latestClosedDate']
+        assert measurement['workItemsInScope'] == 1
+        assert measurement['workItemsWithNullCycleTime'] == 0
 
     def it_return_correct_results_when_there_are_no_active_and_one_closed_item(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
@@ -213,7 +213,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                    query getProjectPipelinePipelineCycleMetricsTrends(
+                    query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
                         $days: Int!, 
                         
@@ -222,8 +222,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                     ) {
                         project(
                             key: $project_key, 
-                            interfaces: [PipelineCycleMetricsTrends], 
-                            pipelineCycleMetricsTrendsArgs: {
+                            interfaces: [PipelineCycleMetrics], 
+                            pipelineCycleMetricsArgs: {
                                 days: $days,
                                 
                                 samplingFrequency: $sample,
@@ -245,7 +245,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                             }
 
                         ) {
-                            pipelineCycleMetricsTrends {
+                            pipelineCycleMetrics {
                                 measurementDate
                                 measurementWindow
                                 minLeadTime
@@ -276,10 +276,10 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         assert result['data']
         project = result['data']['project']
         # we expect one measurement for each point in the window including the end points.
-        assert len(project['pipelineCycleMetricsTrends']) == 1
+        assert project['pipelineCycleMetrics']
         # In this case we have 1 closed and 2 backlog items. all should be
         # filtered out and we should get null results for all cycle metrics.
-        measurement = project['pipelineCycleMetricsTrends'][0]
+        measurement = project['pipelineCycleMetrics']
         assert not measurement['minLeadTime']
         assert not measurement['avgLeadTime']
         assert not measurement['maxLeadTime']
@@ -321,7 +321,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                    query getProjectPipelinePipelineCycleMetricsTrends(
+                    query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
                         $days: Int!, 
                         
@@ -330,8 +330,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                     ) {
                         project(
                             key: $project_key, 
-                            interfaces: [PipelineCycleMetricsTrends], 
-                            pipelineCycleMetricsTrendsArgs: {
+                            interfaces: [PipelineCycleMetrics], 
+                            pipelineCycleMetricsArgs: {
                                 days: $days,
                                 
                                 samplingFrequency: $sample,
@@ -353,7 +353,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                             }
 
                         ) {
-                            pipelineCycleMetricsTrends {
+                            pipelineCycleMetrics {
                                 measurementDate
                                 measurementWindow
                                 minLeadTime
@@ -384,11 +384,11 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         assert result['data']
         project = result['data']['project']
         # we expect one measurement for each point in the window including the end points.
-        assert len(project['pipelineCycleMetricsTrends']) == 1
+        assert project['pipelineCycleMetrics']
         # there is one work item that closed on the  end of the measurement period
         # so the last entry will record the metrics for this work item, the rest will
         # be empty
-        measurement = project['pipelineCycleMetricsTrends'][0]
+        measurement = project['pipelineCycleMetrics']
         assert measurement['minLeadTime'] - 10.0 < 1
         assert measurement['avgLeadTime'] - 10.0 < 1
         assert measurement['maxLeadTime'] - 10.0 < 1
@@ -433,7 +433,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                    query getProjectPipelinePipelineCycleMetricsTrends(
+                    query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
                         $days: Int!, 
                         
@@ -442,8 +442,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                     ) {
                         project(
                             key: $project_key, 
-                            interfaces: [PipelineCycleMetricsTrends], 
-                            pipelineCycleMetricsTrendsArgs: {
+                            interfaces: [PipelineCycleMetrics], 
+                            pipelineCycleMetricsArgs: {
                                 days: $days,
                                 
                                 samplingFrequency: $sample,
@@ -465,7 +465,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                             }
 
                         ) {
-                            pipelineCycleMetricsTrends {
+                            pipelineCycleMetrics {
                                 measurementDate
                                 measurementWindow
                                 minLeadTime
@@ -496,8 +496,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         assert result['data']
         project = result['data']['project']
         # we expect one measurement for each point in the window including the end points.
-        assert len(project['pipelineCycleMetricsTrends']) == 1
-        measurement = project['pipelineCycleMetricsTrends'][0]
+        assert project['pipelineCycleMetrics']
+        measurement = project['pipelineCycleMetrics']
         assert measurement['minLeadTime'] - 30.0 < 1
         assert measurement['avgLeadTime'] - 30.0 < 1
         assert measurement['maxLeadTime'] - 30.0 < 1
@@ -548,7 +548,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                    query getProjectPipelinePipelineCycleMetricsTrends(
+                    query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
                         $days: Int!, 
                         
@@ -557,8 +557,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                     ) {
                         project(
                             key: $project_key, 
-                            interfaces: [PipelineCycleMetricsTrends], 
-                            pipelineCycleMetricsTrendsArgs: {
+                            interfaces: [PipelineCycleMetrics], 
+                            pipelineCycleMetricsArgs: {
                                 days: $days,
                                 
                                 samplingFrequency: $sample,
@@ -573,7 +573,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                             }
 
                         ) {
-                            pipelineCycleMetricsTrends {
+                            pipelineCycleMetrics {
                                 measurementDate
                                 measurementWindow
                                 maxLeadTime
@@ -594,11 +594,11 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         assert result['data']
         project = result['data']['project']
         # we expect one measurement for each point in the window including the end points.
-        assert len(project['pipelineCycleMetricsTrends']) == 1
+        assert project['pipelineCycleMetrics']
         # there is one work item that closed 6 days before the end of the measurement period
         # so the last 6 dates will record the metrics for this work item, the rest will
         # be empty
-        measurement = project['pipelineCycleMetricsTrends'][0]
+        measurement = project['pipelineCycleMetrics']
         assert measurement['maxLeadTime'] - 10.0 < 1
         assert measurement['maxCycleTime'] - 9.0 < 1
         assert measurement['workItemsInScope'] == 3
@@ -630,7 +630,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                    query getProjectPipelinePipelineCycleMetricsTrends(
+                    query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
                         $days: Int!, 
                         
@@ -639,8 +639,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                     ) {
                         project(
                             key: $project_key, 
-                            interfaces: [PipelineCycleMetricsTrends], 
-                            pipelineCycleMetricsTrendsArgs: {
+                            interfaces: [PipelineCycleMetrics], 
+                            pipelineCycleMetricsArgs: {
                                 days: $days,
                                 
                                 samplingFrequency: $sample,
@@ -656,7 +656,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                             }
 
                         ) {
-                            pipelineCycleMetricsTrends {
+                            pipelineCycleMetrics {
                                 measurementDate
                                 measurementWindow
                                 minCycleTime
@@ -678,8 +678,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         assert result['data']
         project = result['data']['project']
         # we expect one measurement for each point in the window including the end points.
-        assert len(project['pipelineCycleMetricsTrends']) == 1
-        measurement = project['pipelineCycleMetricsTrends'][0]
+        assert project['pipelineCycleMetrics']
+        measurement = project['pipelineCycleMetrics']
         assert measurement['minCycleTime'] - 1.0 < 1
         assert measurement['q1CycleTime'] - 2.0 < 1
         assert measurement['medianCycleTime'] - 3.0 < 1
@@ -716,7 +716,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                query getProjectPipelinePipelineCycleMetricsTrends(
+                query getProjectPipelineCycleMetrics(
                     $project_key:String!, 
                     $days: Int!, 
                     
@@ -725,8 +725,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                 ) {
                     project(
                         key: $project_key, 
-                        interfaces: [PipelineCycleMetricsTrends], 
-                        pipelineCycleMetricsTrendsArgs: {
+                        interfaces: [PipelineCycleMetrics], 
+                        pipelineCycleMetricsArgs: {
                             days: $days,
                             
                             samplingFrequency: $sample,
@@ -738,7 +738,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                         }
 
                     ) {
-                        pipelineCycleMetricsTrends {
+                        pipelineCycleMetrics {
                             workItemsInScope
                         }
                     }
@@ -754,8 +754,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         assert result['data']
         project = result['data']['project']
         # we expect one measurement for each point in the window including the end points.
-        assert len(project['pipelineCycleMetricsTrends']) == 1
-        measurement = project['pipelineCycleMetricsTrends'][0]
+        assert project['pipelineCycleMetrics']
+        measurement = project['pipelineCycleMetrics']
         assert measurement['workItemsInScope'] == 1
 
 
@@ -790,7 +790,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                query getProjectPipelinePipelineCycleMetricsTrends(
+                query getProjectPipelineCycleMetrics(
                     $project_key:String!, 
                     $days: Int!, 
                     
@@ -799,8 +799,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                 ) {
                     project(
                         key: $project_key, 
-                        interfaces: [PipelineCycleMetricsTrends], 
-                        pipelineCycleMetricsTrendsArgs: {
+                        interfaces: [PipelineCycleMetrics], 
+                        pipelineCycleMetricsArgs: {
                             days: $days,
                             
                             samplingFrequency: $sample,
@@ -813,7 +813,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                         }
 
                     ) {
-                        pipelineCycleMetricsTrends {
+                        pipelineCycleMetrics {
                             workItemsInScope
                         }
                     }
@@ -829,8 +829,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         assert result['data']
         project = result['data']['project']
         # we expect one measurement for each point in the window including the end points.
-        assert len(project['pipelineCycleMetricsTrends']) == 1
-        measurement = project['pipelineCycleMetricsTrends'][0]
+        assert project['pipelineCycleMetrics']
+        measurement = project['pipelineCycleMetrics']
         assert measurement['workItemsInScope'] == 3
 
 
@@ -865,7 +865,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                query getProjectPipelinePipelineCycleMetricsTrends(
+                query getProjectPipelineCycleMetrics(
                     $project_key:String!, 
                     $days: Int!, 
                     
@@ -874,8 +874,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                 ) {
                     project(
                         key: $project_key, 
-                        interfaces: [PipelineCycleMetricsTrends], 
-                        pipelineCycleMetricsTrendsArgs: {
+                        interfaces: [PipelineCycleMetrics], 
+                        pipelineCycleMetricsArgs: {
                             days: $days,
                             
                             samplingFrequency: $sample,
@@ -888,7 +888,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                         }
 
                     ) {
-                        pipelineCycleMetricsTrends {
+                        pipelineCycleMetrics {
                             workItemsInScope
                         }
                     }
@@ -904,8 +904,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         assert result['data']
         project = result['data']['project']
         # we expect one measurement for each point in the window including the end points.
-        assert len(project['pipelineCycleMetricsTrends']) == 1
-        measurement = project['pipelineCycleMetricsTrends'][0]
+        assert project['pipelineCycleMetrics']
+        measurement = project['pipelineCycleMetrics']
         assert measurement['workItemsInScope'] == 1
 
 
@@ -937,7 +937,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
 
         client = Client(schema)
         query = """
-                query getProjectPipelinePipelineCycleMetricsTrends(
+                query getProjectPipelineCycleMetrics(
                     $project_key:String!, 
                     $days: Int!, 
                     
@@ -946,8 +946,8 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                 ) {
                     project(
                         key: $project_key, 
-                        interfaces: [PipelineCycleMetricsTrends], 
-                        pipelineCycleMetricsTrendsArgs: {
+                        interfaces: [PipelineCycleMetrics], 
+                        pipelineCycleMetricsArgs: {
                             days: $days,
                             
                             samplingFrequency: $sample,
@@ -961,7 +961,7 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
                         }
 
                     ) {
-                        pipelineCycleMetricsTrends {
+                        pipelineCycleMetrics {
                             workItemsInScope
                             avgCycleTime
                         }
@@ -978,6 +978,6 @@ class TestProjectPipelinePipelineCycleMetricsTrendsCurrentPipeline:
         assert result['data']
         project = result['data']['project']
         # we expect one measurement for each point in the window including the end points.
-        assert len(project['pipelineCycleMetricsTrends']) == 1
-        measurement = project['pipelineCycleMetricsTrends'][0]
+        assert project['pipelineCycleMetrics']
+        measurement = project['pipelineCycleMetrics']
         assert measurement['workItemsInScope'] == 1

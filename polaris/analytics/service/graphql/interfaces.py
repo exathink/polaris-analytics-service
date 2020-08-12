@@ -327,8 +327,8 @@ class CycleMetricsTrends(graphene.Interface):
     cycle_metrics_trends = graphene.List(AggregateCycleMetricsImpl)
 
 
-class PipelineCycleMetricsTrends(graphene.Interface):
-    pipeline_cycle_metrics_trends = graphene.List(AggregateCycleMetricsImpl)
+class PipelineCycleMetrics(graphene.Interface):
+    pipeline_cycle_metrics = graphene.Field(AggregateCycleMetricsImpl)
 
 
 class Traceability(graphene.Interface):

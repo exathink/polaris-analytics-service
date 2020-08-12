@@ -39,7 +39,7 @@ from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetricsTrends, \
+    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
     TraceabilityTrends
 
 from ..work_item import sql_expressions
@@ -969,8 +969,8 @@ class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
         )
 
 
-class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
-    interface = PipelineCycleMetricsTrends
+class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
+    interface = PipelineCycleMetrics
 
     @classmethod
     def get_delivery_cycle_relation_for_pipeline(cls, cycle_metrics_trends_args, measurement_date, project_nodes):
@@ -1096,7 +1096,7 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
                     ],
                 )
 
-            ).label('pipeline_cycle_metrics_trends')
+            ).label('pipeline_cycle_metrics')
         ]).select_from(
             cycle_metrics
         ).group_by(
@@ -1107,10 +1107,10 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
-        cycle_metrics_trends_args = kwargs.get('pipeline_cycle_metrics_trends_args')
+        cycle_metrics_trends_args = kwargs.get('pipeline_cycle_metrics_args')
 
         if cycle_metrics_trends_args.before is None:
-            return ProjectPipelineCycleMetricsTrends.get_current_pipeline_cycle_metrics_trends(
+            return ProjectPipelineCycleMetrics.get_current_pipeline_cycle_metrics_trends(
                 project_nodes,
                 cycle_metrics_trends_args
             )

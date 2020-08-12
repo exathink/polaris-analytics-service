@@ -15,11 +15,11 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
-    CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetricsTrends
+    CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
-    TraceabilityTrendsResolverMixin, PipelineCycleMetricsTrendsResolverMixin
+    TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -55,7 +55,7 @@ from .selectables import ProjectNode, \
     ProjectCumulativeCommitCount, \
     ProjectWeeklyContributorCount, \
     ProjectCycleMetricsTrends, \
-    ProjectPipelineCycleMetricsTrends, \
+    ProjectPipelineCycleMetrics, \
     ProjectWorkItemEventSpan, \
     ProjectWorkItemNodes, \
     ProjectWorkItemEventNodes, \
@@ -74,7 +74,7 @@ class Project(
     ContributorCountResolverMixin,
     WorkItemStateTypeSummaryResolverMixin,
     CycleMetricsTrendsResolverMixin,
-    PipelineCycleMetricsTrendsResolverMixin,
+    PipelineCycleMetricsResolverMixin,
     TraceabilityTrendsResolverMixin,
     # Connection Mixins
     RepositoriesConnectionMixin,
@@ -115,7 +115,7 @@ Implicit Interfaces: ArchivedStatus
             WorkItemStateTypeCounts,
             AggregateCycleMetrics,
             CycleMetricsTrends,
-            PipelineCycleMetricsTrends,
+            PipelineCycleMetrics,
             TraceabilityTrends
 
         )
@@ -129,7 +129,7 @@ Implicit Interfaces: ArchivedStatus
             'WorkItemStateTypeCounts': ProjectWorkItemStateTypeCounts,
             'AggregateCycleMetrics': ProjectCycleMetrics,
             'CycleMetricsTrends': ProjectCycleMetricsTrends,
-            'PipelineCycleMetricsTrends': ProjectPipelineCycleMetricsTrends,
+            'PipelineCycleMetrics': ProjectPipelineCycleMetrics,
             'TraceabilityTrends': ProjectTraceabilityTrends
         }
         connection_node_resolvers = {
@@ -187,10 +187,10 @@ Implicit Interfaces: ArchivedStatus
                 required=False,
                 description='Required when resolving CycleMetricsTrends interface'
             ),
-            pipeline_cycle_metrics_trends_args=graphene.Argument(
+            pipeline_cycle_metrics_args=graphene.Argument(
                 CycleMetricsTrendsParameters,
                 required=False,
-                description='Required when resolving PipelineCycleMetricsTrends interface'
+                description='Required when resolving PipelineCycleMetrics interface'
             ),
             traceability_trends_args=graphene.Argument(
                 AggregateMetricsTrendsParameters,

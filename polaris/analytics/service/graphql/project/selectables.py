@@ -973,11 +973,14 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
     interface = PipelineCycleMetricsTrends
 
     @classmethod
-    def get_current_pipeline_cycle_metrics_trends(cls, project_nodes, cycle_metrics_trends_args):
-
-        measurement_date = datetime.utcnow()
-
-        cycle_times = select([
+    def get_delivery_cycle_relation_for_pipeline(cls, cycle_metrics_trends_args, measurement_date, project_nodes):
+        # This query provides a realation with a column interface similar to
+        # work_item_delivery_cycles, but with cycle time and lead time calculated dynamically
+        # for work items in the current pipeline. Since cycle_time and lead_time are cached once
+        # and for all only on the work items that are closed, we need to calculate these
+        # dynamically here. Modulo this, much of the cycle time trending logic is similar across
+        # open and closed items, so this lets us share all that logic across both cases.
+        return select([
             project_nodes.c.id,
             work_items.c.id.label('work_item_id'),
             # we need these columns to satisfy the delivery_cycle_relation contract for computing metrics
@@ -1001,6 +1004,7 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
             ).label('cycle_time')
 
         ]).select_from(
+            # get current delivery cycles for all the work items in the pipeline
             project_nodes.join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
             ).join(
@@ -1013,6 +1017,7 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
                 work_item_delivery_cycles,
                 work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
             ).join(
+                # along with the durations of all states (could be multiple)
                 work_item_delivery_cycle_durations,
                 and_(
                     work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id,
@@ -1021,14 +1026,15 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
             )
         ).where(
             and_(
-                # we include work items that are not in backlog or closed
+                # we include work items that are not in backlog or closed: this the filter for active items only
                 work_items.c.state_type.notin_([WorkItemsStateType.backlog.value, WorkItemsStateType.closed.value]),
-                # filter out the work items durations that are in backlog
-                # This gives us the time in backlog so that we can subtract this from lead time to get cycle time
+                # filter out the work items state durations that are in backlog state (could be multiple)
+                # This gives the data to calculate the time in backlog so that we can subtract this from
+                # lead time to get cycle time
                 work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
-                # add any other work item filters that we need.
+                # add any other work item filters that the caller specifies.
                 *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args),
-                # add delivery cycle related filters
+                # add delivery cycle related filters that the caller specifies
                 *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                     cycle_metrics_trends_args
                 )
@@ -1038,11 +1044,20 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
             work_items.c.id,
         ).alias()
 
+    @classmethod
+    def get_current_pipeline_cycle_metrics_trends(cls, project_nodes, cycle_metrics_trends_args):
+
+        measurement_date = datetime.utcnow()
+
+        cycle_times = cls.get_delivery_cycle_relation_for_pipeline(
+            cycle_metrics_trends_args, measurement_date, project_nodes)
+
         metrics_map = ProjectCycleMetricsTrends.get_metrics_map(
             cycle_metrics_trends_args,
             delivery_cycles_relation=cycle_times
         )
 
+        # Calculate the cycle metrics
         cycle_metrics = select([
             project_nodes.c.id.label('project_id'),
             *[
@@ -1063,6 +1078,7 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
             project_nodes.c.id
         ).alias()
 
+        # Serialize metrics into json columns for returning.
         return select([
             cycle_metrics.c.project_id.label('id'),
             func.json_agg(
@@ -1086,6 +1102,8 @@ class ProjectPipelineCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
         ).group_by(
             cycle_metrics.c.project_id
         )
+
+
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):

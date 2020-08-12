@@ -1045,7 +1045,8 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
         ).alias()
 
     @classmethod
-    def get_current_pipeline_cycle_metrics_trends(cls, project_nodes, cycle_metrics_trends_args):
+    def interface_selector(cls, project_nodes, **kwargs):
+        cycle_metrics_trends_args = kwargs.get('pipeline_cycle_metrics_args')
 
         measurement_date = datetime.utcnow()
 
@@ -1105,17 +1106,6 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
 
 
 
-    @staticmethod
-    def interface_selector(project_nodes, **kwargs):
-        cycle_metrics_trends_args = kwargs.get('pipeline_cycle_metrics_args')
-
-        if cycle_metrics_trends_args.before is None:
-            return ProjectPipelineCycleMetrics.get_current_pipeline_cycle_metrics_trends(
-                project_nodes,
-                cycle_metrics_trends_args
-            )
-        else:
-            raise ProcessingException("PipelineCyclemetricsTrends are not implemented for arbitrary dates (yet)")
 
 
 class ProjectTraceabilityTrends(InterfaceResolver):

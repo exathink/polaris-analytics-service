@@ -76,7 +76,7 @@ class CycleMetricsEnum(Enum):
     work_items_with_null_cycle_time = 'work_items_with_null_cycle_time'
 
 
-class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters):
+class CycleMetricsParameters(graphene.InputObjectType):
     metrics = graphene.List(
         graphene.Enum.from_enum(CycleMetricsEnum),
         required=True,
@@ -105,3 +105,7 @@ class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters):
         description="Limit analysis to only specs (work_items with commit_count >0). Defaults to false",
         default_value=False
     )
+
+
+class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters, CycleMetricsParameters):
+    pass

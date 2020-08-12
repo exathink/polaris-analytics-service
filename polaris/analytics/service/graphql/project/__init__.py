@@ -37,7 +37,7 @@ from ..work_items_source import WorkItemsSourcesConnectionMixin
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin, \
     WorkItemDeliveryCyclesConnectionMixin, RecentlyActiveWorkItemsConnectionMixin
 
-from ..arguments import AggregateMetricsTrendsParameters, CycleMetricsTrendsParameters
+from ..arguments import AggregateMetricsTrendsParameters, CycleMetricsTrendsParameters, CycleMetricsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -188,7 +188,7 @@ Implicit Interfaces: ArchivedStatus
                 description='Required when resolving CycleMetricsTrends interface'
             ),
             pipeline_cycle_metrics_args=graphene.Argument(
-                CycleMetricsTrendsParameters,
+                CycleMetricsParameters,
                 required=False,
                 description='Required when resolving PipelineCycleMetrics interface'
             ),

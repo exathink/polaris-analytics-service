@@ -45,17 +45,11 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                     query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
-                        $days: Int!, 
-                        
-                        $sample: Int
                     ) {
                         project(
                             key: $project_key, 
                             interfaces: [PipelineCycleMetrics], 
                             pipelineCycleMetricsArgs: {
-                                days: $days,
-                                
-                                samplingFrequency: $sample,
                                 metrics: [],
                             }
 
@@ -68,8 +62,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
                 """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=1,
-            sample=1,
             percentile=0.70
         ))
         assert result['data']
@@ -105,18 +97,12 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                     query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
-                        $days: Int!, 
-                        
-                        $sample: Int,
                         $percentile: Float
                     ) {
                         project(
                             key: $project_key, 
                             interfaces: [PipelineCycleMetrics], 
                             pipelineCycleMetricsArgs: {
-                                days: $days,
-                                
-                                samplingFrequency: $sample,
                                 metrics: [
                                     min_lead_time,
                                     avg_lead_time,
@@ -161,9 +147,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
                 """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=30,
-
-            sample=30,
             percentile=0.70
         ))
         assert result['data']
@@ -215,18 +198,12 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                     query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
-                        $days: Int!, 
-                        
-                        $sample: Int,
                         $percentile: Float
                     ) {
                         project(
                             key: $project_key, 
                             interfaces: [PipelineCycleMetrics], 
                             pipelineCycleMetricsArgs: {
-                                days: $days,
-                                
-                                samplingFrequency: $sample,
                                 metrics: [
                                     min_lead_time,
                                     avg_lead_time,
@@ -268,9 +245,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
                 """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=30,
-
-            sample=30,
             percentile=0.70
         ))
         assert result['data']
@@ -323,18 +297,12 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                     query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
-                        $days: Int!, 
-                        
-                        $sample: Int,
                         $percentile: Float
                     ) {
                         project(
                             key: $project_key, 
                             interfaces: [PipelineCycleMetrics], 
                             pipelineCycleMetricsArgs: {
-                                days: $days,
-                                
-                                samplingFrequency: $sample,
                                 metrics: [
                                     min_lead_time,
                                     avg_lead_time,
@@ -376,9 +344,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
                 """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=30,
-
-            sample=30,
             percentile=0.70
         ))
         assert result['data']
@@ -435,18 +400,12 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                     query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
-                        $days: Int!, 
-                        
-                        $sample: Int,
                         $percentile: Float
                     ) {
                         project(
                             key: $project_key, 
                             interfaces: [PipelineCycleMetrics], 
                             pipelineCycleMetricsArgs: {
-                                days: $days,
-                                
-                                samplingFrequency: $sample,
                                 metrics: [
                                     min_lead_time,
                                     avg_lead_time,
@@ -488,9 +447,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
                 """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=30,
-
-            sample=30,
             percentile=0.70
         ))
         assert result['data']
@@ -550,18 +506,12 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                     query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
-                        $days: Int!, 
-                        
-                        $sample: Int,
                         $percentile: Float
                     ) {
                         project(
                             key: $project_key, 
                             interfaces: [PipelineCycleMetrics], 
                             pipelineCycleMetricsArgs: {
-                                days: $days,
-                                
-                                samplingFrequency: $sample,
                                 metrics: [
                                     max_lead_time,
                                     max_cycle_time,
@@ -586,9 +536,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
                 """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=30,
-
-            sample=7,
             percentile=0.70
         ))
         assert result['data']
@@ -632,18 +579,12 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                     query getProjectPipelineCycleMetrics(
                         $project_key:String!, 
-                        $days: Int!, 
-                        
-                        $sample: Int,
                         $percentile: Float
                     ) {
                         project(
                             key: $project_key, 
                             interfaces: [PipelineCycleMetrics], 
                             pipelineCycleMetricsArgs: {
-                                days: $days,
-                                
-                                samplingFrequency: $sample,
                                 metrics: [
                                     min_cycle_time, 
                                     q1_cycle_time, 
@@ -670,9 +611,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
                 """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=30,
-            window=10,
-            sample=300,
             percentile=0.70
         ))
         assert result['data']
@@ -718,18 +656,12 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                 query getProjectPipelineCycleMetrics(
                     $project_key:String!, 
-                    $days: Int!, 
-                    
-                    $sample: Int,
                     $percentile: Float
                 ) {
                     project(
                         key: $project_key, 
                         interfaces: [PipelineCycleMetrics], 
                         pipelineCycleMetricsArgs: {
-                            days: $days,
-                            
-                            samplingFrequency: $sample,
                             metrics: [
                                 work_items_in_scope
                             ],
@@ -746,9 +678,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
             """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=30,
-            window=10,
-            sample=300,
             percentile=0.70
         ))
         assert result['data']
@@ -792,18 +721,12 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                 query getProjectPipelineCycleMetrics(
                     $project_key:String!, 
-                    $days: Int!, 
-                    
-                    $sample: Int,
                     $percentile: Float
                 ) {
                     project(
                         key: $project_key, 
                         interfaces: [PipelineCycleMetrics], 
                         pipelineCycleMetricsArgs: {
-                            days: $days,
-                            
-                            samplingFrequency: $sample,
                             metrics: [
                                 work_items_in_scope
                             ],
@@ -821,9 +744,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
             """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=30,
-            window=10,
-            sample=300,
             percentile=0.70
         ))
         assert result['data']
@@ -867,18 +787,12 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                 query getProjectPipelineCycleMetrics(
                     $project_key:String!, 
-                    $days: Int!, 
-                    
-                    $sample: Int,
                     $percentile: Float
                 ) {
                     project(
                         key: $project_key, 
                         interfaces: [PipelineCycleMetrics], 
                         pipelineCycleMetricsArgs: {
-                            days: $days,
-                            
-                            samplingFrequency: $sample,
                             metrics: [
                                 work_items_in_scope
                             ],
@@ -896,9 +810,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
             """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=30,
-            window=10,
-            sample=300,
             percentile=0.70
         ))
         assert result['data']
@@ -939,18 +850,12 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         query = """
                 query getProjectPipelineCycleMetrics(
                     $project_key:String!, 
-                    $days: Int!, 
-                    
-                    $sample: Int,
                     $percentile: Float
                 ) {
                     project(
                         key: $project_key, 
                         interfaces: [PipelineCycleMetrics], 
                         pipelineCycleMetricsArgs: {
-                            days: $days,
-                            
-                            samplingFrequency: $sample,
                             metrics: [
                                 work_items_in_scope,
                                 avg_cycle_time
@@ -970,9 +875,6 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
             """
         result = client.execute(query, variable_values=dict(
             project_key=project.key,
-            days=30,
-            window=10,
-            sample=300,
             percentile=0.70
         ))
         assert result['data']

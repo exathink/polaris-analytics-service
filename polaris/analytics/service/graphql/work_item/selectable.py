@@ -474,7 +474,8 @@ class WorkItemsImplementationCost(InterfaceResolver):
                     func.max(work_items_implementation_cost.c.latest_commit) -
                     func.min(work_items_implementation_cost.c.earliest_commit)
                 )/(1.0*3600*24)
-            ).label('implementation_time')
+            ).label('implementation_span'),
+            func.count(work_items_implementation_cost.c.author_contributor_key.distinct()).label('author_count')
         ]).select_from(
             work_items_implementation_cost
         ).group_by(

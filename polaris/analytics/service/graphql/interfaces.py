@@ -351,8 +351,9 @@ class TraceabilityTrends(graphene.Interface):
 
 class ImplementationCost(graphene.Interface):
     implementation_cost = graphene.Float(required=False, description="Total engineering days required")
-    implementation_time = graphene.Float(required=False,
+    implementation_span = graphene.Float(required=False,
                                          description="Span in days between earliest commit and latest commit")
+    author_count = graphene.Int(required=False, description="The number of distinct authors who committed to the work item")
 
 
 

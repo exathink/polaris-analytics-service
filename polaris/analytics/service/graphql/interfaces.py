@@ -347,3 +347,12 @@ class TraceabilityImpl(TrendMeasurementImpl):
 
 class TraceabilityTrends(graphene.Interface):
     traceability_trends = graphene.List(TraceabilityImpl)
+
+
+class ImplementationCost(graphene.Interface):
+    implementation_cost = graphene.Float(required=False, description="Total engineering days required")
+    implementation_time = graphene.Float(required=False,
+                                         description="Span in days between earliest commit and latest commit")
+
+
+

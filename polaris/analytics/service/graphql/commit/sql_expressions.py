@@ -8,8 +8,9 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import cast, Text, func, and_
+from sqlalchemy import cast, Text, func, and_, Date
 from datetime import datetime, timedelta
+
 
 def commit_key_column(repositories, commits):
     return (cast(repositories.c.key, Text) + ':' + cast(commits.c.source_commit_id, Text)).label('key')
@@ -44,7 +45,7 @@ def commit_info_columns(repositories, commits):
     ]
 
 
-def commits_connection_apply_time_window_filters(select_stmt, commits,  **kwargs):
+def commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs):
     before = None
     if 'before' in kwargs:
         before = kwargs['before']
@@ -61,8 +62,8 @@ def commits_connection_apply_time_window_filters(select_stmt, commits,  **kwargs
         else:
             commit_window_start = datetime.utcnow() - timedelta(days=kwargs['days'])
             return select_stmt.where(
-                    commits.c.commit_date >= commit_window_start
-                )
+                commits.c.commit_date >= commit_window_start
+            )
     elif before:
         return select_stmt.where(
             commits.c.commit_date <= before
@@ -70,3 +71,11 @@ def commits_connection_apply_time_window_filters(select_stmt, commits,  **kwargs
     else:
         return select_stmt
 
+
+def coding_day(commits):
+    return cast(
+        func.to_timestamp(
+            func.extract('epoch', commits.c.commit_date) - commits.c.commit_date_tz_offset
+        ),
+        Date
+    )

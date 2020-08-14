@@ -7,8 +7,9 @@
 # confidential.
 
 # Author: Krishna Kumar
+from polaris.common import db
 
-from sqlalchemy import select, bindparam, and_, func, cast, Text
+from sqlalchemy import select, bindparam, and_, func, cast, Text, Date
 
 from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
@@ -19,13 +20,13 @@ from polaris.analytics.db.model import \
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics, \
-    WorkItemStateDetails, WorkItemEventSpan, ProjectRef
+    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost
 
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
     work_item_events_connection_apply_time_window_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
-from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters, coding_day
 
 
 class WorkItemNode(NamedNodeResolver):
@@ -369,3 +370,113 @@ class WorkItemsProjectRef(InterfaceResolver):
                 projects, work_items_sources.c.project_id == projects.c.id
             )
         ).group_by(work_item_nodes.c.id)
+
+
+class WorkItemsImplementationCost(InterfaceResolver):
+    interface = ImplementationCost
+
+    @staticmethod
+    def interface_selector(work_item_nodes, **kwargs):
+
+        # Initially we need to compute the load factors for all authors who
+        # have committed to this work item by author and coding day, so we can see how many distinct work items
+        # each author committed to for each coding day. The inverse of this
+        # number is the cost associated with that coding day for that author.
+        # So for example if an author committed to 3 work items in a given coding day, then for
+        # each of those work items accrues a cost of 1/3 day for that coding day.
+
+        author_coding_days = select([
+            commits.c.author_contributor_key,
+            coding_day(commits).label('coding_day')
+        ]).select_from(
+            work_item_nodes.join(
+                work_items_commits, work_items_commits.c.work_item_id == work_item_nodes.c.id
+            ).join(
+                commits, work_items_commits.c.commit_id == commits.c.id
+            )
+        ).distinct().cte()
+
+        # for each author, coding combo we are computing the number
+        # distinct work items that were commited. This is the load factor for that
+        # author coding day combo
+        author_load_factors = select([
+            author_coding_days.c.author_contributor_key,
+            author_coding_days.c.coding_day,
+
+            func.count(work_items.c.id.distinct()).label('load_factor')
+        ]).select_from(
+            # here we are searching over *all* work items (not just the ones in the work_item_nodes)
+            # these could be from different projects, work items sources etc. that
+            # had commits on the coding days we computed in author_coding_days
+            author_coding_days.join(
+                commits,
+                and_(
+                    author_coding_days.c.author_contributor_key == commits.c.author_contributor_key,
+                    author_coding_days.c.coding_day == coding_day(commits)
+                )
+            ).join(
+                work_items_commits, work_items_commits.c.commit_id == commits.c.id
+            ).join(
+                work_items, work_items_commits.c.work_item_id == work_items.c.id
+            )
+        ).group_by(
+            author_coding_days.c.author_contributor_key,
+            author_coding_days.c.coding_day
+        ).cte()
+
+
+
+        # Now we go back and group the work items by work item and author and coding day, joing
+        # with the author load factor relation to get the load factor for each author coding day
+
+        work_items_implementation_cost = select([
+            work_item_nodes.c.id,
+            # note that these are reporting actual commit dates with timestamp, not coding day
+            # we need to roll these up at this stage so we dont lose the level of detail
+            # when we aggregate at the coding day level, we will do one more level aggregation
+            # when we roll up at the work item level below to get the final commit span for the work items
+            func.min(commits.c.commit_date).label('earliest_commit'),
+            func.max(commits.c.commit_date).label('latest_commit'),
+            author_load_factors.c.author_contributor_key,
+            author_load_factors.c.coding_day,
+            author_load_factors.c.load_factor,
+            (1.0/author_load_factors.c.load_factor).label('coding_day_cost')
+        ]).select_from(
+            work_item_nodes.join(
+                work_items_commits, work_items_commits.c.work_item_id == work_item_nodes.c.id
+            ).join(
+                commits, work_items_commits.c.commit_id == commits.c.id
+            ).join(
+                author_load_factors,
+                and_(
+                    author_load_factors.c.author_contributor_key == commits.c.author_contributor_key,
+                    author_load_factors.c.coding_day == coding_day(commits)
+                )
+            )
+        ).group_by(
+            work_item_nodes.c.id,
+            author_load_factors.c.author_contributor_key,
+            author_load_factors.c.coding_day,
+            author_load_factors.c.load_factor
+        ).alias()
+
+        # finally roll up the cost and spans for each work item.
+
+        return select([
+            work_items_implementation_cost.c.id,
+            # adding up the fractional costs of author coding days for each work item
+            # gets us the implementation cost for that work item
+            func.sum(work_items_implementation_cost.c.coding_day_cost).label('implementation_cost'),
+            # The span of commits dates across all authors coding days gives the implementation span
+            (
+                func.extract(
+                    'epoch',
+                    func.max(work_items_implementation_cost.c.latest_commit) -
+                    func.min(work_items_implementation_cost.c.earliest_commit)
+                )/(1.0*3600*24)
+            ).label('implementation_time')
+        ]).select_from(
+            work_items_implementation_cost
+        ).group_by(
+            work_items_implementation_cost.c.id
+        )

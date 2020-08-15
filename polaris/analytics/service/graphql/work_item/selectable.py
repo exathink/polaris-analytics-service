@@ -466,7 +466,7 @@ class WorkItemsImplementationCost(InterfaceResolver):
             work_items_implementation_cost.c.id,
             # adding up the fractional costs of author coding days for each work item
             # gets us the implementation cost for that work item
-            func.sum(work_items_implementation_cost.c.coding_day_cost).label('implementation_cost'),
+            func.sum(work_items_implementation_cost.c.coding_day_cost).label('effort'),
             # The span of commits dates across all authors coding days gives the implementation span
             (
                 func.extract(
@@ -474,7 +474,7 @@ class WorkItemsImplementationCost(InterfaceResolver):
                     func.max(work_items_implementation_cost.c.latest_commit) -
                     func.min(work_items_implementation_cost.c.earliest_commit)
                 )/(1.0*3600*24)
-            ).label('implementation_span'),
+            ).label('duration'),
             func.count(work_items_implementation_cost.c.author_contributor_key.distinct()).label('author_count')
         ]).select_from(
             work_items_implementation_cost

@@ -965,10 +965,10 @@ def api_work_items_import_fixture(org_repo_fixture):
     db.connection().execute("delete  from analytics.work_items_sources")
 
 class WorkItemImportApiHelper:
-    def __init__(self, organization, work_items_source):
+    def __init__(self, organization, work_items_source, work_items=None):
         self.organization = organization
         self.work_items_source = work_items_source
-        self.work_items = None
+        self.work_items = work_items
 
     def import_work_items(self, work_items):
         self.work_items = work_items

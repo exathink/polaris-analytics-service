@@ -15,7 +15,7 @@ import abc
 from polaris.common import db
 
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
-    union_all, literal, Date, true
+    union_all, literal, Date, true, or_
 
 from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
@@ -608,22 +608,41 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
     def interface_selector(project_nodes, **kwargs):
         select_work_items = select([
             project_nodes.c.id,
-            case(
-                [
-                    (work_items.c.state_type == None, 'unmapped')
-                ],
-                else_=work_items.c.state_type
-            ).label('state_type'),
-            func.count(work_items.c.id).label('count')
+            func.coalesce(work_items.c.state_type, 'unmapped').label('state_type'),
+            func.count(work_items.c.id).label('count'),
+            func.sum(
+                case(
+                    [
+                        (work_item_delivery_cycles.c.commit_count > 0, 1)
+                    ],
+                    else_=0
+                )
+            ).label('spec_count')
         ]).select_from(
             project_nodes.join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_delivery_cycles,
+                work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
             )
         )
         if 'defects_only' in kwargs:
             select_work_items = select_work_items.where(work_items.c.is_bug == True)
+
+        if 'closed_within_days' in kwargs:
+            window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
+
+            select_work_items = select_work_items.where(
+                or_(
+                    work_items.c.state_type == None,
+                    work_items.c.state_type != WorkItemsStateType.closed.value,
+                    work_item_delivery_cycles.c.end_date >= window_start
+                )
+            )
+
+
 
         work_items_by_state_type = select_work_items.group_by(
             project_nodes.c.id,
@@ -642,7 +661,18 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
                         )
                     )
                 ], else_=None)
-            ).label('work_item_state_type_counts')
+            ).label('work_item_state_type_counts'),
+            func.json_agg(
+                case([
+                    (
+                        work_items_by_state_type.c.id != None,
+                        func.json_build_object(
+                            'state_type', work_items_by_state_type.c.state_type,
+                            'count', work_items_by_state_type.c.spec_count
+                        )
+                    )
+                ], else_=None)
+            ).label('spec_state_type_counts')
 
         ]).select_from(
             project_nodes.outerjoin(

@@ -36,6 +36,25 @@ class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):
         })
 
 
+class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):
+    def __init__(self, *args, **kwargs):
+        self.work_item_state_type_counts = []
+        self.spec_state_type_counts = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_work_item_state_type_counts(self, info, **kwargs):
+        return StateTypeAggregateMeasure(**{
+            result.get('state_type'): result['count']
+            for result in self.work_item_state_type_counts if result is not None
+        })
+
+    def resolve_spec_state_type_counts(self, info, **kwargs):
+        return StateTypeAggregateMeasure(**{
+            result.get('state_type'): result['count']
+            for result in self.spec_state_type_counts if result is not None
+        })
+
+
 class WorkItemStateDetailsResolverMixin(KeyIdResolverMixin):
     def __init__(self, *args, **kwargs):
         self.work_item_state_details = None
@@ -91,7 +110,6 @@ class PipelineCycleMetricsResolverMixin(KeyIdResolverMixin):
 
     def resolve_pipeline_cycle_metrics(self, info, **kwargs):
         return AggregateCycleMetricsImpl(**self.pipeline_cycle_metrics[0])
-
 
 
 class TraceabilityTrendsResolverMixin(KeyIdResolverMixin):

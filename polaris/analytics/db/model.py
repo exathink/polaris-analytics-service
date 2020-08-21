@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 from logging import getLogger
 
-from sqlalchemy import Table, Column, BigInteger, Integer, Boolean, text, Text, String, UniqueConstraint, ForeignKey, \
+from sqlalchemy import Table, Column, BigInteger, Integer, Float, Boolean, text, Text, String, UniqueConstraint, ForeignKey, \
     Index, DateTime, and_
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import relationship, object_session
@@ -751,6 +751,8 @@ class WorkItemDeliveryCycle(Base):
     latest_commit = Column(DateTime, nullable=True)
     repository_count = Column(Integer, nullable=True)
     commit_count = Column(Integer, nullable=True)
+
+    effort = Column(Float, nullable=True)
 
     # non-merge commits' code change stats columns
     total_lines_changed_non_merge = Column(Integer, nullable=True)

@@ -12,7 +12,8 @@ import logging
 from polaris.common import db
 
 from sqlalchemy import Column, Integer, select, and_, func, literal, or_, case, \
-    extract, distinct, cast
+    extract, distinct, cast, Date
+
 from sqlalchemy.dialects.postgresql import UUID, insert, JSONB
 from polaris.analytics.db.enums import WorkItemsStateType
 
@@ -353,7 +354,7 @@ def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
     ).cte('delivery_cycles_commits_rows')
 
     # update relevant work items delivery cycles with relevant metrics
-    updated = session.connection().execute(
+    return session.connection().execute(
         work_item_delivery_cycles.update().where(
             work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
         ).values(
@@ -364,8 +365,159 @@ def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
         )
     ).rowcount
 
-    return dict(
-        updated=updated
+
+
+
+def coding_day(commits):
+    return cast(
+        func.to_timestamp(
+            func.extract('epoch', commits.c.commit_date) - commits.c.commit_date_tz_offset
+        ),
+        Date
+    )
+
+
+def update_work_items_implementation_effort(session, work_items_temp):
+    # when new commits are recorded against a set of work items we need to recompute the
+    # implementation effort for those work items, and also for other work items
+    # where the same contributors had commits on the same day. We are going to compute these at the
+    # work item level rather than the work item delivery cycle level, since commits can be
+    # made "in between" delivery cycles and we want to capture them all.
+
+    # Initially we need to compute the load factors for all authors who
+    # have committed to the work items in this set by author and coding day, so we can see how many distinct work items
+    # each author committed to for each coding day. The inverse of this
+    # number is the load factor associated with that coding day for that author.
+    # So for example if an author committed to 3 work items in a given coding day, then for
+    # each of those work items has a load factor of 1/3 day for that coding day.
+
+    # find all the coding days for the work items in this set.
+    author_coding_days = select([
+        commits.c.author_contributor_key,
+        coding_day(commits).label('coding_day')
+    ]).select_from(
+        work_items_temp.join(
+            work_items, work_items_temp.c.work_item_key == work_items.c.key
+        ).join(
+            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+        ).join(
+            commits, work_items_commits_table.c.commit_id == commits.c.id
+        )
+    ).distinct().cte()
+
+    # The candidates set of work items to update is
+    # the set of all work items that were updated by the authors
+    # in the author_coding_days relation on the coding days specified.
+    # we need to use this expanded set of work items since a commit to a different
+    # work item can affect the fractional coding days of all all work items on the
+    # same day.
+
+    candidate_work_items = select([
+        work_items_commits_table.c.work_item_id.distinct().label('id')
+    ]).select_from(
+        author_coding_days.join(
+            commits,
+            and_(
+                author_coding_days.c.author_contributor_key == commits.c.author_contributor_key ==
+                author_coding_days.c.coding_day == coding_day(commits)
+            )
+        ).join(
+            work_items_commits_table, work_items_commits_table.c.commit_id == commits.c.id
+        )
+    ).cte()
+
+    candidate_coding_days = select([
+        commits.c.author_contributor_key,
+        coding_day(commits).label('coding_day')
+    ]).select_from(
+        candidate_work_items.join(
+            work_items, candidate_work_items.c.id == work_items.c.id
+        ).join(
+            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+        ).join(
+            commits, work_items_commits_table.c.commit_id == commits.c.id
+        )
+    ).distinct().cte()
+
+    # for each author, coding combo we now compute the number
+    # distinct work items that were commited by that author on that coding day. This is the load factor for that
+    # author for that coding day.
+    author_load_factors = select([
+        candidate_coding_days.c.author_contributor_key,
+        candidate_coding_days.c.coding_day,
+
+        func.count(work_items.c.id.distinct()).label('load_factor')
+    ]).select_from(
+        # here we are searching over *all* work items (not just the ones in the candidate work_items)
+        # these could be from different projects, work items sources etc. that the author
+        # had commits on the coding days we computed in author_coding_days
+        candidate_coding_days.join(
+            commits,
+            and_(
+                candidate_coding_days.c.author_contributor_key == commits.c.author_contributor_key,
+                candidate_coding_days.c.coding_day == coding_day(commits)
+            )
+        ).join(
+            work_items_commits_table, work_items_commits_table.c.commit_id == commits.c.id
+        ).join(
+            work_items, work_items_commits_table.c.work_item_id == work_items.c.id
+        )
+    ).group_by(
+        candidate_coding_days.c.author_contributor_key,
+        candidate_coding_days.c.coding_day
+    ).cte()
+
+
+
+    # Now we recompute the total effort for the candidate work item across
+    # all commits in each work item
+    # Group the work items by work item and author and coding day, joing
+    # with the author load factor relation to get the load factor for each author coding day
+
+    work_items_authors_load_factors = select([
+        candidate_work_items.c.id,
+        author_load_factors.c.author_contributor_key,
+        author_load_factors.c.coding_day,
+        author_load_factors.c.load_factor,
+        (1.0 / author_load_factors.c.load_factor).label('coding_day_cost')
+    ]).select_from(
+        candidate_work_items.join(
+            work_items_commits_table, work_items_commits_table.c.work_item_id == candidate_work_items.c.id
+        ).join(
+            commits, work_items_commits_table.c.commit_id == commits.c.id
+        ).join(
+            author_load_factors,
+            and_(
+                author_load_factors.c.author_contributor_key == commits.c.author_contributor_key,
+                author_load_factors.c.coding_day == coding_day(commits)
+            )
+        )
+    ).group_by(
+        candidate_work_items.c.id,
+        author_load_factors.c.author_contributor_key,
+        author_load_factors.c.coding_day,
+        author_load_factors.c.load_factor
+    ).cte()
+
+    # Finally we assemble the actual cost per work item, by adding up all the fractional
+    # costs for each work item across all the coding days
+    work_items_implementation_effort = select([
+        work_items_authors_load_factors.c.id,
+        # adding up the fractional costs of author coding days for each delivery cycle
+        # gets us the implementation cost for that delivery cycle
+        func.sum(work_items_authors_load_factors.c.coding_day_cost).label('effort')
+    ]).select_from(
+        work_items_authors_load_factors
+    ).group_by(
+        work_items_authors_load_factors.c.id
+    ).cte()
+
+    return session.connection().execute(
+        work_items.update().where(
+            work_items.c.id == work_items_implementation_effort.c.id
+        ).values(
+            effort=work_items_implementation_effort.c.effort
+        )
     )
 
 
@@ -404,11 +556,12 @@ def update_work_items_commits_stats(session, organization_key, work_items_commit
             )
         )
 
-        result = compute_work_item_delivery_cycle_commit_stats(session, work_items_temp)
-        updated = result['updated']
+        updated_delivery_cycles = compute_work_item_delivery_cycle_commit_stats(session, work_items_temp)
+        updated_work_items = update_work_items_implementation_effort(session, work_items_temp)
+
 
     return dict(
-        updated=updated
+        updated=updated_delivery_cycles
     )
 
 

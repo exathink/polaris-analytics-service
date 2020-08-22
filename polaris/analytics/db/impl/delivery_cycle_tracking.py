@@ -366,8 +366,6 @@ def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
     ).rowcount
 
 
-
-
 def coding_day(commits):
     return cast(
         func.to_timestamp(
@@ -467,8 +465,6 @@ def update_work_items_implementation_effort(session, work_items_temp):
         candidate_coding_days.c.coding_day
     ).cte()
 
-
-
     # Now we recompute the total effort for the candidate work item across
     # all commits in each work item
     # Group the work items by work item and author and coding day, joing
@@ -518,7 +514,7 @@ def update_work_items_implementation_effort(session, work_items_temp):
         ).values(
             effort=work_items_implementation_effort.c.effort
         )
-    )
+    ).rowcount
 
 
 def update_work_items_commits_stats(session, organization_key, work_items_commits):
@@ -559,10 +555,10 @@ def update_work_items_commits_stats(session, organization_key, work_items_commit
         updated_delivery_cycles = compute_work_item_delivery_cycle_commit_stats(session, work_items_temp)
         updated_work_items = update_work_items_implementation_effort(session, work_items_temp)
 
-
-    return dict(
-        updated=updated_delivery_cycles
-    )
+        return dict(
+            updated=updated_delivery_cycles,
+            updated_work_items=updated_work_items
+        )
 
 
 def compute_implementation_complexity_metrics(session, work_items_temp):

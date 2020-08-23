@@ -165,3 +165,106 @@ def work_items_commits_fixture(commits_fixture):
         w2.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in w2.delivery_cycles])
 
     yield organization, [w1.id, w2.id], test_commits, test_work_items
+
+
+@pytest.yield_fixture()
+def implementation_effort_commits_fixture(org_repo_fixture, cleanup):
+    organization, projects, repositories = org_repo_fixture
+    contributors_fixture = []
+    with db.create_session() as session:
+        for i in range(0, 3):
+            contributor_key = uuid.uuid4().hex
+            contributor_name = str(i)
+            contributor_id = session.connection.execute(
+                contributors.insert(
+                    dict(
+                        key=contributor_key,
+                        name=contributor_name
+                    )
+                )
+            ).inserted_primary_key[0]
+
+            contributor_alias_id = session.connection.execute(
+                contributor_aliases.insert(
+                    dict(
+                        source_alias=f'${i}@blow.com',
+                        key=contributor_key,
+                        name=contributor_name,
+                        contributor_id=contributor_id,
+                        source='vcs'
+                    )
+                )
+            ).inserted_primary_key[0]
+
+            # this fixture is designed to make it easy to
+            # setup a contributor as an author or a committer
+            # of a commit
+            contributors_fixture.append(
+                dict(
+                    as_author=dict(
+                        author_contributor_alias_id=contributor_alias_id,
+                        author_contributor_key=contributor_key,
+                        author_contributor_name=contributor_name
+                    ),
+                    as_committer=dict(
+                        committer_contributor_alias_id=contributor_alias_id,
+                        committer_contributor_key=contributor_key,
+                        committer_contributor_name=contributor_name
+                    )
+                )
+            )
+
+    yield organization, projects, repositories, contributors_fixture
+
+
+@pytest.yield_fixture()
+def implementation_effort_fixture(implementation_effort_commits_fixture):
+    def create_work_item_commits(work_item_commits):
+        with db.orm_session() as session:
+            for entry in work_item_commits:
+                work_item = WorkItem.find_by_work_item_key(session, entry['work_item_key'])
+                commit = Commit.find_by_commit_key(session, entry['commit_key'])
+                work_item.commits.append(commit)
+
+    organization, projects, repositories, contributors = implementation_effort_commits_fixture
+
+    test_work_items = [
+        dict(
+            key=uuid.uuid4().hex,
+            name=f'Issue ${i}',
+            display_id=f'100${i}',
+            created_at=datetime.utcnow().replace(microsecond=0) - timedelta(days=7),
+            updated_at=datetime.utcnow().replace(microsecond=0) - timedelta(days=7),
+            **work_items_common
+        )
+        for i in range(0, 5)
+    ]
+
+    create_work_items(
+        organization,
+        source_data=dict(
+            integration_type='github',
+            commit_mapping_scope='repository',
+            commit_mapping_scope_key=uuid.uuid4().hex,
+            **work_items_source_common
+        ),
+        items_data=test_work_items
+    )
+
+    commits_common = dict(
+
+        commit_message=f"Another change. Fixes nothing",
+        author_date=get_date("2018-12-03"),
+        commit_date_tz_offset=0,
+        author_date_tz_offset=0,
+    )
+
+    yield dict(
+        organization=organization,
+        projects=projects,
+        repositories=repositories,
+        contributors=contributors,
+        work_items=test_work_items,
+        commits_common=commits_common,
+        add_work_item_commits = lambda work_item_commits: create_work_item_commits(work_item_commits)
+    )

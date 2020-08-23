@@ -11,6 +11,7 @@
 
 from polaris.analytics.db import commands
 from test.fixtures.work_items_commits import *
+from polaris.utils.collections import dict_to_object
 
 
 class TestUpateWorkItemsCommitsSpan:
@@ -413,7 +414,7 @@ class TestUpdateWorkItemsCommitsCount:
                                             work_item_id={work_items_ids[0]} and commit_count=1").scalar() == 1
 
     def it_updates_commit_count_when_a_commit_is_mapped_to_more_than_one_work_item(self,
-                                                                                       work_items_commits_fixture):
+                                                                                   work_items_commits_fixture):
         organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
 
         # Map commit 2 to work item 2 resulting in increase in commit count
@@ -457,3 +458,501 @@ class TestUpdateWorkItemsCommitsCount:
         assert db.connection().execute(
             f"select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where \
                             work_item_id={work_items_ids[1]} and commit_count is NULL").scalar() == 1
+
+
+class TestWorkItemImplementationEffort:
+
+    def it_works_for_single_work_item_and_commit(self, implementation_effort_fixture):
+        fixture = implementation_effort_fixture
+        commits_common = fixture['commits_common']
+
+        organization = fixture['organization']
+        contributor = fixture['contributors'][0]
+        test_repo = fixture['repositories']['alpha']
+        add_work_item_commits = fixture['add_work_item_commits']
+
+        test_work_item = fixture['work_items'][0]
+        test_commit = dict(
+            key=uuid.uuid4().hex,
+            source_commit_id=uuid.uuid4().hex,
+            repository_id=test_repo.id,
+            commit_date=datetime.utcnow(),
+            **contributor['as_author'],
+            **contributor['as_committer'],
+            **commits_common
+        )
+
+        create_test_commits([test_commit])
+
+        work_item_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item['key'],
+                commit_key=test_commit['key']
+            )
+        ]
+        add_work_item_commits(work_item_commits)
+
+        result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
+        assert result['success']
+        assert result['updated_work_items'] == 1
+
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item['key']}'"
+        ).scalar() == 1
+
+    def it_works_for_single_work_item_and_multiple_commits_on_the_same_day(self, implementation_effort_fixture):
+        fixture = implementation_effort_fixture
+        commits_common = fixture['commits_common']
+
+        organization = fixture['organization']
+        contributor = fixture['contributors'][0]
+        test_repo = fixture['repositories']['alpha']
+        add_work_item_commits = fixture['add_work_item_commits']
+
+        test_work_item = fixture['work_items'][0]
+        commit_date = datetime.utcnow()
+        test_commits = [
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=commit_date,
+                **contributor['as_author'],
+                **contributor['as_committer'],
+                **commits_common
+            ),
+
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=commit_date,
+                **contributor['as_author'],
+                **contributor['as_committer'],
+                **commits_common
+            )
+        ]
+
+        create_test_commits(test_commits)
+
+        work_item_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item['key'],
+                commit_key=test_commits[0]['key']
+            ),
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item['key'],
+                commit_key=test_commits[1]['key']
+            )
+        ]
+        add_work_item_commits(work_item_commits)
+
+        result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
+        assert result['success']
+        assert result['updated_work_items'] == 1
+
+        # Effort should still be 1 since the commits are on the same day
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item['key']}'"
+        ).scalar() == 1
+
+    def it_works_for_single_work_item_and_multiple_commits_on_different_days(self, implementation_effort_fixture):
+        fixture = implementation_effort_fixture
+        commits_common = fixture['commits_common']
+
+        organization = fixture['organization']
+        contributor = fixture['contributors'][0]
+        test_repo = fixture['repositories']['alpha']
+        add_work_item_commits = fixture['add_work_item_commits']
+
+        test_work_item = fixture['work_items'][0]
+
+        test_commits = [
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=1),
+                **contributor['as_author'],
+                **contributor['as_committer'],
+                **commits_common
+            ),
+
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=2),
+                **contributor['as_author'],
+                **contributor['as_committer'],
+                **commits_common
+            )
+        ]
+
+        create_test_commits(test_commits)
+
+        work_item_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item['key'],
+                commit_key=test_commits[0]['key']
+            ),
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item['key'],
+                commit_key=test_commits[1]['key']
+            )
+        ]
+        add_work_item_commits(work_item_commits)
+
+        result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
+        assert result['success']
+        assert result['updated_work_items'] == 1
+
+        # Effort should 2 since there are two commits on 2 different days
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item['key']}'"
+        ).scalar() == 2
+
+    def it_works_for_single_work_item_and_commits_from_multiple_authors_on_the_same_day(self,
+                                                                                        implementation_effort_fixture):
+        fixture = implementation_effort_fixture
+        commits_common = fixture['commits_common']
+
+        organization = fixture['organization']
+        contributor_0 = fixture['contributors'][0]
+        contributor_1 = fixture['contributors'][1]
+
+        test_repo = fixture['repositories']['alpha']
+        add_work_item_commits = fixture['add_work_item_commits']
+
+        test_work_item = fixture['work_items'][0]
+        commit_date = datetime.utcnow()
+
+        test_commits = [
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=commit_date,
+                **contributor_0['as_author'],
+                **contributor_0['as_committer'],
+                **commits_common
+            ),
+
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=commit_date,
+                **contributor_1['as_author'],
+                **contributor_1['as_committer'],
+                **commits_common
+            )
+        ]
+
+        create_test_commits(test_commits)
+
+        work_item_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item['key'],
+                commit_key=test_commits[0]['key']
+            ),
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item['key'],
+                commit_key=test_commits[1]['key']
+            )
+        ]
+        add_work_item_commits(work_item_commits)
+
+        result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
+        assert result['success']
+        assert result['updated_work_items'] == 1
+
+        # Effort should 2 since there are commits from 2 authors on the same days and
+        # the authors have no other work item commits on the same day
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item['key']}'"
+        ).scalar() == 2
+
+
+    def it_allocates_fractional_days_when_an_author_contributes_to_multiple_work_items_on_the_same_day\
+                    (self, implementation_effort_fixture):
+        fixture = implementation_effort_fixture
+        commits_common = fixture['commits_common']
+
+        organization = fixture['organization']
+        contributor = fixture['contributors'][0]
+        test_repo = fixture['repositories']['alpha']
+        add_work_item_commits = fixture['add_work_item_commits']
+
+        test_work_item_0 = fixture['work_items'][0]
+        test_work_item_1 = fixture['work_items'][1]
+
+        test_commits = [
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=1),
+                **contributor['as_author'],
+                **contributor['as_committer'],
+                **commits_common
+            ),
+
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=2),
+                **contributor['as_author'],
+                **contributor['as_committer'],
+                **commits_common
+            ),
+
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=2),
+                **contributor['as_author'],
+                **contributor['as_committer'],
+                **commits_common
+            )
+
+        ]
+
+        create_test_commits(test_commits)
+
+        work_item_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item_0['key'],
+                commit_key=test_commits[0]['key']
+            ),
+            # author has commits against 2 work items on the same day
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item_0['key'],
+                commit_key=test_commits[1]['key']
+            ),
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item_1['key'],
+                commit_key=test_commits[2]['key']
+            )
+
+        ]
+        add_work_item_commits(work_item_commits)
+
+        result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
+        assert result['success']
+        assert result['updated_work_items'] == 2
+
+        # Effort for work item 0 should 1.5 since the second day is a fractional load factor
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item_0['key']}'"
+        ).scalar() == 1.5
+
+        # Effor for work item 1 should be 0.5, since on the second day the author committed to
+        # two work items.
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item_1['key']}'"
+        ).scalar() == 0.5
+
+
+    def it_allocates_fractional_days_correctly_when_there_are_multiple_authors\
+                    (self, implementation_effort_fixture):
+        fixture = implementation_effort_fixture
+        commits_common = fixture['commits_common']
+
+        organization = fixture['organization']
+        contributor_0 = fixture['contributors'][0]
+        contributor_1 = fixture['contributors'][1]
+
+        test_repo = fixture['repositories']['alpha']
+        add_work_item_commits = fixture['add_work_item_commits']
+
+        test_work_item_0 = fixture['work_items'][0]
+        test_work_item_1 = fixture['work_items'][1]
+
+        test_commits = [
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=1),
+                **contributor_0['as_author'],
+                **contributor_0['as_committer'],
+                **commits_common
+            ),
+
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=2),
+                **contributor_1['as_author'],
+                **contributor_1['as_committer'],
+                **commits_common
+            ),
+
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=2),
+                **contributor_1['as_author'],
+                **contributor_1['as_committer'],
+                **commits_common
+            )
+
+        ]
+
+        create_test_commits(test_commits)
+
+        work_item_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item_0['key'],
+                commit_key=test_commits[0]['key']
+            ),
+            # contributor_2 has commits against 2 work items on day 2
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item_0['key'],
+                commit_key=test_commits[1]['key']
+            ),
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item_1['key'],
+                commit_key=test_commits[2]['key']
+            )
+
+        ]
+        add_work_item_commits(work_item_commits)
+
+        result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
+        assert result['success']
+        assert result['updated_work_items'] == 2
+
+        # Effort for work item 0 should 1.5 since the second day is a fractional load factor for
+        # contributor_2
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item_0['key']}'"
+        ).scalar() == 1.5
+
+        # Effort for work item 1 should be 0.5, since on the second day contributor_2 committed to
+        # two work items.
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item_1['key']}'"
+        ).scalar() == 0.5
+
+
+    def it_works_for_multiple_work_items_with_multiple_commits_and_no_shared_authors\
+                    (self, implementation_effort_fixture):
+        fixture = implementation_effort_fixture
+        commits_common = fixture['commits_common']
+
+        organization = fixture['organization']
+        contributor_0 = fixture['contributors'][0]
+        contributor_1 = fixture['contributors'][1]
+
+        test_repo = fixture['repositories']['alpha']
+        add_work_item_commits = fixture['add_work_item_commits']
+
+        test_work_item_0 = fixture['work_items'][0]
+        test_work_item_1 = fixture['work_items'][1]
+
+        test_commits = [
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=1),
+                **contributor_0['as_author'],
+                **contributor_0['as_committer'],
+                **commits_common
+            ),
+
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=2),
+                **contributor_0['as_author'],
+                **contributor_0['as_committer'],
+                **commits_common
+            ),
+
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=1),
+                **contributor_1['as_author'],
+                **contributor_1['as_committer'],
+                **commits_common
+            ),
+
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=datetime.utcnow() - timedelta(days=2),
+                **contributor_1['as_author'],
+                **contributor_1['as_committer'],
+                **commits_common
+            )
+
+        ]
+
+        create_test_commits(test_commits)
+
+        work_item_commits = [
+            # contributor 0 commits
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item_0['key'],
+                commit_key=test_commits[0]['key']
+            ),
+
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item_0['key'],
+                commit_key=test_commits[1]['key']
+            ),
+
+            # contributor 1 commits. No overlaps
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item_1['key'],
+                commit_key=test_commits[2]['key']
+            ),
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item_1['key'],
+                commit_key=test_commits[3]['key']
+            )
+
+        ]
+        add_work_item_commits(work_item_commits)
+
+        result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
+        assert result['success']
+        assert result['updated_work_items'] == 2
+
+        # each one will have effort 2
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item_0['key']}'"
+        ).scalar() == 2
+
+
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item_1['key']}'"
+        ).scalar() == 2

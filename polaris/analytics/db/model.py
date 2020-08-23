@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 from logging import getLogger
 
-from sqlalchemy import Table, Column, BigInteger, Integer, Boolean, text, Text, String, UniqueConstraint, ForeignKey, \
+from sqlalchemy import Table, Column, BigInteger, Integer, Float, Boolean, text, Text, String, UniqueConstraint, ForeignKey, \
     Index, DateTime, and_
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import relationship, object_session
@@ -662,6 +662,16 @@ class WorkItem(Base):
     # source time stamp of the update that put it in that state else it is None.
     completed_at = Column(DateTime, nullable=True)
 
+    # commit metrics at the work item level. Since commits can
+    # come in "between delivery cycles" we cannot simply aggregate
+    # delivery cycle metrics to get commit metrics.
+    # We currently have a bit of a gap in how we have implemented this
+    # since we are doing everything at the delivery cycle level.
+    # We are starting to do maintain this at the work item level
+    # starting with the effort metric.
+
+    effort = Column(Float, nullable=True)
+
     # Work Items Source relationship
     work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'))
     work_items_source = relationship('WorkItemsSource', back_populates='work_items')
@@ -751,6 +761,8 @@ class WorkItemDeliveryCycle(Base):
     latest_commit = Column(DateTime, nullable=True)
     repository_count = Column(Integer, nullable=True)
     commit_count = Column(Integer, nullable=True)
+
+
 
     # non-merge commits' code change stats columns
     total_lines_changed_non_merge = Column(Integer, nullable=True)

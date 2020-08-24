@@ -11,13 +11,13 @@ import uuid
 from datetime import datetime
 
 import pytest
-from sqlalchemy import true, false
+from sqlalchemy import true, false, and_
 
 from polaris.analytics.db.enums import WorkItemsStateType
 
 from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
-    commits, \
+    commits, work_items_commits as work_items_commits_table, \
     WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag, FeatureFlagEnablement, WorkItemDeliveryCycle
 from polaris.common import db
 from polaris.utils.collections import find
@@ -157,6 +157,7 @@ def commits_fixture(org_repo_fixture, cleanup):
 @pytest.yield_fixture()
 def cleanup():
     yield
+    db.connection().execute("delete from analytics.work_items_commits")
     db.connection().execute("delete from analytics.work_item_source_file_changes")
     db.connection().execute("delete from analytics.work_item_delivery_cycle_contributors")
     db.connection().execute("delete from analytics.work_item_delivery_cycle_durations")
@@ -164,7 +165,7 @@ def cleanup():
     db.connection().execute("delete from analytics.feature_flag_enablements")
     db.connection().execute("delete from analytics.feature_flags")
     db.connection().execute("delete from analytics.work_items_source_state_map")
-    db.connection().execute("delete from analytics.work_items_commits")
+
     db.connection().execute("delete from analytics.work_item_state_transitions")
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")
@@ -278,11 +279,54 @@ def create_work_item_commits(work_item_key, commit_keys):
         work_item = WorkItem.find_by_work_item_key(session, work_item_key)
         if work_item:
             for commit_key in commit_keys:
-                if commit_key:
-                    commit = Commit.find_by_commit_key(session, commit_key)
+                commit = Commit.find_by_commit_key(session, commit_key)
+                if commit:
                     work_item.commits.append(commit)
                 else:
                     assert None, f"Failed to find commit with key {commit_key}"
+
+            session.flush()
+            # we are associating delivery cycles with work item commits using the
+            # commit date and the start and end dates of the delivery cycle as the
+            # boundaries. In earlier iterations we were using this as the definition
+            # of the delivery cycle commit relationship and this was implicitly used when
+            # we computed the metrics. Now, we are explictly
+            # mapping the current delivery cycle id at the time
+            # when a commit is mapped to a work item as the delivery cycle id and using this
+            # relationship rather than a date based comparison for determining which commmits
+            # belong to a delivery cycle .
+
+            # In order for shim existing test assumptions and fixtures, we are
+            # re-creating logic of associating commit dates with delivery cycles
+            # here in the fixture. This should yield identical results for existing tests.
+            for commit_key in commit_keys:
+                commit = Commit.find_by_commit_key(session, commit_key)
+                if commit:
+                    delivery_cycle = find(
+                        work_item.delivery_cycles,
+                        lambda dc:
+                            # This is the old date based rule we were using
+                            # to map delivery cycles to commits.
+                            dc.start_date <= commit.commit_date and
+                            (dc.end_date is None or commit.commit_date <= dc.end_date)
+                    )
+                    delivery_cycle_id = delivery_cycle.delivery_cycle_id if delivery_cycle is not None else work_item.current_delivery_cycle_id
+                    session.connection().execute(
+                        work_items_commits_table.update().where(
+                            and_(
+                                work_items_commits_table.c.work_item_id == work_item.id,
+                                work_items_commits_table.c.commit_id == commit.id
+                            )
+
+                        ).values(
+                            delivery_cycle_id=delivery_cycle_id
+                        )
+                    )
+                else:
+                    assert None, f"Failed to find commit with key {commit_key}"
+
+
+
         else:
             assert None, f"Failed to find work item with key {work_item_key}"
 

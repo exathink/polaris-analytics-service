@@ -336,17 +336,12 @@ def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
         ).join(
             work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
         ).join(
-            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
+            work_items_commits_table, and_(
+                work_items_commits_table.c.work_item_id == work_items.c.id,
+                work_items_commits_table.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+            )
         ).join(
             commits, work_items_commits_table.c.commit_id == commits.c.id
-        )
-    ).where(
-        and_(
-            work_item_delivery_cycles.c.start_date <= commits.c.commit_date,
-            or_(
-                work_item_delivery_cycles.c.end_date == None,
-                commits.c.commit_date <= work_item_delivery_cycles.c.end_date
-            )
         )
     ).group_by(
         work_item_delivery_cycles.c.delivery_cycle_id,

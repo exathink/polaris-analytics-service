@@ -93,8 +93,7 @@ def work_items_commits_fixture(commits_fixture):
     )
 
     # Add work item commits mapping
-    create_work_item_commits(test_work_items[0]['key'], [commit['key'] for commit in test_commits[0:4]])
-    create_work_item_commits(test_work_items[1]['key'], [test_commits[-1]['key']])
+
 
     # Add state transitions
     for work_item in test_work_items:
@@ -163,6 +162,9 @@ def work_items_commits_fixture(commits_fixture):
 
         w1.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in w1.delivery_cycles])
         w2.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in w2.delivery_cycles])
+
+    create_work_item_commits(test_work_items[0]['key'], [commit['key'] for commit in test_commits[0:4]])
+    create_work_item_commits(test_work_items[1]['key'], [test_commits[-1]['key']])
 
     yield organization, [w1.id, w2.id], test_commits, test_work_items
 

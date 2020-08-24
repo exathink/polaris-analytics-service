@@ -7,15 +7,6 @@
 # confidential.
 
 # Author: Krishna Kumar
-# -*- coding: utf-8 -*-
-
-# Copyright: © Exathink, LLC (2011-2018) All Rights Reserved
-
-# Unauthorized use or copying of this file and its contents, via any medium
-# is strictly prohibited. The work product in this file is proprietary and
-# confidential.
-
-# Author: Krishna Kumar
 
 from polaris.analytics.db import api
 
@@ -69,6 +60,49 @@ class TestSingleRepo:
         assert result['resolved'][0]['repository_key'] == str(test_repo.key)
 
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
+
+    def it_sets_the_delivery_cycle_of_the_commit_to_the_current_delivery_cycle_of_the_work_item(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='github',
+                commit_mapping_scope='repository',
+                commit_mapping_scope_key=test_repo.key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+        )
+        test_commit_source_id = '00001'
+        test_commit_key = uuid.uuid4()
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=test_commit_key,
+                source_commit_id=test_commit_source_id,
+                commit_message="Another change. Fixes issue #1000",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_items_commits inner join analytics.work_items "
+            f"on work_items_commits.work_item_id = work_items.id and work_items_commits.delivery_cycle_id = work_items.current_delivery_cycle_id"
+        ).scalar() == 1
+
 
     def it_returns_a_match_when_the_commit_is_on_a_branch_matching_the_work_item(self, commits_fixture):
         organization, _, repositories, _ = commits_fixture

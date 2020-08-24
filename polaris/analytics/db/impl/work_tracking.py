@@ -456,10 +456,11 @@ def resolve_commits_for_work_items(session, organization_key, work_items_source_
 
                 session.connection().execute(
                     insert(work_items_commits_table).from_select(
-                        ['work_item_id', 'commit_id'],
+                        ['work_item_id', 'commit_id', 'delivery_cycle_id'],
                         select([
                             work_items.c.id.label('work_item_id'),
-                            wc_temp.c.commit_id
+                            wc_temp.c.commit_id,
+                            work_items.c.current_delivery_cycle_id
                         ]).select_from(
                             wc_temp.join(
                                 work_items, wc_temp.c.work_item_key == work_items.c.key
@@ -681,7 +682,8 @@ def update_commits_work_items(session, repository_key, commits_display_id):
             Column('display_id', String),
             Column('commit_id', BigInteger),
             Column('work_item_id', BigInteger),
-            Column('work_item_key', UUID(as_uuid=True))
+            Column('work_item_key', UUID(as_uuid=True)),
+            Column('delivery_cycle_id', Integer)
         ]
     )
     cdi_temp.create(session.connection(), checkfirst=True)
@@ -709,14 +711,15 @@ def update_commits_work_items(session, repository_key, commits_display_id):
             )
         ).values(
             work_item_key=work_items.c.key,
-            work_item_id=work_items.c.id
+            work_item_id=work_items.c.id,
+            delivery_cycle_id=work_items.c.current_delivery_cycle_id
         )
     )
 
     session.connection().execute(
         insert(work_items_commits_table).from_select(
-            ['work_item_id', 'commit_id'],
-            select([cdi_temp.c.work_item_id, cdi_temp.c.commit_id]).where(
+            ['work_item_id', 'commit_id', 'delivery_cycle_id'],
+            select([cdi_temp.c.work_item_id, cdi_temp.c.commit_id, cdi_temp.c.delivery_cycle_id]).where(
                 cdi_temp.c.work_item_id != None
             )
         ).on_conflict_do_nothing(

@@ -48,7 +48,10 @@ accounts_organizations = Table(
 work_items_commits = Table(
     'work_items_commits', Base.metadata,
     Column('work_item_id', ForeignKey('work_items.id'), primary_key=True, index=True),
-    Column('commit_id', ForeignKey('commits.id'), primary_key=True, index=True)
+    Column('commit_id', ForeignKey('commits.id'), primary_key=True, index=True),
+    # Note: this is not a primary key since we only want a commit to be mapped
+    # to a single delivery cycle for a given work item
+    Column('delivery_cycle_id', ForeignKey('work_item_delivery_cycles.delivery_cycle_id'),  index=True, nullable=True)
 )
 
 work_items_pull_requests = Table(
@@ -788,6 +791,8 @@ class WorkItemDeliveryCycle(Base):
 
     # Work Items Source File Relationship
     source_file_changes = relationship('WorkItemSourceFileChange', cascade='all, delete-orphan')
+
+    commits = relationship("Commit", secondary=work_items_commits)
 
 
 work_item_delivery_cycles = WorkItemDeliveryCycle.__table__

@@ -221,12 +221,10 @@ def implementation_effort_commits_fixture(org_repo_fixture, cleanup):
 
 @pytest.yield_fixture()
 def implementation_effort_fixture(implementation_effort_commits_fixture):
-    def create_work_item_commits(work_item_commits):
-        with db.orm_session() as session:
-            for entry in work_item_commits:
-                work_item = WorkItem.find_by_work_item_key(session, entry['work_item_key'])
-                commit = Commit.find_by_commit_key(session, entry['commit_key'])
-                work_item.commits.append(commit)
+    def add_work_item_commits(work_item_commits):
+        for entry in work_item_commits:
+            # shimming this to call the standard fixture function
+            create_work_item_commits(entry['work_item_key'], [entry['commit_key']])
 
     organization, projects, repositories, contributors = implementation_effort_commits_fixture
 
@@ -268,5 +266,5 @@ def implementation_effort_fixture(implementation_effort_commits_fixture):
         contributors=contributors,
         work_items=test_work_items,
         commits_common=commits_common,
-        add_work_item_commits = lambda work_item_commits: create_work_item_commits(work_item_commits)
+        add_work_item_commits=add_work_item_commits
     )

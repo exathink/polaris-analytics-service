@@ -370,7 +370,7 @@ def coding_day(commits):
     )
 
 
-def update_work_items_implementation_effort(session, work_items_temp):
+def compute_work_items_implementation_effort(session, work_items_temp):
     # when new commits are recorded against a set of work items we need to recompute the
     # implementation effort for those work items, and also for other work items
     # where the same contributors had commits on the same day. We are going to compute these at the
@@ -511,7 +511,8 @@ def update_work_items_implementation_effort(session, work_items_temp):
         )
     ).rowcount
 
-def update_delivery_cycles_implementation_effort(session, work_items_temp):
+
+def compute_delivery_cycles_implementation_effort(session, work_items_temp):
     # Initially we need to compute the load factors for all authors who
     # have committed to the work items in this set by author and coding day, so we can see how many distinct work items
     # each author committed to for each coding day. The inverse of this
@@ -687,8 +688,8 @@ def update_work_items_commits_stats(session, organization_key, work_items_commit
         )
 
         updated = compute_work_item_delivery_cycle_commit_stats(session, work_items_temp)
-        updated_work_items_effort = update_work_items_implementation_effort(session, work_items_temp)
-        updated_delivery_cycles_effort = update_delivery_cycles_implementation_effort(session, work_items_temp)
+        updated_work_items_effort = compute_work_items_implementation_effort(session, work_items_temp)
+        updated_delivery_cycles_effort = compute_delivery_cycles_implementation_effort(session, work_items_temp)
 
         return dict(
             updated=updated,
@@ -1707,6 +1708,56 @@ def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
     return updated
 
 
+def recreate_work_item_commits_delivery_cycles(session, work_items_source_id):
+    cycle_windows = select([
+        work_items.c.id,
+        work_item_delivery_cycles.c.delivery_cycle_id,
+        work_item_delivery_cycles.c.start_date,
+        work_item_delivery_cycles.c.end_date,
+        func.lead(work_item_delivery_cycles.c.start_date).over(
+            partition_by=work_items.c.id, order_by=work_item_delivery_cycles.c.start_date
+        ).label('next_start')
+    ]).select_from(
+        work_items.join(
+            work_item_delivery_cycles,
+            work_item_delivery_cycles.c.work_item_id == work_items.c.id
+        )
+    ).where(
+        work_items.c.work_items_source_id == work_items_source_id
+    ).cte()
+
+    work_items_commits_delivery_cycles = select([
+        cycle_windows.c.id.label('work_item_id'),
+        commits.c.id.label('commit_id'),
+        cycle_windows.c.delivery_cycle_id
+    ]).select_from(
+        cycle_windows.join(
+            work_items_commits_table, work_items_commits_table.c.work_item_id == cycle_windows.c.id
+        ).join(
+            commits, work_items_commits_table.c.commit_id == commits.c.id
+        )
+    ).where(
+        and_(
+            cycle_windows.c.start_date <= commits.c.commit_date,
+            or_(
+                cycle_windows.c.next_start == None,
+                commits.c.commit_date <= cycle_windows.c.next_start
+            )
+        )
+    ).cte()
+
+    return session.connection().execute(
+        work_items_commits_table.update().where(
+            and_(
+                work_items_commits_table.c.work_item_id == work_items_commits_delivery_cycles.c.work_item_id,
+                work_items_commits_table.c.commit_id == work_items_commits_delivery_cycles.c.commit_id
+            )
+        ).values(
+            delivery_cycle_id=work_items_commits_delivery_cycles.c.delivery_cycle_id
+        )
+    )
+
+
 def update_work_items_source_delivery_cycles(session, work_items_source_id):
     # set current_delivery_cycle_id to none for work items in given source
     session.connection().execute(
@@ -1791,8 +1842,13 @@ def update_work_items_source_delivery_cycles(session, work_items_source_id):
     # Recompute and insert the deleted delivery cycle durations, based on new delivery cycles
     recompute_work_items_delivery_cycle_durations(session, work_items_source_id)
 
+    # Rebuild the commits delivery cycles associations for these work items
+    recreate_work_item_commits_delivery_cycles(session, work_items_source_id)
+
+    compute_work_items_implementation_effort(session, work_items_temp)
     # Recompute other delivery cycle fields
     compute_work_item_delivery_cycle_commit_stats(session, work_items_temp)
+    compute_delivery_cycles_implementation_effort(session, work_items_temp)
     compute_implementation_complexity_metrics(session, work_items_temp)
 
     # Repopulate work_item_delivery_cycle_contributors

@@ -11,7 +11,7 @@
 
 from polaris.analytics.db import commands
 from test.fixtures.work_items_commits import *
-from polaris.utils.collections import dict_to_object
+
 
 
 class TestUpateWorkItemsCommitsSpan:

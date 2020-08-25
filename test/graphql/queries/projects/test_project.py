@@ -256,6 +256,8 @@ class TestProjectWorkItems:
             tags=['ares2'],
             description='foo',
             source_id=str(uuid.uuid4()),
+            is_epic=False,
+            epic_id=None,
         )
 
         api.import_new_work_items(
@@ -921,6 +923,8 @@ class TestProjectAggregateCycleMetrics:
             tags=['ares2'],
             description='foo',
             source_id=str(uuid.uuid4()),
+            is_epic=False,
+            epic_id=None,
         )
 
         work_items = [
@@ -1030,6 +1034,8 @@ class TestProjectAggregateCycleMetrics:
             tags=['ares2'],
             description='foo',
             source_id=str(uuid.uuid4()),
+            is_epic=False,
+            epic_id=None,
         )
 
         work_items = [
@@ -1335,6 +1341,8 @@ class TestProjectWorkItemDeliveryCycles:
             tags=['ares2'],
             description='foo',
             source_id=str(uuid.uuid4()),
+            is_epic=False,
+            epic_id=None,
         )
 
         work_items = [
@@ -1766,6 +1774,8 @@ def api_project_traceability_test_fixture(org_repo_fixture):
             ),
             work_items_common=dict(
                 is_bug=True,
+                is_epic=False,
+                epic_id=None,
                 work_item_type='issue',
                 url='http://foo.com',
                 tags=['ares2'],

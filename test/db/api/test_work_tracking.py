@@ -145,13 +145,15 @@ class TestImportWorkItems:
                 display_id='alpha',
                 work_item_type='issue',
                 is_bug=True,
+                is_epic=False,
                 url='http://foo.com',
                 tags=['ares2'],
                 description='An issue here',
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 state='open',
-                source_id=str(uuid.uuid4())
+                source_id=str(uuid.uuid4()),
+                epic_id=None
             ),
             dict(
                 key=uuid.uuid4().hex,
@@ -159,13 +161,15 @@ class TestImportWorkItems:
                 display_id='beta',
                 work_item_type='issue',
                 is_bug=True,
+                is_epic=False,
                 url='http://foo.com',
                 tags=['ares2'],
                 description='An issue here',
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 state='closed',
-                source_id=str(uuid.uuid4())
+                source_id=str(uuid.uuid4()),
+                epic_id=None
             )
         ])
         assert result['success']
@@ -187,13 +191,15 @@ class TestImportWorkItems:
                 display_id='alpha',
                 work_item_type='issue',
                 is_bug=True,
+                is_epic=False,
                 url='http://foo.com',
                 tags=['ares2'],
                 description='An issue here',
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 state='open',
-                source_id=str(uuid.uuid4())
+                source_id=str(uuid.uuid4()),
+                epic_id=None
             ),
             dict(
                 key=uuid.uuid4().hex,
@@ -201,13 +207,15 @@ class TestImportWorkItems:
                 display_id='beta',
                 work_item_type='issue',
                 is_bug=True,
+                is_epic=False,
                 url='http://foo.com',
                 tags=['ares2'],
                 description='An issue here',
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 state='closed',
-                source_id=str(uuid.uuid4())
+                source_id=str(uuid.uuid4()),
+                epic_id=None
             )
         ])
         assert result['success']

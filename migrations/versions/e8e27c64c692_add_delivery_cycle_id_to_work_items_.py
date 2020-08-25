@@ -49,7 +49,7 @@ def upgrade():
     op.create_index(op.f('ix_analytics_work_items_commits_delivery_cycle_id'), 'work_items_commits',
                     ['delivery_cycle_id'], unique=False, schema='analytics')
     op.create_foreign_key('analytics.work_items_commit_delivery_cycle_fk', 'work_items_commits', 'work_item_delivery_cycles', ['delivery_cycle_id'],
-                          ['delivery_cycle_id'], source_schema='analytics', referent_schema='analytics')
+                          ['delivery_cycle_id'], source_schema='analytics', ondelete="SET NULL", referent_schema='analytics')
 
     populate_delivery_cycle_id()
 

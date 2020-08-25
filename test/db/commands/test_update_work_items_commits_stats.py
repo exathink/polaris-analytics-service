@@ -495,10 +495,17 @@ class TestWorkItemImplementationEffort:
 
         result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
         assert result['success']
-        assert result['updated_work_items'] == 1
-
+        assert result['updated_work_items_effort'] == 1
         assert db.connection().execute(
             f"select effort from analytics.work_items where key='{test_work_item['key']}'"
+        ).scalar() == 1
+
+        assert result['updated_delivery_cycles_effort'] == 1
+        assert db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item['key']}'"
         ).scalar() == 1
 
     def it_works_for_single_work_item_and_multiple_commits_on_the_same_day(self, implementation_effort_fixture):
@@ -552,11 +559,20 @@ class TestWorkItemImplementationEffort:
 
         result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
         assert result['success']
-        assert result['updated_work_items'] == 1
+        assert result['updated_work_items_effort'] == 1
 
         # Effort should still be 1 since the commits are on the same day
         assert db.connection().execute(
             f"select effort from analytics.work_items where key='{test_work_item['key']}'"
+        ).scalar() == 1
+
+        assert result['updated_delivery_cycles_effort'] == 1
+        # Effort should still be 1 since the commits are on the same day
+        assert db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item['key']}'"
         ).scalar() == 1
 
     def it_works_for_single_work_item_and_multiple_commits_on_different_days(self, implementation_effort_fixture):
@@ -610,11 +626,20 @@ class TestWorkItemImplementationEffort:
 
         result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
         assert result['success']
-        assert result['updated_work_items'] == 1
+        assert result['updated_work_items_effort'] == 1
 
         # Effort should 2 since there are two commits on 2 different days
         assert db.connection().execute(
             f"select effort from analytics.work_items where key='{test_work_item['key']}'"
+        ).scalar() == 2
+
+        assert result['updated_delivery_cycles_effort'] == 1
+        # Effort should 2 since there are two commits on 2 different days
+        assert db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item['key']}'"
         ).scalar() == 2
 
     def it_works_for_single_work_item_and_commits_from_multiple_authors_on_the_same_day(self,
@@ -672,7 +697,7 @@ class TestWorkItemImplementationEffort:
 
         result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
         assert result['success']
-        assert result['updated_work_items'] == 1
+        assert result['updated_work_items_effort'] == 1
 
         # Effort should 2 since there are commits from 2 authors on the same days and
         # the authors have no other work item commits on the same day
@@ -680,8 +705,17 @@ class TestWorkItemImplementationEffort:
             f"select effort from analytics.work_items where key='{test_work_item['key']}'"
         ).scalar() == 2
 
+        assert result['updated_delivery_cycles_effort'] == 1
+        # Effort should 2 since there are commits from 2 authors on the same days and
+        # the authors have no other work item commits on the same day
+        assert db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item['key']}'"
+        ).scalar() == 2
 
-    def it_allocates_fractional_days_when_an_author_contributes_to_multiple_work_items_on_the_same_day\
+    def it_allocates_fractional_days_when_an_author_contributes_to_multiple_work_items_on_the_same_day \
                     (self, implementation_effort_fixture):
         fixture = implementation_effort_fixture
         commits_common = fixture['commits_common']
@@ -752,21 +786,38 @@ class TestWorkItemImplementationEffort:
 
         result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
         assert result['success']
-        assert result['updated_work_items'] == 2
+        assert result['updated_work_items_effort'] == 2
 
         # Effort for work item 0 should 1.5 since the second day is a fractional load factor
         assert db.connection().execute(
             f"select effort from analytics.work_items where key='{test_work_item_0['key']}'"
         ).scalar() == 1.5
 
-        # Effor for work item 1 should be 0.5, since on the second day the author committed to
+        # Effort for work item 1 should be 0.5, since on the second day the author committed to
         # two work items.
         assert db.connection().execute(
             f"select effort from analytics.work_items where key='{test_work_item_1['key']}'"
         ).scalar() == 0.5
 
+        assert result['updated_delivery_cycles_effort'] == 2
 
-    def it_allocates_fractional_days_correctly_when_there_are_multiple_authors\
+        # Effort for work item 0 should 1.5 since the second day is a fractional load factor
+        assert db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item_0['key']}'"
+        ).scalar() == 1.5
+        # Effort for work item 1 should be 0.5, since on the second day the author committed to
+        # two work items.
+        assert db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item_1['key']}'"
+        ).scalar() == 0.5
+
+    def it_allocates_fractional_days_correctly_when_there_are_multiple_authors \
                     (self, implementation_effort_fixture):
         fixture = implementation_effort_fixture
         commits_common = fixture['commits_common']
@@ -839,7 +890,7 @@ class TestWorkItemImplementationEffort:
 
         result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
         assert result['success']
-        assert result['updated_work_items'] == 2
+        assert result['updated_work_items_effort'] == 2
 
         # Effort for work item 0 should 1.5 since the second day is a fractional load factor for
         # contributor_2
@@ -853,8 +904,25 @@ class TestWorkItemImplementationEffort:
             f"select effort from analytics.work_items where key='{test_work_item_1['key']}'"
         ).scalar() == 0.5
 
+        assert result['updated_delivery_cycles_effort'] == 2
 
-    def it_works_for_multiple_work_items_with_multiple_commits_and_no_shared_authors\
+        # Effort for work item 0 should 1.5 since the second day is a fractional load factor for contributor_2
+        assert db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item_0['key']}'"
+        ).scalar() == 1.5
+        # Effort for work item 1 should be 0.5, since on the second day contributor_2 committed to
+        # two work items.
+        assert db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item_1['key']}'"
+        ).scalar() == 0.5
+
+    def it_works_for_multiple_work_items_with_multiple_commits_and_no_shared_authors \
                     (self, implementation_effort_fixture):
         fixture = implementation_effort_fixture
         commits_common = fixture['commits_common']
@@ -945,14 +1013,116 @@ class TestWorkItemImplementationEffort:
 
         result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
         assert result['success']
-        assert result['updated_work_items'] == 2
+        assert result['updated_work_items_effort'] == 2
 
         # each one will have effort 2
         assert db.connection().execute(
             f"select effort from analytics.work_items where key='{test_work_item_0['key']}'"
         ).scalar() == 2
 
-
         assert db.connection().execute(
             f"select effort from analytics.work_items where key='{test_work_item_1['key']}'"
         ).scalar() == 2
+
+        assert result['updated_delivery_cycles_effort'] == 2
+
+        # Each will have effort 2
+        assert db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item_0['key']}'"
+        ).scalar() == 2
+        # Effort for work item 1 should be 0.5, since on the second day contributor_2 committed to
+        # two work items.
+        assert db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item_1['key']}'"
+        ).scalar() == 2
+
+    def it_works_for_work_items_with_multiple_delivery_cycles(self, implementation_effort_fixture):
+        fixture = implementation_effort_fixture
+        commits_common = fixture['commits_common']
+
+        organization = fixture['organization']
+        contributor = fixture['contributors'][0]
+        test_repo = fixture['repositories']['alpha']
+        add_work_item_commits = fixture['add_work_item_commits']
+
+        start_date = datetime.utcnow() - timedelta(days=7)
+
+        test_work_item = fixture['work_items'][0]
+        with db.orm_session() as session:
+            # set up two delivery cycles
+            work_item = WorkItem.find_by_work_item_key(session, test_work_item['key'])
+            work_item.current_delivery_cycle.start_date = start_date
+            work_item.current_delivery_cycle.end_date = start_date + timedelta(days=5)
+            work_item.delivery_cycles.append(
+                WorkItemDeliveryCycle(
+                    start_seq_no=1,
+                    start_date=start_date + timedelta(days=6),
+                    work_items_source_id=work_item.work_items_source_id
+                )
+            )
+
+        test_commits = [
+            # goes in the first delivery cycle
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=start_date + timedelta(days=1),
+                **contributor['as_author'],
+                **contributor['as_committer'],
+                **commits_common
+            ),
+            # goes in second delivery cycle
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=start_date + timedelta(days=8),
+                **contributor['as_author'],
+                **contributor['as_committer'],
+                **commits_common
+            )
+        ]
+
+        create_test_commits(test_commits)
+
+        work_item_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item['key'],
+                commit_key=test_commits[0]['key']
+            ),
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item['key'],
+                commit_key=test_commits[1]['key']
+            )
+        ]
+
+        add_work_item_commits(work_item_commits)
+
+        result = commands.update_work_items_commits_stats(organization.key, work_item_commits)
+        assert result['success']
+        assert result['updated_work_items_effort'] == 1
+        assert db.connection().execute(
+            f"select effort from analytics.work_items where key='{test_work_item['key']}'"
+        ).scalar() == 2
+
+        assert result['updated_delivery_cycles_effort'] == 2
+        efforts = db.connection().execute(
+            f"select work_item_delivery_cycles.effort "
+            f"from analytics.work_items inner join analytics.work_item_delivery_cycles "
+            f"on work_items.id = work_item_delivery_cycles.work_item_id "
+            f"where key='{test_work_item['key']}'"
+        ).fetchall()
+
+        assert {
+            row.effort
+            for row in efforts
+        } == {1, 1}

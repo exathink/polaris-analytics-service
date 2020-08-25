@@ -765,7 +765,10 @@ class WorkItemDeliveryCycle(Base):
     repository_count = Column(Integer, nullable=True)
     commit_count = Column(Integer, nullable=True)
 
-
+    # This the effort associated with commits within the delivery cycle
+    # we also have a "global" effort that applies to the work item and
+    # includes commits that appear across delivery cycles.
+    effort = Column(Float, nullable=True)
 
     # non-merge commits' code change stats columns
     total_lines_changed_non_merge = Column(Integer, nullable=True)

@@ -241,6 +241,37 @@ def create_work_items(organization, source_data, items_data):
         session.add(source)
         return source
 
+def create_work_items_with_default_delivery_cycle(organization, source_data, items_data):
+    with db.orm_session() as session:
+        session.expire_on_commit = False
+        source = WorkItemsSource(
+            key=uuid.uuid4().hex,
+            organization_key=organization.key,
+            organization_id=organization.id,
+            **source_data
+        )
+        source.init_state_map()
+        session.add(source)
+        session.flush()
+        for item in items_data:
+            work_item = WorkItem(**item)
+            work_item.delivery_cycles.append(
+                WorkItemDeliveryCycle(
+                    start_seq_no=0,
+                    start_date=work_item.created_at or datetime.utcnow(),
+                    work_items_source_id=source.id
+                )
+            )
+            source.work_items.append(work_item)
+
+        session.flush()
+
+        for work_item in source.work_items:
+            work_item.current_delivery_cycle_id = work_item.delivery_cycles[0].delivery_cycle_id
+
+
+        return source
+
 def create_project_work_items(organization, project, source_data, items_data):
     with db.orm_session() as session:
         session.expire_on_commit = False

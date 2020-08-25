@@ -240,7 +240,7 @@ def implementation_effort_fixture(implementation_effort_commits_fixture):
         for i in range(0, 5)
     ]
 
-    create_work_items(
+    create_work_items_with_default_delivery_cycle(
         organization,
         source_data=dict(
             integration_type='github',

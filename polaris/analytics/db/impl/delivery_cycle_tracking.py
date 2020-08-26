@@ -458,9 +458,7 @@ def compute_work_items_implementation_effort(session, work_items_temp):
     author_load_factors = select([
         candidate_coding_days.c.author_contributor_key,
         candidate_coding_days.c.coding_day,
-        # we assign a virtual id of -1 for untracked commits. See comment against
-        # outer join clause below.
-        func.count(func.coalesce(work_items_commits_table.c.work_item_id, -1).distinct()).label('load_factor')
+        func.count(work_items_commits_table.c.work_item_id.distinct()).label('load_factor')
     ]).select_from(
         # here we are searching over *all* work items (not just the ones in the candidate work_items)
         # these could be from different projects, work items sources etc. that the author
@@ -471,12 +469,7 @@ def compute_work_items_implementation_effort(session, work_items_temp):
                 candidate_coding_days.c.author_contributor_key == commits.c.author_contributor_key,
                 candidate_coding_days.c.coding_day == coding_day(commits)
             )
-        ).outerjoin(
-            # we are doing an outer join here because we want to get
-            # untracked commits for these authors as well. All untracked
-            # commits are counted as a single "virtual" work item for that day so
-            # that the effort for each work item is reduced proportionally on the days
-            # when there are untracked commits.
+        ).join(
             work_items_commits_table, work_items_commits_table.c.commit_id == commits.c.id
         )
     ).group_by(
@@ -592,16 +585,13 @@ def compute_delivery_cycles_implementation_effort(session, work_items_temp):
 
     # for each author, coding day combo we now compute the number
     # distinct delivery cycles that were commited by that author on that coding day.
-    # We include untracked commits as a single "virtual" work item for a coding day in which
-    # an author has untracked commits, so all untracked items on a day has the same "load" as
-    # a single work item on that day
 
     # The result is the load factor for that
     # author for that coding day.
     author_load_factors = select([
         candidate_coding_days.c.author_contributor_key,
         candidate_coding_days.c.coding_day,
-        func.count(func.coalesce(work_items_commits_table.c.delivery_cycle_id, -1).distinct()).label('load_factor')
+        func.count(work_items_commits_table.c.delivery_cycle_id.distinct()).label('load_factor')
     ]).select_from(
         # here we are searching over *all* delivery cycles (not just the ones in the candidate work_items)
         # these could be from different projects, work items sources etc. that the author
@@ -612,7 +602,7 @@ def compute_delivery_cycles_implementation_effort(session, work_items_temp):
                 candidate_coding_days.c.author_contributor_key == commits.c.author_contributor_key,
                 candidate_coding_days.c.coding_day == coding_day(commits)
             )
-        ).outerjoin(
+        ).join(
             work_items_commits_table, work_items_commits_table.c.commit_id == commits.c.id
         )
     ).group_by(

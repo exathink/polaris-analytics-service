@@ -370,22 +370,14 @@ def coding_day(commits):
     )
 
 
-def compute_work_items_implementation_effort(session, work_items_temp):
-    # when new commits are recorded against a set of work items we need to recompute the
-    # implementation effort for those work items, and also for other work items
-    # where the same contributors had commits on the same day. We are going to compute these at the
-    # work item level rather than the work item delivery cycle level, since commits can be
-    # made "in between" delivery cycles and we want to capture them all.
+def get_author_coding_days_relation(work_items_temp):
+    """
+     Find all the coding days by author for the work items in this set.
 
-    # Initially we need to compute the load factors for all authors who
-    # have committed to the work items in this set by author and coding day, so we can see how many distinct work items
-    # each author committed to for each coding day. The inverse of this
-    # number is the load factor associated with that coding day for that author.
-    # So for example if an author committed to 3 work items in a given coding day, then for
-    # each of those work items has a load factor of 1/3 day for that coding day.
-
-    # find all the coding days for the work items in this set.
-    author_coding_days = select([
+    :param work_items_temp: a relation with a work_item_key column
+    :return: a cte with columns author_contributor_key::UUID and coding_day::Date
+    """
+    return select([
         commits.c.author_contributor_key,
         coding_day(commits).label('coding_day')
     ]).select_from(
@@ -398,13 +390,41 @@ def compute_work_items_implementation_effort(session, work_items_temp):
         )
     ).distinct().cte()
 
-    # The candidates set of work items to update is
+
+def compute_work_items_implementation_effort(session, work_items_temp):
+    """
+
+    # When new commits are recorded against a set of work items we need to recompute the
+    # implementation effort for those work items, and also for other work items
+    # where the same contributors had commits on the same day.
+
+     We are going to compute these at the
+    # work item level in addition to the work item delivery cycle level, since commits can be
+    # made "in between" delivery cycles and we want to capture them all. This metric
+    # will always compute effort associated with all commits for that work item.
+    # The related computation below for delivery cycles attributes the effort on a per
+    # delivery cycle basis. The sum of the efforts at the delivery cycle level is not
+    # always equal to the total effort at the work item level, though the cases where it is not
+    # are really edge cases. They arise mainly in the case of commits  that occur earlier than the
+    # start date of the earliest delivery cycle of the work item. This typically happens due to
+    # an commit attribution error, but it may also happen when we recreate delivery cycles after
+    # a source map update. The effort at the work item level is a stable metrics that should always account
+    # for all commits that are mapped to a given work item, so we calculate this separately
+    # from the delivery cycle level metric and report each of them in the appropriate context.
+
+    """
+    # Coding days are those days on which an author committed code to the work items in this set
+    author_coding_days = get_author_coding_days_relation(work_items_temp)
+
+    # The candidates set of work items whose implementation effort is impacted
+    # buy a new commit coming in against the work items in this set is
     # the set of all work items that were updated by the authors
-    # in the author_coding_days relation on the coding days specified.
+    # in the author_coding_days relation on the coding days specified. This may
+    # be a larger set than the work items in work_item_temp.
+
     # we need to use this expanded set of work items since a commit to a different
     # work item can affect the fractional coding days of all all work items on the
     # same day.
-
     candidate_work_items = select([
         work_items_commits_table.c.work_item_id.distinct().label('id')
     ]).select_from(
@@ -438,8 +458,9 @@ def compute_work_items_implementation_effort(session, work_items_temp):
     author_load_factors = select([
         candidate_coding_days.c.author_contributor_key,
         candidate_coding_days.c.coding_day,
-
-        func.count(work_items.c.id.distinct()).label('load_factor')
+        # we assign a virtual id of -1 for untracked commits. See comment against
+        # outer join clause below.
+        func.count(func.coalesce(work_items_commits_table.c.work_item_id, -1).distinct()).label('load_factor')
     ]).select_from(
         # here we are searching over *all* work items (not just the ones in the candidate work_items)
         # these could be from different projects, work items sources etc. that the author
@@ -450,10 +471,13 @@ def compute_work_items_implementation_effort(session, work_items_temp):
                 candidate_coding_days.c.author_contributor_key == commits.c.author_contributor_key,
                 candidate_coding_days.c.coding_day == coding_day(commits)
             )
-        ).join(
+        ).outerjoin(
+            # we are doing an outer join here because we want to get
+            # untracked commits for these authors as well. All untracked
+            # commits are counted as a single "virtual" work item for that day so
+            # that the effort for each work item is reduced proportionally on the days
+            # when there are untracked commits.
             work_items_commits_table, work_items_commits_table.c.commit_id == commits.c.id
-        ).join(
-            work_items, work_items_commits_table.c.work_item_id == work_items.c.id
         )
     ).group_by(
         candidate_coding_days.c.author_contributor_key,
@@ -513,26 +537,22 @@ def compute_work_items_implementation_effort(session, work_items_temp):
 
 
 def compute_delivery_cycles_implementation_effort(session, work_items_temp):
-    # Initially we need to compute the load factors for all authors who
-    # have committed to the work items in this set by author and coding day, so we can see how many distinct work items
-    # each author committed to for each coding day. The inverse of this
-    # number is the load factor associated with that coding day for that author.
-    # So for example if an author committed to 3 work items in a given coding day, then for
-    # each of those work items has a load factor of 1/3 day for that coding day.
+    """
+    This is the delivery cycle level implementation of effort calcs.
+    See previous method for comments about the relationship to the
+    the work item level effort calc.
 
-    # find all the coding days for the work items in this set.
-    author_coding_days = select([
-        commits.c.author_contributor_key,
-        coding_day(commits).label('coding_day')
-    ]).select_from(
-        work_items_temp.join(
-            work_items, work_items_temp.c.work_item_key == work_items.c.key
-        ).join(
-            work_items_commits_table, work_items_commits_table.c.work_item_id == work_items.c.id
-        ).join(
-            commits, work_items_commits_table.c.commit_id == commits.c.id
-        )
-    ).distinct().cte()
+    """
+
+    # The algorithm for this is very similar in structure to the work item
+    # level effort calc, but differs subtly in places, hence what appears to be
+    # two very similar looking methods. They are not the same though, so keep
+    # in mind when updating and refactoring.
+
+    # find all the coding days for the work items in this set. This is the same calc
+    # as that at the work item level
+
+    author_coding_days = get_author_coding_days_relation(work_items_temp)
 
     # The candidates set of delivery cycles to update is
     # the set of all work items that were updated by the authors
@@ -571,15 +591,19 @@ def compute_delivery_cycles_implementation_effort(session, work_items_temp):
     ).distinct().cte()
 
     # for each author, coding day combo we now compute the number
-    # distinct delivery cycles that were commited by that author on that coding day. This is the load factor for that
+    # distinct delivery cycles that were commited by that author on that coding day.
+    # We include untracked commits as a single "virtual" work item for a coding day in which
+    # an author has untracked commits, so all untracked items on a day has the same "load" as
+    # a single work item on that day
+
+    # The result is the load factor for that
     # author for that coding day.
     author_load_factors = select([
         candidate_coding_days.c.author_contributor_key,
         candidate_coding_days.c.coding_day,
-
-        func.count(work_item_delivery_cycles.c.delivery_cycle_id.distinct()).label('load_factor')
+        func.count(func.coalesce(work_items_commits_table.c.delivery_cycle_id, -1).distinct()).label('load_factor')
     ]).select_from(
-        # here we are searching over *all* work items (not just the ones in the candidate work_items)
+        # here we are searching over *all* delivery cycles (not just the ones in the candidate work_items)
         # these could be from different projects, work items sources etc. that the author
         # had commits on the coding days we computed in author_coding_days
         candidate_coding_days.join(
@@ -588,11 +612,8 @@ def compute_delivery_cycles_implementation_effort(session, work_items_temp):
                 candidate_coding_days.c.author_contributor_key == commits.c.author_contributor_key,
                 candidate_coding_days.c.coding_day == coding_day(commits)
             )
-        ).join(
+        ).outerjoin(
             work_items_commits_table, work_items_commits_table.c.commit_id == commits.c.id
-        ).join(
-            work_item_delivery_cycles,
-            work_items_commits_table.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
         )
     ).group_by(
         candidate_coding_days.c.author_contributor_key,
@@ -1845,7 +1866,6 @@ def update_work_items_source_delivery_cycles(session, work_items_source_id):
     # Rebuild the commits delivery cycles associations for these work items
     recreate_work_item_commits_delivery_cycles(session, work_items_source_id)
 
-    compute_work_items_implementation_effort(session, work_items_temp)
     # Recompute other delivery cycle fields
     compute_work_item_delivery_cycle_commit_stats(session, work_items_temp)
     compute_delivery_cycles_implementation_effort(session, work_items_temp)

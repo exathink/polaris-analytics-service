@@ -826,7 +826,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     work_items.c.work_items_source_id
                 ],
                 extra_columns=[
-                    Column('epic_key', String)
+                    Column('epic_key', UUID)
                 ]
             )
             work_items_temp.create(session.connection(), checkfirst=True)
@@ -855,16 +855,11 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                 ]
                 ))
 
-            # update epic_id
             session.connection().execute(
-                work_items_temp.update().values(
-                    epic_id=select(
-                        [
-                            work_items.c.id
-                        ]
-                    ).where(
-                        str(work_items.c.key) == work_items_temp.c.epic_key
-                    ).as_scalar()
+                work_items_temp.update().where(
+                    work_items.c.key == work_items_temp.c.epic_key
+                ).values(
+                    epic_id=work_items.c.id
                 )
             )
 

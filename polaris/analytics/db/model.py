@@ -51,7 +51,7 @@ work_items_commits = Table(
     Column('commit_id', ForeignKey('commits.id'), primary_key=True, index=True),
     # Note: this is not a primary key since we only want a commit to be mapped
     # to a single delivery cycle for a given work item
-    Column('delivery_cycle_id', ForeignKey('work_item_delivery_cycles.delivery_cycle_id'),  index=True, nullable=True)
+    Column('delivery_cycle_id', ForeignKey('work_item_delivery_cycles.delivery_cycle_id', ondelete="SET NULL"),  index=True, nullable=True)
 )
 
 work_items_pull_requests = Table(
@@ -765,7 +765,10 @@ class WorkItemDeliveryCycle(Base):
     repository_count = Column(Integer, nullable=True)
     commit_count = Column(Integer, nullable=True)
 
-
+    # This the effort associated with commits within the delivery cycle
+    # we also have a "global" effort that applies to the work item and
+    # includes commits that appear across delivery cycles.
+    effort = Column(Float, nullable=True)
 
     # non-merge commits' code change stats columns
     total_lines_changed_non_merge = Column(Integer, nullable=True)

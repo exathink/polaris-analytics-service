@@ -66,6 +66,7 @@ class CommitsTopicSubscriber(TopicSubscriber):
             f'Organization {organization_key} repository {repository_name}')
 
         if len(message['new_commits']) > 0:
+            logger.info(f"Importing {len(message['new_commits'])} new commits")
             return raise_on_failure(
                 message,
                 api.import_new_commits(

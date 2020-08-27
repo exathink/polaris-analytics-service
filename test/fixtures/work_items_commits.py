@@ -93,8 +93,7 @@ def work_items_commits_fixture(commits_fixture):
     )
 
     # Add work item commits mapping
-    create_work_item_commits(test_work_items[0]['key'], [commit['key'] for commit in test_commits[0:4]])
-    create_work_item_commits(test_work_items[1]['key'], [test_commits[-1]['key']])
+
 
     # Add state transitions
     for work_item in test_work_items:
@@ -164,6 +163,9 @@ def work_items_commits_fixture(commits_fixture):
         w1.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in w1.delivery_cycles])
         w2.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in w2.delivery_cycles])
 
+    create_work_item_commits(test_work_items[0]['key'], [commit['key'] for commit in test_commits[0:4]])
+    create_work_item_commits(test_work_items[1]['key'], [test_commits[-1]['key']])
+
     yield organization, [w1.id, w2.id], test_commits, test_work_items
 
 
@@ -219,12 +221,10 @@ def implementation_effort_commits_fixture(org_repo_fixture, cleanup):
 
 @pytest.yield_fixture()
 def implementation_effort_fixture(implementation_effort_commits_fixture):
-    def create_work_item_commits(work_item_commits):
-        with db.orm_session() as session:
-            for entry in work_item_commits:
-                work_item = WorkItem.find_by_work_item_key(session, entry['work_item_key'])
-                commit = Commit.find_by_commit_key(session, entry['commit_key'])
-                work_item.commits.append(commit)
+    def add_work_item_commits(work_item_commits):
+        for entry in work_item_commits:
+            # shimming this to call the standard fixture function
+            create_work_item_commits(entry['work_item_key'], [entry['commit_key']])
 
     organization, projects, repositories, contributors = implementation_effort_commits_fixture
 
@@ -240,7 +240,7 @@ def implementation_effort_fixture(implementation_effort_commits_fixture):
         for i in range(0, 5)
     ]
 
-    create_work_items(
+    create_work_items_with_default_delivery_cycle(
         organization,
         source_data=dict(
             integration_type='github',
@@ -266,5 +266,5 @@ def implementation_effort_fixture(implementation_effort_commits_fixture):
         contributors=contributors,
         work_items=test_work_items,
         commits_common=commits_common,
-        add_work_item_commits = lambda work_item_commits: create_work_item_commits(work_item_commits)
+        add_work_item_commits=add_work_item_commits
     )

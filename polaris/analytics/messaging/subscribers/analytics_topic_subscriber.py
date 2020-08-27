@@ -142,6 +142,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 compute_contributor_metrics_for_commits_command, populate_work_item_source_file_changes_for_commits_command
 
         elif WorkItemsCommitsResolved.message_type == message.message_type:
+            logger.info(f'Processing message {WorkItemsCommitsResolved.message_type}')
             # Publish a sub command to update commit work items summaries
             update_commit_work_items_summaries_command = UpdateCommitsWorkItemsSummaries(
                 send=message.dict,
@@ -204,7 +205,17 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
         # Commands
         elif ResolveCommitsForWorkItems.message_type == message.message_type:
-            return self.process_resolve_commits_for_work_items(channel, message)
+            result = self.process_resolve_commits_for_work_items(channel, message)
+            if result is not None and len(result['resolved']) > 0:
+                response = WorkItemsCommitsResolved(
+                    send=dict(
+                        organization_key=message['organization_key'],
+                        work_items_commits=result['resolved']
+                    ),
+                    in_response_to=message
+                )
+                self.publish(AnalyticsTopic, response)
+                return response
 
         elif ResolvePullRequestsForWorkItems.message_type == message.message_type:
             return self.process_resolve_pull_requests_for_work_items(channel, message)
@@ -306,10 +317,10 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         work_item_source_key = message['work_items_source_key']
         new_work_items = message['new_work_items']
         logger.info(
-            f'Process WorkItemsCreated for Organization {organization_key} work item source {work_item_source_key}')
+            f'Process ResolveCommitsForWorkItems for Organization {organization_key} work item source {work_item_source_key}')
 
         if len(new_work_items) > 0:
-            result = raise_on_failure(
+            return raise_on_failure(
                 message,
                 api.resolve_commits_for_new_work_items(
                     organization_key=organization_key,
@@ -317,15 +328,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                     work_item_summaries=new_work_items
                 )
             )
-            if result is not None and len(result['resolved']) > 0:
-                response = WorkItemsCommitsResolved(
-                    send=dict(
-                        organization_key=message['organization_key'],
-                        work_items_commits=result['resolved']
-                    ),
-                    in_response_to=message
-                )
-                return response
+
 
     @staticmethod
     def process_resolve_pull_requests_for_work_items(channel, message):
@@ -368,6 +371,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         organization_key = message['organization_key']
         repository_key = message['repository_key']
         commit_summaries = message['new_commits']
+        logger.info(f'Processing resolve_work_items_for_commits for organization {organization_key}')
 
         if len(commit_summaries) > 0:
             return raise_on_failure(

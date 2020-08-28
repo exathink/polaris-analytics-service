@@ -123,7 +123,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                 ],
                 extra_columns=[
                     Column('work_item_id', Integer),
-                    Column('epic_key', String)
+                    Column('epic_key', UUID)
                 ]
             )
             work_items_temp.create(session.connection(), checkfirst=True)
@@ -166,20 +166,9 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     work_items.c.key == work_items_temp.c.key
                 )
             )
-            # update epic_id
-            session.connection().execute(
-                work_items_temp.update().values(
-                    epic_id=select(
-                        [
-                            work_items.c.id
-                        ]
-                    ).where(
-                        str(work_items.c.key)==work_items_temp.c.epic_key
-                    ).as_scalar()
-                )
-            )
+
             # insert missing work_items.
-            epic_work_items = work_items.alias('epic_work_items')
+
             inserted = session.connection().execute(
                 work_items.insert().from_select(
                     [
@@ -232,6 +221,31 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     )
                 )
             ).rowcount
+
+            # Get epic id for work items with non null epic_key
+            epic_work_items = work_items.alias('epic_work_items')
+            work_item_epic_id_map = select([
+                work_items.c.id,
+                epic_work_items.c.id.label('epic_id')
+            ]).select_from(
+                work_items_temp.join(
+                    work_items, work_items_temp.c.key == work_items.c.key
+                ).join(
+                    epic_work_items, work_items_temp.c.epic_key == epic_work_items.c.key
+                )
+            ).where(
+                work_items_temp.c.epic_key != None
+            ).cte('work_item_epic_id_map')
+
+            # update epic id
+            session.connection().execute(
+                work_items.update().values(
+                    epic_id=work_item_epic_id_map.c.epic_id
+                ).where(
+                    work_items.c.id == work_item_epic_id_map.c.id
+                )
+            ).rowcount
+
             # add the created state to the state transitions
             # for the newly inserted entries.
             session.connection().execute(

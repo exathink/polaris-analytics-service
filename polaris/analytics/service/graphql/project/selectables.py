@@ -1124,6 +1124,10 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
                 # This interpolates columns that calculate the specific work item count
                 # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
                 *cls.get_metrics_columns(cycle_metrics_trends_args, metrics_map, 'work_item_counts'),
+
+                # This interpolates columns that calculate the specific implementation complexity
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *cls.get_metrics_columns(cycle_metrics_trends_args, metrics_map, 'implementation_complexity'),
             ]
 
         ]).select_from(
@@ -1147,6 +1151,9 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
                             cycle_metrics_trends_args, metrics_map, cycle_metrics
                         ),
                         *ProjectCycleMetricsTrends.get_work_item_count_metrics_json_object_columns(
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
+                        ),
+                        *ProjectCycleMetricsTrends.get_implementation_complexity_metrics_json_object_columns(
                             cycle_metrics_trends_args, metrics_map, cycle_metrics
                         )
                     ],

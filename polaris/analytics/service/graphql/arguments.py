@@ -71,6 +71,8 @@ class CycleMetricsEnum(Enum):
     q3_cycle_time = 'q3_cycle_time'
     max_cycle_time = 'max_cycle_time'
 
+    total_effort = 'total_effort'
+
     work_items_in_scope = 'work_items_in_scope'
     work_items_with_commits = 'work_items_with_commits'
     work_items_with_null_cycle_time = 'work_items_with_null_cycle_time'

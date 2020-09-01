@@ -847,7 +847,18 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                             delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
                         )
                     )/(1.0*3600*24)
-                ).label('avg_duration')
+                ).label('avg_duration'),
+                percentile_duration=(
+                        func.percentile_disc(
+                            cycle_metrics_trends_args.duration_target_percentile
+                        ).within_group(
+                            func.extract(
+                                'epoch',
+                                delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
+                            )
+                        ) / (1.0 * 3600 * 24)
+                ).label('percentile_duration')
+
             )
 
         )

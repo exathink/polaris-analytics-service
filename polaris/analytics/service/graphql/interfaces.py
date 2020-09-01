@@ -287,6 +287,7 @@ class AggregateCycleMetrics(graphene.Interface):
     # Implementation cost aggregates
     total_effort = graphene.Float(required=False)
     avg_duration = graphene.Float(required=False)
+    percentile_duration = graphene.Float(required=False)
 
     earliest_closed_date = graphene.DateTime(required=False)
     latest_closed_date = graphene.DateTime(required=False)

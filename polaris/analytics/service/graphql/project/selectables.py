@@ -804,6 +804,7 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                     'q3_cycle_time'
                 ),
                 max_cycle_time=func.max(delivery_cycles_relation.c.cycle_time).label('max_cycle_time'),
+
             ),
             # Work item counts
             work_item_counts=dict(
@@ -834,8 +835,32 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                             delivery_cycles_relation.c.commit_count > 0, 1
                         )
                     ], else_=0)
-                ).label('work_items_with_commits')
+                ).label('work_items_with_commits'),
+            ),
+            # Implementation Complexity Metrics
+            implementation_complexity=dict(
+                total_effort=func.sum(delivery_cycles_relation.c.effort).label('total_effort'),
+                avg_duration=(
+                    func.avg(
+                        func.extract(
+                            'epoch',
+                            delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
+                        )
+                    )/(1.0*3600*24)
+                ).label('avg_duration'),
+                percentile_duration=(
+                        func.percentile_disc(
+                            cycle_metrics_trends_args.duration_target_percentile
+                        ).within_group(
+                            func.extract(
+                                'epoch',
+                                delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
+                            )
+                        ) / (1.0 * 3600 * 24)
+                ).label('percentile_duration')
+
             )
+
         )
 
     @classmethod
@@ -860,6 +885,14 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
         columns = []
         for metric in cycle_metrics_trends_args.metrics:
             if metric in metrics_map['work_item_counts']:
+                columns.extend([metric, cycle_metrics_query.c[metric]])
+        return columns
+
+    @staticmethod
+    def get_implementation_complexity_metrics_json_object_columns(cycle_metrics_trends_args, metrics_map, cycle_metrics_query):
+        columns = []
+        for metric in cycle_metrics_trends_args.metrics:
+            if metric in metrics_map['implementation_complexity']:
                 columns.extend([metric, cycle_metrics_query.c[metric]])
         return columns
 
@@ -927,16 +960,22 @@ class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
             func.max(work_item_delivery_cycles.c.end_date).label('latest_closed_date'),
             func.min(work_item_delivery_cycles.c.end_date).label('earliest_closed_date'),
             *[
-                # This interpolates columns that calculate the specific
+                # This interpolates columns that calculate the specific cycle
                 # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
                 *ProjectCycleMetricsTrends.get_metrics_columns(
                     cycle_metrics_trends_args, metrics_map, 'cycle_metrics'
                 ),
 
-                # This interpolates columns that calculate the specific
+                # This interpolates columns that calculate the specific work item count related
                 # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
                 *ProjectCycleMetricsTrends.get_metrics_columns(
                     cycle_metrics_trends_args, metrics_map, 'work_item_counts'
+                ),
+
+                # This interpolates columns that calculate the specific implementation_complexity
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *ProjectCycleMetricsTrends.get_metrics_columns(
+                    cycle_metrics_trends_args, metrics_map, 'implementation_complexity'
                 )
             ]
 
@@ -987,6 +1026,9 @@ class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
                         ),
                         *ProjectCycleMetricsTrends.get_work_item_count_metrics_json_object_columns(
                             cycle_metrics_trends_args, metrics_map, cycle_metrics
+                        ),
+                        *ProjectCycleMetricsTrends.get_implementation_complexity_metrics_json_object_columns(
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
                         )
                     ],
                 )
@@ -1017,6 +1059,9 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             func.min(work_item_delivery_cycles.c.delivery_cycle_id).label('delivery_cycle_id'),
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
             func.min(work_item_delivery_cycles.c.commit_count).label('commit_count'),
+            func.min(work_item_delivery_cycles.c.effort).label('effort'),
+            func.min(work_item_delivery_cycles.c.earliest_commit).label('earliest_commit'),
+            func.max(work_item_delivery_cycles.c.latest_commit).label('latest_commit'),
             # the time from the start of the delivery cycle to the measurement date is the elapsed lead time for this
             # work item
             func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)).label(
@@ -1099,6 +1144,10 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
                 # This interpolates columns that calculate the specific work item count
                 # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
                 *cls.get_metrics_columns(cycle_metrics_trends_args, metrics_map, 'work_item_counts'),
+
+                # This interpolates columns that calculate the specific implementation complexity
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *cls.get_metrics_columns(cycle_metrics_trends_args, metrics_map, 'implementation_complexity'),
             ]
 
         ]).select_from(
@@ -1122,6 +1171,9 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
                             cycle_metrics_trends_args, metrics_map, cycle_metrics
                         ),
                         *ProjectCycleMetricsTrends.get_work_item_count_metrics_json_object_columns(
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
+                        ),
+                        *ProjectCycleMetricsTrends.get_implementation_complexity_metrics_json_object_columns(
                             cycle_metrics_trends_args, metrics_map, cycle_metrics
                         )
                     ],

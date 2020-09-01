@@ -71,6 +71,10 @@ class CycleMetricsEnum(Enum):
     q3_cycle_time = 'q3_cycle_time'
     max_cycle_time = 'max_cycle_time'
 
+    total_effort = 'total_effort'
+    avg_duration = 'avg_duration'
+    percentile_duration = 'percentile_duration'
+
     work_items_in_scope = 'work_items_in_scope'
     work_items_with_commits = 'work_items_with_commits'
     work_items_with_null_cycle_time = 'work_items_with_null_cycle_time'
@@ -89,6 +93,10 @@ class CycleMetricsParameters(graphene.InputObjectType):
     cycle_time_target_percentile = graphene.Float(
         required=False,
         description="If percentile cycle time is requested, then this specifies the target percentile value"
+    )
+    duration_target_percentile = graphene.Float(
+        required=False,
+        description="If percentile duration is requested, then this specifies the target percentile value"
     )
     include_epics_and_subtasks = graphene.Boolean(
         required=False,

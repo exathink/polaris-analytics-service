@@ -838,9 +838,16 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                 ).label('work_items_with_commits'),
             ),
             # Implementation Complexity Metrics
-            implementation_complexity = dict(
-
-                total_effort=func.sum(delivery_cycles_relation.c.effort).label('total_effort')
+            implementation_complexity=dict(
+                total_effort=func.sum(delivery_cycles_relation.c.effort).label('total_effort'),
+                avg_duration=(
+                    func.avg(
+                        func.extract(
+                            'epoch',
+                            delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
+                        )
+                    )/(1.0*3600*24)
+                ).label('avg_duration')
             )
 
         )
@@ -1042,6 +1049,8 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
             func.min(work_item_delivery_cycles.c.commit_count).label('commit_count'),
             func.min(work_item_delivery_cycles.c.effort).label('effort'),
+            func.min(work_item_delivery_cycles.c.earliest_commit).label('earliest_commit'),
+            func.max(work_item_delivery_cycles.c.latest_commit).label('latest_commit'),
             # the time from the start of the delivery cycle to the measurement date is the elapsed lead time for this
             # work item
             func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)).label(

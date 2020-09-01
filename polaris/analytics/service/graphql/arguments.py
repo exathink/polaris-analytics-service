@@ -72,6 +72,7 @@ class CycleMetricsEnum(Enum):
     max_cycle_time = 'max_cycle_time'
 
     total_effort = 'total_effort'
+    avg_duration = 'avg_duration'
 
     work_items_in_scope = 'work_items_in_scope'
     work_items_with_commits = 'work_items_with_commits'

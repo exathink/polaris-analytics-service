@@ -1170,7 +1170,7 @@ class TestProjectCycleMetricsTrends:
                 assert not measurement['q3CycleTime']
                 assert not measurement['maxCycleTime']
 
-    def it_filters_epics_and_sub_tasks_by_default(self, api_work_items_import_fixture):
+    def it_filters_epics_and_includes_subtasks_by_default(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
@@ -1241,12 +1241,13 @@ class TestProjectCycleMetricsTrends:
         assert len(project['cycleMetricsTrends']) == 4
         for index, measurement in enumerate(project['cycleMetricsTrends']):
             if index == 0:
-                assert measurement['workItemsInScope'] == 1
+                # subtask and regular item should be reported
+                assert measurement['workItemsInScope'] == 2
 
             else:
                 assert not measurement['workItemsInScope']
 
-    def it_includes_epics_and_sub_tasks_when_specified(self, api_work_items_import_fixture):
+    def it_includes_epics_and_filters_sub_tasks_when_specified(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
@@ -1295,7 +1296,8 @@ class TestProjectCycleMetricsTrends:
                             ],
                             leadTimeTargetPercentile: $percentile,
                             cycleTimeTargetPercentile: $percentile, 
-                            includeEpicsAndSubtasks: true
+                            includeEpics: true,
+                            includeSubTasks: false
                         }
 
                     ) {
@@ -1318,7 +1320,7 @@ class TestProjectCycleMetricsTrends:
         assert len(project['cycleMetricsTrends']) == 4
         for index, measurement in enumerate(project['cycleMetricsTrends']):
             if index == 0:
-                assert measurement['workItemsInScope'] == 3
+                assert measurement['workItemsInScope'] == 2
 
             else:
                 assert not measurement['workItemsInScope']

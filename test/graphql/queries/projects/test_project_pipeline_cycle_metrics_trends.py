@@ -624,7 +624,7 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         assert measurement['q3CycleTime'] - 4.0 < 1
         assert measurement['maxCycleTime'] - 5.0 < 1
 
-    def it_filters_epics_and_sub_tasks_by_default(self, api_work_items_import_fixture):
+    def it_filters_epics_and_includes_sub_tasks_by_default(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
@@ -685,11 +685,11 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         # we expect one measurement for each point in the window including the end points.
         assert project['pipelineCycleMetrics']
         measurement = project['pipelineCycleMetrics']
-        assert measurement['workItemsInScope'] == 1
+        assert measurement['workItemsInScope'] == 2
 
 
 
-    def it_includes_epics_and_sub_tasks_when_specified(self, api_work_items_import_fixture):
+    def it_includes_epics_and_filters_sub_tasks_when_specified(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
@@ -732,7 +732,8 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
                             ],
                             leadTimeTargetPercentile: $percentile,
                             cycleTimeTargetPercentile: $percentile, 
-                            includeEpicsAndSubtasks: true
+                            includeEpics: true,
+                            includeSubTasks: false
                         }
 
                     ) {
@@ -751,7 +752,7 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         # we expect one measurement for each point in the window including the end points.
         assert project['pipelineCycleMetrics']
         measurement = project['pipelineCycleMetrics']
-        assert measurement['workItemsInScope'] == 3
+        assert measurement['workItemsInScope'] == 2
 
 
     def it_limits_analysis_to_defects_only_when_specified(self, api_work_items_import_fixture):

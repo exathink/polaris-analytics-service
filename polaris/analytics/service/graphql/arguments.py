@@ -98,10 +98,15 @@ class CycleMetricsParameters(graphene.InputObjectType):
         required=False,
         description="If percentile duration is requested, then this specifies the target percentile value"
     )
-    include_epics_and_subtasks = graphene.Boolean(
+    include_epics = graphene.Boolean(
         required=False,
-        description='Include epics and subtasks in the analysis. Defaults to false',
+        description='Include epics in the cycle metrics analysis. Defaults to false',
         default_value=False
+    )
+    include_sub_tasks = graphene.Boolean(
+        required=False,
+        description='Include subtasks in the cycle metrics analysis. Defaults to true',
+        default_value=True
     )
     defects_only = graphene.Boolean(
         required=False,

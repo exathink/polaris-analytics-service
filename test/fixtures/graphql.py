@@ -272,22 +272,16 @@ def create_work_items_with_default_delivery_cycle(organization, source_data, ite
 
         return source
 
+
 def create_project_work_items(organization, project, source_data, items_data):
-    with db.orm_session() as session:
-        session.expire_on_commit = False
-        source = WorkItemsSource(
-            key=uuid.uuid4().hex,
-            organization_key=organization.key,
-            organization_id=organization.id,
+    return create_work_items_with_default_delivery_cycle(
+        organization,
+        source_data=dict(
             project_id=project.id,
             **source_data
-        )
-        source.work_items.extend([
-            WorkItem(**item)
-            for item in items_data
-        ])
-        session.add(source)
-        return source
+        ),
+        items_data=items_data
+    )
 
 
 def create_transitions(work_item_key, transitions):
@@ -772,7 +766,7 @@ def work_items_sources_work_items_fixture(commits_fixture, cleanup):
 
     ]
     with db.orm_session() as session:
-        session.expire_on_commit=False
+        session.expire_on_commit = False
         work_items_sources['pivotal'] = WorkItemsSource(
             key=new_key.hex,
             integration_type='pivotal_tracker',

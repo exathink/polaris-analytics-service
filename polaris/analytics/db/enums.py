@@ -22,5 +22,6 @@ WorkItemTypesToIncludeInCycleMetrics = {
     PivotalTrackerWorkItemType.story.value,
     JiraWorkItemType.bug.value,
     JiraWorkItemType.story.value,
-    JiraWorkItemType.task.value
+    JiraWorkItemType.task.value,
+    JiraWorkItemType.sub_task.value
 }

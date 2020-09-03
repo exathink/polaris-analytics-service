@@ -1171,7 +1171,7 @@ class TestProjectAggregateCycleMetrics:
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
         assert (graphql_date(project['latestClosedDate']) - start_date).days == 8
 
-    def it_excludes_jira_subtasks_and_epics_from_cycle_metrics_calculations(self, api_work_items_import_fixture):
+    def it_excludes_jira_epics_from_cycle_metrics_calculations(self, api_work_items_import_fixture):
         organization, project, work_items_source, _ = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
@@ -1266,18 +1266,18 @@ class TestProjectAggregateCycleMetrics:
         assert result['data']
         project = result['data']['project']
         assert project['minLeadTime'] == 6.0
-        assert project['avgLeadTime'] == 6.0
-        assert project['maxLeadTime'] == 6.0
+        assert project['avgLeadTime'] == 7.0
+        assert project['maxLeadTime'] == 8.0
         assert project['minCycleTime'] == 5.0
-        assert project['avgCycleTime'] == 5.0
-        assert project['maxCycleTime'] == 5.0
-        assert project['percentileLeadTime'] == 6.0
-        assert project['percentileCycleTime'] == 5.0
+        assert project['avgCycleTime'] == 5.5
+        assert project['maxCycleTime'] == 6.0
+        assert project['percentileLeadTime'] == 8.0
+        assert project['percentileCycleTime'] == 6.0
         assert project['targetPercentile'] == 0.7
-        assert project['workItemsInScope'] == 1
+        assert project['workItemsInScope'] == 2
         assert project['workItemsWithNullCycleTime'] == 0
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
-        assert (graphql_date(project['latestClosedDate']) - start_date).days == 6
+        assert (graphql_date(project['latestClosedDate']) - start_date).days == 8
 
 
 class TestProjectWorkItemDeliveryCycles:

@@ -903,16 +903,20 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
     def get_work_item_filter_clauses(cycle_metrics_trends_args):
 
         columns = []
-        if not cycle_metrics_trends_args.include_epics_and_subtasks:
-            # the default value is false, so we filter out epics and subtasks unless it
-            # it is explicitly requested.
-            columns.append(
-                work_items.c.work_item_type.notin_([
-                    JiraWorkItemType.epic.value,
-                    JiraWorkItemType.sub_task.value
-                ]
-                )
-            )
+        excluded_types = []
+
+        if not cycle_metrics_trends_args.include_epics:
+            # include_epics is false by default so this will normally be added
+            excluded_types.append(JiraWorkItemType.epic.value)
+
+        if not cycle_metrics_trends_args.include_sub_tasks:
+            # include subtasks is true by default, so this needs to be explicity overriden
+            # if it is not to be added.
+            excluded_types.append(JiraWorkItemType.sub_task.value)
+
+        columns.append(
+            work_items.c.work_item_type.notin_(excluded_types)
+        )
         if cycle_metrics_trends_args.defects_only:
             columns.append(
                 work_items.c.is_bug == True

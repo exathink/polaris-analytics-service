@@ -186,6 +186,11 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
             required=False,
             description="Return only defects"
         ),
+        specs_only=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            description="Return only delivery cycles with commit_count > 0"
+        ),
         state_types=graphene.Argument(
             graphene.List(WorkItemsStateType),
             required=False,

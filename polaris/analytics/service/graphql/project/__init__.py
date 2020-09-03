@@ -182,6 +182,12 @@ Implicit Interfaces: ArchivedStatus
                 description="When evaluating cycle metrics "
                             "include only defects"
             ),
+            specs_only=graphene.Argument(
+                graphene.Boolean,
+                required=False,
+                description="When evaluating cycle metrics "
+                            "include only specs"
+            ),
             cycle_metrics_trends_args=graphene.Argument(
                 CycleMetricsTrendsParameters,
                 required=False,

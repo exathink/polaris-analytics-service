@@ -271,6 +271,11 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             required=False,
             description="Return only delivery cycles that are not closed"
         ),
+        specs_only=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            description="Return only delivery cycles with commit_count > 0"
+        ),
         defects_only=graphene.Argument(
             graphene.Boolean,
             required=False,

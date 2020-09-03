@@ -308,11 +308,14 @@ class ProjectWorkItemNodes(ConnectionResolver):
                 work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
                 work_items
+            ).join(
+                work_item_delivery_cycles, work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
             )
         ).where(
             projects.c.key == bindparam('key')
         )
-        return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
+        select_stmt = work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
+        return work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs)
 
     @staticmethod
     def sort_order(project_work_items_nodes, **kwargs):

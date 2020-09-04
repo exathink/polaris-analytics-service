@@ -37,7 +37,8 @@ from ..work_items_source import WorkItemsSourcesConnectionMixin
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin, \
     WorkItemDeliveryCyclesConnectionMixin, RecentlyActiveWorkItemsConnectionMixin
 
-from ..arguments import AggregateMetricsTrendsParameters, CycleMetricsTrendsParameters, CycleMetricsParameters
+from ..arguments import AggregateMetricsTrendsParameters, CycleMetricsTrendsParameters, CycleMetricsParameters, \
+    TraceabilityMetricsTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -199,8 +200,9 @@ Implicit Interfaces: ArchivedStatus
                 description='Required when resolving PipelineCycleMetrics interface'
             ),
             traceability_trends_args=graphene.Argument(
-                AggregateMetricsTrendsParameters,
+                TraceabilityMetricsTrendsParameters,
                 required=False,
+                default_value=False,
                 description='Required when resolving TraceabilityTrends interface'
             ),
             **kwargs
@@ -236,8 +238,9 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             description='Required when resolving CycleMetricsTrends interface'
         ),
         traceability_trends_args=graphene.Argument(
-            AggregateMetricsTrendsParameters,
+            TraceabilityMetricsTrendsParameters,
             required=False,
+            default_value=True,
             description='Required when resolving TraceabilityTrends interface'
         ),
     )

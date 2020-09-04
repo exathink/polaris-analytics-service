@@ -122,3 +122,11 @@ class CycleMetricsParameters(graphene.InputObjectType):
 
 class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters, CycleMetricsParameters):
     pass
+
+
+class TraceabilityMetricsTrendsParameters(AggregateMetricsTrendsParameters):
+    exclude_merges = graphene.Boolean(
+        required=False,
+        description="Limit analysis to non-merge commits only",
+        default_value=False
+    )

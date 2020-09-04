@@ -309,13 +309,15 @@ class ProjectWorkItemNodes(ConnectionResolver):
             ).join(
                 work_items
             ).join(
-                work_item_delivery_cycles, work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+                work_item_delivery_cycles,
+                work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
             )
         ).where(
             projects.c.key == bindparam('key')
         )
         select_stmt = work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
-        return work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs)
+        return work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles,
+                                                                  **kwargs)
 
     @staticmethod
     def sort_order(project_work_items_nodes, **kwargs):
@@ -645,8 +647,6 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
                 )
             )
 
-
-
         work_items_by_state_type = select_work_items.group_by(
             project_nodes.c.id,
             work_items.c.state_type
@@ -844,12 +844,12 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
             implementation_complexity=dict(
                 total_effort=func.sum(delivery_cycles_relation.c.effort).label('total_effort'),
                 avg_duration=(
-                    func.avg(
-                        func.extract(
-                            'epoch',
-                            delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
-                        )
-                    )/(1.0*3600*24)
+                        func.avg(
+                            func.extract(
+                                'epoch',
+                                delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
+                            )
+                        ) / (1.0 * 3600 * 24)
                 ).label('avg_duration'),
                 percentile_duration=(
                         func.percentile_disc(
@@ -882,9 +882,8 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                 columns.extend([metric, (cycle_metrics_query.c[metric] / (1.0 * 24 * 3600)).label(metric)])
         return columns
 
-
     @staticmethod
-    def get_work_item_count_metrics_json_object_columns(cycle_metrics_trends_args, metrics_map,  cycle_metrics_query):
+    def get_work_item_count_metrics_json_object_columns(cycle_metrics_trends_args, metrics_map, cycle_metrics_query):
         columns = []
         for metric in cycle_metrics_trends_args.metrics:
             if metric in metrics_map['work_item_counts']:
@@ -892,7 +891,8 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
         return columns
 
     @staticmethod
-    def get_implementation_complexity_metrics_json_object_columns(cycle_metrics_trends_args, metrics_map, cycle_metrics_query):
+    def get_implementation_complexity_metrics_json_object_columns(cycle_metrics_trends_args, metrics_map,
+                                                                  cycle_metrics_query):
         columns = []
         for metric in cycle_metrics_trends_args.metrics:
             if metric in metrics_map['implementation_complexity']:
@@ -1158,9 +1158,9 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             ]
 
         ]).select_from(
-           project_nodes.outerjoin(
-               cycle_times, project_nodes.c.id == cycle_times.c.id
-           )
+            project_nodes.outerjoin(
+                cycle_times, project_nodes.c.id == cycle_times.c.id
+            )
         ).group_by(
             project_nodes.c.id
         ).alias()
@@ -1194,9 +1194,6 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
         )
 
 
-
-
-
 class ProjectTraceabilityTrends(InterfaceResolver):
     interface = TraceabilityTrends
 
@@ -1210,8 +1207,8 @@ class ProjectTraceabilityTrends(InterfaceResolver):
     # is a strict inequality then the difference is the commits that are associated with work items that
     # belong to some other project that shares the same repository.
     @staticmethod
-    def subquery_total_commit_count(projects_timeline_dates, measurement_window):
-        total_commit_count_lateral = select([
+    def subquery_total_commit_count(projects_timeline_dates, measurement_window, exclude_merges):
+        total_commit_count_query = select([
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date,
             func.coalesce(func.count(commits.c.id.distinct()), 0).label('total_commits')
@@ -1230,7 +1227,13 @@ class ProjectTraceabilityTrends(InterfaceResolver):
                 ),
                 projects_timeline_dates.c.measurement_date
             )
-        ).group_by(
+        )
+        if exclude_merges:
+            total_commit_count_query = total_commit_count_query.where(
+                commits.c.num_parents == 1
+            )
+
+        total_commit_count_lateral = total_commit_count_query.group_by(
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date
         ).lateral()
@@ -1251,8 +1254,8 @@ class ProjectTraceabilityTrends(InterfaceResolver):
         ).alias()
 
     @staticmethod
-    def subquery_spec_count(projects_timeline_dates, measurement_window):
-        spec_count_lateral = select([
+    def subquery_spec_count(projects_timeline_dates, measurement_window, exclude_merges):
+        spec_count_query = select([
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date,
             func.coalesce(func.count(commits.c.id.distinct()), 0).label('spec_count')
@@ -1273,7 +1276,14 @@ class ProjectTraceabilityTrends(InterfaceResolver):
                 ),
                 projects_timeline_dates.c.measurement_date
             )
-        ).group_by(
+        )
+
+        if exclude_merges:
+            spec_count_query = spec_count_query.where(
+                commits.c.num_parents == 1
+            )
+
+        spec_count_lateral = spec_count_query.group_by(
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date
         ).lateral()
@@ -1293,10 +1303,10 @@ class ProjectTraceabilityTrends(InterfaceResolver):
         ).alias()
 
     @staticmethod
-    def subquery_nospec_count(projects_timeline_dates, measurement_window):
+    def subquery_nospec_count(projects_timeline_dates, measurement_window, exclude_merges):
         # calculate the commits for that
         # are not associated with any work items at all.
-        nospec_count_lateral = select([
+        nospec_count_query = select([
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date,
             func.coalesce(func.count(commits.c.id.distinct()), 0).label('nospec_count')
@@ -1324,7 +1334,14 @@ class ProjectTraceabilityTrends(InterfaceResolver):
                     projects_timeline_dates.c.measurement_date
                 )
             )
-        ).group_by(
+        )
+
+        if exclude_merges:
+            nospec_count_query = nospec_count_query.where(
+                commits.c.num_parents == 1
+            )
+
+        nospec_count_lateral = nospec_count_query.group_by(
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date
         ).lateral()
@@ -1366,21 +1383,24 @@ class ProjectTraceabilityTrends(InterfaceResolver):
         # date in the time series
         total_commit_count = ProjectTraceabilityTrends.subquery_total_commit_count(
             projects_timeline_dates,
-            measurement_window
+            measurement_window,
+            traceability_trends_args.exclude_merges
         )
 
         # Calculate the trendlines for number of specs in each project for each
         # date in the time series.
         spec_count = ProjectTraceabilityTrends.subquery_spec_count(
             projects_timeline_dates,
-            measurement_window
+            measurement_window,
+            traceability_trends_args.exclude_merges
         )
 
         # Calculate the trendlines for number of commits in each project that are not associated
         # with any specs, for each date in the time series.
         nospec_count = ProjectTraceabilityTrends.subquery_nospec_count(
             projects_timeline_dates,
-            measurement_window
+            measurement_window,
+            traceability_trends_args.exclude_merges
         )
 
         # Now put them together to do the actual traceability calc and assemble the final JSON result

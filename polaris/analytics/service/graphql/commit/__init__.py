@@ -87,6 +87,12 @@ class CommitsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
                         "between (before - days) and before"
                         "If before is not specified the it returns commits for the"
                         "previous n days starting from utc now"
+        ),
+        nospecs_only=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            default_value=False,
+            description="Return only commits that have no work items associated"
         )
     )
 

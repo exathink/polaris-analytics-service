@@ -72,8 +72,18 @@ def apply_time_window_filters(select_stmt, commits_relation, **kwargs):
         return select_stmt
 
 
+def apply_work_item_filters(select_stmt, commits_relation, **kwargs):
+    if 'no_specs_only' in kwargs:
+        select_stmt = select_stmt.where(
+            commits_relation.c.work_items_summaries == None
+        )
+
+    return select_stmt
+
+
 def commits_connection_apply_filters(select_stmt, commits_relation, **kwargs):
     select_stmt = apply_time_window_filters(select_stmt, commits_relation, **kwargs)
+    select_stmt = apply_work_item_filters(select_stmt, commits_relation, **kwargs)
 
     return select_stmt
 

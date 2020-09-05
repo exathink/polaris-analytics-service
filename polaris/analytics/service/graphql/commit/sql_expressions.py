@@ -73,7 +73,7 @@ def apply_time_window_filters(select_stmt, commits_relation, **kwargs):
 
 
 def apply_work_item_filters(select_stmt, commits_relation, **kwargs):
-    if 'no_specs_only' in kwargs:
+    if kwargs.get('nospecs_only'):
         select_stmt = select_stmt.where(
             commits_relation.c.work_items_summaries == None
         )

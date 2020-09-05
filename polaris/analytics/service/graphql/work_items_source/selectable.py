@@ -16,7 +16,7 @@ from polaris.analytics.service.graphql.interfaces import WorkItemInfo, WorkItems
     WorkItemCommitInfo
 from polaris.graphql.base_classes import NamedNodeResolver, ConnectionResolver, InterfaceResolver
 from polaris.graphql.interfaces import NamedNode
-from ..commit.sql_expressions import commits_connection_apply_time_window_filters
+from ..commit.sql_expressions import commits_connection_apply_filters
 from ..interfaces import WorkItemStateMappings
 from ..work_item.sql_expressions import work_item_info_columns, work_items_connection_apply_filters, \
     work_item_event_columns, work_item_events_connection_apply_time_window_filters, work_item_commit_info_columns
@@ -111,7 +111,7 @@ class WorkItemsSourceWorkItemCommitNodes(ConnectionResolver):
         ).where(
             work_items_sources.c.key == bindparam('key')
         )
-        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+        return commits_connection_apply_filters(select_stmt, commits, **kwargs)
 
     @staticmethod
     def sort_order(project_work_item_commits_nodes, **kwargs):

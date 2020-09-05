@@ -33,7 +33,7 @@ from polaris.utils.datetime_utils import time_window
 from polaris.utils.exceptions import ProcessingException
 from polaris.analytics.db.enums import WorkItemsStateType
 from .sql_expressions import get_timeline_dates_for_trending
-from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
@@ -194,7 +194,7 @@ class ProjectCommitNodes(ConnectionResolver):
         ).where(
             projects.c.key == bindparam('key')
         )
-        project_commits = commits_connection_apply_time_window_filters(select_project_commits, commits, **kwargs)
+        project_commits = commits_connection_apply_filters(select_project_commits, commits, **kwargs)
 
         select_untracked_commits = select([
             *commit_info_columns(repositories, commits)
@@ -213,7 +213,7 @@ class ProjectCommitNodes(ConnectionResolver):
             )
         )
 
-        untracked_commits = commits_connection_apply_time_window_filters(select_untracked_commits, commits, **kwargs)
+        untracked_commits = commits_connection_apply_filters(select_untracked_commits, commits, **kwargs)
         return union_all(
             project_commits,
             untracked_commits
@@ -393,7 +393,7 @@ class ProjectWorkItemCommitNodes(ConnectionResolver):
         ).where(
             projects.c.key == bindparam('key')
         )
-        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+        return commits_connection_apply_filters(select_stmt, commits, **kwargs)
 
     @staticmethod
     def sort_order(project_work_item_commits_nodes, **kwargs):

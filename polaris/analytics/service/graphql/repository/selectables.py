@@ -13,7 +13,7 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.db.model import repositories, organizations, contributors, commits, repositories_contributor_aliases, contributor_aliases
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, \
     CommitCount, WeeklyContributorCount
-from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
 
@@ -45,7 +45,7 @@ class RepositoryCommitNodes:
         ).where(
             repositories.c.key == bindparam('key')
         )
-        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+        return commits_connection_apply_filters(select_stmt, commits, **kwargs)
 
     @staticmethod
     def sort_order(repository_commit_nodes, **kwargs):

@@ -375,11 +375,11 @@ def get_author_coding_days_relation(work_items_temp):
      Find all the coding days by author for the work items in this set.
 
     :param work_items_temp: a relation with a work_item_key column
-    :return: a cte with columns author_contributor_key::UUID and coding_day::Date
+    :return: a cte with columns author_contributor_key::UUID and commit_day::Date
     """
     return select([
         commits.c.author_contributor_key,
-        coding_day(commits).label('coding_day')
+        coding_day(commits).label('commit_day')
     ]).select_from(
         work_items_temp.join(
             work_items, work_items_temp.c.work_item_key == work_items.c.key
@@ -432,7 +432,7 @@ def compute_work_items_implementation_effort(session, work_items_temp):
             commits,
             and_(
                 author_coding_days.c.author_contributor_key == commits.c.author_contributor_key ==
-                author_coding_days.c.coding_day == coding_day(commits)
+                author_coding_days.c.commit_day == coding_day(commits)
             )
         ).join(
             work_items_commits_table, work_items_commits_table.c.commit_id == commits.c.id
@@ -441,7 +441,7 @@ def compute_work_items_implementation_effort(session, work_items_temp):
 
     candidate_coding_days = select([
         commits.c.author_contributor_key,
-        coding_day(commits).label('coding_day')
+        coding_day(commits).label('commit_day')
     ]).select_from(
         candidate_work_items.join(
             work_items, candidate_work_items.c.id == work_items.c.id
@@ -457,7 +457,7 @@ def compute_work_items_implementation_effort(session, work_items_temp):
     # author for that coding day.
     author_load_factors = select([
         candidate_coding_days.c.author_contributor_key,
-        candidate_coding_days.c.coding_day,
+        candidate_coding_days.c.commit_day,
         func.count(work_items_commits_table.c.work_item_id.distinct()).label('load_factor')
     ]).select_from(
         # here we are searching over *all* work items (not just the ones in the candidate work_items)
@@ -467,14 +467,14 @@ def compute_work_items_implementation_effort(session, work_items_temp):
             commits,
             and_(
                 candidate_coding_days.c.author_contributor_key == commits.c.author_contributor_key,
-                candidate_coding_days.c.coding_day == coding_day(commits)
+                candidate_coding_days.c.commit_day == coding_day(commits)
             )
         ).join(
             work_items_commits_table, work_items_commits_table.c.commit_id == commits.c.id
         )
     ).group_by(
         candidate_coding_days.c.author_contributor_key,
-        candidate_coding_days.c.coding_day
+        candidate_coding_days.c.commit_day
     ).cte()
 
     # Now we recompute the total effort for the candidate work item across
@@ -485,7 +485,7 @@ def compute_work_items_implementation_effort(session, work_items_temp):
     work_items_authors_load_factors = select([
         candidate_work_items.c.id,
         author_load_factors.c.author_contributor_key,
-        author_load_factors.c.coding_day,
+        author_load_factors.c.commit_day,
         author_load_factors.c.load_factor,
         (1.0 / author_load_factors.c.load_factor).label('coding_day_cost')
     ]).select_from(
@@ -497,13 +497,13 @@ def compute_work_items_implementation_effort(session, work_items_temp):
             author_load_factors,
             and_(
                 author_load_factors.c.author_contributor_key == commits.c.author_contributor_key,
-                author_load_factors.c.coding_day == coding_day(commits)
+                author_load_factors.c.commit_day == coding_day(commits)
             )
         )
     ).group_by(
         candidate_work_items.c.id,
         author_load_factors.c.author_contributor_key,
-        author_load_factors.c.coding_day,
+        author_load_factors.c.commit_day,
         author_load_factors.c.load_factor
     ).cte()
 
@@ -561,7 +561,7 @@ def compute_delivery_cycles_implementation_effort(session, work_items_temp):
             commits,
             and_(
                 author_coding_days.c.author_contributor_key == commits.c.author_contributor_key ==
-                author_coding_days.c.coding_day == coding_day(commits)
+                author_coding_days.c.commit_day == coding_day(commits)
             )
         ).join(
             work_items_commits_table, work_items_commits_table.c.commit_id == commits.c.id
@@ -570,7 +570,7 @@ def compute_delivery_cycles_implementation_effort(session, work_items_temp):
 
     candidate_coding_days = select([
         commits.c.author_contributor_key,
-        coding_day(commits).label('coding_day')
+        coding_day(commits).label('commit_day')
     ]).select_from(
         candidate_delivery_cycles.join(
             work_item_delivery_cycles,
@@ -590,7 +590,7 @@ def compute_delivery_cycles_implementation_effort(session, work_items_temp):
     # author for that coding day.
     author_load_factors = select([
         candidate_coding_days.c.author_contributor_key,
-        candidate_coding_days.c.coding_day,
+        candidate_coding_days.c.commit_day,
         func.count(work_items_commits_table.c.delivery_cycle_id.distinct()).label('load_factor')
     ]).select_from(
         # here we are searching over *all* delivery cycles (not just the ones in the candidate work_items)
@@ -600,14 +600,14 @@ def compute_delivery_cycles_implementation_effort(session, work_items_temp):
             commits,
             and_(
                 candidate_coding_days.c.author_contributor_key == commits.c.author_contributor_key,
-                candidate_coding_days.c.coding_day == coding_day(commits)
+                candidate_coding_days.c.commit_day == coding_day(commits)
             )
         ).join(
             work_items_commits_table, work_items_commits_table.c.commit_id == commits.c.id
         )
     ).group_by(
         candidate_coding_days.c.author_contributor_key,
-        candidate_coding_days.c.coding_day
+        candidate_coding_days.c.commit_day
     ).cte()
 
     # Now we recompute the total effort for the candidate work item across
@@ -618,7 +618,7 @@ def compute_delivery_cycles_implementation_effort(session, work_items_temp):
     work_items_authors_load_factors = select([
         candidate_delivery_cycles.c.delivery_cycle_id,
         author_load_factors.c.author_contributor_key,
-        author_load_factors.c.coding_day,
+        author_load_factors.c.commit_day,
         author_load_factors.c.load_factor,
         (1.0 / author_load_factors.c.load_factor).label('coding_day_cost')
     ]).select_from(
@@ -631,13 +631,13 @@ def compute_delivery_cycles_implementation_effort(session, work_items_temp):
             author_load_factors,
             and_(
                 author_load_factors.c.author_contributor_key == commits.c.author_contributor_key,
-                author_load_factors.c.coding_day == coding_day(commits)
+                author_load_factors.c.commit_day == coding_day(commits)
             )
         )
     ).group_by(
         candidate_delivery_cycles.c.delivery_cycle_id,
         author_load_factors.c.author_contributor_key,
-        author_load_factors.c.coding_day,
+        author_load_factors.c.commit_day,
         author_load_factors.c.load_factor
     ).cte()
 

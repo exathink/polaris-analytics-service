@@ -88,7 +88,7 @@ def commits_connection_apply_filters(select_stmt, commits_relation, **kwargs):
     return select_stmt
 
 
-def coding_day(commits):
+def commit_day(commits):
     return cast(
         func.to_timestamp(
             func.extract('epoch', commits.c.commit_date) - commits.c.commit_date_tz_offset

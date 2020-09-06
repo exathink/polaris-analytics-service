@@ -20,9 +20,12 @@ def commit_name_column(commits):
     return func.substr(commits.c.source_commit_id, 1, 8).label('name')
 
 
-def commit_info_columns(repositories, commits):
+def commit_info_columns(repositories, commits, apply_distinct=False):
     return [
-        commits.c.id,
+        # we can add a distinct here to allow us to eliminate dups
+        # in contexts where we have more than one commit row
+        # with the same commit id in scope.
+        commits.c.id.distinct().label('id') if apply_distinct else commits.c.id,
         commit_key_column(repositories, commits),
         commit_name_column(commits),
         commits.c.source_commit_id.label('commit_hash'),
@@ -41,7 +44,7 @@ def commit_info_columns(repositories, commits):
         commits.c.created_on_branch.label('branch'),
         commits.c.stats,
         commits.c.source_file_types_summary.label('file_types_summary'),
-        commits.c.work_items_summaries
+
     ]
 
 
@@ -72,18 +75,8 @@ def apply_time_window_filters(select_stmt, commits_relation, **kwargs):
         return select_stmt
 
 
-def apply_work_item_filters(select_stmt, commits_relation, **kwargs):
-    if kwargs.get('nospecs_only'):
-        select_stmt = select_stmt.where(
-            commits_relation.c.work_items_summaries == None
-        )
-
-    return select_stmt
-
-
 def commits_connection_apply_filters(select_stmt, commits_relation, **kwargs):
     select_stmt = apply_time_window_filters(select_stmt, commits_relation, **kwargs)
-    select_stmt = apply_work_item_filters(select_stmt, commits_relation, **kwargs)
 
     return select_stmt
 

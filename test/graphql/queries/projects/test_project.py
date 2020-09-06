@@ -1075,6 +1075,7 @@ class TestProjectAggregateCycleMetrics:
             description='foo',
             source_id=str(uuid.uuid4()),
             is_bug=False,
+            is_epic=False,
         )
 
         work_items = [

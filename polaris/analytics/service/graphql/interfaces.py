@@ -28,7 +28,7 @@ class FileTypesSummary(graphene.ObjectType):
 class CommitWorkItemsSummary(graphene.ObjectType):
     key = graphene.String(required=True)
     name = graphene.String(required=True)
-    label = graphene.String(required=True)
+
     work_item_type = graphene.String(required=True)
     display_id = graphene.String(required=True)
     url = graphene.String(required=True)

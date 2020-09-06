@@ -348,6 +348,45 @@ class TestProjectWorkItems:
         assert 'data' in result
         assert len(result['data']['project']['workItems']['edges']) == 2
 
+    def it_respects_the_specs_only_flag(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+        api_helper.import_work_items(work_items)
+        api_helper.update_delivery_cycles(([(0, dict(property='commit_count', value=3))]))
+
+        client = Client(schema)
+        query = """
+                query getProjectDefects($project_key:String!) {
+                    project(key: $project_key) {
+                        workItems(specsOnly: true) {
+                            edges {
+                                node {
+                                  id
+                                  name
+                                  key
+                                }
+                            }
+                        }
+                    }
+                }
+                        """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        assert len(result['data']['project']['workItems']['edges']) == 1
 
 class TestProjectAggregateCycleMetrics:
 
@@ -399,10 +438,10 @@ class TestProjectAggregateCycleMetrics:
                                         workItemsInScope
                                         workItemsWithNullCycleTime
 
-                                    }
-                                }
-                            }
-                        """
+                        }
+                    }
+                }
+            """
         result = client.execute(query, variable_values=dict(project_key=project.key, days=30, percentile=0.70))
         assert result['data']
         project = result['data']['project']
@@ -1022,7 +1061,121 @@ class TestProjectAggregateCycleMetrics:
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
         assert (graphql_date(project['latestClosedDate']) - start_date).days == 8
 
-    def it_excludes_jira_subtasks_and_epics_from_cycle_metrics_calculations(self, api_work_items_import_fixture):
+
+    def it_respects_the_specs_only_parameter(self, api_work_items_import_fixture):
+        organization, project, work_items_source, _ = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items_common = dict(
+            work_item_type='issue',
+            url='http://foo.com',
+            tags=['ares2'],
+            description='foo',
+            source_id=str(uuid.uuid4()),
+            is_bug=False,
+        )
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue 1',
+                display_id='1001',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue 2',
+                display_id='1001',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue 2',
+                display_id='1002',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+        api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(0, 'done', start_date + timedelta(days=4))])
+        api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=6))])
+        # make item 0 a spec
+        api_helper.update_delivery_cycles(([(0, dict(property='commit_count', value=2))]))
+
+
+        api_helper.update_work_items([(1, 'upnext', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(1, 'done', start_date + timedelta(days=6))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=8))])
+        # make item 1 a spec
+        api_helper.update_delivery_cycles(([(1, dict(property='commit_count', value=2))]))
+
+        api_helper.update_work_items([(2, 'upnext', start_date + timedelta(days=3))])
+        api_helper.update_work_items([(2, 'doing', start_date + timedelta(days=4))])
+        api_helper.update_work_items([(2, 'done', start_date + timedelta(days=5))])
+        api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=10))])
+
+        client = Client(schema)
+        query = """
+                    query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
+                        project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                                closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile,
+                                specsOnly: true
+                        ) {
+                            ... on AggregateCycleMetrics {
+                                minLeadTime
+                                avgLeadTime
+                                maxLeadTime
+                                minCycleTime
+                                avgCycleTime
+                                maxCycleTime
+                                percentileLeadTime
+                                percentileCycleTime
+                                targetPercentile
+                                earliestClosedDate
+                                latestClosedDate
+                                workItemsInScope
+                                workItemsWithCommits
+                                workItemsWithNullCycleTime
+
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(project_key=project.key, days=30, percentile=0.70))
+
+        assert result['data']
+        project = result['data']['project']
+        assert project['minLeadTime'] == 6.0
+        assert project['avgLeadTime'] == 7.0
+        assert project['maxLeadTime'] == 8.0
+        assert project['minCycleTime'] == 5.0
+        assert project['avgCycleTime'] == 5.5
+        assert project['maxCycleTime'] == 6.0
+        assert project['percentileLeadTime'] == 8.0
+        assert project['percentileCycleTime'] == 6.0
+        assert project['targetPercentile'] == 0.7
+        assert project['workItemsInScope'] == 2
+        assert project['workItemsWithNullCycleTime'] == 0
+        assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
+        assert (graphql_date(project['latestClosedDate']) - start_date).days == 8
+
+    def it_excludes_jira_epics_from_cycle_metrics_calculations(self, api_work_items_import_fixture):
         organization, project, work_items_source, _ = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
@@ -1119,18 +1272,18 @@ class TestProjectAggregateCycleMetrics:
         assert result['data']
         project = result['data']['project']
         assert project['minLeadTime'] == 6.0
-        assert project['avgLeadTime'] == 6.0
-        assert project['maxLeadTime'] == 6.0
+        assert project['avgLeadTime'] == 7.0
+        assert project['maxLeadTime'] == 8.0
         assert project['minCycleTime'] == 5.0
-        assert project['avgCycleTime'] == 5.0
-        assert project['maxCycleTime'] == 5.0
-        assert project['percentileLeadTime'] == 6.0
-        assert project['percentileCycleTime'] == 5.0
+        assert project['avgCycleTime'] == 5.5
+        assert project['maxCycleTime'] == 6.0
+        assert project['percentileLeadTime'] == 8.0
+        assert project['percentileCycleTime'] == 6.0
         assert project['targetPercentile'] == 0.7
-        assert project['workItemsInScope'] == 1
+        assert project['workItemsInScope'] == 2
         assert project['workItemsWithNullCycleTime'] == 0
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
-        assert (graphql_date(project['latestClosedDate']) - start_date).days == 6
+        assert (graphql_date(project['latestClosedDate']) - start_date).days == 8
 
 
 class TestProjectWorkItemDeliveryCycles:
@@ -1728,629 +1881,4 @@ class TestProjectWorkItemsSourceWorkItemStateMappings:
 
 
 
-@pytest.yield_fixture
-def api_project_traceability_test_fixture(org_repo_fixture):
-    organization, projects, repositories = org_repo_fixture
 
-    with db.orm_session() as session:
-        session.add(organization)
-        for project in organization.projects:
-            work_items_source = WorkItemsSource(
-                key=uuid.uuid4(),
-                organization_key=organization.key,
-                integration_type='jira',
-                commit_mapping_scope='repository',
-                commit_mapping_scope_key=None,
-                organization_id=organization.id,
-                **work_items_source_common
-            )
-            work_items_source.init_state_map(
-                [
-                    dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
-                    dict(state='upnext', state_type=WorkItemsStateType.open.value),
-                    dict(state='doing', state_type=WorkItemsStateType.wip.value),
-                    dict(state='done', state_type=WorkItemsStateType.complete.value),
-                    dict(state='closed', state_type=WorkItemsStateType.closed.value),
-                ]
-            )
-            project.work_items_sources.append(work_items_source)
-
-    contributor_key = uuid.uuid4().hex
-
-    yield dict_to_object(
-        dict(
-            organization=organization,
-            projects=projects,
-            repositories=repositories,
-            commit_common_fields=dict(
-                commit_date_tz_offset=0,
-                committer_alias_key=contributor_key,
-                author_date=datetime.utcnow(),
-                author_date_tz_offset=0,
-                author_alias_key=contributor_key,
-                created_at=datetime.utcnow(),
-                commit_message='a change'
-
-            ),
-            work_items_common=dict(
-                is_bug=True,
-                is_epic=False,
-                epic_id=None,
-                work_item_type='issue',
-                url='http://foo.com',
-                tags=['ares2'],
-                description='foo',
-                source_id=str(uuid.uuid4()),
-            ),
-            contributors=[
-                dict(
-                    name='Joe Blow',
-                    key=contributor_key,
-                    alias='joe@blow.com'
-                )
-            ]
-        )
-    )
-
-    db.connection().execute("delete  from analytics.work_items_commits")
-    db.connection().execute("delete  from analytics.work_item_state_transitions")
-    db.connection().execute("delete  from analytics.work_item_delivery_cycle_durations")
-    db.connection().execute("delete  from analytics.work_item_delivery_cycles")
-    db.connection().execute("delete  from analytics.work_items")
-    db.connection().execute("delete  from analytics.work_items_source_state_map")
-    db.connection().execute("delete  from analytics.work_items_sources")
-    db.connection().execute("delete  from analytics.commits")
-    db.connection().execute("delete  from analytics.contributor_aliases")
-    db.connection().execute("delete  from analytics.contributors")
-
-
-
-def add_work_item_commits(work_items_commits):
-    with db.orm_session() as session:
-        for work_item_key, commit_key in work_items_commits:
-            work_item = WorkItem.find_by_work_item_key(session, work_item_key)
-            commit = Commit.find_by_commit_key(session, commit_key)
-            work_item.commits.append(commit)
-
-
-class TestProjectTraceabilityTrends:
-    project_traceability_query = """
-        query getProjectTraceabilityTrends(
-            $project_key:String!, 
-            $days: Int!, 
-            $window: Int!,
-            $sample: Int
-        ) {
-            project(
-                key: $project_key, 
-                interfaces: [TraceabilityTrends], 
-                traceabilityTrendsArgs: {
-                    days: $days,
-                    measurementWindow: $window,
-                    samplingFrequency: $sample,
-                }
-
-            ) {
-                traceabilityTrends {
-                    measurementDate
-                    traceability
-                    specCount
-                    nospecCount
-                    totalCommits
-                }
-            }
-        }
-    """
-
-    # Base cases: Test that nothing is dropped when there are no work items or commits. We should
-    # see a series with one point for each date in the interval with zero values for all the metrics.
-    def it_reports_all_zeros_when_there_are_no_work_items_or_commits_in_the_project_and_a_single_sample_in_window(self,
-                                                                                                                  api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
-
-        client = Client(schema)
-
-        result = client.execute(self.project_traceability_query, variable_values=dict(
-            project_key=fixture.projects['mercury'].key,
-            days=30,
-            window=30,
-            sample=30
-        ))
-        assert result['data']
-        traceability_trends = result['data']['project']['traceabilityTrends']
-        # there should one measurement per sample in the measurement window, including each end point.
-        assert len(traceability_trends) == 2
-        assert [
-                   dict_select(measurement, ['traceability', 'specCount', 'nospecCount', 'totalCommits'])
-                   for measurement in traceability_trends
-               ] == [
-                   dict(
-                       # beginning of window
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       # end of window
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   )
-               ]
-
-    def it_reports_all_zeros_when_there_are_no_work_items_or_commits_in_the_project_and_multiple_samples_in_window(self,
-                                                                                                                   api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
-
-        client = Client(schema)
-
-        result = client.execute(self.project_traceability_query, variable_values=dict(
-            project_key=fixture.projects['mercury'].key,
-            days=30,
-            window=30,
-            sample=7
-        ))
-        assert result['data']
-        traceability_trends = result['data']['project']['traceabilityTrends']
-        # there should one measurement per sample in the measurement window, including each end point.
-        assert len(traceability_trends) == 5
-        assert [
-                   dict_select(measurement, ['traceability', 'specCount', 'nospecCount', 'totalCommits'])
-                   for measurement in traceability_trends
-               ] == [
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   )
-                   for _ in range(0, 5)
-               ]
-
-    def it_reports_commit_and_nospec_counts_when_there_are_commits_in_the_project_and_zeros_for_the_rest(self,
-                                                                                                         api_project_traceability_test_fixture
-                                                                                                         ):
-        fixture = api_project_traceability_test_fixture
-
-        start_date = datetime.utcnow() - timedelta(days=10)
-        api.import_new_commits(
-            organization_key=fixture.organization.key,
-            repository_key=fixture.projects['mercury'].repositories[0].key,
-            new_commits=[
-                dict(
-                    source_commit_id='a-XXXX',
-                    # one commit 10 days from the end of the window
-                    commit_date=start_date,
-                    key=uuid.uuid4().hex,
-                    **fixture.commit_common_fields
-                ),
-                dict(
-                    source_commit_id='a-YYYY',
-                    # next commit 20 days from end of the window
-                    commit_date=start_date - timedelta(days=10),
-                    key=uuid.uuid4().hex,
-                    **fixture.commit_common_fields
-                )
-            ],
-            new_contributors=fixture.contributors
-        )
-
-        client = Client(schema)
-
-        result = client.execute(self.project_traceability_query, variable_values=dict(
-            project_key=fixture.projects['mercury'].key,
-            days=30,
-            window=15,
-            sample=7
-        ))
-        assert result['data']
-        traceability_trends = result['data']['project']['traceabilityTrends']
-        # there should one measurement per sample in the measurement window, including each end point.
-        assert len(traceability_trends) == 5
-
-        assert [
-                   dict_select(measurement, ['traceability', 'specCount', 'nospecCount', 'totalCommits'])
-                   for measurement in traceability_trends
-               ] == [
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
-                       totalCommits=1
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=2,
-                       totalCommits=2
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
-                       totalCommits=1
-                   )
-               ]
-
-    def it_reports_commit_and_nospec_counts_when_there_are_commits_that_are_not_associated_with_any_work_items(self, api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
-
-        # same setup as last one, but we are going to add some work items but not associate them to any commits
-        start_date = datetime.utcnow() - timedelta(days=10)
-        api.import_new_commits(
-            organization_key=fixture.organization.key,
-            repository_key=fixture.projects['mercury'].repositories[0].key,
-            new_commits=[
-                dict(
-                    source_commit_id='a-XXXX',
-                    # one commit 10 days from the end of the window
-                    commit_date=start_date,
-                    key=uuid.uuid4().hex,
-                    **fixture.commit_common_fields
-                ),
-                dict(
-                    source_commit_id='a-YYYY',
-                    # next commit 20 days from end of the window
-                    commit_date=start_date - timedelta(days=10),
-                    key=uuid.uuid4().hex,
-                    **fixture.commit_common_fields
-                )
-            ],
-            new_contributors=fixture.contributors
-        )
-
-        api_helper = WorkItemImportApiHelper(fixture.organization, fixture.projects['mercury'].work_items_sources[0])
-
-        start_date = datetime.utcnow() - timedelta(days=10)
-
-        work_items = [
-            dict(
-                key=uuid.uuid4().hex,
-                name=f'Issue {i}',
-                display_id='1000',
-                state='backlog',
-                created_at=start_date,
-                updated_at=start_date,
-                **fixture.work_items_common
-            )
-            for i in range(0, 3)
-        ]
-
-        # the default fixture sets everything to is_bug=True so we flip to set up this test.
-        work_items[0]['is_bug'] = False
-        work_items[1]['is_bug'] = False
-
-        api_helper.import_work_items(work_items)
-
-        client = Client(schema)
-
-        result = client.execute(self.project_traceability_query, variable_values=dict(
-            project_key=fixture.projects['mercury'].key,
-            days=30,
-            window=15,
-            sample=7
-        ))
-        assert result['data']
-        traceability_trends = result['data']['project']['traceabilityTrends']
-        # assertions here are the same as the last test, as adding work items should have no impact on the metrics
-
-        # there should one measurement per sample in the measurement window, including each end point.
-        assert len(traceability_trends) == 5
-
-        assert [
-                   dict_select(measurement, ['traceability', 'specCount', 'nospecCount', 'totalCommits'])
-                   for measurement in traceability_trends
-               ] == [
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
-                       totalCommits=1
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=2,
-                       totalCommits=2
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
-                       totalCommits=1
-                   )
-               ]
-
-    def it_reports_traceability_and_spec_count_when_there_are_commits_associated_with_work_items(self,
-                                                                                                 api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
-
-        # same setup as last one, but we are going to add some work items but not associate them to any commits
-        start_date = datetime.utcnow() - timedelta(days=10)
-        new_commits = [
-            dict(
-                source_commit_id='a-XXXX',
-                # one commit 10 days from the end of the window
-                commit_date=start_date,
-                key=uuid.uuid4().hex,
-                **fixture.commit_common_fields
-            ),
-            dict(
-                source_commit_id='a-YYYY',
-                # next commit 20 days from end of the window
-                commit_date=start_date - timedelta(days=10),
-                key=uuid.uuid4().hex,
-                **fixture.commit_common_fields
-            )
-        ]
-        api.import_new_commits(
-            organization_key=fixture.organization.key,
-            repository_key=fixture.projects['mercury'].repositories[0].key,
-            new_commits=new_commits,
-            new_contributors=fixture.contributors
-        )
-
-        api_helper = WorkItemImportApiHelper(fixture.organization, fixture.projects['mercury'].work_items_sources[0])
-
-        start_date = datetime.utcnow() - timedelta(days=10)
-
-        work_items = [
-            dict(
-                key=uuid.uuid4().hex,
-                name=f'Issue {i}',
-                display_id='1000',
-                state='backlog',
-                created_at=start_date,
-                updated_at=start_date,
-                **fixture.work_items_common
-            )
-            for i in range(0, 3)
-        ]
-
-        # the default fixture sets everything to is_bug=True so we flip to set up this test.
-        work_items[0]['is_bug'] = False
-        work_items[1]['is_bug'] = False
-
-        api_helper.import_work_items(work_items)
-
-        add_work_item_commits([(work_items[0]['key'], new_commits[0]['key'])])
-
-        client = Client(schema)
-
-        result = client.execute(self.project_traceability_query, variable_values=dict(
-            project_key=fixture.projects['mercury'].key,
-            days=30,
-            window=15,
-            sample=7
-        ))
-        assert result['data']
-        traceability_trends = result['data']['project']['traceabilityTrends']
-        # assertions here are the same as the last test, as adding work items should have no impact on the metrics
-
-        # there should one measurement per sample in the measurement window, including each end point.
-        assert len(traceability_trends) == 5
-
-        assert [
-                   dict_select(measurement, ['traceability', 'specCount', 'nospecCount', 'totalCommits'])
-                   for measurement in traceability_trends
-               ] == [
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
-                       totalCommits=1
-                   ),
-                   dict(
-                       traceability=0.5,
-                       specCount=1,
-                       nospecCount=1,
-                       totalCommits=2
-                   ),
-                   dict(
-                       traceability=1.0,
-                       specCount=1,
-                       nospecCount=0,
-                       totalCommits=1
-                   )
-               ]
-
-    def it_reports_traceability_and_spec_counts_correctly_when_repositories_are_shared_across_projects(self,
-                                                                                                 api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
-
-        # same setup as last one, but we are going to add some work items but not associate them to any commits
-        start_date = datetime.utcnow() - timedelta(days=10)
-        new_commits = [
-            dict(
-                source_commit_id='a-XXXX',
-                # one commit 10 days from the end of the window
-                commit_date=start_date,
-                key=uuid.uuid4().hex,
-                **fixture.commit_common_fields
-            ),
-            dict(
-                source_commit_id='a-YYYY',
-                # next commit 20 days from end of the window
-                commit_date=start_date - timedelta(days=10),
-                key=uuid.uuid4().hex,
-                **fixture.commit_common_fields
-            )
-        ]
-        # alpha is a repo shared between projects mercury and venus
-        alpha = fixture.repositories['alpha']
-        api.import_new_commits(
-            organization_key=fixture.organization.key,
-            repository_key=alpha.key,
-            new_commits=new_commits,
-            new_contributors=fixture.contributors
-        )
-
-        api_helper = WorkItemImportApiHelper(fixture.organization, fixture.projects['mercury'].work_items_sources[0])
-
-        start_date = datetime.utcnow() - timedelta(days=10)
-
-        work_items = [
-            dict(
-                key=uuid.uuid4().hex,
-                name=f'Issue {i}',
-                display_id='1000',
-                state='backlog',
-                created_at=start_date,
-                updated_at=start_date,
-                **fixture.work_items_common
-            )
-            for i in range(0, 3)
-        ]
-
-        # the default fixture sets everything to is_bug=True so we flip to set up this test.
-        work_items[0]['is_bug'] = False
-        work_items[1]['is_bug'] = False
-
-        api_helper.import_work_items(work_items)
-
-        add_work_item_commits([(work_items[0]['key'], new_commits[0]['key'])])
-
-        client = Client(schema)
-
-        result = client.execute(self.project_traceability_query, variable_values=dict(
-            project_key=fixture.projects['mercury'].key,
-            days=30,
-            window=15,
-            sample=7
-        ))
-        assert result['data']
-        traceability_trends = result['data']['project']['traceabilityTrends']
-
-        # the first set of assertions tests the metrics for mercury, which should not have changed in
-        # from the last test.
-
-        # there should one measurement per sample in the measurement window, including each end point.
-        assert len(traceability_trends) == 5
-
-        assert [
-                   dict_select(measurement, ['traceability', 'specCount', 'nospecCount', 'totalCommits'])
-                   for measurement in traceability_trends
-               ] == [
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
-                       totalCommits=1
-                   ),
-                   dict(
-                       traceability=0.5,
-                       specCount=1,
-                       nospecCount=1,
-                       totalCommits=2
-                   ),
-                   dict(
-                       traceability=1.0,
-                       specCount=1,
-                       nospecCount=0,
-                       totalCommits=1
-                   )
-               ]
-
-        # now we test the metrics for venus. which shares commits with mercury, but does not have  work items, so its
-        # spec count should be zero and spec_count + non_spec_count should be < total commit count
-
-        result = client.execute(self.project_traceability_query, variable_values=dict(
-            project_key=fixture.projects['venus'].key,
-            days=30,
-            window=15,
-            sample=7
-        ))
-        assert result['data']
-        traceability_trends = result['data']['project']['traceabilityTrends']
-
-        # the first set of assertions tests the metrics for mercury, which should not have changed in
-        # from the last test.
-
-        # there should one measurement per sample in the measurement window, including each end point.
-        assert len(traceability_trends) == 5
-
-        assert [
-                   dict_select(measurement, ['traceability', 'specCount', 'nospecCount', 'totalCommits'])
-                   for measurement in traceability_trends
-               ] == [
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
-                       totalCommits=1
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
-                       totalCommits=2
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=1
-                   )
-               ]

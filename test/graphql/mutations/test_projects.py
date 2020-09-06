@@ -472,7 +472,8 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
         assert result['success']
         delivery_cycle_id = db.connection().execute(
             f"select delivery_cycle_id from analytics.work_item_delivery_cycles\
-                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").fetchall()[0][0]
+                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").fetchall()[
+            0][0]
 
         # add an unmapped state to the db
         with db.orm_session() as session:
@@ -520,13 +521,12 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
                                      and lead_time is null and delivery_cycle_id!={delivery_cycle_id}").scalar() == 1
 
     def it_raises_an_error_if_an_existing_state_does_not_have_a_mapping_defined(self,
-                                                                                     work_items_delivery_cycles_setup):
+                                                                                work_items_delivery_cycles_setup):
         client = Client(schema)
         project = work_items_delivery_cycles_setup
         project_key = str(project.key)
         work_items_source_key = project.work_items_sources[0].key
         work_item_id = project.work_items_sources[0].work_items[0].id
-
 
         response = client.execute("""
                             mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
@@ -554,10 +554,8 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
         result = response['data']['updateProjectStateMaps']
         assert result
         assert not result['success']
-        assert result['errorMessage'] == 'Invalid Mapping: The following states did not have a mapping specified {\'done\'} '
-
-
-
+        assert result['errorMessage'] == \
+               'Invalid Mapping: The following states did not have a mapping specified {\'done\'} '
 
     def it_updates_delivery_cycles_at_first_closed_state_transition_when_mapping_changes(self,
                                                                                          work_items_delivery_cycles_setup):
@@ -787,7 +785,7 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
         work_items_source_key = project.work_items_sources[0].key
         work_item_id = project.work_items_sources[0].work_items[0].id
         old_delivery_cycle_id = \
-        db.connection().execute("select current_delivery_cycle_id from analytics.work_items").fetchall()[0][0]
+            db.connection().execute("select current_delivery_cycle_id from analytics.work_items").fetchall()[0][0]
         response = client.execute("""
                     mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
                                     updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
@@ -918,6 +916,44 @@ class TestRecomputeDeliveryCyclesCycleTimeOnUpdateStateMaps:
         assert expected_cycle_time == cycle_time
 
 
+class TestRecomputeWorkItemCommitDeliveryCycleMappingOnUpdateStateMaps:
+    def it_updates_commit_stats_for_recreated_delivery_cycles(self, project_work_items_commits_fixture):
+        client = Client(schema)
+        project = project_work_items_commits_fixture
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        response = client.execute("""
+                                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                                success
+                                            }
+                                        }
+                                """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        assert db.connection().execute(
+            "select count(*) from analytics.work_items_commits where delivery_cycle_id is null"
+        ).scalar() == 0
+
+
 class TestUpdateCommitStatsOnUpdateStateMaps:
 
     def it_updates_commit_stats_for_recreated_delivery_cycles(self, project_work_items_commits_fixture):
@@ -956,6 +992,43 @@ class TestUpdateCommitStatsOnUpdateStateMaps:
             f"select count(*) from analytics.work_item_delivery_cycles\
                                      where work_item_delivery_cycles.work_item_id='{work_item_id}' and repository_count=3 and commit_count=3 and latest_commit='2020-01-07 00:00:00.000000' and earliest_commit='2020-01-05 00:00:00.000000'").scalar() == 1
 
+    def it_updates_implementation_effort_for_recreated_delivery_cycles(self, project_work_items_commits_fixture):
+        client = Client(schema)
+        project = project_work_items_commits_fixture
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        work_item_id = project.work_items_sources[0].work_items[0].id
+        response = client.execute("""
+                                    mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                                    updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                                                success
+                                            }
+                                        }
+                                """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.open.value),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                            dict(state="done", stateType=WorkItemsStateType.closed.value),
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(*) from analytics.work_item_delivery_cycles\
+                                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and effort=3"
+        ).scalar() == 1
+
     def it_updates_commit_stats_for_recreated_delivery_cycles_for_multiple_closed_states(self,
                                                                                          project_work_items_commits_fixture):
         client = Client(schema)
@@ -991,7 +1064,7 @@ class TestUpdateCommitStatsOnUpdateStateMaps:
         assert result['success']
         assert db.connection().execute(
             f"select count(*) from analytics.work_item_delivery_cycles\
-                                     where work_item_delivery_cycles.work_item_id='{work_item_id}' and repository_count=1 and commit_count=1 and latest_commit='{get_date('2020-01-05')}' and earliest_commit='{get_date('2020-01-05')}'").scalar() == 1
+                                             where work_item_delivery_cycles.work_item_id='{work_item_id}' and repository_count=3 and commit_count=3 and latest_commit='2020-01-07 00:00:00.000000' and earliest_commit='2020-01-05 00:00:00.000000'").scalar() == 1
 
 
 class TestComputeImplementationComplexityMetricsOnUpdateStateMaps:

@@ -13,7 +13,7 @@ from datetime import datetime
 import pytest
 
 from polaris.analytics.db.model import Organization, Repository, Project, contributors, contributor_aliases, commits, \
-    WorkItemsSource, WorkItem
+    WorkItemsSource, WorkItem, WorkItemDeliveryCycle
 from polaris.common import db
 
 test_organization_key = uuid.uuid4().hex
@@ -117,6 +117,7 @@ def cleanup():
     yield
 
     db.connection().execute("delete from analytics.work_items_commits")
+    db.connection().execute("delete from analytics.work_item_delivery_cycles")
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")
 
@@ -169,13 +170,30 @@ def setup_work_items(organization, source_data, items_data, project_key=None):
             organization_id=organization.id,
             **source_data
         )
-        source.work_items.extend([
-            WorkItem(**item)
-            for item in items_data
-        ])
         session.add(source)
+        session.flush()
+
+        work_items = []
+        for w in items_data:
+            work_item = WorkItem(**w)
+            work_item.delivery_cycles.append(
+                WorkItemDeliveryCycle(
+                    start_seq_no=0,
+                    start_date=datetime.utcnow(),
+                    work_items_source_id=source.id
+                )
+            )
+            session.add(work_item)
+            work_items.append(work_item)
+        session.flush()
+
+        for w in work_items:
+            w.current_delivery_cycle_id = w.delivery_cycles[0].delivery_cycle_id
+
+        source.work_items.extend(work_items)
+
         if project_key is not None:
             project = Project.find_by_project_key(session, project_key)
             project.work_items_sources.append(source)
-
+        
         return source

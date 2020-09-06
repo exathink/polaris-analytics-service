@@ -71,6 +71,10 @@ class CycleMetricsEnum(Enum):
     q3_cycle_time = 'q3_cycle_time'
     max_cycle_time = 'max_cycle_time'
 
+    total_effort = 'total_effort'
+    avg_duration = 'avg_duration'
+    percentile_duration = 'percentile_duration'
+
     work_items_in_scope = 'work_items_in_scope'
     work_items_with_commits = 'work_items_with_commits'
     work_items_with_null_cycle_time = 'work_items_with_null_cycle_time'
@@ -90,10 +94,19 @@ class CycleMetricsParameters(graphene.InputObjectType):
         required=False,
         description="If percentile cycle time is requested, then this specifies the target percentile value"
     )
-    include_epics_and_subtasks = graphene.Boolean(
+    duration_target_percentile = graphene.Float(
         required=False,
-        description='Include epics and subtasks in the analysis. Defaults to false',
+        description="If percentile duration is requested, then this specifies the target percentile value"
+    )
+    include_epics = graphene.Boolean(
+        required=False,
+        description='Include epics in the cycle metrics analysis. Defaults to false',
         default_value=False
+    )
+    include_sub_tasks = graphene.Boolean(
+        required=False,
+        description='Include subtasks in the cycle metrics analysis. Defaults to true',
+        default_value=True
     )
     defects_only = graphene.Boolean(
         required=False,
@@ -109,3 +122,11 @@ class CycleMetricsParameters(graphene.InputObjectType):
 
 class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters, CycleMetricsParameters):
     pass
+
+
+class TraceabilityMetricsTrendsParameters(AggregateMetricsTrendsParameters):
+    exclude_merges = graphene.Boolean(
+        required=False,
+        description="Limit analysis to non-merge commits only",
+        default_value=False
+    )

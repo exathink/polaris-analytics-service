@@ -8,11 +8,14 @@
 
 # Author: Krishna Kumar
 
-from graphene.test import Client
+from datetime import datetime, timedelta
 
+from graphene.test import Client
+from polaris.analytics.db.model import WorkItemDeliveryCycleContributor, ContributorAlias
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
-from datetime import datetime, timedelta
+from test.fixtures.work_items_commits import *
+
 
 class TestWorkItemInstance:
 
@@ -35,9 +38,8 @@ class TestWorkItemInstance:
         assert workItem['name'] == 'Issue 1'
         assert workItem['key'] == str(work_item_key)
 
-
     def it_implements_work_item_info_interface(self, work_items_fixture):
-        work_item_key, _ , _= work_items_fixture
+        work_item_key, _, _ = work_items_fixture
         client = Client(schema)
         query = """
             query getWorkItem($key:String!) {
@@ -66,7 +68,7 @@ class TestWorkItemInstance:
         assert work_item['isBug'] == work_items_common['is_bug']
 
     def it_implements_work_items_source_ref_interface(self, work_items_fixture):
-        work_item_key, _ , _= work_items_fixture
+        work_item_key, _, _ = work_items_fixture
         client = Client(schema)
         query = """
             query getWorkItem($key:String!) {
@@ -136,7 +138,6 @@ class TestWorkItemInstance:
         assert work_item['earliestWorkItemEvent'] == '2018-12-02T00:00:00'
         assert work_item['latestWorkItemEvent'] == '2018-12-03T00:00:00'
 
-
     class TestWorkItemInstanceEvents:
 
         def it_returns_work_item_event_named_nodes(self, setup_work_item_transitions):
@@ -169,7 +170,8 @@ class TestWorkItemInstance:
             assert set(map(lambda edge: edge['node']['name'], edges)) == {'Issue 1'}
             # all events have compound keys
 
-            assert set(map(lambda edge: edge['node']['key'], edges)) == {f'{uuid.UUID(work_item_key)}:0', f'{uuid.UUID(work_item_key)}:1'}
+            assert set(map(lambda edge: edge['node']['key'], edges)) == {f'{uuid.UUID(work_item_key)}:0',
+                                                                         f'{uuid.UUID(work_item_key)}:1'}
 
         def it_returns_work_item_events_state_transitions(self, setup_work_item_transitions):
             new_work_items = setup_work_item_transitions
@@ -206,8 +208,6 @@ class TestWorkItemInstance:
                 if node['seqNo'] == 1:
                     assert node['previousState']
                     assert node['previousStateType']
-
-
 
         def it_returns_work_item_events_source_refs(self, setup_work_item_transitions):
             new_work_items = setup_work_item_transitions
@@ -271,16 +271,16 @@ class TestWorkItemInstance:
             work_item_key = uuid.uuid4().hex
             start_date = datetime.utcnow() - timedelta(days=10)
             api_helper.import_work_items([
-                    dict(
-                        key=work_item_key,
-                        name='Issue 1',
-                        display_id='1000',
-                        state='backlog',
-                        created_at=start_date,
-                        updated_at=start_date,
-                        **work_items_common
-                    )
-                ]
+                dict(
+                    key=work_item_key,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **work_items_common
+                )
+            ]
             )
 
             api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
@@ -311,15 +311,15 @@ class TestWorkItemInstance:
             work_item_state_details = result['data']['workItem']['workItemStateDetails']
             assert work_item_state_details['currentStateTransition']['eventDate']
             assert {
-                (record['state'], record['daysInState'])
-                for record in work_item_state_details['currentDeliveryCycleDurations']
-            } == {
-                ('created', 0.0),
-                ('backlog', 1.0),
-                ('upnext', 1.0),
-                ('doing', 2.0),
-                ('done', None)
-            }
+                       (record['state'], record['daysInState'])
+                       for record in work_item_state_details['currentDeliveryCycleDurations']
+                   } == {
+                       ('created', 0.0),
+                       ('backlog', 1.0),
+                       ('upnext', 1.0),
+                       ('doing', 2.0),
+                       ('done', None)
+                   }
 
         def it_returns_null_state_types_when_there_are_unmapped_durations(self, api_work_items_import_fixture):
             organization, project, work_items_source, work_items_common = api_work_items_import_fixture
@@ -328,20 +328,19 @@ class TestWorkItemInstance:
             work_item_key = uuid.uuid4().hex
             start_date = datetime.utcnow() - timedelta(days=10)
             api_helper.import_work_items([
-                    dict(
-                        key=work_item_key,
-                        name='Issue 1',
-                        display_id='1000',
-                        state='backlog',
-                        created_at=start_date,
-                        updated_at=start_date,
-                        **work_items_common
-                    )
-                ]
+                dict(
+                    key=work_item_key,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **work_items_common
+                )
+            ]
             )
 
             api_helper.update_work_items([(0, 'unmapped_state', start_date + timedelta(days=1))])
-
 
             client = Client(schema)
             query = """
@@ -367,15 +366,13 @@ class TestWorkItemInstance:
             work_item_state_details = result['data']['workItem']['workItemStateDetails']
             assert work_item_state_details['currentStateTransition']['eventDate']
             assert {
-                (record['state'], record['stateType'], record['daysInState'])
-                for record in work_item_state_details['currentDeliveryCycleDurations']
-            } == {
-                ('created', 'backlog', 0.0),
-                ('backlog', 'backlog', 1.0),
-                ('unmapped_state', None,  None)
-            }
-
-
+                       (record['state'], record['stateType'], record['daysInState'])
+                       for record in work_item_state_details['currentDeliveryCycleDurations']
+                   } == {
+                       ('created', 'backlog', 0.0),
+                       ('backlog', 'backlog', 1.0),
+                       ('unmapped_state', None, None)
+                   }
 
     class TestWorkItemInstanceCommits:
 
@@ -409,7 +406,220 @@ class TestWorkItemInstance:
             assert set(map(lambda edge: edge['node']['name'], edges)) == {'XXXXXX', 'YYYYYY'}
             # all commits have the key of form repository_key:source_commit_id
 
-            assert set(map(lambda edge: edge['node']['key'], edges)) == {f'{test_repo.key}:XXXXXX', f'{test_repo.key}:YYYYYY'}
+            assert set(map(lambda edge: edge['node']['key'], edges)) == {f'{test_repo.key}:XXXXXX',
+                                                                         f'{test_repo.key}:YYYYYY'}
 
 
 
+
+
+
+class TestWorkItemInstanceImplementationCost:
+
+    class TestSingleDeliveryCycle:
+
+        @staticmethod
+        @pytest.yield_fixture
+        def implementation_cost_fixture(implementation_effort_fixture):
+            fixture = implementation_effort_fixture
+            contributor = fixture['contributors'][0]
+            test_work_item = fixture['work_items'][0]
+
+            with db.orm_session() as session:
+                work_item = WorkItem.find_by_work_item_key(session, test_work_item['key'])
+                work_item.effort = 3.5
+                author_alias_id = contributor['as_author']['author_contributor_alias_id']
+                dc = work_item.current_delivery_cycle
+                dc.earliest_commit = datetime.utcnow() - timedelta(days=3)
+                dc.latest_commit = datetime.utcnow()
+                dc.commit_count = 3
+                dc.effort = 3.0
+                dc.delivery_cycle_contributors.append(
+                    WorkItemDeliveryCycleContributor(
+                        delivery_cycle_id=dc.delivery_cycle_id,
+                        contributor_alias_id=author_alias_id,
+                        total_lines_as_author=10
+                    )
+                )
+
+            yield fixture
+
+        def it_reports_effort_at_the_work_item_level(self, implementation_cost_fixture):
+            fixture = implementation_cost_fixture
+            test_work_item = fixture['work_items'][0]
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces: [ImplementationCost]){
+                                effort
+                                duration
+                                authorCount
+                        }
+                    } 
+            """
+            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
+            assert 'data' in result
+            work_item = result['data']['workItem']
+            assert work_item['effort'] == 3.5
+
+
+        def it_reports_aggregate_duration_from_the_delivery_cycles__with_non_zero_commit_counts(self, implementation_cost_fixture):
+            fixture = implementation_cost_fixture
+            test_work_item = fixture['work_items'][0]
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces: [ImplementationCost]){
+                                effort
+                                duration
+                                authorCount
+                        }
+                    } 
+            """
+            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
+            assert 'data' in result
+            work_item = result['data']['workItem']
+            assert work_item['duration'] - 3 < 1
+
+
+        def it_reports_aggregate_author_count_across_delivery_cycleswith_non_zero_commit_counts(self, implementation_cost_fixture):
+            fixture = implementation_cost_fixture
+            test_work_item = fixture['work_items'][0]
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces: [ImplementationCost]){
+                                effort
+                                duration
+                                authorCount
+                        }
+                    } 
+            """
+            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
+            assert 'data' in result
+            work_item = result['data']['workItem']
+            assert work_item['authorCount'] == 1
+
+
+    class TestMultipleDeliveryCycles:
+
+        @staticmethod
+        @pytest.yield_fixture
+        def implementation_cost_fixture(implementation_effort_fixture):
+            fixture = implementation_effort_fixture
+            contributor_0 = fixture['contributors'][0]
+            contributor_1 = fixture['contributors'][1]
+
+            test_work_item = fixture['work_items'][0]
+
+            with db.orm_session() as session:
+                work_item = WorkItem.find_by_work_item_key(session, test_work_item['key'])
+                work_item.effort = 10
+                start_date = datetime.utcnow() - timedelta(days=10)
+
+                dc = work_item.current_delivery_cycle
+                dc.start_date = start_date
+                dc.earliest_commit = start_date + timedelta(days=1)
+                dc.latest_commit = start_date + timedelta(days=3)
+                dc.end_date = start_date + timedelta(days=4)
+                dc.commit_count = 3
+                dc.effort = 3.0
+
+                dc.delivery_cycle_contributors.append(
+                    WorkItemDeliveryCycleContributor(
+                        delivery_cycle_id=dc.delivery_cycle_id,
+                        contributor_alias_id=contributor_0['as_author']['author_contributor_alias_id'],
+                        total_lines_as_author=10
+                    )
+                )
+                next_start = start_date + timedelta(days=5)
+                dc_1 = WorkItemDeliveryCycle(
+                    start_seq_no=2,
+                    work_items_source_id=work_item.work_items_source_id,
+                    start_date=next_start,
+                    earliest_commit=next_start + timedelta(days=1),
+                    latest_commit=next_start + timedelta(days=3),
+                    commit_count=3
+
+                )
+                dc_1.delivery_cycle_contributors.append(
+                    WorkItemDeliveryCycleContributor(
+                        delivery_cycle_id=dc.delivery_cycle_id,
+                        contributor_alias_id=contributor_1['as_author']['author_contributor_alias_id'],
+                        total_lines_as_author=20
+                    )
+                )
+                work_item.delivery_cycles.append(dc_1)
+
+                # add an extra delivery cycle with no commits just for noise.
+                work_item.delivery_cycles.append(
+                    WorkItemDeliveryCycle(
+                        start_seq_no=2,
+                        work_items_source_id=work_item.work_items_source_id,
+                        start_date=next_start + timedelta(days=12)
+                    )
+                )
+
+            yield fixture
+
+        def it_reports_effort_at_the_work_item_level(self, implementation_cost_fixture):
+            fixture = implementation_cost_fixture
+            test_work_item = fixture['work_items'][0]
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces: [ImplementationCost]){
+                                effort
+                                duration
+                                authorCount
+                        }
+                    } 
+            """
+            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
+            assert 'data' in result
+            work_item = result['data']['workItem']
+            assert work_item['effort'] == 10
+
+
+        def it_reports_aggregate_duration_across_delivery_cycles_with_non_zero_commit_counts(self, implementation_cost_fixture):
+            fixture = implementation_cost_fixture
+            test_work_item = fixture['work_items'][0]
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces: [ImplementationCost]){
+                                effort
+                                duration
+                                authorCount
+                        }
+                    } 
+            """
+            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
+            assert 'data' in result
+            work_item = result['data']['workItem']
+            assert work_item['duration'] == 7
+
+
+        def it_reports_aggregate_author_count_across_delivery_cycles_with_nonzero_commit_counts(self, implementation_cost_fixture):
+            fixture = implementation_cost_fixture
+            test_work_item = fixture['work_items'][0]
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces: [ImplementationCost]){
+                                effort
+                                duration
+                                authorCount
+                        }
+                    } 
+            """
+            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
+            assert 'data' in result
+            work_item = result['data']['workItem']
+            assert work_item['authorCount'] == 2

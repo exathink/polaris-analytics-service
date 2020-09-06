@@ -358,6 +358,8 @@ def create_work_item_commits(work_item_key, commit_keys):
 
 work_items_common = dict(
     is_bug=True,
+    is_epic=False,
+    epic_id=None,
     work_item_type='issue',
     url='http://foo.com',
     tags=['ares2'],
@@ -810,6 +812,8 @@ def work_items_sources_work_items_fixture(commits_fixture, cleanup):
 def jira_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
     work_items_common_fields = dict(
         is_bug=True,
+        is_epic=False,
+        epic_id=None,
         work_item_type='issue',
         url='http://foo.com',
         tags=['testing'],
@@ -866,6 +870,8 @@ def jira_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
 def github_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
     work_items_common_fields = dict(
         is_bug=True,
+        is_epic=False,
+        epic_id=None,
         work_item_type='issue',
         url='http://foo.com',
         tags=['testing'],
@@ -923,6 +929,8 @@ def github_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup
 def pivotal_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
     work_items_common_fields = dict(
         is_bug=True,
+        is_epic=False,
+        epic_id=None,
         work_item_type='issue',
         url='http://foo.com',
         tags=['testing'],
@@ -1017,6 +1025,8 @@ def api_work_items_import_fixture(org_repo_fixture):
 
     work_items_common = dict(
         is_bug=True,
+        is_epic=False,
+        epic_id=None,
         work_item_type='issue',
         url='http://foo.com',
         tags=['ares2'],

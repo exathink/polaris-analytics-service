@@ -66,7 +66,7 @@ class TestResolveCommitsForWorkItems:
                 send=dict(
                     organization_key=test_organization_key,
                     work_items_source_key=work_items_source.key,
-                    new_work_items=new_work_items
+                    new_work_items=[dict(**work_item, epic_key=uuid.uuid4().hex) for work_item in new_work_items]
                 )
             )
         )

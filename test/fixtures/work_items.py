@@ -28,13 +28,15 @@ def work_items_common():
     return dict(
         work_item_type='issue',
         is_bug=True,
+        is_epic=False,
         url='http://foo.com',
         tags=['ares2'],
         description='An issue here',
         created_at=datetime.utcnow() - timedelta(days=7),
         updated_at=datetime.utcnow() - timedelta(days=6),
         state='open',
-        source_id=str(uuid.uuid4())
+        source_id=str(uuid.uuid4()),
+        epic_id=None
     )
 
 
@@ -42,13 +44,15 @@ def work_items_closed():
     return dict(
         work_item_type='issue',
         is_bug=True,
+        is_epic=False,
         url='http://foo.com',
         tags=['ares2'],
         description='An issue here',
         created_at=datetime.utcnow() - timedelta(days=7),
         updated_at=datetime.utcnow(),
         state='closed',
-        source_id=str(uuid.uuid4())
+        source_id=str(uuid.uuid4()),
+        epic_id=None
     )
 
 

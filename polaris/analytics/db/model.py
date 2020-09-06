@@ -656,6 +656,11 @@ class WorkItem(Base):
     updated_at = Column(DateTime)
     next_state_seq_no = Column(Integer, nullable=False, server_default='0')
 
+    # Information related to Epic
+    is_epic = Column(Boolean, nullable=False, default=False, server_default='FALSE')
+    epic_id = Column(Integer, ForeignKey('work_items.id'), nullable=True)
+    epic = relationship('WorkItem', remote_side='WorkItem.id')
+
     # calculated fields
 
     # state_type based on current state value.

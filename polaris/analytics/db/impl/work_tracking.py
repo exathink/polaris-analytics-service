@@ -122,7 +122,8 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     work_items.c.id
                 ],
                 extra_columns=[
-                    Column('work_item_id', Integer)
+                    Column('work_item_id', Integer),
+                    Column('epic_key', UUID)
                 ]
             )
             work_items_temp.create(session.connection(), checkfirst=True)
@@ -142,13 +143,15 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             'name',
                             'description',
                             'is_bug',
+                            'is_epic',
                             'tags',
                             'state',
                             'state_type',
                             'created_at',
                             'updated_at',
                             'completed_at',
-                            'source_id'
+                            'source_id',
+                            'epic_key'
                         ])
                     )
                     for work_item in work_item_summaries
@@ -163,7 +166,9 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     work_items.c.key == work_items_temp.c.key
                 )
             )
+
             # insert missing work_items.
+
             inserted = session.connection().execute(
                 work_items.insert().from_select(
                     [
@@ -174,6 +179,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                         'name',
                         'description',
                         'is_bug',
+                        'is_epic',
                         'tags',
                         'state',
                         'state_type',
@@ -182,6 +188,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                         'completed_at',
                         'work_items_source_id',
                         'source_id',
+                        'epic_id',
                         'next_state_seq_no'
                     ],
                     select(
@@ -193,6 +200,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             work_items_temp.c.name,
                             work_items_temp.c.description,
                             work_items_temp.c.is_bug,
+                            work_items_temp.c.is_epic,
                             work_items_temp.c.tags,
                             work_items_temp.c.state,
                             work_items_temp.c.state_type,
@@ -201,6 +209,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             work_items_temp.c.completed_at,
                             work_items_temp.c.work_items_source_id,
                             work_items_temp.c.source_id,
+                            work_items_temp.c.epic_id,
                             # We initialize the next state seq no as 2 since
                             # the seq_no 0 and 1 will be taken up by the initial states which
                             # we create below. Subsequent state changes will use
@@ -212,6 +221,31 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                     )
                 )
             ).rowcount
+
+            # Get epic id for work items with non null epic_key
+            epic_work_items = work_items.alias('epic_work_items')
+            work_item_epic_id_map = select([
+                work_items.c.id,
+                epic_work_items.c.id.label('epic_id')
+            ]).select_from(
+                work_items_temp.join(
+                    work_items, work_items_temp.c.key == work_items.c.key
+                ).join(
+                    epic_work_items, work_items_temp.c.epic_key == epic_work_items.c.key
+                )
+            ).where(
+                work_items_temp.c.epic_key != None
+            ).cte('work_item_epic_id_map')
+
+            # update epic id
+            session.connection().execute(
+                work_items.update().values(
+                    epic_id=work_item_epic_id_map.c.epic_id
+                ).where(
+                    work_items.c.id == work_item_epic_id_map.c.id
+                )
+            ).rowcount
+
             # add the created state to the state transitions
             # for the newly inserted entries.
             session.connection().execute(
@@ -807,6 +841,9 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                 exclude_columns=[
                     work_items.c.id,
                     work_items.c.work_items_source_id
+                ],
+                extra_columns=[
+                    Column('epic_key', UUID)
                 ]
             )
             work_items_temp.create(session.connection(), checkfirst=True)
@@ -822,16 +859,27 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                             'url',
                             'description',
                             'is_bug',
+                            'is_epic',
                             'tags',
                             'state',
                             'state_type',
                             'updated_at',
-                            'completed_at'
+                            'completed_at',
+                            'epic_key'
                         ]
                     )
                     for work_item in work_item_summaries
                 ]
                 ))
+
+            session.connection().execute(
+                work_items_temp.update().where(
+                    work_items.c.key == work_items_temp.c.epic_key
+                ).values(
+                    epic_id=work_items.c.id
+                )
+            )
+
             state_changes = db.row_proxies_to_dict(
                 session.connection().execute(
                     select([
@@ -912,10 +960,12 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     name=work_items_temp.c.name,
                     description=work_items_temp.c.description,
                     is_bug=work_items_temp.c.is_bug,
+                    is_epic=work_items_temp.c.is_epic,
                     tags=work_items_temp.c.tags,
                     state=work_items_temp.c.state,
                     state_type=work_items_temp.c.state_type,
                     updated_at=work_items_temp.c.updated_at,
+                    epic_id=work_items_temp.c.epic_id
                 ).where(
                     work_items_temp.c.key == work_items.c.key,
                 )

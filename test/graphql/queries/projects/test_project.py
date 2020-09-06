@@ -256,6 +256,8 @@ class TestProjectWorkItems:
             tags=['ares2'],
             description='foo',
             source_id=str(uuid.uuid4()),
+            is_epic=False,
+            epic_id=None,
         )
 
         api.import_new_work_items(
@@ -960,6 +962,8 @@ class TestProjectAggregateCycleMetrics:
             tags=['ares2'],
             description='foo',
             source_id=str(uuid.uuid4()),
+            is_epic=False,
+            epic_id=None,
         )
 
         work_items = [
@@ -1071,6 +1075,7 @@ class TestProjectAggregateCycleMetrics:
             description='foo',
             source_id=str(uuid.uuid4()),
             is_bug=False,
+            is_epic=False,
         )
 
         work_items = [
@@ -1183,6 +1188,8 @@ class TestProjectAggregateCycleMetrics:
             tags=['ares2'],
             description='foo',
             source_id=str(uuid.uuid4()),
+            is_epic=False,
+            epic_id=None,
         )
 
         work_items = [
@@ -1488,6 +1495,8 @@ class TestProjectWorkItemDeliveryCycles:
             tags=['ares2'],
             description='foo',
             source_id=str(uuid.uuid4()),
+            is_epic=False,
+            epic_id=None,
         )
 
         work_items = [
@@ -1868,6 +1877,7 @@ class TestProjectWorkItemsSourceWorkItemStateMappings:
                } == {
                    6, 3
                }
+
 
 
 

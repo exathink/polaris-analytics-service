@@ -145,13 +145,15 @@ class TestImportWorkItems:
                 display_id='alpha',
                 work_item_type='issue',
                 is_bug=True,
+                is_epic=False,
                 url='http://foo.com',
                 tags=['ares2'],
                 description='An issue here',
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 state='open',
-                source_id=str(uuid.uuid4())
+                source_id=str(uuid.uuid4()),
+                epic_id=None
             ),
             dict(
                 key=uuid.uuid4().hex,
@@ -159,13 +161,15 @@ class TestImportWorkItems:
                 display_id='beta',
                 work_item_type='issue',
                 is_bug=True,
+                is_epic=False,
                 url='http://foo.com',
                 tags=['ares2'],
                 description='An issue here',
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 state='closed',
-                source_id=str(uuid.uuid4())
+                source_id=str(uuid.uuid4()),
+                epic_id=None
             )
         ])
         assert result['success']
@@ -187,13 +191,15 @@ class TestImportWorkItems:
                 display_id='alpha',
                 work_item_type='issue',
                 is_bug=True,
+                is_epic=False,
                 url='http://foo.com',
                 tags=['ares2'],
                 description='An issue here',
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 state='open',
-                source_id=str(uuid.uuid4())
+                source_id=str(uuid.uuid4()),
+                epic_id=None
             ),
             dict(
                 key=uuid.uuid4().hex,
@@ -201,13 +207,15 @@ class TestImportWorkItems:
                 display_id='beta',
                 work_item_type='issue',
                 is_bug=True,
+                is_epic=False,
                 url='http://foo.com',
                 tags=['ares2'],
                 description='An issue here',
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 state='closed',
-                source_id=str(uuid.uuid4())
+                source_id=str(uuid.uuid4()),
+                epic_id=None
             )
         ])
         assert result['success']
@@ -218,6 +226,54 @@ class TestImportWorkItems:
         # beta should have a completed_at date since it is closed
         assert db.connection().execute(
             "select completed_at from analytics.work_items where name='beta'").scalar()
+
+    def it_updates_epic_id_for_added_items(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        epic_key = uuid.uuid4().hex
+        result = api.import_new_work_items(organization_key, work_items_source_key, [
+            dict(
+                key=epic_key,
+                name='alpha',
+                display_id='alpha',
+                work_item_type='issue',
+                is_bug=True,
+                is_epic=True,
+                url='http://foo.com',
+                tags=['ares2'],
+                description='An issue here',
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                state='open',
+                source_id=str(uuid.uuid4()),
+                epic_id=None,
+                epic_key=None,
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='beta',
+                display_id='beta',
+                work_item_type='issue',
+                is_bug=True,
+                is_epic=False,
+                url='http://foo.com',
+                tags=['ares2'],
+                description='An issue here',
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                state='closed',
+                source_id=str(uuid.uuid4()),
+                epic_id=None,
+                epic_key=epic_key
+            )
+        ])
+        assert result['success']
+        # Finding epi id
+        epic_id = db.connection().execute(
+            f"select id from analytics.work_items where key='{epic_key}'"
+        ).scalar()
+        # Work item should have epic id updated
+        assert db.connection().execute(
+            f"select count(id) from analytics.work_items where epic_id='{epic_id}'").scalar() == 1
 
 
 class TestUpdateWorkItems:
@@ -395,6 +451,19 @@ class TestUpdateWorkItems:
                 result['state_changes']
             )
         )
+
+    def it_updates_epic_id(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        work_items[0]['is_epic'] = True
+        work_items[0]['epic_key'] = None
+        epic_key = work_items[0]['key']
+        work_items[1]['epic_key'] = epic_key
+        result = api.update_work_items(organization_key, work_items_source_key, work_items)
+        assert result['success']
+        epic_id = db.connection().execute(
+            f"select id from analytics.work_items where is_epic=TRUE and key='{epic_key}'").scalar()
+        assert db.connection().execute(
+            f"select count(id) from analytics.work_items where epic_id='{epic_id}'").scalar() == 1
 
 
 class TestStateTransitionSequence:
@@ -858,7 +927,8 @@ class TestImportProject:
             f" where projects.key='{project_key}' and work_items_source_state_map.state='created'"
         ).scalar() == 1
 
-    def it_does_not_initialize_default_state_map_for_new_jira_work_item_sources_only_adds_created_state(self, setup_org):
+    def it_does_not_initialize_default_state_map_for_new_jira_work_item_sources_only_adds_created_state(self,
+                                                                                                        setup_org):
         organization = setup_org
         organization_key = organization.key
         project_key = uuid.uuid4()
@@ -1133,7 +1203,7 @@ class TestUpdateWorkItemsDeliveryCycles:
          where work_items.current_delivery_cycle_id > work_item_delivery_cycles.delivery_cycle_id').scalar() == 1
 
     def it_does_not_create_new_delivery_cycle_when_state_type_changes_from_closed_to_a_non_mapped_state(self,
-                                                                                        update_closed_work_items_setup):
+                                                                                                        update_closed_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
         work_items_list[0]['state'] = 'doing'
         result = api.update_work_items(organization_key, work_items_source_key, work_items_list)
@@ -1144,20 +1214,23 @@ class TestUpdateWorkItemsDeliveryCycles:
          join analytics.work_item_delivery_cycles on work_items.id=work_item_delivery_cycles.work_item_id \
          where work_items.current_delivery_cycle_id > work_item_delivery_cycles.delivery_cycle_id').scalar() == 0
 
-    def it_does_not_create_new_or_change_old_delivery_cycle_when_state_type_changes_from_closed_to_another_closed_state(self,
-                                                                                        update_closed_work_items_setup):
+    def it_does_not_create_new_or_change_old_delivery_cycle_when_state_type_changes_from_closed_to_another_closed_state(
+            self,
+            update_closed_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup
         work_items_list[1]['state'] = 'done'
         end_seq_no, end_date, lead_time = db.connection().execute(f"select end_seq_no, end_date, lead_time \
             from analytics.work_item_delivery_cycles join analytics.work_items \
-            on work_items.id=work_item_delivery_cycles.work_item_id where work_items.key='{work_items_list[1]['key']}'").fetchall()[0]
+            on work_items.id=work_item_delivery_cycles.work_item_id where work_items.key='{work_items_list[1]['key']}'").fetchall()[
+            0]
         result = api.update_work_items(organization_key, work_items_source_key, work_items_list[1:])
         assert result['success']
         assert db.connection().execute(
             'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles').scalar() == 2
         new_end_seq_no, new_end_date, new_lead_time = db.connection().execute(f"select end_seq_no, end_date, lead_time \
             from analytics.work_item_delivery_cycles join analytics.work_items \
-            on work_items.id=work_item_delivery_cycles.work_item_id where work_items.key='{work_items_list[1]['key']}'").fetchall()[0]
+            on work_items.id=work_item_delivery_cycles.work_item_id where work_items.key='{work_items_list[1]['key']}'").fetchall()[
+            0]
         assert end_seq_no == new_end_seq_no
         assert end_date == new_end_date
         assert lead_time == new_lead_time

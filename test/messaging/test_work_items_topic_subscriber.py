@@ -14,7 +14,7 @@ from polaris.analytics.messaging.subscribers import WorkItemsTopicSubscriber
 from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated, \
     WorkItemsStatesChanged, ProjectImported
 from polaris.messaging.test_utils import mock_channel, fake_send, assert_topic_and_message, mock_publisher
-from polaris.utils.collections import dict_merge
+from polaris.utils.collections import dict_merge, dict_drop
 
 from test.fixtures.work_items import *
 
@@ -31,7 +31,10 @@ class TestWorkItemsCreated:
                     name='foo',
                     key=uuid.uuid4(),
                     display_id='1000',
-                    **work_items_common()
+                    **dict_merge(
+                        dict_drop(work_items_common(),['epic_id']),
+                        dict(epic_key=None)
+                    )
                 )
             ]
         )
@@ -47,10 +50,17 @@ class TestWorkItemsUpdated:
 
     def it_publishes_work_items_updated_response(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
+
         payload = dict(
             organization_key=organization_key,
             work_items_source_key=work_items_source_key,
-            updated_work_items=work_items
+            updated_work_items=[
+                dict_merge(
+                    dict_drop(work_item,['epic_id']),
+                    dict(epic_key=None)
+                )
+                for work_item in work_items
+            ]
         )
         message = fake_send(WorkItemsUpdated(send=payload))
         channel = mock_channel()
@@ -66,8 +76,8 @@ class TestWorkItemsUpdated:
             work_items_source_key=work_items_source_key,
             updated_work_items=[
                 dict_merge(
-                    work_item,
-                    dict(state='foo')
+                    dict_drop(work_item,['epic_id']),
+                    dict(epic_key=None, state='foo')
                 )
                 for work_item in work_items
             ]

@@ -24,13 +24,15 @@ test_contributor_name = 'Joe Blow'
 work_items_common = dict(
     name='Issue',
     is_bug=True,
+    is_epic=False,
     work_item_type='issue',
     url='http://foo.com',
     tags=['ares2'],
     updated_at=datetime.utcnow(),
     state='open',
     description='foo',
-    source_id=str(uuid.uuid4())
+    source_id=str(uuid.uuid4()),
+    epic_id=None
 
 )
 

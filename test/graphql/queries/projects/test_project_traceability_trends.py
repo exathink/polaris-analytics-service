@@ -68,6 +68,7 @@ def api_project_traceability_test_fixture(org_repo_fixture):
                 tags=['ares2'],
                 description='foo',
                 source_id=str(uuid.uuid4()),
+                is_epic=False,
             ),
             contributors=[
                 dict(

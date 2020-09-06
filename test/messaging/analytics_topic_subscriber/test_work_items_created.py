@@ -15,6 +15,7 @@ from polaris.messaging.topics import AnalyticsTopic
 from polaris.analytics.messaging.commands import ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems
 
 from test.fixtures.work_item_commit_resolution import *
+from polaris.utils.collections import dict_merge, dict_drop
 
 
 @pytest.yield_fixture
@@ -65,7 +66,13 @@ class TestWorkItemsCreated:
                 send=dict(
                     organization_key=test_organization_key,
                     work_items_source_key=work_items_source.key,
-                    new_work_items=new_work_items
+                    new_work_items=[
+                        dict_merge(
+                            dict_drop(work_item, ['epic_id']),
+                            dict(epic_key=None)
+                        )
+                        for work_item in new_work_items
+                    ]
                 )
             )
         )

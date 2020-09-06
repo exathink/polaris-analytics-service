@@ -56,7 +56,6 @@ class CommitInfo(NamedNode):
     branch = graphene.String(required=False)
     stats = graphene.Field(CommitChangeStats, required=False)
     file_types_summary = graphene.Field(graphene.List(FileTypesSummary, required=False))
-    work_items_summaries = graphene.Field(graphene.List(WorkItemsSummary, required=False))
     integration_type = graphene.String(required=False)
 
 
@@ -64,6 +63,10 @@ class WorkItemCommitInfo(CommitInfo):
     commit_key = graphene.String(required=True)
     work_item_name = graphene.String(required=True)
     work_item_key = graphene.String(required=True)
+
+
+class WorkItemsSummaries(graphene.Interface):
+    work_items_summaries = graphene.Field(graphene.List(WorkItemsSummary, required=False))
 
 
 class CumulativeCommitCount(graphene.Interface):
@@ -357,8 +360,6 @@ class TraceabilityTrends(graphene.Interface):
 class ImplementationCost(graphene.Interface):
     effort = graphene.Float(required=False, description="Total engineering days required")
     duration = graphene.Float(required=False,
-                                         description="Span in days between earliest commit and latest commit")
-    author_count = graphene.Int(required=False, description="The number of distinct authors who committed to the work item")
-
-
-
+                              description="Span in days between earliest commit and latest commit")
+    author_count = graphene.Int(required=False,
+                                description="The number of distinct authors who committed to the work item")

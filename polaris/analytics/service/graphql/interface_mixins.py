@@ -12,7 +12,7 @@ from polaris.graphql.mixins import *
 from datetime import datetime
 
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
-    WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl
+    WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -22,6 +22,16 @@ class ContributorCountResolverMixin(KeyIdResolverMixin):
 
     def resolve_contributor_count(self, info, **kwargs):
         return 0 if self.contributor_count is None else self.contributor_count
+
+
+class WorkItemsSummariesResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.work_items_summaries = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_work_items_summaries(self, info, **kwargs):
+        return [WorkItemsSummary(**summary) for summary in self.work_items_summaries if summary is not None]
 
 
 class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):

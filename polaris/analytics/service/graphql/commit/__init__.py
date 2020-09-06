@@ -16,7 +16,7 @@ from polaris.graphql.connection_utils import CountableConnection
 from polaris.graphql.utils import create_tuple, init_tuple
 
 from ..interfaces import CommitInfo, CommitChangeStats, FileTypesSummary, \
-    CommitWorkItemsSummary
+    WorkItemsSummary
 from ..interface_mixins import KeyIdResolverMixin
 
 from .selectables import CommitNode, CommitFileTypesSummary
@@ -40,7 +40,7 @@ class CommitInfoResolverMixin(KeyIdResolverMixin):
 
     def resolve_work_items_summaries(self, info, **kwargs):
         work_items_summaries = self.commit_info.work_items_summaries or []
-        return [CommitWorkItemsSummary(**summary) for summary in work_items_summaries]
+        return [WorkItemsSummary(**summary) for summary in work_items_summaries]
 
 
 class Commit(

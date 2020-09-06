@@ -25,10 +25,9 @@ class FileTypesSummary(graphene.ObjectType):
     count = graphene.Int(required=True)
 
 
-class CommitWorkItemsSummary(graphene.ObjectType):
+class WorkItemsSummary(graphene.ObjectType):
     key = graphene.String(required=True)
     name = graphene.String(required=True)
-
     work_item_type = graphene.String(required=True)
     display_id = graphene.String(required=True)
     url = graphene.String(required=True)
@@ -57,7 +56,7 @@ class CommitInfo(NamedNode):
     branch = graphene.String(required=False)
     stats = graphene.Field(CommitChangeStats, required=False)
     file_types_summary = graphene.Field(graphene.List(FileTypesSummary, required=False))
-    work_items_summaries = graphene.Field(graphene.List(CommitWorkItemsSummary, required=False))
+    work_items_summaries = graphene.Field(graphene.List(WorkItemsSummary, required=False))
     integration_type = graphene.String(required=False)
 
 

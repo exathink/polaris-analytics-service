@@ -7,17 +7,32 @@
 # confidential.
 
 # Author: Krishna Kumar
-import uuid
-from datetime import datetime
 
-import pytest
-
-from polaris.analytics.db import api
-from polaris.analytics.db.enums import WorkItemsStateType
-from polaris.analytics.db.model import WorkItemsSource, Commit, WorkItem
-from polaris.common import db
 from polaris.utils.collections import dict_to_object
-from test.fixtures.graphql import work_items_source_common
+from test.fixtures.graphql import *
+
+
+def import_commits(organization_key, repository_key, new_commits, new_contributors):
+    # we need this rigmarole here because the api import method does not
+    # set the num_parents value as that is usually not present when the commit summary is
+    # imported. Did not want to change the api contract, so fixing it up in this setup
+    # so that we can set num_parents after the fact. An alternative would have
+    # been to use the graphql create_test_commits method, but then that makes this set of tests
+    # that set num_parents different from rest of the traceability tests. So doing this here instead.
+    api.import_new_commits(organization_key, repository_key, new_commits, new_contributors)
+    with db.orm_session() as session:
+        for new_commit in new_commits:
+            if new_commit.get('num_parents') is not None:
+                commit = Commit.find_by_commit_key(session, new_commit['key'])
+                commit.num_parents = new_commit['num_parents']
+
+
+def add_work_item_commits(work_items_commits):
+    with db.orm_session() as session:
+        for work_item_key, commit_key in work_items_commits:
+            work_item = WorkItem.find_by_work_item_key(session, work_item_key)
+            commit = Commit.find_by_commit_key(session, commit_key)
+            work_item.commits.append(commit)
 
 
 @pytest.yield_fixture
@@ -93,26 +108,3 @@ def project_commits_work_items_fixture(org_repo_fixture):
     db.connection().execute("delete  from analytics.commits")
     db.connection().execute("delete  from analytics.contributor_aliases")
     db.connection().execute("delete  from analytics.contributors")
-
-
-def import_commits(organization_key, repository_key, new_commits, new_contributors):
-    # we need this rigmarole here because the api import method does not
-    # set the num_parents value as that is usually not present when the commit summary is
-    # imported. Did not want to change the api contract, so fixing it up in this setup
-    # so that we can set num_parents after the fact. An alternative would have
-    # been to use the graphql create_test_commits method, but then that makes this set of tests
-    # that set num_parents different from rest of the traceability tests. So doing this here instead.
-    api.import_new_commits(organization_key, repository_key, new_commits, new_contributors)
-    with db.orm_session() as session:
-        for new_commit in new_commits:
-            if new_commit['num_parents'] is not None:
-                commit = Commit.find_by_commit_key(session, new_commit['key'])
-                commit.num_parents = new_commit['num_parents']
-
-
-def add_work_item_commits(work_items_commits):
-    with db.orm_session() as session:
-        for work_item_key, commit_key in work_items_commits:
-            work_item = WorkItem.find_by_work_item_key(session, work_item_key)
-            commit = Commit.find_by_commit_key(session, commit_key)
-            work_item.commits.append(commit)

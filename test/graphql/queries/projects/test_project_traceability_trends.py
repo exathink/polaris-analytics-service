@@ -11,11 +11,10 @@
 from graphene.test import Client
 from datetime import timedelta
 from polaris.analytics.service.graphql import schema
-from test.fixtures.graphql import *
 from test.fixtures.graphql import WorkItemImportApiHelper
 from polaris.utils.collections import dict_select
 
-from test.graphql.queries.projects.shared_fixitures import *
+from test.graphql.queries.projects.shared_fixtures import *
 
 
 class TestProjectTraceabilityTrends:

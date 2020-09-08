@@ -11,109 +11,10 @@
 from graphene.test import Client
 from datetime import timedelta
 from polaris.analytics.service.graphql import schema
-from test.fixtures.graphql import *
-from polaris.analytics.db.enums import WorkItemsStateType
 from test.fixtures.graphql import WorkItemImportApiHelper
-from polaris.utils.collections import dict_select, dict_to_object
+from polaris.utils.collections import dict_select
 
-
-@pytest.yield_fixture
-def api_project_traceability_test_fixture(org_repo_fixture):
-    organization, projects, repositories = org_repo_fixture
-
-    with db.orm_session() as session:
-        session.add(organization)
-        for project in organization.projects:
-            work_items_source = WorkItemsSource(
-                key=uuid.uuid4(),
-                organization_key=organization.key,
-                integration_type='jira',
-                commit_mapping_scope='repository',
-                commit_mapping_scope_key=None,
-                organization_id=organization.id,
-                **work_items_source_common
-            )
-            work_items_source.init_state_map(
-                [
-                    dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
-                    dict(state='upnext', state_type=WorkItemsStateType.open.value),
-                    dict(state='doing', state_type=WorkItemsStateType.wip.value),
-                    dict(state='done', state_type=WorkItemsStateType.complete.value),
-                    dict(state='closed', state_type=WorkItemsStateType.closed.value),
-                ]
-            )
-            project.work_items_sources.append(work_items_source)
-
-    contributor_key = uuid.uuid4().hex
-
-    yield dict_to_object(
-        dict(
-            organization=organization,
-            projects=projects,
-            repositories=repositories,
-            commit_common_fields=dict(
-                commit_date_tz_offset=0,
-                committer_alias_key=contributor_key,
-                author_date=datetime.utcnow(),
-                author_date_tz_offset=0,
-                author_alias_key=contributor_key,
-                created_at=datetime.utcnow(),
-                commit_message='a change'
-
-            ),
-            work_items_common=dict(
-                is_bug=True,
-                work_item_type='issue',
-                url='http://foo.com',
-                tags=['ares2'],
-                description='foo',
-                source_id=str(uuid.uuid4()),
-                is_epic=False,
-            ),
-            contributors=[
-                dict(
-                    name='Joe Blow',
-                    key=contributor_key,
-                    alias='joe@blow.com'
-                )
-            ]
-        )
-    )
-
-    db.connection().execute("delete  from analytics.work_items_commits")
-    db.connection().execute("delete  from analytics.work_item_state_transitions")
-    db.connection().execute("delete  from analytics.work_item_delivery_cycle_durations")
-    db.connection().execute("delete  from analytics.work_item_delivery_cycles")
-    db.connection().execute("delete  from analytics.work_items")
-    db.connection().execute("delete  from analytics.work_items_source_state_map")
-    db.connection().execute("delete  from analytics.work_items_sources")
-    db.connection().execute("delete  from analytics.commits")
-    db.connection().execute("delete  from analytics.contributor_aliases")
-    db.connection().execute("delete  from analytics.contributors")
-
-
-def import_commits(organization_key, repository_key, new_commits, new_contributors):
-    # we need this rigmarole here because the api import method does not
-    # set the num_parents value as that is usually not present when the commit summary is
-    # imported. Did not want to change the api contract, so fixing it up in this setup
-    # so that we can set num_parents after the fact. An alternative would have
-    # been to use the graphql create_test_commmits method, but then that makes this set of tests
-    # that set num_parents different from rest of the traceability tests. So doing this here instead.
-    api.import_new_commits(organization_key, repository_key, new_commits, new_contributors)
-    with db.orm_session() as session:
-        for new_commit in new_commits:
-            if new_commit['num_parents'] is not None:
-                commit = Commit.find_by_commit_key(session, new_commit['key'])
-                commit.num_parents = new_commit['num_parents']
-
-
-
-def add_work_item_commits(work_items_commits):
-    with db.orm_session() as session:
-        for work_item_key, commit_key in work_items_commits:
-            work_item = WorkItem.find_by_work_item_key(session, work_item_key)
-            commit = Commit.find_by_commit_key(session, commit_key)
-            work_item.commits.append(commit)
+from test.graphql.queries.projects.shared_fixtures import *
 
 
 class TestProjectTraceabilityTrends:
@@ -147,13 +48,11 @@ class TestProjectTraceabilityTrends:
         }
     """
 
-
-
     # Base cases: Test that nothing is dropped when there are no work items or commits. We should
     # see a series with one point for each date in the interval with zero values for all the metrics.
     def it_reports_all_zeros_when_there_are_no_work_items_or_commits_in_the_project_and_a_single_sample_in_window(self,
-                                                                                                                  api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
+                                                                                                                  project_commits_work_items_fixture):
+        fixture = project_commits_work_items_fixture
 
         client = Client(schema)
 
@@ -188,8 +87,8 @@ class TestProjectTraceabilityTrends:
                ]
 
     def it_reports_all_zeros_when_there_are_no_work_items_or_commits_in_the_project_and_multiple_samples_in_window(self,
-                                                                                                                   api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
+                                                                                                                   project_commits_work_items_fixture):
+        fixture = project_commits_work_items_fixture
 
         client = Client(schema)
 
@@ -217,9 +116,9 @@ class TestProjectTraceabilityTrends:
                ]
 
     def it_reports_commit_and_nospec_counts_when_there_are_commits_in_the_project_and_zeros_for_the_rest(self,
-                                                                                                         api_project_traceability_test_fixture
+                                                                                                         project_commits_work_items_fixture
                                                                                                          ):
-        fixture = api_project_traceability_test_fixture
+        fixture = project_commits_work_items_fixture
 
         start_date = datetime.utcnow() - timedelta(days=10)
         api.import_new_commits(
@@ -293,8 +192,9 @@ class TestProjectTraceabilityTrends:
                    )
                ]
 
-    def it_reports_commit_and_nospec_counts_when_there_are_commits_that_are_not_associated_with_any_work_items(self, api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
+    def it_reports_commit_and_nospec_counts_when_there_are_commits_that_are_not_associated_with_any_work_items(self,
+                                                                                                               project_commits_work_items_fixture):
+        fixture = project_commits_work_items_fixture
 
         # same setup as last one, but we are going to add some work items but not associate them to any commits
         start_date = datetime.utcnow() - timedelta(days=10)
@@ -336,8 +236,6 @@ class TestProjectTraceabilityTrends:
             )
             for i in range(0, 3)
         ]
-
-
 
         api_helper.import_work_items(work_items)
 
@@ -392,8 +290,9 @@ class TestProjectTraceabilityTrends:
                    )
                ]
 
-    def it_respects_the_exclude_merges_flag_when_there_are_commits_that_are_not_associated_with_any_work_items(self, api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
+    def it_respects_the_exclude_merges_flag_when_there_are_commits_that_are_not_associated_with_any_work_items(self,
+                                                                                                               project_commits_work_items_fixture):
+        fixture = project_commits_work_items_fixture
 
         # same setup as last one, but we are going to add some work items but not associate them to any commits
         start_date = datetime.utcnow() - timedelta(days=10)
@@ -440,8 +339,6 @@ class TestProjectTraceabilityTrends:
             for i in range(0, 3)
         ]
 
-
-
         api_helper.import_work_items(work_items)
 
         client = Client(schema)
@@ -477,8 +374,8 @@ class TestProjectTraceabilityTrends:
                        totalCommits=0
                    ),
 
-                # commit 10 days out is a non-merge and reported here and next window
-                # other commit is not reported anywhere since it is a merge.
+                   # commit 10 days out is a non-merge and reported here and next window
+                   # other commit is not reported anywhere since it is a merge.
                    dict(
                        traceability=0.0,
                        specCount=0,
@@ -500,8 +397,8 @@ class TestProjectTraceabilityTrends:
                ]
 
     def it_reports_traceability_and_spec_count_when_there_are_commits_associated_with_work_items(self,
-                                                                                                 api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
+                                                                                                 project_commits_work_items_fixture):
+        fixture = project_commits_work_items_fixture
 
         # same setup as last one, but we are going to add some work items and associate some commits
         start_date = datetime.utcnow() - timedelta(days=10)
@@ -544,8 +441,6 @@ class TestProjectTraceabilityTrends:
             )
             for i in range(0, 3)
         ]
-
-
 
         api_helper.import_work_items(work_items)
 
@@ -603,8 +498,8 @@ class TestProjectTraceabilityTrends:
                ]
 
     def it_respects_exclude_merges_when_there_are_merge_commits_associated_with_work_items(self,
-                                                                                    api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
+                                                                                           project_commits_work_items_fixture):
+        fixture = project_commits_work_items_fixture
 
         # same setup as last one, but we are going to add some work items and associate some commits
         start_date = datetime.utcnow() - timedelta(days=10)
@@ -650,8 +545,6 @@ class TestProjectTraceabilityTrends:
             )
             for i in range(0, 3)
         ]
-
-
 
         api_helper.import_work_items(work_items)
         # associate the merge commit with the work item
@@ -710,8 +603,8 @@ class TestProjectTraceabilityTrends:
                ]
 
     def it_reports_traceability_and_spec_counts_correctly_when_repositories_are_shared_across_projects(self,
-                                                                                                 api_project_traceability_test_fixture):
-        fixture = api_project_traceability_test_fixture
+                                                                                                       project_commits_work_items_fixture):
+        fixture = project_commits_work_items_fixture
 
         # same setup as last one, but we are going to add some work items but not associate them to any commits
         start_date = datetime.utcnow() - timedelta(days=10)

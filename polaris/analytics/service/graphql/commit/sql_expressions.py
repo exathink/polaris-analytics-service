@@ -20,9 +20,12 @@ def commit_name_column(commits):
     return func.substr(commits.c.source_commit_id, 1, 8).label('name')
 
 
-def commit_info_columns(repositories, commits):
+def commit_info_columns(repositories, commits, apply_distinct=False):
     return [
-        commits.c.id,
+        # we can add a distinct here to allow us to eliminate dups
+        # in contexts where we have more than one commit row
+        # with the same commit id in scope.
+        commits.c.id.distinct().label('id') if apply_distinct else commits.c.id,
         commit_key_column(repositories, commits),
         commit_name_column(commits),
         commits.c.source_commit_id.label('commit_hash'),
@@ -41,11 +44,11 @@ def commit_info_columns(repositories, commits):
         commits.c.created_on_branch.label('branch'),
         commits.c.stats,
         commits.c.source_file_types_summary.label('file_types_summary'),
-        commits.c.work_items_summaries
+
     ]
 
 
-def commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs):
+def apply_time_window_filters(select_stmt, commits_relation, **kwargs):
     before = None
     if 'before' in kwargs:
         before = kwargs['before']
@@ -55,24 +58,30 @@ def commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
             commit_window_start = before - timedelta(days=kwargs['days'])
             return select_stmt.where(
                 and_(
-                    commits.c.commit_date >= commit_window_start,
-                    commits.c.commit_date <= before
+                    commits_relation.c.commit_date >= commit_window_start,
+                    commits_relation.c.commit_date <= before
                 )
             )
         else:
             commit_window_start = datetime.utcnow() - timedelta(days=kwargs['days'])
             return select_stmt.where(
-                commits.c.commit_date >= commit_window_start
+                commits_relation.c.commit_date >= commit_window_start
             )
     elif before:
         return select_stmt.where(
-            commits.c.commit_date <= before
+            commits_relation.c.commit_date <= before
         )
     else:
         return select_stmt
 
 
-def coding_day(commits):
+def commits_connection_apply_filters(select_stmt, commits_relation, **kwargs):
+    select_stmt = apply_time_window_filters(select_stmt, commits_relation, **kwargs)
+
+    return select_stmt
+
+
+def commit_day(commits):
     return cast(
         func.to_timestamp(
             func.extract('epoch', commits.c.commit_date) - commits.c.commit_date_tz_offset

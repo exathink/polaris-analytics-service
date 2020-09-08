@@ -8,10 +8,10 @@
 
 # Author: Krishna Kumar
 
-from ..interfaces import CommitInfo, FileTypesSummary
+from ..interfaces import CommitInfo, FileTypesSummary, WorkItemsSummaries
 from sqlalchemy import select, func, bindparam, and_, case
-from polaris.analytics.db.model import commits, repositories, source_files
-from polaris.graphql.base_classes import NamedNodeResolver
+from polaris.analytics.db.model import commits, repositories, work_items_commits, work_items
+from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
 from .sql_expressions import commit_info_columns
 
 
@@ -44,4 +44,36 @@ class CommitFileTypesSummary:
                 repositories.c.key == bindparam('repository_key'),
                 commits.c.source_commit_id == bindparam('commit_key')
             )
+        )
+
+
+class CommitsWorkItemsSummaries(InterfaceResolver):
+    interface = WorkItemsSummaries
+
+    @staticmethod
+    def interface_selector(commit_nodes, **kwargs):
+        return select([
+            commit_nodes.c.id,
+            func.json_agg(
+                case([
+                    (
+                        work_items_commits.c.work_item_id != None,
+                        func.json_build_object(
+                            'key', work_items.c.key,
+                            'name', work_items.c.name,
+                            'display_id', work_items.c.display_id,
+                            'url', work_items.c.url,
+                            'work_item_type', work_items.c.work_item_type,
+                        )
+                    )
+                ], else_=None)
+            ).label('work_items_summaries')
+        ]).select_from(
+            commit_nodes.outerjoin(
+                work_items_commits, work_items_commits.c.commit_id == commit_nodes.c.id
+            ).outerjoin(
+                work_items, work_items_commits.c.work_item_id == work_items.c.id
+            )
+        ).group_by(
+            commit_nodes.c.id
         )

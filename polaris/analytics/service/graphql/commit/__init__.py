@@ -16,10 +16,10 @@ from polaris.graphql.connection_utils import CountableConnection
 from polaris.graphql.utils import create_tuple, init_tuple
 
 from ..interfaces import CommitInfo, CommitChangeStats, FileTypesSummary, \
-    CommitWorkItemsSummary
-from ..interface_mixins import KeyIdResolverMixin
+    WorkItemsSummaries
+from ..interface_mixins import KeyIdResolverMixin, WorkItemsSummariesResolverMixin
 
-from .selectables import CommitNode, CommitFileTypesSummary
+from .selectables import CommitNode, CommitFileTypesSummary, CommitsWorkItemsSummaries
 
 
 class CommitInfoResolverMixin(KeyIdResolverMixin):
@@ -38,21 +38,20 @@ class CommitInfoResolverMixin(KeyIdResolverMixin):
         file_types_summary = self.commit_info.file_types_summary or []
         return [FileTypesSummary(**summary) for summary in file_types_summary]
 
-    def resolve_work_items_summaries(self, info, **kwargs):
-        work_items_summaries = self.commit_info.work_items_summaries or []
-        return [CommitWorkItemsSummary(**summary) for summary in work_items_summaries]
-
 
 class Commit(
     # interface mixins
     CommitInfoResolverMixin,
+    WorkItemsSummariesResolverMixin,
     #
     Selectable
 ):
     class Meta:
-        interfaces = (CommitInfo,)
+        interfaces = (CommitInfo, WorkItemsSummaries)
         named_node_resolver = CommitNode
-        interface_resolvers = {}
+        interface_resolvers = {
+            'WorkItemsSummaries': CommitsWorkItemsSummaries
+        }
         connection_class = lambda: Commits
 
     @classmethod
@@ -87,6 +86,12 @@ class CommitsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
                         "between (before - days) and before"
                         "If before is not specified the it returns commits for the"
                         "previous n days starting from utc now"
+        ),
+        nospecs_only=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            default_value=False,
+            description="Return only commits that have no work items associated"
         )
     )
 

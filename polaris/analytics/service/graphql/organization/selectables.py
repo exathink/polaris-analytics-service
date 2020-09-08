@@ -29,7 +29,7 @@ from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
     WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef,\
     WorkItemStateTransition, WorkItemCommitInfo, WorkItemEventSpan, ArchivedStatus
 
-from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 from ..work_item.sql_expressions import \
     work_item_info_columns, \
     work_item_event_columns, \
@@ -202,7 +202,7 @@ class OrganizationCommitNodes(ConnectionResolver):
         ).where(
             organizations.c.key == bindparam('key')
         )
-        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+        return commits_connection_apply_filters(select_stmt, commits, **kwargs)
 
     @staticmethod
     def sort_order(repository_commit_nodes, **kwargs):
@@ -307,7 +307,7 @@ class OrganizationWorkItemCommitNodes(ConnectionResolver):
         ).where(
             organizations.c.key == bindparam('key')
         )
-        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+        return commits_connection_apply_filters(select_stmt, commits, **kwargs)
 
     @staticmethod
     def sort_order(organization_work_item_commits_nodes, **kwargs):

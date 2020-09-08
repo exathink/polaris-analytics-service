@@ -29,7 +29,7 @@ from polaris.analytics.db.model import repositories, repositories_contributor_al
     contributor_aliases, commits
 
 from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount
-from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_time_window_filters
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 
 
 # Node Resolvers
@@ -159,7 +159,7 @@ class ContributorCommitNodes(ConnectionResolver):
         ).where(
             commits.c.author_contributor_key == bindparam('key')
         )
-        return commits_connection_apply_time_window_filters(select_stmt, commits, **kwargs)
+        return commits_connection_apply_filters(select_stmt, commits, **kwargs)
 
     @staticmethod
     def sort_order(contributor_commit_nodes, **kwargs):

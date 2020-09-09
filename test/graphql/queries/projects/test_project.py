@@ -388,6 +388,52 @@ class TestProjectWorkItems:
         assert 'data' in result
         assert len(result['data']['project']['workItems']['edges']) == 1
 
+
+class TestProjectDeliveryCycleSpan:
+
+    def it_returns_the_delivery_cycle_span(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=1))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=4))])
+
+        client = Client(schema)
+        query = """
+            query getProjectDeliveryCycleSpan($project_key: String!) {
+                project(key: $project_key, interfaces:[DeliveryCycleSpan]) {
+                    earliestClosedDate
+                    latestClosedDate
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert result['data']
+        project = result['data']['project']
+
+        assert (graphql_date(project['earliestClosedDate']) - start_date).days == 1
+        assert (graphql_date(project['latestClosedDate']) - start_date).days == 4
+
+
+
 class TestProjectAggregateCycleMetrics:
 
     def it_return_correct_results_when_there_are_no_closed_items(self, api_work_items_import_fixture):
@@ -417,31 +463,31 @@ class TestProjectAggregateCycleMetrics:
 
         client = Client(schema)
         query = """
-                            query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
-                                project(key: $project_key, interfaces: [AggregateCycleMetrics], 
-                                        closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
-                                ) {
-                                    ... on AggregateCycleMetrics {
-                                        measurementDate
-                                        measurementWindow
-                                        minLeadTime
-                                        avgLeadTime
-                                        maxLeadTime
-                                        minCycleTime
-                                        avgCycleTime
-                                        maxCycleTime
-                                        percentileLeadTime
-                                        percentileCycleTime
-                                        targetPercentile
-                                        earliestClosedDate
-                                        latestClosedDate
-                                        workItemsInScope
-                                        workItemsWithNullCycleTime
+                query getProjectCycleMetrics($project_key:String!, $days: Int, $percentile: Float) {
+                    project(key: $project_key, interfaces: [AggregateCycleMetrics], 
+                            closedWithinDays: $days, cycleMetricsTargetPercentile: $percentile
+                    ) {
+                        ... on AggregateCycleMetrics {
+                            measurementDate
+                            measurementWindow
+                            minLeadTime
+                            avgLeadTime
+                            maxLeadTime
+                            minCycleTime
+                            avgCycleTime
+                            maxCycleTime
+                            percentileLeadTime
+                            percentileCycleTime
+                            targetPercentile
+                            earliestClosedDate
+                            latestClosedDate
+                            workItemsInScope
+                            workItemsWithNullCycleTime
 
-                        }
-                    }
-                }
-            """
+            }
+        }
+    }
+    """
         result = client.execute(query, variable_values=dict(project_key=project.key, days=30, percentile=0.70))
         assert result['data']
         project = result['data']['project']

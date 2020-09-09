@@ -40,7 +40,7 @@ from ..interfaces import \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
-    TraceabilityTrends
+    TraceabilityTrends, DeliveryCycleSpan
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -537,6 +537,26 @@ class ProjectsContributorCount(InterfaceResolver):
             repositories_contributor_aliases.c.robot == False
         )
         select_stmt = contributor_count_apply_contributor_days_filter(select_stmt, **kwargs)
+
+        return select_stmt.group_by(project_nodes.c.id)
+
+
+class ProjectsDeliveryCycleSpan(InterfaceResolver):
+    interface = DeliveryCycleSpan
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        select_stmt = select([
+            project_nodes.c.id,
+            func.min(work_item_delivery_cycles.c.end_date).label('earliest_closed_date'),
+            func.max(work_item_delivery_cycles.c.end_date).label('latest_closed_date')
+        ]).select_from(
+            project_nodes.join(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_items_source_id == work_items_sources.c.id
+            )
+        )
 
         return select_stmt.group_by(project_nodes.c.id)
 

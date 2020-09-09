@@ -15,7 +15,7 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
-    CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics
+    CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
@@ -46,6 +46,7 @@ from .selectables import ProjectNode, \
     ProjectCommitNodes, \
     ProjectWorkItemsSourceNodes, \
     ProjectsContributorCount, \
+    ProjectsDeliveryCycleSpan, \
     ProjectsCommitSummary, \
     ProjectsRepositoryCount, \
     ProjectsOrganizationRef, \
@@ -110,6 +111,7 @@ Implicit Interfaces: ArchivedStatus
             # ---- Explicit Interfaces -------#
             CommitSummary,
             ContributorCount,
+            DeliveryCycleSpan,
             RepositoryCount,
             OrganizationRef,
             WorkItemEventSpan,
@@ -124,6 +126,7 @@ Implicit Interfaces: ArchivedStatus
         interface_resolvers = {
             'CommitSummary': ProjectsCommitSummary,
             'ContributorCount': ProjectsContributorCount,
+            'DeliveryCycleSpan': ProjectsDeliveryCycleSpan,
             'RepositoryCount': ProjectsRepositoryCount,
             'OrganizationRef': ProjectsOrganizationRef,
             'WorkItemEventSpan': ProjectWorkItemEventSpan,
@@ -131,7 +134,7 @@ Implicit Interfaces: ArchivedStatus
             'AggregateCycleMetrics': ProjectCycleMetrics,
             'CycleMetricsTrends': ProjectCycleMetricsTrends,
             'PipelineCycleMetrics': ProjectPipelineCycleMetrics,
-            'TraceabilityTrends': ProjectTraceabilityTrends
+            'TraceabilityTrends': ProjectTraceabilityTrends,
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,

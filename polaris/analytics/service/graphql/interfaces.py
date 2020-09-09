@@ -123,6 +123,9 @@ class WorkItemsSourceRef(graphene.Interface):
     work_tracking_integration_type = graphene.String(required=True)
 
 
+
+
+
 class WorkItemInfo(graphene.Interface):
     work_item_key = graphene.String(required=True)
     work_item_type = graphene.String(required=True)
@@ -268,7 +271,12 @@ class CycleMetrics(graphene.Interface):
     cycle_time = graphene.Float(required=False)
 
 
-class AggregateCycleMetrics(graphene.Interface):
+class DeliveryCycleSpan(graphene.Interface):
+    earliest_closed_date = graphene.DateTime(required=False)
+    latest_closed_date = graphene.DateTime(required=False)
+
+
+class AggregateCycleMetrics(DeliveryCycleSpan):
     measurement_date = graphene.Date(required=True)
     measurement_window = graphene.Int(required=False)
     min_lead_time = graphene.Float(required=False)
@@ -291,8 +299,7 @@ class AggregateCycleMetrics(graphene.Interface):
     avg_duration = graphene.Float(required=False)
     percentile_duration = graphene.Float(required=False)
 
-    earliest_closed_date = graphene.DateTime(required=False)
-    latest_closed_date = graphene.DateTime(required=False)
+
 
     work_items_in_scope = graphene.Int(required=False)
     work_items_with_commits = graphene.Int(required=False)

@@ -416,210 +416,148 @@ class TestWorkItemInstance:
 
 class TestWorkItemInstanceImplementationCost:
 
-    class TestSingleDeliveryCycle:
-
-        @staticmethod
-        @pytest.yield_fixture
-        def implementation_cost_fixture(implementation_effort_fixture):
-            fixture = implementation_effort_fixture
-            contributor = fixture['contributors'][0]
-            test_work_item = fixture['work_items'][0]
-
-            with db.orm_session() as session:
-                work_item = WorkItem.find_by_work_item_key(session, test_work_item['key'])
-                work_item.effort = 3.5
-                author_alias_id = contributor['as_author']['author_contributor_alias_id']
-                dc = work_item.current_delivery_cycle
-                dc.earliest_commit = datetime.utcnow() - timedelta(days=3)
-                dc.latest_commit = datetime.utcnow()
-                dc.commit_count = 3
-                dc.effort = 3.0
-                dc.delivery_cycle_contributors.append(
-                    WorkItemDeliveryCycleContributor(
-                        delivery_cycle_id=dc.delivery_cycle_id,
-                        contributor_alias_id=author_alias_id,
-                        total_lines_as_author=10
-                    )
-                )
-
-            yield fixture
-
-        def it_reports_effort_at_the_work_item_level(self, implementation_cost_fixture):
-            fixture = implementation_cost_fixture
-            test_work_item = fixture['work_items'][0]
-
-            client = Client(schema)
-            query = """
-                    query getWorkItem($key:String!) {
-                        workItem(key: $key, interfaces: [ImplementationCost]){
-                                effort
-                                duration
-                                authorCount
-                        }
-                    } 
-            """
-            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
-            assert 'data' in result
-            work_item = result['data']['workItem']
-            assert work_item['effort'] == 3.5
 
 
-        def it_reports_aggregate_duration_from_the_delivery_cycles__with_non_zero_commit_counts(self, implementation_cost_fixture):
-            fixture = implementation_cost_fixture
-            test_work_item = fixture['work_items'][0]
+    @staticmethod
+    @pytest.yield_fixture
+    def implementation_cost_fixture(implementation_effort_fixture):
+        fixture = implementation_effort_fixture
+        commits_common = fixture['commits_common']
 
-            client = Client(schema)
-            query = """
-                    query getWorkItem($key:String!) {
-                        workItem(key: $key, interfaces: [ImplementationCost]){
-                                effort
-                                duration
-                                authorCount
-                        }
-                    } 
-            """
-            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
-            assert 'data' in result
-            work_item = result['data']['workItem']
-            assert work_item['duration'] - 3 < 1
+        organization = fixture['organization']
+        contributor_a = fixture['contributors'][0]
+        contributor_b = fixture['contributors'][1]
+        test_repo = fixture['repositories']['alpha']
+        add_work_item_commits = fixture['add_work_item_commits']
 
+        test_work_item = fixture['work_items'][0]
+        commit_date = datetime.utcnow()
+        test_commits = [
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=commit_date - timedelta(days=3),
+                **contributor_a['as_author'],
+                **contributor_a['as_committer'],
+                **commits_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=commit_date - timedelta(days=2),
+                **contributor_a['as_author'],
+                **contributor_a['as_committer'],
+                **commits_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=test_repo.id,
+                commit_date=commit_date,
+                **contributor_b['as_author'],
+                **contributor_b['as_committer'],
+                **commits_common
+            )
+        ]
 
-        def it_reports_aggregate_author_count_across_delivery_cycleswith_non_zero_commit_counts(self, implementation_cost_fixture):
-            fixture = implementation_cost_fixture
-            test_work_item = fixture['work_items'][0]
+        create_test_commits(test_commits)
 
-            client = Client(schema)
-            query = """
-                    query getWorkItem($key:String!) {
-                        workItem(key: $key, interfaces: [ImplementationCost]){
-                                effort
-                                duration
-                                authorCount
-                        }
-                    } 
-            """
-            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
-            assert 'data' in result
-            work_item = result['data']['workItem']
-            assert work_item['authorCount'] == 1
+        work_item_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_item['key'],
+                commit_key=test_commits[i]['key']
+            )
+            for i in range(0, 3)
+        ]
+        add_work_item_commits(work_item_commits)
 
+        yield fixture
 
-    class TestMultipleDeliveryCycles:
+    def it_reports_effort_at_the_work_item_level(self, implementation_cost_fixture):
+        fixture = implementation_cost_fixture
+        test_work_item = fixture['work_items'][0]
 
-        @staticmethod
-        @pytest.yield_fixture
-        def implementation_cost_fixture(implementation_effort_fixture):
-            fixture = implementation_effort_fixture
-            contributor_0 = fixture['contributors'][0]
-            contributor_1 = fixture['contributors'][1]
+        with db.orm_session() as session:
+            work_item = WorkItem.find_by_work_item_key(session, test_work_item['key'])
+            work_item.effort = 3.5
 
-            test_work_item = fixture['work_items'][0]
-
-            with db.orm_session() as session:
-                work_item = WorkItem.find_by_work_item_key(session, test_work_item['key'])
-                work_item.effort = 10
-                start_date = datetime.utcnow() - timedelta(days=10)
-
-                dc = work_item.current_delivery_cycle
-                dc.start_date = start_date
-                dc.earliest_commit = start_date + timedelta(days=1)
-                dc.latest_commit = start_date + timedelta(days=3)
-                dc.end_date = start_date + timedelta(days=4)
-                dc.commit_count = 3
-                dc.effort = 3.0
-
-                dc.delivery_cycle_contributors.append(
-                    WorkItemDeliveryCycleContributor(
-                        delivery_cycle_id=dc.delivery_cycle_id,
-                        contributor_alias_id=contributor_0['as_author']['author_contributor_alias_id'],
-                        total_lines_as_author=10
-                    )
-                )
-                next_start = start_date + timedelta(days=5)
-                dc_1 = WorkItemDeliveryCycle(
-                    start_seq_no=2,
-                    work_items_source_id=work_item.work_items_source_id,
-                    start_date=next_start,
-                    earliest_commit=next_start + timedelta(days=1),
-                    latest_commit=next_start + timedelta(days=3),
-                    commit_count=3
-
-                )
-                dc_1.delivery_cycle_contributors.append(
-                    WorkItemDeliveryCycleContributor(
-                        delivery_cycle_id=dc.delivery_cycle_id,
-                        contributor_alias_id=contributor_1['as_author']['author_contributor_alias_id'],
-                        total_lines_as_author=20
-                    )
-                )
-                work_item.delivery_cycles.append(dc_1)
-
-                # add an extra delivery cycle with no commits just for noise.
-                work_item.delivery_cycles.append(
-                    WorkItemDeliveryCycle(
-                        start_seq_no=2,
-                        work_items_source_id=work_item.work_items_source_id,
-                        start_date=next_start + timedelta(days=12)
-                    )
-                )
-
-            yield fixture
-
-        def it_reports_effort_at_the_work_item_level(self, implementation_cost_fixture):
-            fixture = implementation_cost_fixture
-            test_work_item = fixture['work_items'][0]
-
-            client = Client(schema)
-            query = """
-                    query getWorkItem($key:String!) {
-                        workItem(key: $key, interfaces: [ImplementationCost]){
-                                effort
-                                duration
-                                authorCount
-                        }
-                    } 
-            """
-            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
-            assert 'data' in result
-            work_item = result['data']['workItem']
-            assert work_item['effort'] == 10
+        client = Client(schema)
+        query = """
+                query getWorkItem($key:String!) {
+                    workItem(key: $key, interfaces: [ImplementationCost]){
+                            effort
+                            duration
+                            authorCount
+                    }
+                } 
+        """
+        result = client.execute(query, variable_values=dict(key=test_work_item['key']))
+        assert 'data' in result
+        work_item = result['data']['workItem']
+        assert work_item['effort'] == 3.5
 
 
-        def it_reports_aggregate_duration_across_delivery_cycles_with_non_zero_commit_counts(self, implementation_cost_fixture):
-            fixture = implementation_cost_fixture
-            test_work_item = fixture['work_items'][0]
+    def it_reports_aggregate_duration_from_all_commits_on_work_item(self, implementation_cost_fixture):
+        fixture = implementation_cost_fixture
+        test_work_item = fixture['work_items'][0]
 
-            client = Client(schema)
-            query = """
-                    query getWorkItem($key:String!) {
-                        workItem(key: $key, interfaces: [ImplementationCost]){
-                                effort
-                                duration
-                                authorCount
-                        }
-                    } 
-            """
-            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
-            assert 'data' in result
-            work_item = result['data']['workItem']
-            assert work_item['duration'] == 7
+        client = Client(schema)
+        query = """
+                query getWorkItem($key:String!) {
+                    workItem(key: $key, interfaces: [ImplementationCost]){
+                            effort
+                            duration
+                            authorCount
+                    }
+                } 
+        """
+        result = client.execute(query, variable_values=dict(key=test_work_item['key']))
+        assert 'data' in result
+        work_item = result['data']['workItem']
+        assert work_item['duration'] == 3
 
 
-        def it_reports_aggregate_author_count_across_delivery_cycles_with_nonzero_commit_counts(self, implementation_cost_fixture):
-            fixture = implementation_cost_fixture
-            test_work_item = fixture['work_items'][0]
+    def it_reports_aggregate_author_count_across_all_commits(self, implementation_cost_fixture):
+        fixture = implementation_cost_fixture
+        test_work_item = fixture['work_items'][0]
 
-            client = Client(schema)
-            query = """
-                    query getWorkItem($key:String!) {
-                        workItem(key: $key, interfaces: [ImplementationCost]){
-                                effort
-                                duration
-                                authorCount
-                        }
-                    } 
-            """
-            result = client.execute(query, variable_values=dict(key=test_work_item['key']))
-            assert 'data' in result
-            work_item = result['data']['workItem']
-            assert work_item['authorCount'] == 2
+        client = Client(schema)
+        query = """
+                query getWorkItem($key:String!) {
+                    workItem(key: $key, interfaces: [ImplementationCost]){
+                            effort
+                            duration
+                            authorCount
+                    }
+                } 
+        """
+        result = client.execute(query, variable_values=dict(key=test_work_item['key']))
+        assert 'data' in result
+        work_item = result['data']['workItem']
+        assert work_item['authorCount'] == 2
+
+    def it_reports_results_when_work_item_has_no_commits(self, implementation_cost_fixture):
+        fixture = implementation_cost_fixture
+        test_work_item = fixture['work_items'][1]
+
+        client = Client(schema)
+        query = """
+                query getWorkItem($key:String!) {
+                    workItem(key: $key, interfaces: [ImplementationCost]){
+                            effort
+                            duration
+                            authorCount
+                    }
+                } 
+        """
+        result = client.execute(query, variable_values=dict(key=test_work_item['key']))
+        assert 'data' in result
+        work_item = result['data']['workItem']
+        assert not work_item['authorCount']
+        assert not work_item['duration']
+        assert not work_item['effort']
+
+

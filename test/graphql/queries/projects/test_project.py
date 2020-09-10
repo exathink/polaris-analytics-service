@@ -432,6 +432,50 @@ class TestProjectDeliveryCycleSpan:
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 1
         assert (graphql_date(project['latestClosedDate']) - start_date).days == 4
 
+    def it_respects_the_specs_only_parameter(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=1))])
+        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=2))])
+        api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=4))])
+
+        api_helper.update_delivery_cycles(([(0, dict(property='commit_count', value=1))]))
+        api_helper.update_delivery_cycles(([(1, dict(property='commit_count', value=1))]))
+
+        client = Client(schema)
+        query = """
+            query getProjectDeliveryCycleSpan($project_key: String!) {
+                project(key: $project_key, interfaces:[DeliveryCycleSpan], specsOnly: true) {
+                    earliestClosedDate
+                    latestClosedDate
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert result['data']
+        project = result['data']['project']
+
+        assert (graphql_date(project['earliestClosedDate']) - start_date).days == 1
+        assert (graphql_date(project['latestClosedDate']) - start_date).days == 2
+
 
 
 class TestProjectAggregateCycleMetrics:

@@ -383,27 +383,18 @@ class WorkItemsImplementationCost(InterfaceResolver):
             func.max(work_items.c.effort).label('effort'),
             (func.extract(
                 'epoch',
-                func.max(work_item_delivery_cycles.c.latest_commit).label('latest_commit') -
-                func.min(work_item_delivery_cycles.c.earliest_commit).label('earliest_commit')
+                func.max(commits.c.commit_date).label('latest_commit') -
+                func.min(commits.c.commit_date).label('earliest_commit')
             )/(1.0*24*3600)).label('duration'),
 
-            func.count(contributor_aliases.c.contributor_id.distinct()).label('author_count')
+            func.count(commits.c.author_contributor_key.distinct()).label('author_count')
         ]).select_from(
             work_item_nodes.join(
                 work_items, work_item_nodes.c.id == work_items.c.id
             ).join(
-                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_item_nodes.c.id
+                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
             ).join(
-                work_item_delivery_cycle_contributors,
-                work_item_delivery_cycle_contributors.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
-            ).join(
-                contributor_aliases,
-                work_item_delivery_cycle_contributors.c.contributor_alias_id == contributor_aliases.c.id
-            )
-        ).where(
-            and_(
-                work_item_delivery_cycles.c.commit_count > 0,
-                work_item_delivery_cycle_contributors.c.total_lines_as_author > 0
+                commits, work_items_commits.c.commit_id == commits.c.id
             )
         ).group_by(
             work_item_nodes.c.id

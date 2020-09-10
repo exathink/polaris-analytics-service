@@ -554,8 +554,16 @@ class ProjectsDeliveryCycleSpan(InterfaceResolver):
             project_nodes.join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
             ).join(
-                work_item_delivery_cycles, work_item_delivery_cycles.c.work_items_source_id == work_items_sources.c.id
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
             )
+        )
+        select_stmt = work_item_delivery_cycles_connection_apply_filters(
+            select_stmt,
+            work_items,
+            work_item_delivery_cycles,
+            **kwargs
         )
 
         return select_stmt.group_by(project_nodes.c.id)

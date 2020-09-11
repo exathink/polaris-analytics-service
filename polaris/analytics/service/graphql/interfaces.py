@@ -123,9 +123,6 @@ class WorkItemsSourceRef(graphene.Interface):
     work_tracking_integration_type = graphene.String(required=True)
 
 
-
-
-
 class WorkItemInfo(graphene.Interface):
     work_item_key = graphene.String(required=True)
     work_item_type = graphene.String(required=True)
@@ -299,8 +296,6 @@ class AggregateCycleMetrics(DeliveryCycleSpan):
     avg_duration = graphene.Float(required=False)
     percentile_duration = graphene.Float(required=False)
 
-
-
     work_items_in_scope = graphene.Int(required=False)
     work_items_with_commits = graphene.Int(required=False)
     work_items_with_null_cycle_time = graphene.Int(required=False)
@@ -344,6 +339,26 @@ class CycleMetricsTrends(graphene.Interface):
 
 class PipelineCycleMetrics(graphene.Interface):
     pipeline_cycle_metrics = graphene.Field(AggregateCycleMetricsImpl)
+
+
+class ResponseTimeConfidence(graphene.Interface):
+    measurement_date = graphene.Date(required=True)
+    measurement_window = graphene.Int(required=True)
+
+    lead_time_target = graphene.Float(required=False)
+    lead_time_confidence = graphene.Float(required=False)
+
+    cycle_time_target = graphene.Float(required=False)
+    cycle_time_confidence = graphene.Float(required=False)
+
+
+class ResponseTimeConfidenceImpl(TrendMeasurementImpl):
+    class Meta:
+        interfaces = (ResponseTimeConfidence,)
+
+
+class ResponseTimeConfidenceTrends(graphene.Interface):
+    response_time_confidence_trends = graphene.List(ResponseTimeConfidenceImpl)
 
 
 class Traceability(graphene.Interface):

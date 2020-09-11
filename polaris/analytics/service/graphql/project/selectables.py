@@ -15,7 +15,7 @@ import abc
 from polaris.common import db
 
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
-    union_all, literal, Date, true, or_
+    union_all, literal, Date, true, or_, Integer
 
 from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
@@ -32,7 +32,7 @@ from polaris.utils.collections import dict_merge
 from polaris.utils.datetime_utils import time_window
 from polaris.utils.exceptions import ProcessingException
 from polaris.analytics.db.enums import WorkItemsStateType
-from .sql_expressions import get_timeline_dates_for_trending
+from .sql_expressions import get_timeline_dates_for_trending, get_measurement_period
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
@@ -40,7 +40,7 @@ from ..interfaces import \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
-    TraceabilityTrends, DeliveryCycleSpan
+    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -1482,3 +1482,100 @@ class ProjectTraceabilityTrends(InterfaceResolver):
         )
 
         return result
+
+
+class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
+    interface = ResponseTimeConfidenceTrends
+
+    @classmethod
+    def response_time_rank_query(cls, project_nodes, measurement_period_start, measurement_period_end, metric,
+                                 target_value):
+        response_times_select = select([
+            project_nodes.c.id,
+            work_item_delivery_cycles.c[metric]
+        ]).select_from(
+            project_nodes.join(
+                work_items_sources,
+                work_items_sources.c.project_id == project_nodes.c.id
+            ).join(
+                work_item_delivery_cycles,
+                work_item_delivery_cycles.c.work_items_source_id == work_items_sources.c.id
+            )
+        ).where(
+            and_(
+                work_item_delivery_cycles.c.end_date.between(
+                    measurement_period_start,
+                    measurement_period_end
+                ),
+                work_item_delivery_cycles.c[metric] != None
+            )
+        )
+
+        response_times = union_all(
+            response_times_select,
+            select([
+                project_nodes.c.id,
+                literal(target_value, type_=Integer).label(metric)
+            ])
+        ).alias()
+
+        response_time_ranks = select([
+            response_times.c.id,
+            response_times.c[metric],
+            func.percent_rank().over(
+                order_by=[response_times.c[metric]],
+                partition_by=[response_times.c.id]
+            ).label('rank')
+        ]).alias()
+
+        return select([
+            response_time_ranks.c.id,
+            response_time_ranks.c.rank
+        ]).distinct().where(
+            response_time_ranks.c[metric] == target_value
+        )
+
+    @classmethod
+    def interface_selector(cls, project_nodes, **kwargs):
+        response_time_confidence_trends_args = kwargs.get('response_time_confidence_trends_args')
+
+        measurement_period_start, measurement_period_end = get_measurement_period(
+            response_time_confidence_trends_args, 'response_time_confidence_trends', 'ResponseTimeConfidenceTrends'
+        )
+
+        lead_time_rank = cls.response_time_rank_query(
+            project_nodes,
+            measurement_period_start,
+            measurement_period_end,
+            metric='lead_time',
+            target_value=response_time_confidence_trends_args.lead_time_target*24*3600
+        ).cte()
+
+        cycle_time_rank = cls.response_time_rank_query(
+            project_nodes,
+            measurement_period_start,
+            measurement_period_end,
+            metric='cycle_time',
+            target_value=response_time_confidence_trends_args.cycle_time_target*24*3600
+        ).cte()
+
+        return select([
+            lead_time_rank.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', func.cast(measurement_period_end, Date),
+                    'measurement_window', response_time_confidence_trends_args.measurement_window,
+                    'lead_time_target', response_time_confidence_trends_args.lead_time_target,
+                    'lead_time_confidence', lead_time_rank.c.rank,
+                    'cycle_time_target', response_time_confidence_trends_args.cycle_time_target,
+                    'cycle_time_confidence', cycle_time_rank.c.rank
+                )
+            ).label('response_time_confidence_trends')
+        ]).select_from(
+            lead_time_rank.outerjoin(
+                cycle_time_rank, lead_time_rank.c.id == cycle_time_rank.c.id
+            )
+        ).group_by(
+            lead_time_rank.c.id
+        )
+

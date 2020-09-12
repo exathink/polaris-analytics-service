@@ -1488,15 +1488,17 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
     interface = ResponseTimeConfidenceTrends
 
     @classmethod
-    def response_time_rank_query(cls, project_nodes, measurement_period_start, measurement_period_end, metric,
-                                 target_value):
+    def response_time_rank_query(cls, projects_timeline_dates, measurement_window, metric, target_value):
+
         response_times_select = select([
-            project_nodes.c.id,
+            projects_timeline_dates.c.id,
+            projects_timeline_dates.c.measurement_date,
+            work_item_delivery_cycles.c.delivery_cycle_id,
             work_item_delivery_cycles.c[metric]
         ]).select_from(
-            project_nodes.join(
+            projects_timeline_dates.join(
                 work_items_sources,
-                work_items_sources.c.project_id == project_nodes.c.id
+                work_items_sources.c.project_id == projects_timeline_dates.c.id
             ).join(
                 work_item_delivery_cycles,
                 work_item_delivery_cycles.c.work_items_source_id == work_items_sources.c.id
@@ -1504,8 +1506,10 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
         ).where(
             and_(
                 work_item_delivery_cycles.c.end_date.between(
-                    measurement_period_start,
-                    measurement_period_end
+                    projects_timeline_dates.c.measurement_date - timedelta(
+                        days=measurement_window
+                    ),
+                    projects_timeline_dates.c.measurement_date
                 ),
                 work_item_delivery_cycles.c[metric] != None
             )
@@ -1514,56 +1518,71 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
         response_times = union_all(
             response_times_select,
             select([
-                project_nodes.c.id,
+                projects_timeline_dates.c.id,
+                projects_timeline_dates.c.measurement_date,
+                literal('-1', type_=Integer).label('delivery_cycle_id'),
                 literal(target_value, type_=Integer).label(metric)
             ])
         ).alias()
 
         response_time_ranks = select([
             response_times.c.id,
+            response_times.c.measurement_date,
             response_times.c[metric],
+            response_times.c.delivery_cycle_id,
             func.percent_rank().over(
                 order_by=[response_times.c[metric]],
-                partition_by=[response_times.c.id]
+                partition_by=[response_times.c.id, response_times.c.measurement_date]
             ).label('rank')
         ]).alias()
 
-        return select([
+        query = select([
             response_time_ranks.c.id,
+            response_time_ranks.c.measurement_date,
             response_time_ranks.c.rank
         ]).distinct().where(
             response_time_ranks.c[metric] == target_value
         )
+        return query
 
     @classmethod
     def interface_selector(cls, project_nodes, **kwargs):
         response_time_confidence_trends_args = kwargs.get('response_time_confidence_trends_args')
 
-        measurement_period_start, measurement_period_end = get_measurement_period(
-            response_time_confidence_trends_args, 'response_time_confidence_trends', 'ResponseTimeConfidenceTrends'
+        measurement_window = response_time_confidence_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+            )
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            response_time_confidence_trends_args,
+            arg_name='traceability_trends',
+            interface_name='TraceabilityTrends'
         )
 
+        projects_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
+
         lead_time_rank = cls.response_time_rank_query(
-            project_nodes,
-            measurement_period_start,
-            measurement_period_end,
+            projects_timeline_dates,
+            measurement_window,
             metric='lead_time',
-            target_value=response_time_confidence_trends_args.lead_time_target*24*3600
+            target_value=response_time_confidence_trends_args.lead_time_target * 24 * 3600
         ).cte()
 
         cycle_time_rank = cls.response_time_rank_query(
-            project_nodes,
-            measurement_period_start,
-            measurement_period_end,
+            projects_timeline_dates,
+            measurement_window,
             metric='cycle_time',
-            target_value=response_time_confidence_trends_args.cycle_time_target*24*3600
+            target_value=response_time_confidence_trends_args.cycle_time_target * 24 * 3600
         ).cte()
 
         return select([
             lead_time_rank.c.id,
             func.json_agg(
                 func.json_build_object(
-                    'measurement_date', func.cast(measurement_period_end, Date),
+                    'measurement_date', func.cast(lead_time_rank.c.measurement_date, Date),
                     'measurement_window', response_time_confidence_trends_args.measurement_window,
                     'lead_time_target', response_time_confidence_trends_args.lead_time_target,
                     'lead_time_confidence', lead_time_rank.c.rank,
@@ -1573,9 +1592,12 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
             ).label('response_time_confidence_trends')
         ]).select_from(
             lead_time_rank.outerjoin(
-                cycle_time_rank, lead_time_rank.c.id == cycle_time_rank.c.id
+                cycle_time_rank,
+                and_(
+                    lead_time_rank.c.id == cycle_time_rank.c.id,
+                    lead_time_rank.c.measurement_date == cycle_time_rank.c.measurement_date
+                )
             )
         ).group_by(
-            lead_time_rank.c.id
+            lead_time_rank.c.id,
         )
-

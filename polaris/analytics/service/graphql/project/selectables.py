@@ -1504,15 +1504,12 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
                 work_item_delivery_cycles.c.work_items_source_id == work_items_sources.c.id
             )
         ).where(
-            and_(
                 work_item_delivery_cycles.c.end_date.between(
                     projects_timeline_dates.c.measurement_date - timedelta(
                         days=measurement_window
                     ),
                     projects_timeline_dates.c.measurement_date
-                ),
-                work_item_delivery_cycles.c[metric] != None
-            )
+                )
         )
 
         response_times = union_all(

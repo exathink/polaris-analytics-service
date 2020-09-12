@@ -137,7 +137,7 @@ class ResponseTimeConfidenceTrendsParameters(AggregateMetricsTrendsParameters):
         required=True,
         description="Target lead time in days for which confidence is measured"
     )
-    cycle_time_target = graphene.Float(
+    cycle_time_target = graphene.Int(
         required=True,
         description="Target cycle time in days for which confidence is measured"
     )

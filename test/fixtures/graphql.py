@@ -20,7 +20,7 @@ from polaris.analytics.db.model import Account, Organization, Repository, Projec
     commits, work_items_commits as work_items_commits_table, \
     WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag, FeatureFlagEnablement, WorkItemDeliveryCycle
 from polaris.common import db
-from polaris.utils.collections import find
+from polaris.utils.collections import find, Fixture
 from polaris.common.enums import WorkTrackingIntegrationType
 from polaris.auth.db.model import User
 
@@ -327,7 +327,7 @@ def create_work_item_commits(work_item_key, commit_keys):
 
             # In order for shim existing test assumptions and fixtures, we are
             # re-creating logic of associating commit dates with delivery cycles
-            # here in the fixture. This should yield identical results for existing tests.
+            # here in the test_fixture. This should yield identical results for existing tests.
             for commit_key in commit_keys:
                 commit = Commit.find_by_commit_key(session, commit_key)
                 if commit:

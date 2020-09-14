@@ -1488,7 +1488,7 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
     interface = ResponseTimeConfidenceTrends
 
     @classmethod
-    def response_time_rank_query(cls, projects_timeline_dates, measurement_window, metric, target_value):
+    def response_time_rank_query(cls, projects_timeline_dates, measurement_window, metric, target_value, **kwargs):
 
         response_times_select = select([
             projects_timeline_dates.c.id,
@@ -1499,6 +1499,8 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
             projects_timeline_dates.join(
                 work_items_sources,
                 work_items_sources.c.project_id == projects_timeline_dates.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
                 work_item_delivery_cycles,
                 work_item_delivery_cycles.c.work_items_source_id == work_items_sources.c.id
@@ -1511,6 +1513,8 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
                     projects_timeline_dates.c.measurement_date
                 )
         )
+
+        response_times_select = work_item_delivery_cycles_connection_apply_filters(response_times_select, work_items, work_item_delivery_cycles, **kwargs)
 
         response_times = union_all(
             response_times_select,
@@ -1565,14 +1569,16 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
             projects_timeline_dates,
             measurement_window,
             metric='lead_time',
-            target_value=response_time_confidence_trends_args.lead_time_target * 24 * 3600
+            target_value=response_time_confidence_trends_args.lead_time_target * 24 * 3600,
+            **kwargs
         ).cte()
 
         cycle_time_rank = cls.response_time_rank_query(
             projects_timeline_dates,
             measurement_window,
             metric='cycle_time',
-            target_value=response_time_confidence_trends_args.cycle_time_target * 24 * 3600
+            target_value=response_time_confidence_trends_args.cycle_time_target * 24 * 3600,
+            **kwargs
         ).cte()
 
         return select([

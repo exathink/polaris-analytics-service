@@ -14,8 +14,7 @@ from sqlalchemy import select, cast, func, Date
 from polaris.utils.exceptions import ProcessingException
 
 
-def get_timeline_dates_for_trending(trends_args, arg_name=None, interface_name=None):
-
+def get_measurement_period(trends_args, arg_name=None, interface_name=None):
     if trends_args is None:
         raise ProcessingException(
             f"'{arg_name}' is a required arg to resolve the "
@@ -23,7 +22,6 @@ def get_timeline_dates_for_trending(trends_args, arg_name=None, interface_name=N
         )
 
     # The end date of the measurement period.
-
     measurement_period_end_date = trends_args.before or datetime.utcnow()
 
     # This parameter specified the window of time for which we are reporting
@@ -41,6 +39,13 @@ def get_timeline_dates_for_trending(trends_args, arg_name=None, interface_name=N
         days=days
     )
 
+    return measurement_period_start_date, measurement_period_end_date
+
+
+def get_timeline_dates_for_trending(trends_args, arg_name=None, interface_name=None):
+    measurement_period_start_date, measurement_period_end_date = get_measurement_period(
+        trends_args, arg_name, interface_name
+    )
     # First we generate a series of dates between the period start and end dates
     # at the granularity of the sampling frequency parameter.
     return select([

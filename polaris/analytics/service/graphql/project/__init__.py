@@ -15,11 +15,12 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
-    CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan
+    CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
+    ResponseTimeConfidenceTrends
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
-    TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin
+    TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -37,8 +38,8 @@ from ..work_items_source import WorkItemsSourcesConnectionMixin
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin, \
     WorkItemDeliveryCyclesConnectionMixin, RecentlyActiveWorkItemsConnectionMixin
 
-from ..arguments import AggregateMetricsTrendsParameters, CycleMetricsTrendsParameters, CycleMetricsParameters, \
-    TraceabilityMetricsTrendsParameters
+from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
+    TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -65,7 +66,8 @@ from .selectables import ProjectNode, \
     ProjectWorkItemStateTypeCounts, \
     ProjectCycleMetrics, \
     ProjectWorkItemDeliveryCycleNodes, \
-    ProjectTraceabilityTrends
+    ProjectTraceabilityTrends, \
+    ProjectResponseTimeConfidenceTrends
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -78,6 +80,7 @@ class Project(
     CycleMetricsTrendsResolverMixin,
     PipelineCycleMetricsResolverMixin,
     TraceabilityTrendsResolverMixin,
+    ResponseTimeConfidenceTrendsResolverMixin,
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
@@ -119,7 +122,8 @@ Implicit Interfaces: ArchivedStatus
             AggregateCycleMetrics,
             CycleMetricsTrends,
             PipelineCycleMetrics,
-            TraceabilityTrends
+            TraceabilityTrends,
+            ResponseTimeConfidenceTrends,
 
         )
         named_node_resolver = ProjectNode
@@ -135,6 +139,7 @@ Implicit Interfaces: ArchivedStatus
             'CycleMetricsTrends': ProjectCycleMetricsTrends,
             'PipelineCycleMetrics': ProjectPipelineCycleMetrics,
             'TraceabilityTrends': ProjectTraceabilityTrends,
+            'ResponseTimeConfidenceTrends': ProjectResponseTimeConfidenceTrends,
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -205,8 +210,12 @@ Implicit Interfaces: ArchivedStatus
             traceability_trends_args=graphene.Argument(
                 TraceabilityMetricsTrendsParameters,
                 required=False,
-                default_value=False,
                 description='Required when resolving TraceabilityTrends interface'
+            ),
+            response_time_confidence_trends_args=graphene.Argument(
+                ResponseTimeConfidenceTrendsParameters,
+                required=False,
+                description='Required when resolving ResponseTimeConfidenceTrends interface'
             ),
             **kwargs
         )

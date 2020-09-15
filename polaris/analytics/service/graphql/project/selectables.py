@@ -1489,8 +1489,9 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
 
     @classmethod
     def response_time_rank_query(cls, projects_timeline_dates, measurement_window, metric, target_value, **kwargs):
+        response_time_confidence_trends_args = kwargs.get('response_time_confidence_trends_args')
 
-        response_times_select = select([
+        response_times = select([
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date,
             work_item_delivery_cycles.c.delivery_cycle_id,
@@ -1503,27 +1504,22 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
                 work_item_delivery_cycles,
-                work_item_delivery_cycles.c.work_items_source_id == work_items_sources.c.id
+                work_item_delivery_cycles.c.work_item_id == work_items.c.id
             )
         ).where(
+            and_(
+                work_item_delivery_cycles.c[metric] != None,
                 work_item_delivery_cycles.c.end_date.between(
                     projects_timeline_dates.c.measurement_date - timedelta(
                         days=measurement_window
                     ),
                     projects_timeline_dates.c.measurement_date
+                ),
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(response_time_confidence_trends_args),
+                *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
+                    response_time_confidence_trends_args
                 )
-        )
-
-        response_times_select = work_item_delivery_cycles_connection_apply_filters(response_times_select, work_items, work_item_delivery_cycles, **kwargs)
-
-        response_times = union_all(
-            response_times_select,
-            select([
-                projects_timeline_dates.c.id,
-                projects_timeline_dates.c.measurement_date,
-                literal('-1', type_=Integer).label('delivery_cycle_id'),
-                literal(target_value, type_=Integer).label(metric)
-            ])
+            )
         ).alias()
 
         response_time_ranks = select([
@@ -1531,7 +1527,7 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
             response_times.c.measurement_date,
             response_times.c[metric],
             response_times.c.delivery_cycle_id,
-            func.percent_rank().over(
+            func.cume_dist().over(
                 order_by=[response_times.c[metric]],
                 partition_by=[response_times.c.id, response_times.c.measurement_date]
             ).label('rank')
@@ -1540,9 +1536,15 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
         query = select([
             response_time_ranks.c.id,
             response_time_ranks.c.measurement_date,
-            response_time_ranks.c.rank
-        ]).distinct().where(
-            response_time_ranks.c[metric] == target_value
+            func.max(response_time_ranks.c.rank).label('rank')
+        ]).where(
+            response_time_ranks.c[metric] <= target_value
+        ).group_by(
+            response_time_ranks.c.id,
+            response_time_ranks.c.measurement_date
+        ).order_by(
+            response_time_ranks.c.id,
+            response_time_ranks.c.measurement_date.desc()
         )
         return query
 
@@ -1582,25 +1584,30 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
         ).cte()
 
         return select([
-            lead_time_rank.c.id,
+            projects_timeline_dates.c.id,
             func.json_agg(
                 func.json_build_object(
-                    'measurement_date', func.cast(lead_time_rank.c.measurement_date, Date),
+                    'measurement_date', func.cast(projects_timeline_dates.c.measurement_date, Date),
                     'measurement_window', response_time_confidence_trends_args.measurement_window,
                     'lead_time_target', response_time_confidence_trends_args.lead_time_target,
-                    'lead_time_confidence', lead_time_rank.c.rank,
+                    'lead_time_confidence', func.coalesce(lead_time_rank.c.rank, 0).label('lead_time_confidence'),
                     'cycle_time_target', response_time_confidence_trends_args.cycle_time_target,
-                    'cycle_time_confidence', cycle_time_rank.c.rank
+                    'cycle_time_confidence', func.coalesce(cycle_time_rank.c.rank, 0).label('cycle_time_confidence')
                 )
             ).label('response_time_confidence_trends')
         ]).select_from(
-            lead_time_rank.outerjoin(
+            projects_timeline_dates.outerjoin(
+                lead_time_rank, and_(
+                    projects_timeline_dates.c.id == lead_time_rank.c.id,
+                    projects_timeline_dates.c.measurement_date == lead_time_rank.c.measurement_date
+                )
+            ).outerjoin(
                 cycle_time_rank,
                 and_(
-                    lead_time_rank.c.id == cycle_time_rank.c.id,
-                    lead_time_rank.c.measurement_date == cycle_time_rank.c.measurement_date
+                    projects_timeline_dates.c.id == cycle_time_rank.c.id,
+                    projects_timeline_dates.c.measurement_date == cycle_time_rank.c.measurement_date
                 )
             )
         ).group_by(
-            lead_time_rank.c.id,
+            projects_timeline_dates.c.id,
         )

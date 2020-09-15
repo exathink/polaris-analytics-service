@@ -9,6 +9,7 @@
 # Author: Krishna Kumar
 
 from graphene.test import Client
+from polaris.analytics.db.enums import JiraWorkItemType
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 
@@ -324,8 +325,33 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
+                           dict(l=1, c=0),
+                           dict(l=0, c=0)
+                       ]
+
+            def it_reports_lead_time_confidence_of_0_when_target_is_smaller_than_all_lead_times(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=0,
+                    cycle_time_target=7,
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
                            dict(l=0, c=0),
-                           dict(l=1, c=0)
+                           dict(l=0, c=0)
                        ]
 
             def it_reports_lead_time_confidence_correctly_when_target_is_not_greater_than_all_lead_times(self, setup):
@@ -349,8 +375,9 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
-                           dict(l=0, c=0),
-                           dict(l=0.666666666666667, c=0)
+                           dict(l=0.666666666666667, c=0),
+                           dict(l=0, c=0)
+
                        ]
 
             def it_reports_lead_time_confidence_correctly_when_target_is_equal_to_some_lead_times(self, setup):
@@ -374,18 +401,8 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
-                           dict(l=0, c=0),
-                           # In this case the lead time target is equal to one of the lead times.
-                           # We are reporting the number of values strictly smaller than the target value
-                           # and so we actually dont report the value that is exactly equal to the target.
-                           # The only scenario where this really matters is there is a value whose
-                           # lead/cycle time matches the target value down to the second, and in this
-                           # case our answer is technically wrong. This test case documents that scenario.
-                           # In most practical situations this will not really matter I suspect, and the convolutions
-                           # we need to make in the code to make that work correctly are really complicated, so
-                           # I am choosing to leave this "error" in. If it becomes a practical problem for
-                           # some reason we will revisit it.
-                           dict(l=0.333333333333333, c=0)
+                           dict(l=0.666666666666667, c=0),
+                           dict(l=0, c=0)
                        ]
 
         class CaseWorkItemsWithLeadTimesAndCycleTimes:
@@ -432,8 +449,63 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
+                           dict(l=1, c=1),
                            dict(l=0, c=0),
-                           dict(l=1, c=1)
+
+                       ]
+
+            def it_reports_cycle_time_confidence_of_0_when_target_is_smaller_than_all_cycle_times(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=10,
+                    # target < all cycle times
+                    cycle_time_target=0,
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
+                           dict(l=1, c=0),
+                           dict(l=0, c=0),
+
+                       ]
+
+            def it_reports_nonzero_cycle_time_confidence_when_target_is_equal_to_the_smallest_cycle_time(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=10,
+                    # target = min(all cycle times)
+                    cycle_time_target=1,
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
+                           dict(l=1, c=0.333333333333333),
+                           dict(l=0, c=0),
+
                        ]
 
             def it_reports_cycle_time_confidence_correctly_when_target_is_not_greater_than_all_cycle_times(self, setup):
@@ -458,8 +530,9 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
+                           dict(l=1, c=0.666666666666667),
                            dict(l=0, c=0),
-                           dict(l=1, c=0.666666666666667)
+
                        ]
 
             def it_reports_cycle_time_confidence_correctly_when_target_is_equal_to_some_cycle_times(self, setup):
@@ -484,8 +557,9 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
+                           dict(l=1, c=0.666666666666667),
                            dict(l=0, c=0),
-                           dict(l=1, c=0.333333333333333)
+
                        ]
 
         class CaseWorkItemsWithLeadTimesAndSomeNullCycleTimes:
@@ -509,7 +583,7 @@ class TestProjectResponseTimePredictabilityTrends:
 
                 yield fixture
 
-            def it_reports_cycle_time_confidence_less_than_1_when_target_is_greater_than_all_cycle_times(self, setup):
+            def it_reports_cycle_time_confidence_1_when_target_is_greater_than_all_cycle_times(self, setup):
                 fixture = setup
 
                 client = Client(schema)
@@ -530,21 +604,15 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
+                           dict(l=1, c=1),
                            dict(l=0, c=0),
-                           # This is another behavior that is counter-intuitive initially, but worth
-                           # calling out in a test. When there are null values in the cycle times, which
-                           # is often possible for items that dont move through the delivery cycle, (but very unlikely
-                           # for specs in steady state, our confidence reporting assumes those null values exist, and
-                           # a reports a confidence of less than 1 even if the  target is less than all non-null values.
-                           # This is a more conservative strategy than reporting a confidence of 1 in this case.
-                           # However, a side effect of this is that we report confidence < 1 even though the target
-                           # is greater than the Max cycle value reported via CycleMetricsTrends.
-                           dict(l=1, c=0.666666666666667)
+
                        ]
 
     class TestParameters:
 
         class TestSpecsOnly:
+
             @pytest.yield_fixture
             def setup(self, setup):
                 fixture = setup
@@ -557,7 +625,7 @@ class TestProjectResponseTimePredictabilityTrends:
                 api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
                 api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=2))])
 
-                #cycle time = 2
+                # cycle time = 2
                 api_helper.update_work_items([(1, 'upnext', start_date + timedelta(days=3))])
                 api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=5))])
 
@@ -585,8 +653,8 @@ class TestProjectResponseTimePredictabilityTrends:
                                         samplingFrequency: $sample,
                                         cycleTimeTarget : $cycle_time_target
                                         leadTimeTarget: $lead_time_target
+                                        specsOnly: $specs_only
                                     }
-                                    specsOnly: $specs_only
                                 ) {
                                     responseTimeConfidenceTrends {
                                         measurementDate
@@ -659,7 +727,194 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
+                           dict(l=1, c=1),
                            dict(l=0, c=0),
+                       ]
 
-                           dict(l=1, c=1)
+        class TestEpicsAndSubTasks:
+            @pytest.yield_fixture
+            def setup(self, setup):
+                fixture = setup
+
+                api_helper = fixture.api_helper
+
+                # set up epics and subtasks
+                fixture.work_items[0]['work_item_type'] = JiraWorkItemType.epic.value
+                fixture.work_items[1]['work_item_type'] = JiraWorkItemType.sub_task.value
+
+                api_helper.import_work_items(fixture.work_items)
+
+                start_date = fixture.start_date
+                # cycle time = 5
+                api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+                api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=5))])
+
+                # cycle time = 5
+                api_helper.update_work_items([(1, 'upnext', start_date + timedelta(days=3))])
+                api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=8))])
+
+                # cycle time = 3
+                api_helper.update_work_items([(2, 'upnext', start_date + timedelta(days=5))])
+                api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=8))])
+
+                query = """
+                        query getProjectPredictabilityTrends(
+                            $project_key:String!, 
+                            $days: Int!, 
+                            $window: Int!,
+                            $cycle_time_target: Int!
+                            $lead_time_target: Int!
+                            $sample: Int,
+                            $include_epics: Boolean,
+                            $include_sub_tasks: Boolean,
+
+                        ) {
+                            project(
+                                key: $project_key, 
+                                interfaces: [ResponseTimeConfidenceTrends], 
+                                responseTimeConfidenceTrendsArgs: {
+                                    days: $days,
+                                    measurementWindow: $window,
+                                    samplingFrequency: $sample,
+                                    cycleTimeTarget : $cycle_time_target,
+                                    leadTimeTarget: $lead_time_target,
+                                    includeEpics: $include_epics,
+                                    includeSubTasks: $include_sub_tasks
+                                    
+                                }
+                            ) {
+                                responseTimeConfidenceTrends {
+                                    measurementDate
+                                    measurementWindow
+                                    leadTimeTarget
+                                    leadTimeConfidence
+                                    cycleTimeTarget
+                                    cycleTimeConfidence
+                                }
+                            }
+                        }
+                    """
+                yield Fixture(
+                    parent=fixture,
+                    query=query
+                )
+
+            def test_excludes_epics_and_subtasks(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=10,
+                    # set cycle time target = 4 epic and subtask have cycle time = 5 so cycle time confidence is < 1
+                    # when they are included.
+                    cycle_time_target=3,
+                    include_epics=False,
+                    include_sub_tasks=False
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
+                           dict(l=1, c=1),
+
+                           dict(l=0, c=0)
+                       ]
+
+            def test_excludes_epics_and_include_subtasks(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=10,
+                    # set cycle time target = 4 epic and subtask have cycle time = 5 so cycle time confidence is < 1
+                    # when they are included.
+                    cycle_time_target=3,
+                    include_epics=False,
+                    include_sub_tasks=True
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
+                           dict(l=1, c=0.5),
+
+                           dict(l=0, c=0)
+                       ]
+
+            def test_includes_epics_and_excludes_subtasks(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=10,
+                    # set cycle time target = 4 epic and subtask have cycle time = 5 so cycle time confidence is < 1
+                    # when they are included.
+                    cycle_time_target=3,
+                    include_epics=True,
+                    include_sub_tasks=False
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
+                           dict(l=1, c=0.5),
+
+                           dict(l=0, c=0)
+                       ]
+
+            def test_includes_epics_and_subtasks(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=10,
+                    # set cycle time target = 4 epic and subtask have cycle time = 5 so cycle time confidence is < 1
+                    # when they are included.
+                    cycle_time_target=3,
+                    include_epics=True,
+                    include_sub_tasks=True
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
+                           dict(l=1, c=0.333333333333333),
+
+                           dict(l=0, c=0)
                        ]

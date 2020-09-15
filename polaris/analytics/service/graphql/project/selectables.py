@@ -1527,7 +1527,7 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
             response_times.c.measurement_date,
             response_times.c[metric],
             response_times.c.delivery_cycle_id,
-            func.percent_rank().over(
+            func.cume_dist().over(
                 order_by=[response_times.c[metric]],
                 partition_by=[response_times.c.id, response_times.c.measurement_date]
             ).label('rank')

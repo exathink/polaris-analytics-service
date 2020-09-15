@@ -80,24 +80,7 @@ class CycleMetricsEnum(Enum):
     work_items_with_null_cycle_time = 'work_items_with_null_cycle_time'
 
 
-class CycleMetricsParameters(graphene.InputObjectType):
-    metrics = graphene.List(
-        graphene.Enum.from_enum(CycleMetricsEnum),
-        required=True,
-        description="Specify a list of the metrics that should be returned"
-    )
-    lead_time_target_percentile = graphene.Float(
-        required=False,
-        description="If percentile lead time is requested, then this specifies the target percentile value"
-    )
-    cycle_time_target_percentile = graphene.Float(
-        required=False,
-        description="If percentile cycle time is requested, then this specifies the target percentile value"
-    )
-    duration_target_percentile = graphene.Float(
-        required=False,
-        description="If percentile duration is requested, then this specifies the target percentile value"
-    )
+class WorkItemTypeSelectionParameters(graphene.InputObjectType):
     include_epics = graphene.Boolean(
         required=False,
         description='Include epics in the cycle metrics analysis. Defaults to false',
@@ -120,6 +103,26 @@ class CycleMetricsParameters(graphene.InputObjectType):
     )
 
 
+class CycleMetricsParameters(WorkItemTypeSelectionParameters, graphene.InputObjectType):
+    metrics = graphene.List(
+        graphene.Enum.from_enum(CycleMetricsEnum),
+        required=True,
+        description="Specify a list of the metrics that should be returned"
+    )
+    lead_time_target_percentile = graphene.Float(
+        required=False,
+        description="If percentile lead time is requested, then this specifies the target percentile value"
+    )
+    cycle_time_target_percentile = graphene.Float(
+        required=False,
+        description="If percentile cycle time is requested, then this specifies the target percentile value"
+    )
+    duration_target_percentile = graphene.Float(
+        required=False,
+        description="If percentile duration is requested, then this specifies the target percentile value"
+    )
+
+
 class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters, CycleMetricsParameters):
     pass
 
@@ -132,7 +135,7 @@ class TraceabilityMetricsTrendsParameters(AggregateMetricsTrendsParameters):
     )
 
 
-class ResponseTimeConfidenceTrendsParameters(AggregateMetricsTrendsParameters):
+class ResponseTimeConfidenceTrendsParameters(AggregateMetricsTrendsParameters, WorkItemTypeSelectionParameters):
     lead_time_target = graphene.Int(
         required=True,
         description="Target lead time in days for which confidence is measured"

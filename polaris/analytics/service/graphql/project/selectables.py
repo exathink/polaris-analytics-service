@@ -1489,7 +1489,9 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
 
     @classmethod
     def response_time_rank_query(cls, projects_timeline_dates, measurement_window, metric, target_value, **kwargs):
-        response_times_select = select([
+        response_time_confidence_trends_args = kwargs.get('response_time_confidence_trends_args')
+
+        response_times = select([
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date,
             work_item_delivery_cycles.c.delivery_cycle_id,
@@ -1506,21 +1508,19 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
             )
         ).where(
             and_(
+                work_item_delivery_cycles.c[metric] != None,
                 work_item_delivery_cycles.c.end_date.between(
                     projects_timeline_dates.c.measurement_date - timedelta(
                         days=measurement_window
                     ),
                     projects_timeline_dates.c.measurement_date
                 ),
-                work_item_delivery_cycles.c[metric] != None
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(response_time_confidence_trends_args),
+                *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
+                    response_time_confidence_trends_args
+                )
             )
-        )
-
-        response_times_select = work_items_connection_apply_filters(response_times_select, work_items, **kwargs)
-
-        response_times_select = work_item_delivery_cycles_connection_apply_filters(response_times_select, work_items,
-                                                                                   work_item_delivery_cycles, **kwargs)
-        response_times = response_times_select.alias()
+        ).alias()
 
         response_time_ranks = select([
             response_times.c.id,

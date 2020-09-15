@@ -9,6 +9,7 @@
 # Author: Krishna Kumar
 
 from graphene.test import Client
+from polaris.analytics.db.enums import JiraWorkItemType
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 
@@ -611,6 +612,7 @@ class TestProjectResponseTimePredictabilityTrends:
     class TestParameters:
 
         class TestSpecsOnly:
+
             @pytest.yield_fixture
             def setup(self, setup):
                 fixture = setup
@@ -651,8 +653,8 @@ class TestProjectResponseTimePredictabilityTrends:
                                         samplingFrequency: $sample,
                                         cycleTimeTarget : $cycle_time_target
                                         leadTimeTarget: $lead_time_target
+                                        specsOnly: $specs_only
                                     }
-                                    specsOnly: $specs_only
                                 ) {
                                     responseTimeConfidenceTrends {
                                         measurementDate
@@ -727,4 +729,192 @@ class TestProjectResponseTimePredictabilityTrends:
                        ] == [
                            dict(l=1, c=1),
                            dict(l=0, c=0),
+                       ]
+
+        class TestEpicsAndSubTasks:
+            @pytest.yield_fixture
+            def setup(self, setup):
+                fixture = setup
+
+                api_helper = fixture.api_helper
+
+                # set up epics and subtasks
+                fixture.work_items[0]['work_item_type'] = JiraWorkItemType.epic.value
+                fixture.work_items[1]['work_item_type'] = JiraWorkItemType.sub_task.value
+
+                api_helper.import_work_items(fixture.work_items)
+
+                start_date = fixture.start_date
+                # cycle time = 5
+                api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+                api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=5))])
+
+                # cycle time = 5
+                api_helper.update_work_items([(1, 'upnext', start_date + timedelta(days=3))])
+                api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=8))])
+
+                # cycle time = 3
+                api_helper.update_work_items([(2, 'upnext', start_date + timedelta(days=5))])
+                api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=8))])
+
+                query = """
+                        query getProjectPredictabilityTrends(
+                            $project_key:String!, 
+                            $days: Int!, 
+                            $window: Int!,
+                            $cycle_time_target: Int!
+                            $lead_time_target: Int!
+                            $sample: Int,
+                            $include_epics: Boolean,
+                            $include_sub_tasks: Boolean,
+
+                        ) {
+                            project(
+                                key: $project_key, 
+                                interfaces: [ResponseTimeConfidenceTrends], 
+                                responseTimeConfidenceTrendsArgs: {
+                                    days: $days,
+                                    measurementWindow: $window,
+                                    samplingFrequency: $sample,
+                                    cycleTimeTarget : $cycle_time_target,
+                                    leadTimeTarget: $lead_time_target,
+                                    includeEpics: $include_epics,
+                                    includeSubTasks: $include_sub_tasks
+                                    
+                                }
+                            ) {
+                                responseTimeConfidenceTrends {
+                                    measurementDate
+                                    measurementWindow
+                                    leadTimeTarget
+                                    leadTimeConfidence
+                                    cycleTimeTarget
+                                    cycleTimeConfidence
+                                }
+                            }
+                        }
+                    """
+                yield Fixture(
+                    parent=fixture,
+                    query=query
+                )
+
+            def test_excludes_epics_and_subtasks(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=10,
+                    # set cycle time target = 4 epic and subtask have cycle time = 5 so cycle time confidence is < 1
+                    # when they are included.
+                    cycle_time_target=3,
+                    include_epics=False,
+                    include_sub_tasks=False
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
+                           dict(l=1, c=1),
+
+                           dict(l=0, c=0)
+                       ]
+
+            def test_excludes_epics_and_include_subtasks(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=10,
+                    # set cycle time target = 4 epic and subtask have cycle time = 5 so cycle time confidence is < 1
+                    # when they are included.
+                    cycle_time_target=3,
+                    include_epics=False,
+                    include_sub_tasks=True
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
+                           dict(l=1, c=0.5),
+
+                           dict(l=0, c=0)
+                       ]
+
+            def test_includes_epics_and_excludes_subtasks(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=10,
+                    # set cycle time target = 4 epic and subtask have cycle time = 5 so cycle time confidence is < 1
+                    # when they are included.
+                    cycle_time_target=3,
+                    include_epics=True,
+                    include_sub_tasks=False
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
+                           dict(l=1, c=0.5),
+
+                           dict(l=0, c=0)
+                       ]
+
+            def test_includes_epics_and_subtasks(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=10,
+                    window=10,
+                    sample=10,
+                    lead_time_target=10,
+                    # set cycle time target = 4 epic and subtask have cycle time = 5 so cycle time confidence is < 1
+                    # when they are included.
+                    cycle_time_target=3,
+                    include_epics=True,
+                    include_sub_tasks=True
+                ))
+                assert result['data']
+                project = result['data']['project']
+
+                assert len(project['responseTimeConfidenceTrends']) == 2
+                assert [
+                           dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
+                           for measurement in project['responseTimeConfidenceTrends']
+                       ] == [
+                           dict(l=1, c=0.333333333333333),
+
+                           dict(l=0, c=0)
                        ]

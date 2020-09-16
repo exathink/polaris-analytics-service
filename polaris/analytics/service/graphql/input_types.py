@@ -29,7 +29,7 @@ class OrganizationInput(graphene.InputObjectType):
     profile = graphene.Field(OrganizationProfileInput, required=False)
 
 
-class FlowMetricsSettings(graphene.InputObjectType):
+class FlowMetricsSettingsInput(graphene.InputObjectType):
     lead_time_target = graphene.Int(required=False)
     cycle_time_target = graphene.Int(required=False)
     response_time_confidence_target = graphene.Float(required=False)

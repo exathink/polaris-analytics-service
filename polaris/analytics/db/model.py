@@ -9,6 +9,7 @@
 # Author: Krishna Kumar
 
 import uuid
+import copy
 from datetime import datetime
 from logging import getLogger
 
@@ -274,6 +275,7 @@ class Project(Base):
     public = Column(Boolean, default=False, nullable=True)
     properties = Column(JSONB, default={})
     archived = Column(Boolean, server_default=text('FALSE'), nullable=False)
+    settings = Column(JSONB, server_default=text("'{}'"), nullable=True)
 
     organization_id = Column(Integer, ForeignKey('organizations.id'))
     organization = relationship('Organization', back_populates='projects')
@@ -304,6 +306,29 @@ class Project(Base):
             if repo not in self.repositories:
                 logger.info("Adding repo {} to project  {}".format(repo.name, self.name))
                 self.repositories.append(repo)
+
+    def update_settings(self, update_project_settings_input):
+        # we have to make a deep copy here since sqlalchemy does not recognize in place modifications
+        # to the dict in the jsonb field
+        current = copy.deepcopy(self.settings) if self.settings is not None else dict()
+        if update_project_settings_input.flow_metrics_settings:
+            flow_metrics_input = update_project_settings_input.flow_metrics_settings
+
+            if 'flow_metrics_settings' not in current:
+                current['flow_metrics_settings'] = dict()
+
+            flow_metrics_settings = current['flow_metrics_settings']
+
+            if flow_metrics_input.lead_time_target:
+                flow_metrics_settings['lead_time_target'] = flow_metrics_input.lead_time_target
+
+            if flow_metrics_input.cycle_time_target:
+                flow_metrics_settings['cycle_time_target'] = flow_metrics_input.cycle_time_target
+
+            if flow_metrics_input.response_time_confidence_target:
+                flow_metrics_settings['response_time_confidence_target'] = flow_metrics_input.response_time_confidence_target
+
+        self.settings = current
 
 
 projects = Project.__table__

@@ -1269,7 +1269,7 @@ class ProjectTraceabilityTrends(InterfaceResolver):
         total_commit_count_lateral = total_commit_count_query.group_by(
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date
-        ).lateral()
+        ).alias()
 
         # Do the lateral join - this calculate the timeline series for the metric
         return select([
@@ -1319,7 +1319,7 @@ class ProjectTraceabilityTrends(InterfaceResolver):
         spec_count_lateral = spec_count_query.group_by(
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date
-        ).lateral()
+        ).alias()
 
         return select([
             projects_timeline_dates.c.id,
@@ -1377,7 +1377,7 @@ class ProjectTraceabilityTrends(InterfaceResolver):
         nospec_count_lateral = nospec_count_query.group_by(
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date
-        ).lateral()
+        ).alias()
 
         return select([
             projects_timeline_dates.c.id,

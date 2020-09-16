@@ -12,7 +12,7 @@
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
 from datetime import datetime
-
+from polaris.utils.collections import Fixture
 from test.fixtures.project_work_items import *
 from test.fixtures.project_work_items_commits import *
 
@@ -1225,3 +1225,81 @@ class TestPopulateWorkItemSourceFileChangesOnUpdateStateMaps:
         # 2 source files each, for 3 commit, 1 work item
         assert db.connection().execute(
             "select count(distinct (source_file_id, commit_id, work_item_id)) from analytics.work_item_source_file_changes where delivery_cycle_id is not NULL").scalar() == 6
+
+
+class TestUpdateProjectSettings:
+
+    @pytest.yield_fixture
+    def setup(self, setup_projects):
+        query="""
+            mutation updatProjectSettings($updateProjectSettingsInput: UpdateProjectSettingsInput!) {
+                updateProjectSettings(updateProjectSettingsInput:$updateProjectSettingsInput) {
+                    success
+                    errorMessage
+                }
+            }
+        """
+        yield Fixture(
+            query=query
+        )
+
+    def it_updates_the_flow_metrics_settings(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                flowMetricsSettings=dict(
+                    cycleTimeTarget=7,
+                    leadTimeTarget=14,
+                    responseTimeConfidenceTarget=0.7
+                )
+            )
+        ))
+        assert response['data']['updateProjectSettings']['success']
+        with db.orm_session() as session:
+            project = Project.find_by_project_key(session, test_projects[0]['key'])
+            assert project.settings['flow_metrics_settings'] == dict(
+                cycle_time_target=7,
+                lead_time_target=14,
+                response_time_confidence_target=0.7
+            )
+
+    def it_modifies_only_the_flow_metrics_settings_that_were_passed(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        # update once
+        client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                flowMetricsSettings=dict(
+                    cycleTimeTarget=7,
+                    leadTimeTarget=14,
+                    responseTimeConfidenceTarget=0.7
+                )
+            )
+        ))
+
+        # update again
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                flowMetricsSettings=dict(
+                    cycleTimeTarget=8,
+
+                )
+            )
+        ))
+        assert response['data']['updateProjectSettings']['success']
+        with db.orm_session() as session:
+            project = Project.find_by_project_key(session, test_projects[0]['key'])
+            assert project.settings['flow_metrics_settings'] == dict(
+                cycle_time_target=8,
+                lead_time_target=14,
+                response_time_confidence_target=0.7
+            )
+

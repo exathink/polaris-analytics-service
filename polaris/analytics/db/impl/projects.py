@@ -141,3 +141,14 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
         project_key=project_state_maps.project_key,
         work_items_sources=updated
     )
+
+
+def update_project_settings(session, update_project_settings_input):
+    project = Project.find_by_project_key(session, update_project_settings_input.key)
+    if project is not None:
+        project.update_settings(update_project_settings_input)
+        return dict(
+            key=project.key
+        )
+    else:
+        raise ProcessingException(f'Could not find project with key: {update_project_settings_input.key}')

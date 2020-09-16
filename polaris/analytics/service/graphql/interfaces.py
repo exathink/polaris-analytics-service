@@ -117,6 +117,33 @@ class ProjectRef(graphene.Interface):
     project_key = graphene.String(required=True)
 
 
+# -- Project Settings related definitions
+
+class FlowMetricsSettings(graphene.ObjectType):
+    lead_time_target = graphene.Int(required=False)
+    cycle_time_target = graphene.Int(required=False)
+    response_time_confidence_target = graphene.Float(required=False)
+
+
+class ProjectSettings(graphene.Interface):
+    flow_metrics_settings = graphene.Field(FlowMetricsSettings, required=False)
+
+
+class ProjectSettingsImpl(graphene.ObjectType):
+    class Meta:
+        interfaces = (ProjectSettings,)
+
+    def __init__(self, *args, **kwargs):
+        self.flow_metrics_settings = {}
+        super().__init__(*args, **kwargs)
+
+        self.flow_metrics_settings = FlowMetricsSettings(**self.flow_metrics_settings)
+
+
+class ProjectInfo(graphene.Interface):
+    settings = graphene.Field(ProjectSettingsImpl, required=False)
+
+
 class WorkItemsSourceRef(graphene.Interface):
     work_items_source_name = graphene.String(required=True)
     work_items_source_key = graphene.String(required=True)

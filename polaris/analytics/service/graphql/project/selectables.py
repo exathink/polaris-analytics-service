@@ -40,7 +40,7 @@ from ..interfaces import \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
-    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends
+    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -50,7 +50,7 @@ from ..work_item.sql_expressions import work_item_events_connection_apply_time_w
 
 
 class ProjectNode(NamedNodeResolver):
-    interfaces = (NamedNode, ArchivedStatus)
+    interfaces = (NamedNode, ArchivedStatus, ProjectInfo)
 
     @staticmethod
     def named_node_selector(**kwargs):
@@ -58,7 +58,9 @@ class ProjectNode(NamedNodeResolver):
             projects.c.id,
             projects.c.key.label('key'),
             projects.c.name,
-            projects.c.archived
+            projects.c.archived,
+            projects.c.settings
+
         ]).select_from(
             projects
         ).where(projects.c.key == bindparam('key'))

@@ -137,7 +137,7 @@ class ProjectSettingsImpl(graphene.ObjectType):
         self.flow_metrics_settings = {}
         super().__init__(*args, **kwargs)
 
-        self.flow_metrics_settings = FlowMetricsSettings(**self.flow_metrics_settings)
+        self.flow_metrics_settings = FlowMetricsSettings(**(self.flow_metrics_settings or {}))
 
 
 class ProjectInfo(graphene.Interface):

@@ -155,4 +155,4 @@ class ProjectInfoResolverMixin(KeyIdResolverMixin):
         super().__init__(*args, **kwargs)
 
     def resolve_settings(self, info, **kwargs):
-        return ProjectSettingsImpl(**self.settings)
+        return ProjectSettingsImpl(**(self.settings if self.settings is not None else {}))

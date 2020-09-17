@@ -118,15 +118,46 @@ class ProjectRef(graphene.Interface):
 
 
 # -- Project Settings related definitions
+class FlowMetricsSettings:
+    lead_time_target = graphene.Int(
+        required=False,
+        description="Target lead time in days",
 
-class FlowMetricsSettings(graphene.ObjectType):
-    lead_time_target = graphene.Int(required=False)
-    cycle_time_target = graphene.Int(required=False)
-    response_time_confidence_target = graphene.Float(required=False)
+    )
+    cycle_time_target = graphene.Int(
+        required=False,
+        description="Target cycle time in days",
+
+    )
+    response_time_confidence_target = graphene.Float(
+        required=False,
+        description="The confidence level to which response times "
+                    "(lead or cycle times) should be measured for predictability. Number between 0 and 1"
+                    "If the SLA is 7 days cycle time with 80% confidence, response_time_confidence is 0.8."
+                    "This setting is supported for backward compatibility but is deprecated. Use explicit"
+                    "Lead and Cycle time confidence targets instead. See below.",
+
+    )
+    lead_time_confidence_target = graphene.Float(
+        required=False,
+        description="The target confidence level for lead time predictability measurement."
+                    "If the SLA is 7 days lead time with 80% confidence, response_time_confidence is 0.8.",
+
+    )
+    cycle_time_confidence_target = graphene.Float(
+        required=False,
+        description="The target confidence level for cycle time predictability measurement."
+                    "If the SLA is 7 days cycle time with 80% confidence, response_time_confidence is 0.8.",
+
+    )
+
+
+class FlowMetricsSettingsImpl(FlowMetricsSettings, graphene.ObjectType):
+    pass
 
 
 class ProjectSettings(graphene.Interface):
-    flow_metrics_settings = graphene.Field(FlowMetricsSettings, required=False)
+    flow_metrics_settings = graphene.Field(FlowMetricsSettingsImpl, required=False)
 
 
 class ProjectSettingsImpl(graphene.ObjectType):
@@ -137,7 +168,7 @@ class ProjectSettingsImpl(graphene.ObjectType):
         self.flow_metrics_settings = {}
         super().__init__(*args, **kwargs)
 
-        self.flow_metrics_settings = FlowMetricsSettings(**(self.flow_metrics_settings or {}))
+        self.flow_metrics_settings = FlowMetricsSettingsImpl(**(self.flow_metrics_settings or {}))
 
 
 class ProjectInfo(graphene.Interface):

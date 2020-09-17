@@ -433,7 +433,8 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
             f"select count(*) from analytics.work_item_delivery_cycles\
                      where work_item_delivery_cycles.work_item_id='{work_item_id}' and lead_time is not null").scalar() == 1
 
-    def it_updates_delivery_cycles_when_an_existing_non_mapped_state_mapping_changes(self, work_items_delivery_cycles_setup):
+    def it_updates_delivery_cycles_when_an_existing_non_mapped_state_mapping_changes(self,
+                                                                                     work_items_delivery_cycles_setup):
         # example case to test:
         # when there was a work item in state done (mapped to complete)
         # corresponding delivery cycle would have lead time and end_date as null
@@ -1231,7 +1232,7 @@ class TestUpdateProjectSettings:
 
     @pytest.yield_fixture
     def setup(self, setup_projects):
-        query="""
+        query = """
             mutation updatProjectSettings($updateProjectSettingsInput: UpdateProjectSettingsInput!) {
                 updateProjectSettings(updateProjectSettingsInput:$updateProjectSettingsInput) {
                     success
@@ -1254,7 +1255,9 @@ class TestUpdateProjectSettings:
                 flowMetricsSettings=dict(
                     cycleTimeTarget=7,
                     leadTimeTarget=14,
-                    responseTimeConfidenceTarget=0.7
+                    responseTimeConfidenceTarget=0.7,
+                    leadTimeConfidenceTarget=0.8,
+                    cycleTimeConfidenceTarget=0.9,
                 )
             )
         ))
@@ -1264,7 +1267,9 @@ class TestUpdateProjectSettings:
             assert project.settings['flow_metrics_settings'] == dict(
                 cycle_time_target=7,
                 lead_time_target=14,
-                response_time_confidence_target=0.7
+                response_time_confidence_target=0.7,
+                lead_time_confidence_target=0.8,
+                cycle_time_confidence_target=0.9
             )
 
     def it_modifies_only_the_flow_metrics_settings_that_were_passed(self, setup):
@@ -1279,7 +1284,9 @@ class TestUpdateProjectSettings:
                 flowMetricsSettings=dict(
                     cycleTimeTarget=7,
                     leadTimeTarget=14,
-                    responseTimeConfidenceTarget=0.7
+                    responseTimeConfidenceTarget=0.7,
+                    leadTimeConfidenceTarget=0.8,
+                    cycleTimeConfidenceTarget=0.9,
                 )
             )
         ))
@@ -1300,6 +1307,7 @@ class TestUpdateProjectSettings:
             assert project.settings['flow_metrics_settings'] == dict(
                 cycle_time_target=8,
                 lead_time_target=14,
-                response_time_confidence_target=0.7
+                response_time_confidence_target=0.7,
+                lead_time_confidence_target=0.8,
+                cycle_time_confidence_target=0.9
             )
-

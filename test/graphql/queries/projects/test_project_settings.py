@@ -17,20 +17,14 @@ from polaris.analytics.service.graphql import schema
 from datetime import datetime
 from polaris.utils.collections import Fixture
 from test.fixtures.project_work_items import *
-
+from polaris.analytics.service.graphql.interfaces import FlowMetricsSettingsImpl
 
 class TestProjectSettings:
     class TestFlowMetricsSettings:
         @pytest.yield_fixture
         def setup(self, setup_projects):
             project = test_projects[0]
-            settings_fixture = Fixture(
-                flow_metrics_settings=Fixture(
-                    cycle_time_target=7,
-                    lead_time_target=14,
-                    response_time_confidence_target=0.7
-                )
-            )
+
             query = """
                     query getProjectSettings($project_key:String!) {
                         project(key: $project_key) {
@@ -39,6 +33,8 @@ class TestProjectSettings:
                                     cycleTimeTarget
                                     leadTimeTarget
                                     responseTimeConfidenceTarget
+                                    leadTimeConfidenceTarget
+                                    cycleTimeConfidenceTarget
                                 }
                             }
                         }
@@ -46,7 +42,6 @@ class TestProjectSettings:
             """
             yield Fixture(
                 project=project,
-                settings=settings_fixture,
                 query=query
             )
 
@@ -95,14 +90,25 @@ class TestProjectSettings:
             @pytest.yield_fixture
             def setup(self, setup):
                 fixture = setup
-
+                settings_fixture = Fixture(
+                    flow_metrics_settings=Fixture(
+                        cycle_time_target=7,
+                        lead_time_target=14,
+                        response_time_confidence_target=0.7,
+                        lead_time_confidence_target=0.9,
+                        cycle_time_confidence_target=0.75
+                    )
+                )
                 with db.orm_session() as session:
                     project = Project.find_by_project_key(session, fixture.project['key'])
                     project.update_settings(
-                        fixture.settings
+                        settings_fixture
                     )
 
-                yield fixture
+                yield Fixture(
+                    parent=fixture,
+                    settings=settings_fixture
+                )
 
             def it_shows_flow_metrics_settings(self, setup):
                 fixture = setup
@@ -115,5 +121,14 @@ class TestProjectSettings:
                 flow_metrics_settings = project['settings']['flowMetricsSettings']
                 assert flow_metrics_settings
 
-                assert flow_metrics_settings[
-                           'cycleTimeTarget'] == fixture.settings.flow_metrics_settings.cycle_time_target
+                assert flow_metrics_settings['cycleTimeTarget'] \
+                       == fixture.settings.flow_metrics_settings.cycle_time_target
+
+                assert flow_metrics_settings['leadTimeTarget'] \
+                       == fixture.settings.flow_metrics_settings.lead_time_target
+
+                assert flow_metrics_settings['leadTimeConfidenceTarget'] \
+                       == fixture.settings.flow_metrics_settings.lead_time_confidence_target
+
+                assert flow_metrics_settings['cycleTimeConfidenceTarget'] \
+                       == fixture.settings.flow_metrics_settings.cycle_time_confidence_target

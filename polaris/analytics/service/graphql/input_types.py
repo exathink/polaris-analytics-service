@@ -9,6 +9,8 @@
 # Author: Krishna Kumar
 import graphene
 
+from .interfaces import FlowMetricsSettings
+
 
 class AccountProfileInput(graphene.InputObjectType):
     defaultWorkTracking = graphene.String(required=False, default_value=None)
@@ -29,10 +31,5 @@ class OrganizationInput(graphene.InputObjectType):
     profile = graphene.Field(OrganizationProfileInput, required=False)
 
 
-class FlowMetricsSettingsInput(graphene.InputObjectType):
-    lead_time_target = graphene.Int(required=False)
-    cycle_time_target = graphene.Int(required=False)
-    response_time_confidence_target = graphene.Float(required=False)
-
-
-
+class FlowMetricsSettingsInput(FlowMetricsSettings, graphene.InputObjectType):
+    pass

@@ -328,6 +328,12 @@ class Project(Base):
             if flow_metrics_input.response_time_confidence_target:
                 flow_metrics_settings['response_time_confidence_target'] = flow_metrics_input.response_time_confidence_target
 
+            if flow_metrics_input.lead_time_confidence_target:
+                flow_metrics_settings['lead_time_confidence_target'] = flow_metrics_input.lead_time_confidence_target
+
+            if flow_metrics_input.cycle_time_confidence_target:
+                flow_metrics_settings['cycle_time_confidence_target'] = flow_metrics_input.cycle_time_confidence_target
+
         self.settings = current
 
 

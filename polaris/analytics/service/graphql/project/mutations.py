@@ -14,6 +14,7 @@ from polaris.common import db
 from polaris.analytics.db import api as db_api
 from polaris.analytics import api
 from ..interfaces import WorkItemsStateType
+from ..input_types import FlowMetricsSettingsInput
 
 logger = logging.getLogger('polaris.analytics.mutations')
 
@@ -66,6 +67,28 @@ class UpdateProjectStateMaps(graphene.Mutation):
         return UpdateProjectStateMaps(success=result['success'], error_message=result.get('exception'))
 
 
+# Update project settings
+
+
+class UpdateProjectSettingsInput(graphene.InputObjectType):
+    key = graphene.String(required=True)
+    flow_metrics_settings = graphene.Field(FlowMetricsSettingsInput, required=False)
+
+
+class UpdateProjectSettings(graphene.Mutation):
+    class Arguments:
+        update_project_settings_input = UpdateProjectSettingsInput(required=True)
+
+    success = graphene.Boolean()
+    error_message = graphene.String()
+
+    def mutate(self, info, update_project_settings_input):
+        logger.info('UpdateProject Settings called')
+        result = db_api.update_project_settings(update_project_settings_input)
+        return UpdateProjectSettings(success=result['success'], error_message=result.get('exception'))
+
+
 class ProjectMutationsMixin:
     archive_project = ArchiveProject.Field()
     update_project_state_maps = UpdateProjectStateMaps.Field()
+    update_project_settings = UpdateProjectSettings.Field()

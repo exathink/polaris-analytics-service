@@ -271,3 +271,18 @@ def update_feature_flag(update_feature_flag_input):
         return db.process_exception("Failed to update feature flag", exc)
     except Exception as e:
         return db.failure_message(f'Failed to update feature flag due to: {e}', e)
+
+
+def update_project_settings(update_project_settings_input):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.update_project_settings(
+                    session,
+                    update_project_settings_input
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Failed to update project settings", exc)
+    except Exception as e:
+        return db.failure_message(f'Failed to update project settings due to: {e}', e)

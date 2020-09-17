@@ -16,11 +16,12 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
-    ResponseTimeConfidenceTrends
+    ResponseTimeConfidenceTrends, ProjectInfo
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
-    TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin
+    TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin, \
+    ProjectInfoResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -72,9 +73,12 @@ from .selectables import ProjectNode, \
 from polaris.graphql.connection_utils import CountableConnection
 
 
+
+
 class Project(
     # interface mixins
     NamedNodeResolverMixin,
+    ProjectInfoResolverMixin,
     ContributorCountResolverMixin,
     WorkItemStateTypeSummaryResolverMixin,
     CycleMetricsTrendsResolverMixin,
@@ -110,6 +114,7 @@ Implicit Interfaces: ArchivedStatus
             # ----Implicit Interfaces ------- #
             NamedNode,
             ArchivedStatus,
+            ProjectInfo,
 
             # ---- Explicit Interfaces -------#
             CommitSummary,

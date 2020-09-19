@@ -1,5 +1,3 @@
-
-
 from graphene.test import Client
 from datetime import timedelta
 from polaris.analytics.service.graphql import schema
@@ -1169,6 +1167,183 @@ class TestProjectCycleMetricsTrends:
                 assert not measurement['medianCycleTime']
                 assert not measurement['q3CycleTime']
                 assert not measurement['maxCycleTime']
+
+    def it_reports_effort_metrics_correctly(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id=f'1000{i}',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 5)
+        ]
+
+        api_helper.import_work_items(work_items)
+        for i in range(0, 5):
+            # close it so that shows up in the metrics
+            api_helper.update_work_items([(i, 'closed', start_date + timedelta(days=1))])
+            # close them so that cycle times and efforts are distributed in the sequence (1,2,3,4,5)
+            api_helper.update_delivery_cycles(([(i, dict(property='effort', value=i + 1))]))
+
+        client = Client(schema)
+        query = """
+                    query getProjectCycleMetricsTrends(
+                        $project_key:String!, 
+                        $days: Int!, 
+                        $window: Int!,
+                        $sample: Int,
+                        $percentile: Float
+                    ) {
+                        project(
+                            key: $project_key, 
+                            interfaces: [CycleMetricsTrends], 
+                            cycleMetricsTrendsArgs: {
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                                metrics: [
+                                    total_effort
+                                    avg_effort
+                                    min_effort
+                                    max_effort
+                                    
+                                ],
+                                leadTimeTargetPercentile: $percentile,
+                                cycleTimeTargetPercentile: $percentile
+                            }
+
+                        ) {
+                            cycleMetricsTrends {
+                                measurementDate
+                                measurementWindow
+                                minEffort
+                                maxEffort
+                                avgEffort
+                                totalEffort
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(
+            project_key=project.key,
+            days=30,
+            window=10,
+            sample=10,
+            percentile=0.70
+        ))
+        assert result['data']
+        project = result['data']['project']
+        # we expect one measurement for each point in the window including the end points.
+        assert len(project['cycleMetricsTrends']) == 4
+        for index, measurement in enumerate(project['cycleMetricsTrends']):
+            if index == 0:
+                assert measurement['minEffort'] == 1.0
+                assert measurement['avgEffort'] == 3.0
+                assert measurement['maxEffort'] == 5.0
+                assert measurement['totalEffort'] == 15.0
+            else:
+                assert not measurement['minEffort']
+                assert not measurement['avgEffort']
+                assert not measurement['maxEffort']
+                assert not measurement['totalEffort']
+
+    def it_reports_duration_metrics_correctly(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id=f'1000{i}',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 5)
+        ]
+
+        api_helper.import_work_items(work_items)
+        for i in range(0, 5):
+            # close it so that shows up in the metrics
+            api_helper.update_work_items([(i, 'closed', start_date + timedelta(days=1))])
+            # close them so that durations are distributed in the sequence (1,2,3,4,5)
+            api_helper.update_delivery_cycles(([(i, dict(property='earliest_commit', value=start_date))]))
+            api_helper.update_delivery_cycles(([(i, dict(property='latest_commit', value=start_date + timedelta(days=i+1)))]))
+
+        client = Client(schema)
+        query = """
+                    query getProjectCycleMetricsTrends(
+                        $project_key:String!, 
+                        $days: Int!, 
+                        $window: Int!,
+                        $sample: Int,
+                        $percentile: Float
+                    ) {
+                        project(
+                            key: $project_key, 
+                            interfaces: [CycleMetricsTrends], 
+                            cycleMetricsTrendsArgs: {
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                                metrics: [
+                                    min_duration
+                                    avg_duration
+                                    max_duration
+                                    percentile_duration
+
+                                ],
+                                durationTargetPercentile: $percentile,
+                            }
+
+                        ) {
+                            cycleMetricsTrends {
+                                measurementDate
+                                measurementWindow
+                                minDuration
+                                maxDuration
+                                avgDuration
+                                percentileDuration
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(
+            project_key=project.key,
+            days=30,
+            window=10,
+            sample=10,
+            percentile=0.70
+        ))
+        assert result['data']
+        project = result['data']['project']
+        # we expect one measurement for each point in the window including the end points.
+        assert len(project['cycleMetricsTrends']) == 4
+        for index, measurement in enumerate(project['cycleMetricsTrends']):
+            if index == 0:
+                assert measurement['minDuration'] == 1.0
+                assert measurement['avgDuration'] == 3.0
+                assert measurement['maxDuration'] == 5.0
+                assert measurement['percentileDuration'] == 4.0
+
+            else:
+                assert not measurement['minDuration']
+                assert not measurement['avgDuration']
+                assert not measurement['maxDuration']
+                assert not measurement['percentileDuration']
 
     def it_filters_epics_and_includes_subtasks_by_default(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture

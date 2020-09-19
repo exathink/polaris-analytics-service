@@ -351,7 +351,13 @@ class AggregateCycleMetrics(DeliveryCycleSpan):
 
     # Implementation cost aggregates
     total_effort = graphene.Float(required=False)
+    min_effort = graphene.Float(required=False)
+    avg_effort = graphene.Float(required=False)
+    max_effort = graphene.Float(required=False)
+
+    min_duration = graphene.Float(required=False)
     avg_duration = graphene.Float(required=False)
+    max_duration = graphene.Float(required=False)
     percentile_duration = graphene.Float(required=False)
 
     work_items_in_scope = graphene.Int(required=False)

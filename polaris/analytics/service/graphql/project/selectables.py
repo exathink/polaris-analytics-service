@@ -878,6 +878,17 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
             # Implementation Complexity Metrics
             implementation_complexity=dict(
                 total_effort=func.sum(delivery_cycles_relation.c.effort).label('total_effort'),
+                min_effort=func.min(delivery_cycles_relation.c.effort).label('min_effort'),
+                avg_effort=func.avg(delivery_cycles_relation.c.effort).label('avg_effort'),
+                max_effort=func.max(delivery_cycles_relation.c.effort).label('max_effort'),
+                min_duration=(
+                        func.min(
+                            func.extract(
+                                'epoch',
+                                delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
+                            )
+                        ) / (1.0 * 3600 * 24)
+                ).label('min_duration'),
                 avg_duration=(
                         func.avg(
                             func.extract(
@@ -886,6 +897,14 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                             )
                         ) / (1.0 * 3600 * 24)
                 ).label('avg_duration'),
+                max_duration=(
+                        func.max(
+                            func.extract(
+                                'epoch',
+                                delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
+                            )
+                        ) / (1.0 * 3600 * 24)
+                ).label('max_duration'),
                 percentile_duration=(
                         func.percentile_disc(
                             cycle_metrics_trends_args.duration_target_percentile

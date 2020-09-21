@@ -69,6 +69,9 @@ class WorkItemsSummaries(graphene.Interface):
     work_items_summaries = graphene.Field(graphene.List(WorkItemsSummary, required=False))
 
 
+
+
+
 class CumulativeCommitCount(graphene.Interface):
     year = graphene.Int(required=True)
     week = graphene.Int(required=True)
@@ -449,3 +452,35 @@ class ImplementationCost(graphene.Interface):
                               description="Span in days between earliest commit and latest commit")
     author_count = graphene.Int(required=False,
                                 description="The number of distinct authors who committed to the work item")
+
+
+class FlowMixItem(graphene.ObjectType):
+    category = graphene.String(required=True)
+    sub_category_type = graphene.String(required=False)
+    sub_category = graphene.String(required=False)
+
+    work_item_count = graphene.Float(required=False)
+    total_effort = graphene.Float(required=False)
+
+
+class FlowMixMeasurement(graphene.Interface):
+    measurement_date = graphene.Date(required=True)
+    measurement_window = graphene.Int(required=True)
+    flow_mix = graphene.Field(graphene.List(FlowMixItem), required=True)
+
+
+class FlowMixMeasurementImpl(TrendMeasurementImpl):
+
+    class Meta:
+        interfaces = (FlowMixMeasurement,)
+
+    def __init__(self, *args, **kwargs):
+        self.flow_mix = []
+        super().__init__(*args, **kwargs)
+
+        self.flow_mix = [FlowMixItem(**item) for item in self.flow_mix if item is not None]
+
+
+class FlowMixTrends(graphene.Interface):
+
+    flow_mix_trends = graphene.List(FlowMixMeasurementImpl, required=True)

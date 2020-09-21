@@ -150,3 +150,7 @@ class ResponseTimeConfidenceTrendsParameters(AggregateMetricsTrendsParameters, W
         required=True,
         description="Target cycle time in days for which confidence is measured"
     )
+
+
+class FlowMixTrendsParameters(AggregateMetricsTrendsParameters, WorkItemTypeSelectionParameters):
+    pass

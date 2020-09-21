@@ -12,7 +12,8 @@ from polaris.graphql.mixins import *
 from datetime import datetime
 
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
-    WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, ProjectSettingsImpl
+    WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
+    ProjectSettingsImpl, FlowMixMeasurementImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -32,6 +33,16 @@ class WorkItemsSummariesResolverMixin(KeyIdResolverMixin):
 
     def resolve_work_items_summaries(self, info, **kwargs):
         return [WorkItemsSummary(**summary) for summary in self.work_items_summaries if summary is not None]
+
+
+class FlowMixTrendsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.flow_mix_trends = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_flow_mix_trends(self, info, **kwargs):
+        return [FlowMixMeasurementImpl(**measurement) for measurement in self.flow_mix_trends if measurement is not None]
 
 
 class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):

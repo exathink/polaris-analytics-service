@@ -17,7 +17,8 @@ from polaris.common import db
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
     union_all, literal, Date, true, or_, Integer
 
-from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics
+from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics, FlowTypes, \
+    WorkItemTypesToFlowTypes
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
@@ -40,7 +41,7 @@ from ..interfaces import \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
-    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo
+    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -1576,14 +1577,14 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
         measurement_window = response_time_confidence_trends_args.measurement_window
         if measurement_window is None:
             raise ProcessingException(
-                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+                "'measurement_window' must be specified when calculating ProjectResponseTimeConfidenceTrends"
             )
 
         # Get the a list of dates for trending using the trends_args for control
         timeline_dates = get_timeline_dates_for_trending(
             response_time_confidence_trends_args,
-            arg_name='traceability_trends',
-            interface_name='TraceabilityTrends'
+            arg_name='response_time_confidence_trends',
+            interface_name='ResponseTimeConfidenceTrends'
         )
 
         projects_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
@@ -1631,4 +1632,131 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
             )
         ).group_by(
             projects_timeline_dates.c.id,
+        )
+
+
+class ProjectsFlowMixTrends(InterfaceResolver):
+    interface = FlowMixTrends
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        flow_mix_trends_args = kwargs.get('flow_mix_trends_args')
+
+        measurement_window = flow_mix_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating FlowMixTrends"
+            )
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            flow_mix_trends_args,
+            arg_name='flow_mix_trends',
+            interface_name='FlowMixTrends'
+        )
+
+        projects_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
+
+        select_work_items = select([
+            projects_timeline_dates.c.id,
+            projects_timeline_dates.c.measurement_date,
+            work_items.c.id.label('work_item_id'),
+            work_items.c.work_item_type,
+            case([
+                (
+                    work_items.c.is_bug,
+                    FlowTypes.defect.value
+                ),
+                (
+                    work_items.c.work_item_type.in_(
+                        WorkItemTypesToFlowTypes.feature_types
+                    ),
+                    FlowTypes.feature.value
+                ),
+                (
+                    work_items.c.work_item_type.in_(
+                        WorkItemTypesToFlowTypes.task_types
+                    ),
+                    FlowTypes.task.value
+                )
+                
+            ], else_=FlowTypes.other.value
+            ).label('category'),
+            work_item_delivery_cycles.c.effort.label('effort')
+        ]).select_from(
+            projects_timeline_dates.join(
+                work_items_sources, work_items_sources.c.project_id == projects_timeline_dates.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            )
+        ).where(
+            and_(
+                work_item_delivery_cycles.c.end_date.between(
+                    projects_timeline_dates.c.measurement_date - timedelta(
+                        days=measurement_window
+                    ),
+                    projects_timeline_dates.c.measurement_date
+                ),
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(flow_mix_trends_args),
+                *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
+                    flow_mix_trends_args
+                )
+            )
+        ).cte()
+        
+        select_category_counts = select([
+            projects_timeline_dates.c.id,
+            projects_timeline_dates.c.measurement_date,
+            select_work_items.c.category,
+            func.count(select_work_items.c.work_item_id.distinct()).label('work_item_count'),
+            func.sum(select_work_items.c.effort).label('total_effort')
+        ]).select_from(
+            projects_timeline_dates.outerjoin(
+                select_work_items,
+                and_(
+                    projects_timeline_dates.c.id == select_work_items.c.id,
+                    projects_timeline_dates.c.measurement_date == select_work_items.c.measurement_date
+                )
+            )
+        ).group_by(
+            projects_timeline_dates.c.id,
+            projects_timeline_dates.c.measurement_date,
+            select_work_items.c.category
+        ).alias()
+
+        select_flow_mix = select([
+            select_category_counts .c.id,
+            select_category_counts .c.measurement_date,
+            func.json_agg(
+                func.json_build_object(
+                    'category',
+                    select_category_counts .c.category,
+                    'work_item_count',
+                    select_category_counts .c.work_item_count,
+                    'total_effort',
+                    select_category_counts.c.total_effort,
+                )
+            ).label('flow_mix')
+        ]).select_from(
+            select_category_counts
+        ).group_by(
+            select_category_counts .c.id,
+            select_category_counts .c.measurement_date
+        ).alias()
+
+        return select([
+            select_flow_mix.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', select_flow_mix.c.measurement_date,
+                    'measurement_window', measurement_window,
+                    'flow_mix', select_flow_mix.c.flow_mix
+                )
+            ).label('flow_mix_trends')
+        ]).select_from(
+            select_flow_mix
+        ).group_by(
+            select_flow_mix.c.id
         )

@@ -15,6 +15,7 @@ from test.fixtures.graphql import *
 
 from test.graphql.queries.projects.shared_testing_mixins import TrendingWindowTestNumberOfMeasurements
 
+
 class TestProjectResponseTimePredictabilityTrends:
 
     @pytest.yield_fixture
@@ -80,8 +81,6 @@ class TestProjectResponseTimePredictabilityTrends:
                 query=measurements_query,
                 output_attribute='responseTimeConfidenceTrends'
             )
-
-
 
     class TestResponseTimeConfidenceCalculations:
 

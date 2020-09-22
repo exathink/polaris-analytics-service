@@ -34,8 +34,10 @@ test_contributor_name = 'Joe Blow'
 
 
 def graphql_date(date):
-    return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
-
+    try:
+        return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
+    except ValueError:
+        return datetime.strptime(date, "%Y-%m-%d")
 
 def graphql_date_string(date):
     return datetime.strftime(date, "%Y-%m-%dT%H:%M:%S.%f")

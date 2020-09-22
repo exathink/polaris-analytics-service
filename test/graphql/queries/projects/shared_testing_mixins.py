@@ -11,7 +11,7 @@ import pytest
 from datetime import datetime, timedelta
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
-
+from test.fixtures.graphql import graphql_date
 
 class TrendingWindowTestNumberOfMeasurements:
 
@@ -137,3 +137,43 @@ class TrendingWindowTestNumberOfMeasurements:
                 project = result['data']['project']
                 # we expect one measurement for each point in the window including the end points.
                 assert len(project[fixture.output_attribute]) == 2
+
+
+class TrendingWindowMeasurementDate:
+
+    def it_returns_a_measurement_date_and_window_for_each_measurement(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        result = client.execute(fixture.query, variable_values=dict(
+            project_key=fixture.project.key,
+            days=30,
+            window=7,
+            sample=1
+        ))
+        assert result['data']
+        project = result['data']['project']
+        measurements = project[fixture.output_attribute]
+        for measurement in measurements:
+            assert measurement['measurementDate']
+            assert measurement['measurementWindow']
+
+
+    def it_returns_trends_in_ascending_order_of_measurement_dates(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        result = client.execute(fixture.query, variable_values=dict(
+            project_key=fixture.project.key,
+            days=30,
+            window=7,
+            sample=1
+        ))
+        assert result['data']
+        project = result['data']['project']
+        measurements = project[fixture.output_attribute]
+        for i in range(1, len(measurements)):
+            assert graphql_date(measurements[i]['measurementDate']) > graphql_date(measurements[i-1]['measurementDate'])
+

@@ -160,7 +160,7 @@ class TrendingWindowMeasurementDate:
             assert measurement['measurementWindow']
 
 
-    def it_returns_trends_in_ascending_order_of_measurement_dates(self, setup):
+    def it_returns_trends_in_descending_order_of_measurement_dates(self, setup):
         fixture = setup
 
         client = Client(schema)
@@ -175,5 +175,5 @@ class TrendingWindowMeasurementDate:
         project = result['data']['project']
         measurements = project[fixture.output_attribute]
         for i in range(1, len(measurements)):
-            assert graphql_date(measurements[i]['measurementDate']) > graphql_date(measurements[i-1]['measurementDate'])
+            assert graphql_date(measurements[i]['measurementDate']) < graphql_date(measurements[i-1]['measurementDate'])
 

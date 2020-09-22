@@ -13,7 +13,9 @@ from polaris.analytics.db.enums import JiraWorkItemType
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 
-from test.graphql.queries.projects.shared_testing_mixins import TrendingWindowTestNumberOfMeasurements
+from test.graphql.queries.projects.shared_testing_mixins import \
+    TrendingWindowTestNumberOfMeasurements, \
+    TrendingWindowMeasurementDate
 
 
 class TestProjectResponseTimePredictabilityTrends:
@@ -45,7 +47,10 @@ class TestProjectResponseTimePredictabilityTrends:
             start_date=start_date,
         )
 
-    class TestNumberOfMeasurements(TrendingWindowTestNumberOfMeasurements):
+    class TestNumberOfMeasurements(
+        TrendingWindowTestNumberOfMeasurements,
+        TrendingWindowMeasurementDate
+    ):
 
         @pytest.yield_fixture
         def setup(self, setup):
@@ -71,6 +76,7 @@ class TestProjectResponseTimePredictabilityTrends:
                     ) {
                         responseTimeConfidenceTrends {
                             measurementDate
+                            measurementWindow
                         }
                     }
                 }

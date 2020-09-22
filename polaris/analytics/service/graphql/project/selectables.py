@@ -1458,33 +1458,12 @@ class ProjectTraceabilityTrends(InterfaceResolver):
             traceability_trends_args.exclude_merges
         )
 
-        # Now put them together to do the actual traceability calc and assemble the final JSON result
-        result = select([
+        select_traceability_metrics = select([
             total_commit_count.c.id,
-            func.json_agg(
-                func.json_build_object(
-                    'measurement_date', total_commit_count.c.measurement_date,
-                    'measurement_window', measurement_window,
-                    'spec_count', func.coalesce(spec_count.c.spec_count, 0),
-                    'nospec_count', func.coalesce(nospec_count.c.nospec_count, 0),
-                    'total_commits', func.coalesce(total_commit_count.c.total_commits, 0),
-                    'traceability',
-                    # we calculate traceability as a ratio of the commits associated with work items
-                    # in our project relative to the universe of commits that includes this set and the set
-                    # associated with no work items. Thus if there are many projects that share a repository with a
-                    # a lot of nospec commits, it will affect the traceability of ALL of the projects that share this
-                    # repo.
-                    case([
-                        (
-                            func.coalesce(nospec_count.c.nospec_count, 0) + func.coalesce(
-                                spec_count.c.spec_count) != 0,
-                            func.coalesce(spec_count.c.spec_count, 0) / (1.0 * (
-                                    func.coalesce(spec_count.c.spec_count, 0) + func.coalesce(
-                                nospec_count.c.nospec_count, 0)))
-                        )
-                    ], else_=0),
-                )
-            ).label('traceability_trends')
+            total_commit_count.c.measurement_date,
+            total_commit_count.c.total_commits,
+            spec_count.c.spec_count,
+            nospec_count.c.nospec_count
         ]).select_from(
             total_commit_count.outerjoin(
                 nospec_count,
@@ -1499,8 +1478,41 @@ class ProjectTraceabilityTrends(InterfaceResolver):
                     total_commit_count.c.measurement_date == spec_count.c.measurement_date
                 )
             )
+        ).order_by(
+            total_commit_count.c.id,
+            total_commit_count.c.measurement_date.desc()
+        ).alias()
+        # Now put them together to assemble the final JSON result
+        result = select([
+            select_traceability_metrics.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', select_traceability_metrics.c.measurement_date,
+                    'measurement_window', measurement_window,
+                    'spec_count', func.coalesce(select_traceability_metrics.c.spec_count, 0),
+                    'nospec_count', func.coalesce(select_traceability_metrics.c.nospec_count, 0),
+                    'total_commits', func.coalesce(select_traceability_metrics.c.total_commits, 0),
+                    'traceability',
+                    # we calculate traceability as a ratio of the commits associated with work items
+                    # in our project relative to the universe of commits that includes this set and the set
+                    # associated with no work items. Thus if there are many projects that share a repository with a
+                    # a lot of nospec commits, it will affect the traceability of ALL of the projects that share this
+                    # repo.
+                    case([
+                        (
+                            func.coalesce(select_traceability_metrics.c.nospec_count, 0) + func.coalesce(
+                                select_traceability_metrics.c.spec_count) != 0,
+                            func.coalesce(select_traceability_metrics.c.spec_count, 0) / (1.0 * (
+                                    func.coalesce(select_traceability_metrics.c.spec_count, 0) + func.coalesce(
+                                select_traceability_metrics.c.nospec_count, 0)))
+                        )
+                    ], else_=0),
+                )
+            ).label('traceability_trends')
+        ]).select_from(
+            select_traceability_metrics
         ).group_by(
-            total_commit_count.c.id
+            select_traceability_metrics.c.id
         )
 
         return result
@@ -1564,9 +1576,6 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
         ).group_by(
             response_time_ranks.c.id,
             response_time_ranks.c.measurement_date
-        ).order_by(
-            response_time_ranks.c.id,
-            response_time_ranks.c.measurement_date.desc()
         )
         return query
 
@@ -1744,6 +1753,9 @@ class ProjectsFlowMixTrends(InterfaceResolver):
         ).group_by(
             select_category_counts .c.id,
             select_category_counts .c.measurement_date
+        ).order_by(
+            select_category_counts.c.id,
+            select_category_counts.c.measurement_date.desc(),
         ).alias()
 
         return select([

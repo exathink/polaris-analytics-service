@@ -25,3 +25,42 @@ WorkItemTypesToIncludeInCycleMetrics = {
     JiraWorkItemType.task.value,
     JiraWorkItemType.sub_task.value
 }
+
+
+class FlowTypes(Enum):
+    feature = 'feature'
+    task = 'task'
+    defect = 'defect'
+    other = 'other'
+
+
+class WorkItemTypesToFlowTypes:
+    feature_types = [
+        JiraWorkItemType.story.value,
+        PivotalTrackerWorkItemType.story.value,
+        GithubWorkItemType.issue.value
+    ]
+
+    task_types = [
+        JiraWorkItemType.task.value,
+        JiraWorkItemType.sub_task.value,
+        PivotalTrackerWorkItemType.chore.value,
+        GithubWorkItemType.pull_request.value
+    ]
+
+    defect_types = [
+        JiraWorkItemType.bug.value,
+    ]
+
+
+all_work_item_types = [
+  *WorkItemTypesToFlowTypes.feature_types,
+  *WorkItemTypesToFlowTypes.task_types,
+  *WorkItemTypesToFlowTypes.defect_types
+]
+
+num_feature_types = len(WorkItemTypesToFlowTypes.feature_types)
+num_task_types = len(WorkItemTypesToFlowTypes.task_types)
+num_defect_types = len(WorkItemTypesToFlowTypes.defect_types)
+
+

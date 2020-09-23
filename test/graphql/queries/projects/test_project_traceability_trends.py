@@ -163,18 +163,6 @@ class TestProjectTraceabilityTrends:
                    dict(
                        traceability=0.0,
                        specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
                        nospecCount=1,
                        totalCommits=1
                    ),
@@ -189,7 +177,19 @@ class TestProjectTraceabilityTrends:
                        specCount=0,
                        nospecCount=1,
                        totalCommits=1
-                   )
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
                ]
 
     def it_reports_commit_and_nospec_counts_when_there_are_commits_that_are_not_associated_with_any_work_items(self,
@@ -261,18 +261,6 @@ class TestProjectTraceabilityTrends:
                    dict(
                        traceability=0.0,
                        specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
                        nospecCount=1,
                        totalCommits=1
                    ),
@@ -287,7 +275,20 @@ class TestProjectTraceabilityTrends:
                        specCount=0,
                        nospecCount=1,
                        totalCommits=1
-                   )
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+
                ]
 
     def it_respects_the_exclude_merges_flag_when_there_are_commits_that_are_not_associated_with_any_work_items(self,
@@ -370,10 +371,9 @@ class TestProjectTraceabilityTrends:
                    dict(
                        traceability=0.0,
                        specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
+                       nospecCount=1,
+                       totalCommits=1
                    ),
-
                    # commit 10 days out is a non-merge and reported here and next window
                    # other commit is not reported anywhere since it is a merge.
                    dict(
@@ -385,15 +385,16 @@ class TestProjectTraceabilityTrends:
                    dict(
                        traceability=0.0,
                        specCount=0,
-                       nospecCount=1,
-                       totalCommits=1
+                       nospecCount=0,
+                       totalCommits=0
                    ),
                    dict(
                        traceability=0.0,
                        specCount=0,
                        nospecCount=0,
                        totalCommits=0
-                   )
+                   ),
+
                ]
 
     def it_reports_traceability_and_spec_count_when_there_are_commits_associated_with_work_items(self,
@@ -466,21 +467,9 @@ class TestProjectTraceabilityTrends:
                    for measurement in traceability_trends
                ] == [
                    dict(
-                       traceability=0.0,
-                       specCount=0,
+                       traceability=1.0,
+                       specCount=1,
                        nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
                        totalCommits=1
                    ),
                    dict(
@@ -490,11 +479,24 @@ class TestProjectTraceabilityTrends:
                        totalCommits=2
                    ),
                    dict(
-                       traceability=1.0,
-                       specCount=1,
-                       nospecCount=0,
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=1,
                        totalCommits=1
-                   )
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+
                ]
 
     def it_respects_exclude_merges_when_there_are_merge_commits_associated_with_work_items(self,
@@ -571,22 +573,10 @@ class TestProjectTraceabilityTrends:
                    for measurement in traceability_trends
                ] == [
                    dict(
-                       traceability=0.0,
+                       traceability=0,
                        specCount=0,
                        nospecCount=0,
                        totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
-                       totalCommits=1
                    ),
                    dict(
                        traceability=0,
@@ -595,11 +585,24 @@ class TestProjectTraceabilityTrends:
                        totalCommits=1
                    ),
                    dict(
-                       traceability=0,
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=1,
+                       totalCommits=1
+                   ),
+                   dict(
+                       traceability=0.0,
                        specCount=0,
                        nospecCount=0,
                        totalCommits=0
-                   )
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+
                ]
 
     def it_reports_traceability_and_spec_counts_correctly_when_repositories_are_shared_across_projects(self,
@@ -680,21 +683,9 @@ class TestProjectTraceabilityTrends:
                    for measurement in traceability_trends
                ] == [
                    dict(
-                       traceability=0.0,
-                       specCount=0,
+                       traceability=1.0,
+                       specCount=1,
                        nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
                        totalCommits=1
                    ),
                    dict(
@@ -704,11 +695,23 @@ class TestProjectTraceabilityTrends:
                        totalCommits=2
                    ),
                    dict(
-                       traceability=1.0,
-                       specCount=1,
-                       nospecCount=0,
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=1,
                        totalCommits=1
-                   )
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
                ]
 
         # now we test the metrics for venus. which shares commits with mercury, but does not have  work items, so its
@@ -737,18 +740,6 @@ class TestProjectTraceabilityTrends:
                        traceability=0.0,
                        specCount=0,
                        nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=0,
-                       totalCommits=0
-                   ),
-                   dict(
-                       traceability=0.0,
-                       specCount=0,
-                       nospecCount=1,
                        totalCommits=1
                    ),
                    dict(
@@ -760,7 +751,20 @@ class TestProjectTraceabilityTrends:
                    dict(
                        traceability=0.0,
                        specCount=0,
-                       nospecCount=0,
+                       nospecCount=1,
                        totalCommits=1
-                   )
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+
                ]

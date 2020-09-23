@@ -13,12 +13,14 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy import true, false, and_
 
+
 from polaris.analytics.db.enums import WorkItemsStateType
 
 from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
     commits, work_items_commits as work_items_commits_table, \
-    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag, FeatureFlagEnablement, WorkItemDeliveryCycle
+    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag, FeatureFlagEnablement, \
+    WorkItemDeliveryCycle
 from polaris.common import db
 from polaris.utils.collections import find, Fixture
 from polaris.common.enums import WorkTrackingIntegrationType
@@ -33,8 +35,12 @@ test_projects = ['mercury', 'venus']
 test_contributor_name = 'Joe Blow'
 
 
+
 def graphql_date(date):
-    return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
+    try:
+        return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
+    except ValueError:
+        return datetime.strptime(date, "%Y-%m-%d")
 
 
 def graphql_date_string(date):
@@ -178,6 +184,7 @@ def cleanup():
     db.connection().execute("delete from analytics.contributor_aliases")
     db.connection().execute("delete from analytics.contributors")
 
+
 def commits_common_fields(commits_fixture):
     _, _, _, contributor = commits_fixture
 
@@ -194,6 +201,7 @@ def commits_common_fields(commits_fixture):
         author_contributor_name='Billy Bob'
     )
 
+
 def commit_summary_common_fields(commits_fixture):
     _, _, _, contributor = commits_fixture
 
@@ -209,12 +217,12 @@ def commit_summary_common_fields(commits_fixture):
         author_contributor_name='Billy Bob'
     )
 
+
 def create_test_commits(test_commits):
     with db.create_session() as session:
         session.connection.execute(
             commits.insert(test_commits)
         )
-
 
 
 def get_date(str_date):
@@ -245,6 +253,7 @@ def create_work_items(organization, source_data, items_data):
         session.add(source)
         return source
 
+
 def create_work_items_with_default_delivery_cycle(organization, source_data, items_data):
     with db.orm_session() as session:
         session.expire_on_commit = False
@@ -273,7 +282,6 @@ def create_work_items_with_default_delivery_cycle(organization, source_data, ite
         for work_item in source.work_items:
             work_item.current_delivery_cycle_id = work_item.delivery_cycles[0].delivery_cycle_id
 
-
         return source
 
 
@@ -293,14 +301,14 @@ def create_transitions(work_item_key, transitions):
         work_item = WorkItem.find_by_work_item_key(session, work_item_key)
         if work_item:
             work_item.state_transitions.extend([
-                    WorkItemStateTransition(
-                        **transition
-                    )
-                    for transition in transitions
-                ]
+                WorkItemStateTransition(
+                    **transition
+                )
+                for transition in transitions
+            ]
             )
         else:
-            assert None,  f"Failed to find work item with key {work_item_key}"
+            assert None, f"Failed to find work item with key {work_item_key}"
 
 
 def create_work_item_commits(work_item_key, commit_keys):
@@ -334,10 +342,10 @@ def create_work_item_commits(work_item_key, commit_keys):
                     delivery_cycle = find(
                         work_item.delivery_cycles,
                         lambda dc:
-                            # This is the old date based rule we were using
-                            # to map delivery cycles to commits.
-                            dc.start_date <= commit.commit_date and
-                            (dc.end_date is None or commit.commit_date <= dc.end_date)
+                        # This is the old date based rule we were using
+                        # to map delivery cycles to commits.
+                        dc.start_date <= commit.commit_date and
+                        (dc.end_date is None or commit.commit_date <= dc.end_date)
                     )
                     delivery_cycle_id = delivery_cycle.delivery_cycle_id if delivery_cycle is not None else work_item.current_delivery_cycle_id
                     session.connection().execute(
@@ -433,6 +441,7 @@ def work_items_fixture(commits_fixture):
     create_work_item_commits(new_key, map(lambda commit: commit['key'], test_commits))
     yield new_key, test_commit_key, new_work_items
 
+
 @pytest.yield_fixture
 def work_items_commit_summary_fixture(commits_fixture):
     organization, _, repositories, _ = commits_fixture
@@ -484,6 +493,7 @@ def work_items_commit_summary_fixture(commits_fixture):
     create_test_commits(test_commits)
     create_work_item_commits(new_key, map(lambda commit: commit['key'], test_commits))
     yield new_key, test_commit_key, new_work_items
+
 
 @pytest.yield_fixture
 def commit_summary_fixture(commits_fixture):
@@ -637,7 +647,7 @@ def project_fixture(commits_fixture):
     ]
     create_test_commits(test_commits)
     create_work_item_commits(new_key, map(lambda commit: commit['key'], test_commits))
-    yield new_key, test_commit_key, new_work_items,project
+    yield new_key, test_commit_key, new_work_items, project
 
 
 @pytest.fixture
@@ -707,13 +717,14 @@ def api_import_commits_fixture(org_repo_fixture, cleanup):
         ]
     )
 
+
 @pytest.yield_fixture()
 def work_items_sources_fixture(org_repo_fixture, cleanup):
     organization, _, _ = org_repo_fixture
     new_key = uuid.uuid4()
     work_items_sources = {}
     with db.orm_session() as session:
-        session.expire_on_commit=False
+        session.expire_on_commit = False
         work_items_sources['github'] = WorkItemsSource(
             key=new_key.hex,
             integration_type='github',
@@ -744,6 +755,7 @@ def work_items_sources_fixture(org_repo_fixture, cleanup):
         )
         session.add_all(work_items_sources.values())
     yield new_key, work_items_sources
+
 
 @pytest.yield_fixture()
 def work_items_sources_work_items_fixture(commits_fixture, cleanup):
@@ -851,7 +863,7 @@ def jira_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
         ),
     ]
     with db.orm_session() as session:
-        session.expire_on_commit=False
+        session.expire_on_commit = False
         work_items_sources['jira'] = WorkItemsSource(
             key=jira_source_key.hex,
             integration_type=WorkTrackingIntegrationType.jira.value,
@@ -865,10 +877,11 @@ def jira_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
         work_items_sources['jira'].work_items.extend([
             WorkItem(**item)
             for item in new_work_items
-         ])
+        ])
         work_items_sources['jira'].init_state_map()
         session.add_all(work_items_sources.values())
     yield jira_source_key, work_items_sources
+
 
 @pytest.yield_fixture()
 def github_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
@@ -1047,6 +1060,7 @@ def api_work_items_import_fixture(org_repo_fixture):
     db.connection().execute("delete  from analytics.work_items_source_state_map")
     db.connection().execute("delete  from analytics.work_items_sources")
 
+
 class WorkItemImportApiHelper:
     def __init__(self, organization, work_items_source, work_items=None):
         self.organization = organization
@@ -1068,14 +1082,20 @@ class WorkItemImportApiHelper:
 
         api.update_work_items(self.organization.key, self.work_items_source.key, self.work_items)
 
-    def update_delivery_cycles(self, updates):
-        with db.orm_session() as session:
+    def update_work_item_attributes(self, index, updates, join_this=None):
+        with db.orm_session(join_this) as session:
+            work_item = WorkItem.find_by_work_item_key(session, self.work_items[index]['key'])
+            if work_item:
+                for name, value in updates.items():
+                    setattr(work_item, name, value)
+
+    def update_delivery_cycles(self, updates, join_this=None):
+        with db.orm_session(join_this) as session:
             for index, update in updates:
                 work_item = WorkItem.find_by_work_item_key(session, self.work_items[index]['key'])
                 if work_item:
-                    delivery_cycle=session.query(WorkItemDeliveryCycle).filter(
+                    delivery_cycle = session.query(WorkItemDeliveryCycle).filter(
                         WorkItemDeliveryCycle.delivery_cycle_id == work_item.current_delivery_cycle_id
                     ).first()
                     if delivery_cycle:
-                        setattr(delivery_cycle, update['property'],  update['value'])
-
+                        setattr(delivery_cycle, update['property'], update['value'])

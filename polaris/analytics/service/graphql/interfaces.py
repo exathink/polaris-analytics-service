@@ -478,7 +478,7 @@ class FlowMixMeasurementImpl(TrendMeasurementImpl):
         self.flow_mix = []
         super().__init__(*args, **kwargs)
 
-        self.flow_mix = [FlowMixItem(**item) for item in self.flow_mix if item is not None]
+        self.flow_mix = [FlowMixItem(**item) for item in self.flow_mix if item is not None and item['category'] is not None]
 
 
 class FlowMixTrends(graphene.Interface):

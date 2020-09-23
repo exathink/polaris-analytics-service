@@ -1672,8 +1672,19 @@ class ProjectsFlowMixTrends(InterfaceResolver):
             work_items.c.id.label('work_item_id'),
             work_items.c.work_item_type,
             case([
+                # We need both a test for is_bug and for work_item_type
+                # here, because in some providers like Github issues there is
+                # no explicit issue type for bug. We use labels and other
+                # attributes to set the is_bug flag and so that should always
+                # override the work_item_type in determining if something is a bug.
                 (
                     work_items.c.is_bug,
+                    FlowTypes.defect.value
+                ),
+                (
+                    work_items.c.work_item_type.in_(
+                        WorkItemTypesToFlowTypes.defect_types
+                    ),
                     FlowTypes.defect.value
                 ),
                 (
@@ -1741,9 +1752,9 @@ class ProjectsFlowMixTrends(InterfaceResolver):
             func.json_agg(
                 func.json_build_object(
                     'category',
-                    select_category_counts .c.category,
+                    select_category_counts.c.category,
                     'work_item_count',
-                    select_category_counts .c.work_item_count,
+                    select_category_counts.c.work_item_count,
                     'total_effort',
                     select_category_counts.c.total_effort,
                 )

@@ -32,8 +32,8 @@ class TestWorkItemsCreated:
                     key=uuid.uuid4(),
                     display_id='1000',
                     **dict_merge(
-                        dict_drop(work_items_common(),['epic_id']),
-                        dict(epic_key=None)
+                        dict_drop(work_items_common(),['parent_id']),
+                        dict(parent_key=None)
                     )
                 )
             ]
@@ -56,8 +56,8 @@ class TestWorkItemsUpdated:
             work_items_source_key=work_items_source_key,
             updated_work_items=[
                 dict_merge(
-                    dict_drop(work_item,['epic_id']),
-                    dict(epic_key=None)
+                    dict_drop(work_item,['parent_id']),
+                    dict(parent_key=None)
                 )
                 for work_item in work_items
             ]
@@ -76,8 +76,8 @@ class TestWorkItemsUpdated:
             work_items_source_key=work_items_source_key,
             updated_work_items=[
                 dict_merge(
-                    dict_drop(work_item,['epic_id']),
-                    dict(epic_key=None, state='foo')
+                    dict_drop(work_item,['parent_id']),
+                    dict(parent_key=None, state='foo')
                 )
                 for work_item in work_items
             ]

@@ -110,8 +110,8 @@ class TestProjectWorkItemStateTypeCounts:
 
     def it_returns_a_count_of_unmapped_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        work_items_common.pop('epic_id', None)
-        work_items_common['epic_key'] = None
+        work_items_common.pop('parent_id', None)
+        work_items_common['parent_key'] = None
         api.import_new_work_items(
             organization_key=organization.key,
             work_item_source_key=work_items_source.key,
@@ -165,7 +165,7 @@ class TestProjectWorkItemStateTypeCounts:
             description='foo',
             source_id=str(uuid.uuid4()),
             is_epic=False,
-            epic_id=None
+            parent_id=None
         )
 
         api.import_new_work_items(

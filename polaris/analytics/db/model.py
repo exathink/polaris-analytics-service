@@ -689,8 +689,8 @@ class WorkItem(Base):
 
     # Information related to Epic
     is_epic = Column(Boolean, nullable=False, default=False, server_default='FALSE')
-    epic_id = Column(Integer, ForeignKey('work_items.id'), nullable=True)
-    epic = relationship('WorkItem', remote_side='WorkItem.id')
+    parent_id = Column(Integer, ForeignKey('work_items.id'), nullable=True)
+    parent = relationship('WorkItem', remote_side='WorkItem.id')
 
     # calculated fields
 

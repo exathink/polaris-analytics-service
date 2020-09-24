@@ -32,7 +32,7 @@ work_items_common = dict(
     state='open',
     description='foo',
     source_id=str(uuid.uuid4()),
-    epic_id=None
+    parent_id=None
 
 )
 

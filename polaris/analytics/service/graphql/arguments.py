@@ -81,6 +81,11 @@ class CycleMetricsEnum(Enum):
     max_duration = 'max_duration'
     percentile_duration = 'percentile_duration'
 
+    min_latency = 'min_latency'
+    avg_latency = 'avg_latency'
+    max_latency = 'max_latency'
+    percentile_latency = 'percentile_latency'
+
     work_items_in_scope = 'work_items_in_scope'
     work_items_with_commits = 'work_items_with_commits'
     work_items_with_null_cycle_time = 'work_items_with_null_cycle_time'

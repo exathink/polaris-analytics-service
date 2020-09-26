@@ -882,6 +882,17 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                 min_effort=func.min(delivery_cycles_relation.c.effort).label('min_effort'),
                 avg_effort=func.avg(delivery_cycles_relation.c.effort).label('avg_effort'),
                 max_effort=func.max(delivery_cycles_relation.c.effort).label('max_effort'),
+                # latency
+                min_latency=func.min(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('min_latency'),
+                avg_latency=func.avg(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('avg_latency'),
+                max_latency=func.max(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('max_latency'),
+                percentile_latency=func.percentile_disc(
+                    cycle_metrics_trends_args.cycle_time_target_percentile
+                ).within_group(
+                    delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)
+                ).label(
+                    'percentile_latency'
+                ),
                 min_duration=(
                         func.min(
                             func.extract(
@@ -1141,7 +1152,14 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             ).label('cycle_time'),
             # Latency for in-progress items = measurement_date - latest_commit
             (
-                ProjectPipelineCycleMetrics.delivery_cycle_latency(measurement_date)
+                    func.extract(
+                        'epoch',
+                        measurement_date - func.coalesce(
+                            func.min(work_item_delivery_cycles.c.latest_commit),
+                            # if latest_commit is null, then its is not a spec - so latency is 0
+                            measurement_date
+                        )
+                    )
             ).label('latency')
 
         ]).select_from(
@@ -1185,16 +1203,6 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             work_items.c.id,
         ).alias()
 
-    @classmethod
-    def delivery_cycle_latency(cls, measurement_date):
-        return func.extract(
-            'epoch',
-            measurement_date - func.coalesce(
-                func.min(work_item_delivery_cycles.c.latest_commit),
-                # if latest_commit is null, then its is not a spec - so latency is 0
-                measurement_date
-            )
-        ) / (1.0 * 3600 * 24)
 
     @classmethod
     def interface_selector(cls, project_nodes, **kwargs):

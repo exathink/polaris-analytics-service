@@ -156,6 +156,12 @@ def update_work_items_setup(work_items_setup):
     yield organization_key, work_items_source_key, work_items_list
 
 
+
+
+
+
+
+
 @pytest.yield_fixture()
 def update_closed_work_items_setup(work_items_setup):
     organization_key, work_items_source_key = work_items_setup

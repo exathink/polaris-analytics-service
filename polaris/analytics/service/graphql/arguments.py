@@ -132,6 +132,11 @@ class CycleMetricsParameters(WorkItemTypeSelectionParameters, graphene.InputObje
         required=False,
         description="If percentile duration is requested, then this specifies the target percentile value"
     )
+    latency_target_percentile = graphene.Float(
+        required=False,
+        description="If percentile latency is requested, then this specifies the target percentile value"
+    )
+
 
 
 class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters, CycleMetricsParameters):

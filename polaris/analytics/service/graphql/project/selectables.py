@@ -887,7 +887,7 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                 avg_latency=func.avg(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('avg_latency'),
                 max_latency=func.max(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('max_latency'),
                 percentile_latency=func.percentile_disc(
-                    cycle_metrics_trends_args.cycle_time_target_percentile
+                    cycle_metrics_trends_args.latency_target_percentile
                 ).within_group(
                     delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)
                 ).label(

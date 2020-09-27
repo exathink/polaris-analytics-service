@@ -884,3 +884,76 @@ class TestProjectPipelineCycleMetricsCurrentPipeline:
         assert project['pipelineCycleMetrics']
         measurement = project['pipelineCycleMetrics']
         assert measurement['workItemsInScope'] == 1
+
+
+    def it_reports_latency_metrics_correctly(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id=f'1000{i}',
+                state='doing',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 5)
+        ]
+
+        api_helper.import_work_items(work_items)
+        for i in range(0, 5):
+            # expect latencies to be distributed as 1, 2, 3, 4, 5
+            api_helper.update_delivery_cycles(
+                ([(i, dict(property='latest_commit', value=start_date + timedelta(days=5+i)))]))
+
+
+
+        client = Client(schema)
+        query = """
+                    query getProjectPipelineCycleMetricsTrends(
+                        $project_key:String!, 
+                        $percentile: Float
+                    ) {
+                        project(
+                            key: $project_key, 
+                            interfaces: [PipelineCycleMetrics], 
+                            pipelineCycleMetricsArgs: {
+                        
+                                metrics: [
+                                   min_latency
+                                   max_latency
+                                   avg_latency
+                                   percentile_latency 
+                                ],
+                                latencyTargetPercentile: $percentile,
+                            }
+
+                        ) {
+                            pipelineCycleMetrics {
+                                measurementDate
+                
+                                minLatency
+                                maxLatency
+                                avgLatency
+                                percentileLatency
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(
+            project_key=project.key,
+            percentile=0.70
+        ))
+        assert result['data']
+        project = result['data']['project']
+        # we expect one measurement for each point in the window including the end points.
+        measurement = project['pipelineCycleMetrics']
+        assert measurement['minLatency'] - 1.0 < 0.01
+        assert measurement['avgLatency'] - 3.0 < 0.01
+        assert measurement['maxLatency'] - 5.0 < 0.01
+        assert measurement['percentileLatency']  -  4.0 < 0.01

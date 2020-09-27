@@ -1281,7 +1281,8 @@ class TestProjectCycleMetricsTrends:
             api_helper.update_work_items([(i, 'closed', start_date + timedelta(days=1))])
             # close them so that durations are distributed in the sequence (1,2,3,4,5)
             api_helper.update_delivery_cycles(([(i, dict(property='earliest_commit', value=start_date))]))
-            api_helper.update_delivery_cycles(([(i, dict(property='latest_commit', value=start_date + timedelta(days=i+1)))]))
+            api_helper.update_delivery_cycles(
+                ([(i, dict(property='latest_commit', value=start_date + timedelta(days=i + 1)))]))
 
         client = Client(schema)
         query = """
@@ -1344,6 +1345,95 @@ class TestProjectCycleMetricsTrends:
                 assert not measurement['avgDuration']
                 assert not measurement['maxDuration']
                 assert not measurement['percentileDuration']
+
+    def it_reports_latency_metrics_correctly(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id=f'1000{i}',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 5)
+        ]
+
+        api_helper.import_work_items(work_items)
+        for i in range(0, 5):
+            # expect latencies to be distributed as 1, 2, 3, 4, 5
+            api_helper.update_delivery_cycles(
+                ([(i, dict(property='latest_commit', value=start_date + timedelta(days=i)))]))
+            # close it so that shows up in the metrics
+            api_helper.update_work_items([(i, 'closed', start_date + timedelta(days=5))])
+
+
+        client = Client(schema)
+        query = """
+                    query getProjectCycleMetricsTrends(
+                        $project_key:String!, 
+                        $days: Int!, 
+                        $window: Int!,
+                        $sample: Int,
+                        $percentile: Float
+                    ) {
+                        project(
+                            key: $project_key, 
+                            interfaces: [CycleMetricsTrends], 
+                            cycleMetricsTrendsArgs: {
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                                metrics: [
+                                   min_latency
+                                   max_latency
+                                   avg_latency
+                                   percentile_latency 
+                                ],
+                                latencyTargetPercentile: $percentile,
+                            }
+
+                        ) {
+                            cycleMetricsTrends {
+                                measurementDate
+                                measurementWindow
+                                minLatency
+                                maxLatency
+                                avgLatency
+                                percentileLatency
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(
+            project_key=project.key,
+            days=30,
+            window=10,
+            sample=10,
+            percentile=0.70
+        ))
+        assert result['data']
+        project = result['data']['project']
+        # we expect one measurement for each point in the window including the end points.
+        assert len(project['cycleMetricsTrends']) == 4
+        for index, measurement in enumerate(project['cycleMetricsTrends']):
+            if index == 0:
+                assert measurement['minLatency'] == 1.0
+                assert measurement['avgLatency'] == 3.0
+                assert measurement['maxLatency'] == 5.0
+                assert measurement['percentileLatency'] == 4.0
+
+            else:
+                assert not measurement['minLatency']
+                assert not measurement['avgLatency']
+                assert not measurement['maxLatency']
+                assert not measurement['percentileLatency']
 
     def it_filters_epics_and_includes_subtasks_by_default(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture

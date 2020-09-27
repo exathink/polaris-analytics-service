@@ -459,6 +459,95 @@ class TestUpdateWorkItemsCommitsCount:
                             work_item_id={work_items_ids[1]} and commit_count is NULL").scalar() == 1
 
 
+class TestUpdateWorkItemsLatency:
+
+    def it_updates_latency_for_closed_work_item(self, work_items_commits_fixture):
+        organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
+
+        with db.orm_session() as session:
+            work_item = WorkItem.find_by_work_item_key(session, test_work_items[1]['key'])
+            # override the date setup in the fixture so that the test can be stable and makes
+            # sense locally.
+            for commit in work_item.commits:
+                commit.commit_date = latest_commit_date
+
+            work_item.current_delivery_cycle.end_date = latest_commit_date + timedelta(days=3)
+
+        work_items_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_items[1]['key'],
+                # This is a bit misleading since this method does not actually use the commit key. The work item
+                # commits have already been established in the fixture, so the commit key is not actually used in this
+                # api call, just the work item key. But we are passing this for api contractual reason.
+                commit_key=test_commits[4]['key']
+            )
+        ]
+        result = commands.update_work_items_commits_stats(organization.key, work_items_commits)
+        assert result['success']
+        assert result['updated'] == 1
+        assert db.connection().execute(
+            f"select latency from analytics.work_item_delivery_cycles where \
+            work_item_id={work_items_ids[1]}").scalar() == 3*24*3600
+
+    def it_sets_null_latency_when_latest_commit_date_is_after_the_closed_date_of_work_item(self, work_items_commits_fixture):
+        organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
+
+        with db.orm_session() as session:
+            work_item = WorkItem.find_by_work_item_key(session, test_work_items[1]['key'])
+            # override the date setup in the fixture so that the test can be stable and makes
+            # sense locally.
+            for commit in work_item.commits:
+                commit.commit_date = latest_commit_date
+
+            work_item.current_delivery_cycle.end_date = earliest_commit_date
+
+        work_items_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_items[1]['key'],
+                # This is a bit misleading since this method does not actually use the commit key. The work item
+                # commits have already been established in the fixture, so the commit key is not actually used in this
+                # api call, just the work item key. But we are passing this for api contractual reason.
+                commit_key=test_commits[4]['key']
+            )
+        ]
+        result = commands.update_work_items_commits_stats(organization.key, work_items_commits)
+        assert result['success']
+        assert result['updated'] == 1
+        assert not db.connection().execute(
+            f"select latency from analytics.work_item_delivery_cycles where \
+            work_item_id={work_items_ids[1]}").scalar()
+
+    def it_sets_latency_to_null_for_non_closed_work_item(self, work_items_commits_fixture):
+        organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
+
+
+        with db.orm_session() as session:
+            work_item  = WorkItem.find_by_work_item_key(session, test_work_items[1]['key'])
+            # this is an artificial test - open work items will not have latency under normal circumstances.
+            # we are doing this to test that our update forces it to None.
+            work_item.current_delivery_cycle.latency = 10
+
+
+        work_items_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_items[1]['key'],
+                # This is a bit misleading since this method does not actually use the commit key. The work item
+                # commits have already been established in the fixture, so the commit key is not actually used in this
+                # api call, just the work item key. But we are passing this for api contractual reason.
+                commit_key=test_commits[4]['key']
+            )
+        ]
+        result = commands.update_work_items_commits_stats(organization.key, work_items_commits)
+        assert result['success']
+        assert result['updated'] == 1
+        assert not db.connection().execute(
+            f"select latency from analytics.work_item_delivery_cycles where \
+            work_item_id={work_items_ids[1]}").scalar()
+
+
 class TestWorkItemImplementationEffort:
 
     def it_works_for_single_work_item_and_commit(self, implementation_effort_fixture):

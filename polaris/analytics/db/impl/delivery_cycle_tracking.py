@@ -332,6 +332,7 @@ def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
     # select relevant rows to find various metrics
     delivery_cycles_commits_rows = select([
         work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        work_item_delivery_cycles.c.end_date,
         func.min(commits.c.commit_date).label('earliest_commit'),
         func.max(commits.c.commit_date).label('latest_commit'),
         func.count(distinct(commits.c.id)).label('commit_count'),
@@ -363,6 +364,19 @@ def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
             latest_commit=delivery_cycles_commits_rows.c.latest_commit,
             commit_count=delivery_cycles_commits_rows.c.commit_count,
             repository_count=delivery_cycles_commits_rows.c.repository_count,
+            # Update latency for the delivery cycles in this update.
+            latency=case([
+                (
+                    and_(
+                        delivery_cycles_commits_rows.c.end_date != None,
+                        # if latest commit is after closed date we choose to set
+                        # latency to null rather than report a negative latency
+                        func.extract('epoch',
+                                     delivery_cycles_commits_rows.c.end_date - delivery_cycles_commits_rows.c.latest_commit) > 0
+                    ),
+                    func.extract('epoch', delivery_cycles_commits_rows.c.end_date - delivery_cycles_commits_rows.c.latest_commit)
+                 )
+            ], else_=None)
         )
     ).rowcount
 

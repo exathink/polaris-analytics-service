@@ -25,7 +25,7 @@ from polaris.analytics.db.model import \
     work_item_delivery_cycles
 
 from .delivery_cycle_tracking import initialize_work_item_delivery_cycles, initialize_work_item_delivery_cycle_durations, \
-    compute_work_item_delivery_cycles_cycle_time, update_work_item_delivery_cycles
+    compute_work_item_delivery_cycles_cycle_time_and_latency, update_work_item_delivery_cycles
 
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
 
@@ -310,7 +310,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
             # compute work_item_delivery_cycles cycle_time field
             # we may not need to compute cycle time for new work items as
             # cycle time can't be calculated without open, wip, complete state transitions
-            compute_work_item_delivery_cycles_cycle_time(session, work_items_temp)
+            compute_work_item_delivery_cycles_cycle_time_and_latency(session, work_items_temp)
 
         else:
             raise ProcessingException(f"Could not find work items source with key: {work_items_source_key}")

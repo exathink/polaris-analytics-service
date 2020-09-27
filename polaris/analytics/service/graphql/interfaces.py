@@ -363,6 +363,11 @@ class AggregateCycleMetrics(DeliveryCycleSpan):
     max_duration = graphene.Float(required=False)
     percentile_duration = graphene.Float(required=False)
 
+    min_latency = graphene.Float(required=False)
+    avg_latency = graphene.Float(required=False)
+    max_latency = graphene.Float(required=False)
+    percentile_latency = graphene.Float(required=False)
+
     work_items_in_scope = graphene.Int(required=False)
     work_items_with_commits = graphene.Int(required=False)
     work_items_with_null_cycle_time = graphene.Int(required=False)

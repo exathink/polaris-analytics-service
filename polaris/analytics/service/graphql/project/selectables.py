@@ -882,6 +882,17 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                 min_effort=func.min(delivery_cycles_relation.c.effort).label('min_effort'),
                 avg_effort=func.avg(delivery_cycles_relation.c.effort).label('avg_effort'),
                 max_effort=func.max(delivery_cycles_relation.c.effort).label('max_effort'),
+                # latency
+                min_latency=func.min(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('min_latency'),
+                avg_latency=func.avg(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('avg_latency'),
+                max_latency=func.max(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('max_latency'),
+                percentile_latency=func.percentile_disc(
+                    cycle_metrics_trends_args.latency_target_percentile
+                ).within_group(
+                    delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)
+                ).label(
+                    'percentile_latency'
+                ),
                 min_duration=(
                         func.min(
                             func.extract(
@@ -915,7 +926,7 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                                 delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
                             )
                         ) / (1.0 * 3600 * 24)
-                ).label('percentile_duration')
+                ).label('percentile_duration'),
 
             )
 
@@ -1138,7 +1149,18 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
                     # can be multiple backlog states, so we could have a duration in each one,
                     # so taking the sum correctly gets you the current backlog duration.
                     func.sum(work_item_delivery_cycle_durations.c.cumulative_time_in_state)
-            ).label('cycle_time')
+            ).label('cycle_time'),
+            # Latency for in-progress items = measurement_date - latest_commit
+            (
+                    func.extract(
+                        'epoch',
+                        measurement_date - func.coalesce(
+                            func.min(work_item_delivery_cycles.c.latest_commit),
+                            # if latest_commit is null, then its is not a spec - so latency is 0
+                            measurement_date
+                        )
+                    )
+            ).label('latency')
 
         ]).select_from(
             # get current delivery cycles for all the work items in the pipeline
@@ -1180,6 +1202,7 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             project_nodes.c.id,
             work_items.c.id,
         ).alias()
+
 
     @classmethod
     def interface_selector(cls, project_nodes, **kwargs):
@@ -1699,7 +1722,7 @@ class ProjectsFlowMixTrends(InterfaceResolver):
                     ),
                     FlowTypes.task.value
                 )
-                
+
             ], else_=FlowTypes.other.value
             ).label('category'),
             work_item_delivery_cycles.c.effort.label('effort')
@@ -1725,7 +1748,7 @@ class ProjectsFlowMixTrends(InterfaceResolver):
                 )
             )
         ).cte()
-        
+
         select_category_counts = select([
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date,
@@ -1747,8 +1770,8 @@ class ProjectsFlowMixTrends(InterfaceResolver):
         ).alias()
 
         select_flow_mix = select([
-            select_category_counts .c.id,
-            select_category_counts .c.measurement_date,
+            select_category_counts.c.id,
+            select_category_counts.c.measurement_date,
             func.json_agg(
                 func.json_build_object(
                     'category',
@@ -1762,8 +1785,8 @@ class ProjectsFlowMixTrends(InterfaceResolver):
         ]).select_from(
             select_category_counts
         ).group_by(
-            select_category_counts .c.id,
-            select_category_counts .c.measurement_date
+            select_category_counts.c.id,
+            select_category_counts.c.measurement_date
         ).order_by(
             select_category_counts.c.id,
             select_category_counts.c.measurement_date.desc(),

@@ -153,7 +153,7 @@ class TestImportWorkItems:
                 updated_at=datetime.utcnow(),
                 state='open',
                 source_id=str(uuid.uuid4()),
-                epic_id=None
+                parent_id=None
             ),
             dict(
                 key=uuid.uuid4().hex,
@@ -169,7 +169,7 @@ class TestImportWorkItems:
                 updated_at=datetime.utcnow(),
                 state='closed',
                 source_id=str(uuid.uuid4()),
-                epic_id=None
+                parent_id=None
             )
         ])
         assert result['success']
@@ -199,7 +199,7 @@ class TestImportWorkItems:
                 updated_at=datetime.utcnow(),
                 state='open',
                 source_id=str(uuid.uuid4()),
-                epic_id=None
+                parent_id=None
             ),
             dict(
                 key=uuid.uuid4().hex,
@@ -215,7 +215,7 @@ class TestImportWorkItems:
                 updated_at=datetime.utcnow(),
                 state='closed',
                 source_id=str(uuid.uuid4()),
-                epic_id=None
+                parent_id=None
             )
         ])
         assert result['success']
@@ -227,12 +227,12 @@ class TestImportWorkItems:
         assert db.connection().execute(
             "select completed_at from analytics.work_items where name='beta'").scalar()
 
-    def it_updates_epic_id_for_added_items(self, work_items_setup):
+    def it_updates_parent_id_for_added_items(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
-        epic_key = uuid.uuid4().hex
+        parent_key = uuid.uuid4().hex
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             dict(
-                key=epic_key,
+                key=parent_key,
                 name='alpha',
                 display_id='alpha',
                 work_item_type='issue',
@@ -245,8 +245,8 @@ class TestImportWorkItems:
                 updated_at=datetime.utcnow(),
                 state='open',
                 source_id=str(uuid.uuid4()),
-                epic_id=None,
-                epic_key=None,
+                parent_id=None,
+                parent_key=None,
             ),
             dict(
                 key=uuid.uuid4().hex,
@@ -262,18 +262,18 @@ class TestImportWorkItems:
                 updated_at=datetime.utcnow(),
                 state='closed',
                 source_id=str(uuid.uuid4()),
-                epic_id=None,
-                epic_key=epic_key
+                parent_id=None,
+                parent_key=parent_key
             )
         ])
         assert result['success']
         # Finding epi id
-        epic_id = db.connection().execute(
-            f"select id from analytics.work_items where key='{epic_key}'"
+        parent_id = db.connection().execute(
+            f"select id from analytics.work_items where key='{parent_key}'"
         ).scalar()
         # Work item should have epic id updated
         assert db.connection().execute(
-            f"select count(id) from analytics.work_items where epic_id='{epic_id}'").scalar() == 1
+            f"select count(id) from analytics.work_items where parent_id='{parent_id}'").scalar() == 1
 
 
 class TestUpdateWorkItems:
@@ -452,18 +452,18 @@ class TestUpdateWorkItems:
             )
         )
 
-    def it_updates_epic_id(self, update_work_items_setup):
+    def it_updates_parent_id(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
         work_items[0]['is_epic'] = True
-        work_items[0]['epic_key'] = None
-        epic_key = work_items[0]['key']
-        work_items[1]['epic_key'] = epic_key
+        work_items[0]['parent_key'] = None
+        parent_key = work_items[0]['key']
+        work_items[1]['parent_key'] = parent_key
         result = api.update_work_items(organization_key, work_items_source_key, work_items)
         assert result['success']
-        epic_id = db.connection().execute(
-            f"select id from analytics.work_items where is_epic=TRUE and key='{epic_key}'").scalar()
+        parent_id = db.connection().execute(
+            f"select id from analytics.work_items where is_epic=TRUE and key='{parent_key}'").scalar()
         assert db.connection().execute(
-            f"select count(id) from analytics.work_items where epic_id='{epic_id}'").scalar() == 1
+            f"select count(id) from analytics.work_items where parent_id='{parent_id}'").scalar() == 1
 
 
 class TestStateTransitionSequence:

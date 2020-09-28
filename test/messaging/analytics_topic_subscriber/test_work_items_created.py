@@ -68,8 +68,8 @@ class TestWorkItemsCreated:
                     work_items_source_key=work_items_source.key,
                     new_work_items=[
                         dict_merge(
-                            dict_drop(work_item, ['epic_id']),
-                            dict(epic_key=None)
+                            dict_drop(work_item, ['parent_id']),
+                            dict(parent_key=None)
                         )
                         for work_item in new_work_items
                     ]

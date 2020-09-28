@@ -16,8 +16,21 @@ branch_labels = None
 depends_on = None
 
 
+def copy_from_epic_id_to_parent_id():
+    op.execute(f"""
+                update analytics.work_items set parent_id=epic_id where epic_id is not NULL 
+            """)
+
+
+def copy_from_parent_id_to_epic_id():
+    op.execute("""
+                update analytics.work_items set epic_id=parent_id where parent_id is not NULL
+            """)
+
+
 def upgrade():
     op.add_column('work_items', sa.Column('parent_id', sa.Integer(), nullable=True), schema='analytics')
+    copy_from_epic_id_to_parent_id()
     op.drop_constraint('work_items_epic_id_fk', 'work_items', schema='analytics', type_='foreignkey')
     op.create_foreign_key('work_items_parent_id_fk', 'work_items', 'work_items', ['parent_id'], ['id'], source_schema='analytics', referent_schema='analytics')
     op.drop_column('work_items', 'epic_id', schema='analytics')
@@ -25,6 +38,7 @@ def upgrade():
 
 def downgrade():
     op.add_column('work_items', sa.Column('epic_id', sa.INTEGER(), autoincrement=False, nullable=True), schema='analytics')
+    copy_from_parent_id_to_epic_id()
     op.drop_constraint('work_items_parent_id_fk', 'work_items', schema='analytics', type_='foreignkey')
     op.create_foreign_key('work_items_epic_id_fk', 'work_items', 'work_items', ['epic_id'], ['id'], source_schema='analytics', referent_schema='analytics')
     op.drop_column('work_items', 'parent_id', schema='analytics')

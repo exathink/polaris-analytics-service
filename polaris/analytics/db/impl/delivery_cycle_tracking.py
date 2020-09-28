@@ -146,7 +146,7 @@ def update_work_item_delivery_cycles(session, work_items_temp):
     update_work_item_delivery_cycle_durations(session, work_items_temp)
 
     # Recompute cycle time for all updated delivery cycles
-    compute_work_item_delivery_cycles_cycle_time(session, work_items_temp)
+    compute_work_item_delivery_cycles_cycle_time_and_latency(session, work_items_temp)
 
 
 def initialize_work_item_delivery_cycle_durations(session, work_items_temp):
@@ -274,8 +274,8 @@ def update_work_item_delivery_cycle_durations(session, work_items_temp):
     )
 
 
-def compute_work_item_delivery_cycles_cycle_time(session, work_items_temp):
-    delivery_cycles_cycle_time = select([
+def compute_work_item_delivery_cycles_cycle_time_and_latency(session, work_items_temp):
+    delivery_cycles_cycle_time_latency = select([
         work_items.c.current_delivery_cycle_id.label('current_delivery_cycle_id'),
         func.sum(case(
             [
@@ -289,7 +289,12 @@ def compute_work_item_delivery_cycles_cycle_time(session, work_items_temp):
                 )
             ],
             else_=None
-        )).label('cycle_time')
+        )).label('cycle_time'),
+        func.extract(
+            'epoch',
+            func.min(work_item_delivery_cycles.c.end_date) -
+            func.coalesce(func.min(work_item_delivery_cycles.c.latest_commit), func.min(work_item_delivery_cycles.c.end_date))
+        ).label('latency')
     ]).select_from(
         work_items_temp.join(
             work_items, work_items_temp.c.key == work_items.c.key
@@ -307,13 +312,14 @@ def compute_work_item_delivery_cycles_cycle_time(session, work_items_temp):
              work_item_delivery_cycles.c.end_date != None)
     ).group_by(
         work_items.c.current_delivery_cycle_id
-    ).cte('delivery_cycles_cycle_time')
+    ).cte('delivery_cycles_cycle_time_latency')
 
     updated = session.connection().execute(
         work_item_delivery_cycles.update().where(
-            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_cycle_time.c.current_delivery_cycle_id
+            work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_cycle_time_latency.c.current_delivery_cycle_id
         ).values(
-            cycle_time=delivery_cycles_cycle_time.c.cycle_time
+            cycle_time=delivery_cycles_cycle_time_latency.c.cycle_time,
+            latency=delivery_cycles_cycle_time_latency.c.latency
         )
     ).rowcount
 
@@ -326,6 +332,7 @@ def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
     # select relevant rows to find various metrics
     delivery_cycles_commits_rows = select([
         work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        work_item_delivery_cycles.c.end_date,
         func.min(commits.c.commit_date).label('earliest_commit'),
         func.max(commits.c.commit_date).label('latest_commit'),
         func.count(distinct(commits.c.id)).label('commit_count'),
@@ -357,6 +364,19 @@ def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
             latest_commit=delivery_cycles_commits_rows.c.latest_commit,
             commit_count=delivery_cycles_commits_rows.c.commit_count,
             repository_count=delivery_cycles_commits_rows.c.repository_count,
+            # Update latency for the delivery cycles in this update.
+            latency=case([
+                (
+                    and_(
+                        delivery_cycles_commits_rows.c.end_date != None,
+                        # if latest commit is after closed date we choose to set
+                        # latency to null rather than report a negative latency
+                        func.extract('epoch',
+                                     delivery_cycles_commits_rows.c.end_date - delivery_cycles_commits_rows.c.latest_commit) > 0
+                    ),
+                    func.extract('epoch', delivery_cycles_commits_rows.c.end_date - delivery_cycles_commits_rows.c.latest_commit)
+                 )
+            ], else_=None)
         )
     ).rowcount
 

@@ -81,6 +81,11 @@ class CycleMetricsEnum(Enum):
     max_duration = 'max_duration'
     percentile_duration = 'percentile_duration'
 
+    min_latency = 'min_latency'
+    avg_latency = 'avg_latency'
+    max_latency = 'max_latency'
+    percentile_latency = 'percentile_latency'
+
     work_items_in_scope = 'work_items_in_scope'
     work_items_with_commits = 'work_items_with_commits'
     work_items_with_null_cycle_time = 'work_items_with_null_cycle_time'
@@ -127,6 +132,11 @@ class CycleMetricsParameters(WorkItemTypeSelectionParameters, graphene.InputObje
         required=False,
         description="If percentile duration is requested, then this specifies the target percentile value"
     )
+    latency_target_percentile = graphene.Float(
+        required=False,
+        description="If percentile latency is requested, then this specifies the target percentile value"
+    )
+
 
 
 class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters, CycleMetricsParameters):

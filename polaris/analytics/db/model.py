@@ -58,7 +58,8 @@ work_items_commits = Table(
 work_items_pull_requests = Table(
     'work_items_pull_requests', Base.metadata,
     Column('work_item_id', ForeignKey('work_items.id'), primary_key=True, index=True),
-    Column('pull_request_id', ForeignKey('pull_requests.id'), primary_key=True, index=True)
+    Column('pull_request_id', ForeignKey('pull_requests.id'), primary_key=True, index=True),
+    Column('delivery_cycle_id', ForeignKey('work_item_delivery_cycles.delivery_cycle_id', ondelete="SET NULL"),  index=True, nullable=True)
 )
 
 repositories_contributor_aliases = Table(

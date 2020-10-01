@@ -431,7 +431,8 @@ def update_pull_requests_work_items(session, repository_key, pull_requests_displ
             Column('display_id', String),
             Column('pull_request_id', BigInteger),
             Column('work_item_id', BigInteger),
-            Column('work_item_key', UUID(as_uuid=True))
+            Column('work_item_key', UUID(as_uuid=True)),
+            Column('delivery_cycle_id', Integer)
         ]
     )
     pdi_temp.create(session.connection(), checkfirst=True)
@@ -459,14 +460,15 @@ def update_pull_requests_work_items(session, repository_key, pull_requests_displ
             )
         ).values(
             work_item_key=work_items.c.key,
-            work_item_id=work_items.c.id
+            work_item_id=work_items.c.id,
+            delivery_cycle_id=work_items.c.current_delivery_cycle_id
         )
     )
 
     session.connection().execute(
         insert(work_items_pull_requests_table).from_select(
-            ['work_item_id', 'pull_request_id'],
-            select([pdi_temp.c.work_item_id, pdi_temp.c.pull_request_id]).where(
+            ['work_item_id', 'pull_request_id', 'delivery_cycle_id'],
+            select([pdi_temp.c.work_item_id, pdi_temp.c.pull_request_id, pdi_temp.c.delivery_cycle_id]).where(
                 pdi_temp.c.work_item_id != None
             )
         ).on_conflict_do_nothing(

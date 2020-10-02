@@ -13,7 +13,7 @@ import uuid
 import pytest
 
 from polaris.analytics.db.model import Organization, Repository, Project, pull_requests, \
-    WorkItemsSource, WorkItem
+    WorkItemsSource, WorkItem, WorkItemDeliveryCycle
 from polaris.common import db
 
 from datetime import datetime
@@ -106,6 +106,7 @@ def cleanup():
     db.connection().execute("delete from analytics.pull_requests")
 
     db.connection().execute("delete from analytics.work_items_commits")
+    db.connection().execute("delete from analytics.work_item_delivery_cycles")
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")
 
@@ -147,8 +148,26 @@ def setup_work_items(organization, source_data, items_data, project_key=None):
             for item in items_data
         ])
         session.add(source)
+
         if project_key is not None:
             project = Project.find_by_project_key(session, project_key)
             project.work_items_sources.append(source)
 
+        session.flush()
+        # Add delivery cycles
+        for work_item in source.work_items:
+            work_item.delivery_cycles.extend([
+                WorkItemDeliveryCycle(
+                    work_items_source_id=source.id,
+                    start_seq_no=0,
+                    start_date=work_item.created_at,
+                )
+            ])
+        session.flush()
+
+        # Update current_delivery_cycle_id
+        for work_item in source.work_items:
+            work_item.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in work_item.delivery_cycles])
+
         return source
+

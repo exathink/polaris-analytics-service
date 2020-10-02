@@ -355,10 +355,11 @@ def resolve_pull_requests_for_work_items(session, organization_key, work_items_s
 
                 session.connection().execute(
                     insert(work_items_pull_requests_table).from_select(
-                        ['work_item_id', 'pull_request_id'],
+                        ['work_item_id', 'pull_request_id', 'delivery_cycle_id'],
                         select([
                             work_items.c.id.label('work_item_id'),
-                            wp_temp.c.pull_request_id
+                            wp_temp.c.pull_request_id,
+                            work_items.c.current_delivery_cycle_id
                         ]).select_from(
                             wp_temp.join(
                                 work_items, work_items.c.key == wp_temp.c.work_item_key
@@ -504,7 +505,8 @@ def resolve_work_items_for_pull_requests(session, organization_key, repository_k
             for work_items_source in work_items_sources:
                 work_item_resolver = WorkItemResolver.get_resolver(work_items_source.integration_type)
                 for pr in pull_request_summaries:
-                    for display_id in work_item_resolver.resolve(pr['title'], pr['description'], display_id=pr['display_id'],
+                    for display_id in work_item_resolver.resolve(pr['title'], pr['description'],
+                                                                 display_id=pr['display_id'],
                                                                  branch_name=pr['source_branch']):
                         prs_display_ids.append(
                             dict(

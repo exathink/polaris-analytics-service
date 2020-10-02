@@ -61,7 +61,10 @@ class TestRepoScope:
         assert result['resolved'][0]['work_items_source_key'] == str(work_item_source.key)
         assert result['resolved'][0]['repository_key'] == str(test_repo.key)
 
-        assert db.connection().execute("select count(*) from analytics.work_items_pull_requests").scalar() == 1
+        # Check for delivery cycle id too
+        assert db.connection().execute(f"select count(*) from analytics.work_items_pull_requests "
+                                       f"join analytics.work_items on work_items.id=work_items_pull_requests.work_item_id "
+                                       f"where delivery_cycle_id=current_delivery_cycle_id").scalar() == 1
 
     def it_returns_a_match_when_pull_request_display_id_matches_the_work_item(self, pull_requests_fixture):
         organization, _, repositories = pull_requests_fixture

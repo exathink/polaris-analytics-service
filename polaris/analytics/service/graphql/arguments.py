@@ -75,6 +75,7 @@ class CycleMetricsEnum(Enum):
     min_effort = 'min_effort'
     avg_effort = 'avg_effort'
     max_effort = 'max_effort'
+    percentile_effort = 'percentile_effort'
 
     min_duration = 'min_duration'
     avg_duration = 'avg_duration'

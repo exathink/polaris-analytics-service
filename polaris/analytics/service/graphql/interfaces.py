@@ -357,6 +357,7 @@ class AggregateCycleMetrics(DeliveryCycleSpan):
     min_effort = graphene.Float(required=False)
     avg_effort = graphene.Float(required=False)
     max_effort = graphene.Float(required=False)
+    percentile_effort = graphene.Float(required=False)
 
     min_duration = graphene.Float(required=False)
     avg_duration = graphene.Float(required=False)

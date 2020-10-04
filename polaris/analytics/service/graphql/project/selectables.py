@@ -882,6 +882,13 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                 min_effort=func.min(delivery_cycles_relation.c.effort).label('min_effort'),
                 avg_effort=func.avg(delivery_cycles_relation.c.effort).label('avg_effort'),
                 max_effort=func.max(delivery_cycles_relation.c.effort).label('max_effort'),
+                percentile_effort=func.percentile_disc(
+                    cycle_metrics_trends_args.latency_target_percentile
+                ).within_group(
+                    delivery_cycles_relation.c.effort
+                ).label(
+                    'percentile_effort'
+                ),
                 # latency
                 min_latency=func.min(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('min_latency'),
                 avg_latency=func.avg(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('avg_latency'),

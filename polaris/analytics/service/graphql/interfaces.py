@@ -69,9 +69,6 @@ class WorkItemsSummaries(graphene.Interface):
     work_items_summaries = graphene.Field(graphene.List(WorkItemsSummary, required=False))
 
 
-
-
-
 class CumulativeCommitCount(graphene.Interface):
     year = graphene.Int(required=True)
     week = graphene.Int(required=True)
@@ -490,3 +487,26 @@ class FlowMixMeasurementImpl(TrendMeasurementImpl):
 class FlowMixTrends(graphene.Interface):
 
     flow_mix_trends = graphene.List(FlowMixMeasurementImpl, required=True)
+
+
+class AggregatePullRequestMetrics(graphene.Interface):
+    measurement_date = graphene.Date(required=True)
+    measurement_window = graphene.Int(required=False)
+
+    total_open = graphene.Int(required=False)
+    total_closed = graphene.Int(required=False)
+
+    min_age = graphene.Float(required=False)
+    max_age = graphene.Float(required=False)
+    average_age = graphene.Float(required=False)
+    percentile_age = graphene.Float(required=False)
+
+
+# TrendMeasurementImpl is not needed for Pipeline Metrics,\
+# but using it for future implementation of trend metrics.
+class AggregatePullRequestMetricsImpl(TrendMeasurementImpl):
+    class Meta:
+        interfaces = (AggregatePullRequestMetrics,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)

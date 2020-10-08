@@ -488,16 +488,17 @@ class FlowMixTrends(graphene.Interface):
     flow_mix_trends = graphene.List(FlowMixMeasurementImpl, required=True)
 
 
-class CommitDaysMeasurement(graphene.Interface):
+class CapacityMeasurement(graphene.Interface):
     measurement_date = graphene.Date(required=True)
     measurement_window = graphene.Int(required=True)
     total_commit_days = graphene.Float(required=False)
+    contributor_count = graphene.Int(required=False)
 
 
-class CommitDaysMeasurementImpl(TrendMeasurementImpl):
+class CapacityMeasurementImpl(TrendMeasurementImpl):
     class Meta:
-        interfaces = (CommitDaysMeasurement,)
+        interfaces = (CapacityMeasurement,)
 
 
-class CommitDaysTrends(graphene.Interface):
-    commit_days_trends = graphene.List(CommitDaysMeasurementImpl, required=True)
+class CapacityTrends(graphene.Interface):
+    capacity_trends = graphene.List(CapacityMeasurementImpl, required=True)

@@ -41,7 +41,7 @@ from ..interfaces import \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
-    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CommitDaysTrends
+    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -1814,29 +1814,29 @@ class ProjectsFlowMixTrends(InterfaceResolver):
         )
 
 
-class ProjectsCommitDaysTrends(InterfaceResolver):
-    interface = CommitDaysTrends
+class ProjectsCapacityTrends(InterfaceResolver):
+    interface = CapacityTrends
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
-        commit_days_trends_args = kwargs.get('commit_days_trends_args')
+        capacity_trends_args = kwargs.get('capacity_trends_args')
 
-        measurement_window = commit_days_trends_args.measurement_window
+        measurement_window = capacity_trends_args.measurement_window
         if measurement_window is None:
             raise ProcessingException(
-                "'measurement_window' must be specified when calculating CommitDaysTrends"
+                "'measurement_window' must be specified when calculating CapacityTrends"
             )
 
         # Get the a list of dates for trending using the trends_args for control
         timeline_dates = get_timeline_dates_for_trending(
-            commit_days_trends_args,
-            arg_name='commit_days_trends',
-            interface_name='CommitDaysTrends'
+            capacity_trends_args,
+            arg_name='capacity_trends',
+            interface_name='CapacityTrends'
         )
 
         projects_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
 
-        select_commit_days = select([
+        select_capacity = select([
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date,
             commits.c.author_contributor_key,
@@ -1860,15 +1860,16 @@ class ProjectsCommitDaysTrends(InterfaceResolver):
             commits.c.author_contributor_key
         ).alias()
 
-        commit_days_metrics = select([
-            select_commit_days.c.id,
-            select_commit_days.c.measurement_date,
-            func.sum(select_commit_days.c.commit_days).label('total_commit_days')
+        capacity_metrics = select([
+            select_capacity.c.id,
+            select_capacity.c.measurement_date,
+            func.sum(select_capacity.c.commit_days).label('total_commit_days'),
+            func.count(select_capacity.c.author_contributor_key.distinct()).label('contributor_count')
         ]).select_from(
-            select_commit_days
+            select_capacity
         ).group_by(
-            select_commit_days.c.id,
-            select_commit_days.c.measurement_date
+            select_capacity.c.id,
+            select_capacity.c.measurement_date
         ).alias()
 
         return select([
@@ -1876,15 +1877,16 @@ class ProjectsCommitDaysTrends(InterfaceResolver):
             func.json_agg(
                 func.json_build_object(
                     'measurement_date', projects_timeline_dates.c.measurement_date,
-                    'total_commit_days', commit_days_metrics.c.total_commit_days
+                    'total_commit_days', capacity_metrics.c.total_commit_days,
+                    'contributor_count', capacity_metrics.c.contributor_count
                 )
-            ).label('commit_days_trends')
+            ).label('capacity_trends')
         ]).select_from(
             projects_timeline_dates.outerjoin(
-                commit_days_metrics,
+                capacity_metrics,
                 and_(
-                    projects_timeline_dates.c.id == commit_days_metrics.c.id,
-                    projects_timeline_dates.c.measurement_date == commit_days_metrics.c.measurement_date
+                    projects_timeline_dates.c.id == capacity_metrics.c.id,
+                    projects_timeline_dates.c.measurement_date == capacity_metrics.c.measurement_date
                 )
             )
         ).group_by(

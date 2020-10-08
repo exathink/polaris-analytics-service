@@ -167,5 +167,5 @@ class FlowMixTrendsParameters(AggregateMetricsTrendsParameters, WorkItemTypeSele
     pass
 
 
-class CommitDaysTrendsParameters(AggregateMetricsTrendsParameters):
+class CapacityTrendsParameters(AggregateMetricsTrendsParameters):
     pass

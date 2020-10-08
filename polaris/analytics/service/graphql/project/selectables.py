@@ -41,7 +41,7 @@ from ..interfaces import \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
-    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends
+    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CommitDaysTrends
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -1159,14 +1159,14 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             ).label('cycle_time'),
             # Latency for in-progress items = measurement_date - latest_commit
             (
-                    func.extract(
-                        'epoch',
-                        measurement_date - func.coalesce(
-                            func.min(work_item_delivery_cycles.c.latest_commit),
-                            # if latest_commit is null, then its is not a spec - so latency is 0
-                            measurement_date
-                        )
+                func.extract(
+                    'epoch',
+                    measurement_date - func.coalesce(
+                        func.min(work_item_delivery_cycles.c.latest_commit),
+                        # if latest_commit is null, then its is not a spec - so latency is 0
+                        measurement_date
                     )
+                )
             ).label('latency')
 
         ]).select_from(
@@ -1209,7 +1209,6 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             project_nodes.c.id,
             work_items.c.id,
         ).alias()
-
 
     @classmethod
     def interface_selector(cls, project_nodes, **kwargs):
@@ -1813,3 +1812,11 @@ class ProjectsFlowMixTrends(InterfaceResolver):
         ).group_by(
             select_flow_mix.c.id
         )
+
+
+class ProjectsCommitDaysTrends(InterfaceResolver):
+    interface = CommitDaysTrends
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        pass

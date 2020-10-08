@@ -69,9 +69,6 @@ class WorkItemsSummaries(graphene.Interface):
     work_items_summaries = graphene.Field(graphene.List(WorkItemsSummary, required=False))
 
 
-
-
-
 class CumulativeCommitCount(graphene.Interface):
     year = graphene.Int(required=True)
     week = graphene.Int(required=True)
@@ -476,7 +473,6 @@ class FlowMixMeasurement(graphene.Interface):
 
 
 class FlowMixMeasurementImpl(TrendMeasurementImpl):
-
     class Meta:
         interfaces = (FlowMixMeasurement,)
 
@@ -484,9 +480,24 @@ class FlowMixMeasurementImpl(TrendMeasurementImpl):
         self.flow_mix = []
         super().__init__(*args, **kwargs)
 
-        self.flow_mix = [FlowMixItem(**item) for item in self.flow_mix if item is not None and item['category'] is not None]
+        self.flow_mix = [FlowMixItem(**item) for item in self.flow_mix if
+                         item is not None and item['category'] is not None]
 
 
 class FlowMixTrends(graphene.Interface):
-
     flow_mix_trends = graphene.List(FlowMixMeasurementImpl, required=True)
+
+
+class CommitDaysMeasurement(graphene.Interface):
+    measurement_date = graphene.Date(required=True)
+    measurement_window = graphene.Int(required=True)
+    total_commit_days = graphene.Float(required=False)
+
+
+class CommitDaysMeasurementImpl(TrendMeasurementImpl):
+    class Meta:
+        interfaces = (CommitDaysMeasurement,)
+
+
+class CommitDaysTrends(graphene.Interface):
+    commit_days_trends = graphene.List(CommitDaysMeasurementImpl, required=True)

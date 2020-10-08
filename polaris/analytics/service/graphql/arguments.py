@@ -165,3 +165,7 @@ class ResponseTimeConfidenceTrendsParameters(AggregateMetricsTrendsParameters, W
 
 class FlowMixTrendsParameters(AggregateMetricsTrendsParameters, WorkItemTypeSelectionParameters):
     pass
+
+
+class CommitDaysTrendsParameters(AggregateMetricsTrendsParameters):
+    pass

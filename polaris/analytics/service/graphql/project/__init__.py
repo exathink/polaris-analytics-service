@@ -16,12 +16,12 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
-    ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends
+    ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CommitDaysTrends
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
     TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin, \
-    ProjectInfoResolverMixin, FlowMixTrendsResolverMixin
+    ProjectInfoResolverMixin, FlowMixTrendsResolverMixin, CommitDaysTrendsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -41,7 +41,7 @@ from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin,
 
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
-    FlowMixTrendsParameters
+    FlowMixTrendsParameters, CommitDaysTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -70,7 +70,8 @@ from .selectables import ProjectNode, \
     ProjectWorkItemDeliveryCycleNodes, \
     ProjectTraceabilityTrends, \
     ProjectResponseTimeConfidenceTrends, \
-    ProjectsFlowMixTrends \
+    ProjectsFlowMixTrends, \
+    ProjectsCommitDaysTrends
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -88,6 +89,7 @@ class Project(
     TraceabilityTrendsResolverMixin,
     ResponseTimeConfidenceTrendsResolverMixin,
     FlowMixTrendsResolverMixin,
+    CommitDaysTrendsResolverMixin,
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
@@ -133,6 +135,8 @@ Implicit Interfaces: ArchivedStatus
             TraceabilityTrends,
             ResponseTimeConfidenceTrends,
             FlowMixTrends,
+            CommitDaysTrends,
+
 
         )
         named_node_resolver = ProjectNode
@@ -150,6 +154,7 @@ Implicit Interfaces: ArchivedStatus
             'TraceabilityTrends': ProjectTraceabilityTrends,
             'ResponseTimeConfidenceTrends': ProjectResponseTimeConfidenceTrends,
             'FlowMixTrends': ProjectsFlowMixTrends,
+            'CommitDaysTrends': ProjectsCommitDaysTrends,
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -232,6 +237,11 @@ Implicit Interfaces: ArchivedStatus
                 required=False,
                 description='Required when resolving FlowMixTrends Interface'
             ),
+            commit_days_trends_args=graphene.Argument(
+                CommitDaysTrendsParameters,
+                required=False,
+                description='Required when resolving CommitDaysTrends Interface'
+            ),
             **kwargs
         )
 
@@ -269,6 +279,16 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             required=False,
             default_value=True,
             description='Required when resolving TraceabilityTrends interface'
+        ),
+        flow_mix_trends_args=graphene.Argument(
+            FlowMixTrendsParameters,
+            required=False,
+            description='Required when resolving FlowMixTrends Interface'
+        ),
+        commit_days_trends_args=graphene.Argument(
+            CommitDaysTrendsParameters,
+            required=False,
+            description='Required when resolving CommitDaysTrends Interface'
         ),
     )
 

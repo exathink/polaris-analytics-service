@@ -1864,6 +1864,9 @@ class ProjectsCapacityTrends(InterfaceResolver):
             select_capacity.c.id,
             select_capacity.c.measurement_date,
             func.sum(select_capacity.c.commit_days).label('total_commit_days'),
+            func.avg(select_capacity.c.commit_days).label('avg_commit_days'),
+            func.min(select_capacity.c.commit_days).label('min_commit_days'),
+            func.max(select_capacity.c.commit_days).label('max_commit_days'),
             func.count(select_capacity.c.author_contributor_key.distinct()).label('contributor_count')
         ]).select_from(
             select_capacity
@@ -1878,6 +1881,9 @@ class ProjectsCapacityTrends(InterfaceResolver):
                 func.json_build_object(
                     'measurement_date', projects_timeline_dates.c.measurement_date,
                     'total_commit_days', capacity_metrics.c.total_commit_days,
+                    'avg_commit_days', capacity_metrics.c.avg_commit_days,
+                    'min_commit_days', capacity_metrics.c.min_commit_days,
+                    'max_commit_days', capacity_metrics.c.max_commit_days,
                     'contributor_count', capacity_metrics.c.contributor_count
                 )
             ).label('capacity_trends')

@@ -492,6 +492,9 @@ class CapacityMeasurement(graphene.Interface):
     measurement_date = graphene.Date(required=True)
     measurement_window = graphene.Int(required=True)
     total_commit_days = graphene.Float(required=False)
+    avg_commit_days = graphene.Float(required=False)
+    min_commit_days = graphene.Float(required=False)
+    max_commit_days = graphene.Float(required=False)
     contributor_count = graphene.Int(required=False)
 
 

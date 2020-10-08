@@ -34,7 +34,7 @@ from polaris.utils.datetime_utils import time_window
 from polaris.utils.exceptions import ProcessingException
 from polaris.analytics.db.enums import WorkItemsStateType
 from .sql_expressions import get_timeline_dates_for_trending, get_measurement_period
-from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
@@ -1819,4 +1819,74 @@ class ProjectsCommitDaysTrends(InterfaceResolver):
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
-        pass
+        commit_days_trends_args = kwargs.get('commit_days_trends_args')
+
+        measurement_window = commit_days_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating CommitDaysTrends"
+            )
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            commit_days_trends_args,
+            arg_name='commit_days_trends',
+            interface_name='CommitDaysTrends'
+        )
+
+        projects_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
+
+        select_commit_days = select([
+            projects_timeline_dates.c.id,
+            projects_timeline_dates.c.measurement_date,
+            commits.c.author_contributor_key,
+            func.count(commit_day(commits).distinct()).label('commit_days')
+        ]).select_from(
+            projects_timeline_dates.outerjoin(
+                projects_repositories, projects_repositories.c.project_id == projects_timeline_dates.c.id
+            ).join(
+                commits, projects_repositories.c.repository_id == commits.c.repository_id
+            )
+        ).where(
+            commits.c.commit_date.between(
+                projects_timeline_dates.c.measurement_date - timedelta(
+                    days=measurement_window
+                ),
+                projects_timeline_dates.c.measurement_date
+            )
+        ).group_by(
+            projects_timeline_dates.c.id,
+            projects_timeline_dates.c.measurement_date,
+            commits.c.author_contributor_key
+        ).alias()
+
+        commit_days_metrics = select([
+            select_commit_days.c.id,
+            select_commit_days.c.measurement_date,
+            func.sum(select_commit_days.c.commit_days).label('total_commit_days')
+        ]).select_from(
+            select_commit_days
+        ).group_by(
+            select_commit_days.c.id,
+            select_commit_days.c.measurement_date
+        ).alias()
+
+        return select([
+            projects_timeline_dates.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', projects_timeline_dates.c.measurement_date,
+                    'total_commit_days', commit_days_metrics.c.total_commit_days
+                )
+            ).label('commit_days_trends')
+        ]).select_from(
+            projects_timeline_dates.outerjoin(
+                commit_days_metrics,
+                and_(
+                    projects_timeline_dates.c.id == commit_days_metrics.c.id,
+                    projects_timeline_dates.c.measurement_date == commit_days_metrics.c.measurement_date
+                )
+            )
+        ).group_by(
+            projects_timeline_dates.c.id
+        )

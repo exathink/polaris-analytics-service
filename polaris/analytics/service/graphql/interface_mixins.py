@@ -13,7 +13,7 @@ from datetime import datetime
 
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
     WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
-    ProjectSettingsImpl, FlowMixMeasurementImpl
+    ProjectSettingsImpl, FlowMixMeasurementImpl, AggregatePullRequestMetricsImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -167,3 +167,13 @@ class ProjectInfoResolverMixin(KeyIdResolverMixin):
 
     def resolve_settings(self, info, **kwargs):
         return ProjectSettingsImpl(**(self.settings if self.settings is not None else {}))
+
+
+class PipelinePullRequestMetricsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.pipeline_pull_request_metrics = None
+        super().__init__(*args, **kwargs)
+
+    def resolve_pull_request_metrics(self, info, **kwargs):
+        return AggregatePullRequestMetricsImpl(**self.pipeline_pull_request_metrics[0])

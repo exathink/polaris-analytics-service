@@ -498,7 +498,7 @@ class AggregatePullRequestMetrics(graphene.Interface):
 
     min_age = graphene.Float(required=False)
     max_age = graphene.Float(required=False)
-    average_age = graphene.Float(required=False)
+    avg_age = graphene.Float(required=False)
     percentile_age = graphene.Float(required=False)
 
 
@@ -510,3 +510,7 @@ class AggregatePullRequestMetricsImpl(TrendMeasurementImpl):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+
+class PipelinePullRequestMetrics(graphene.Interface):
+    pipeline_pull_request_metrics = graphene.Field(AggregatePullRequestMetricsImpl)

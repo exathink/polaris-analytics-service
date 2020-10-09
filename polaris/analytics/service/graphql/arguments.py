@@ -167,7 +167,7 @@ class FlowMixTrendsParameters(AggregateMetricsTrendsParameters, WorkItemTypeSele
     pass
 
 
-class PullRequestMetricsEnum:
+class PullRequestMetricsEnum(Enum):
     total_open = 'total_open'
     total_closed = 'total_closed'
     min_age = 'min_age'
@@ -176,14 +176,13 @@ class PullRequestMetricsEnum:
     percentile_age = 'percentile_age'
 
 
-# TODO: Discuss if we require WorkItemSelectionParameters
 class PullRequestMetricsParameters(graphene.InputObjectType):
     metrics = graphene.List(
         graphene.Enum.from_enum(PullRequestMetricsEnum),
         required=True,
         description="Specify a list of the metrics that should be returned"
     )
-    age_target_percentile = graphene.Float(
+    pull_request_age_target_percentile = graphene.Float(
         required=False,
         description="If percentile age is requested, then this specifies the target percentile value"
     )

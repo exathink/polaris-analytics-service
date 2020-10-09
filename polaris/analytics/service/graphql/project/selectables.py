@@ -41,7 +41,8 @@ from ..interfaces import \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
-    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends
+    TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, \
+    PipelinePullRequestMetrics
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -1813,3 +1814,7 @@ class ProjectsFlowMixTrends(InterfaceResolver):
         ).group_by(
             select_flow_mix.c.id
         )
+
+
+class ProjectPipelinePullRequestMetrics(InterfaceResolver):
+    interface = PipelinePullRequestMetrics

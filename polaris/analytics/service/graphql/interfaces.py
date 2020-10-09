@@ -491,7 +491,12 @@ class FlowMixTrends(graphene.Interface):
 class CapacityMeasurement(graphene.Interface):
     measurement_date = graphene.Date(required=True)
     measurement_window = graphene.Int(required=True)
-    total_commit_days = graphene.Float(required=False)
+    # Core metrics
+    total_commit_days = graphene.Float(required=True)
+    # if this is specified then measurement is for an individual contributor over the period.
+    contributor_key = graphene.String(required=False)
+    contributor_name = graphene.String(required=False)
+
     avg_commit_days = graphene.Float(required=False)
     min_commit_days = graphene.Float(required=False)
     max_commit_days = graphene.Float(required=False)
@@ -505,3 +510,4 @@ class CapacityMeasurementImpl(TrendMeasurementImpl):
 
 class CapacityTrends(graphene.Interface):
     capacity_trends = graphene.List(CapacityMeasurementImpl, required=True)
+    contributor_detail = graphene.List(CapacityMeasurementImpl, required=False)

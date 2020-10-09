@@ -168,4 +168,8 @@ class FlowMixTrendsParameters(AggregateMetricsTrendsParameters, WorkItemTypeSele
 
 
 class CapacityTrendsParameters(AggregateMetricsTrendsParameters):
-    pass
+    show_contributor_detail = graphene.Boolean(
+        required=False,
+        description="If this true then the results are broken down by contributor. Default = False",
+        default_value=False
+    )

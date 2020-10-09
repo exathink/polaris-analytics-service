@@ -174,10 +174,17 @@ class CapacityTrendsResolverMixin(KeyIdResolverMixin):
 
     def __init__(self, *args, **kwargs):
         self.capacity_trends = []
+        self.contributor_detail = []
         super().__init__(*args, **kwargs)
 
     def resolve_capacity_trends(self, info, **kwargs):
         return [
             CapacityMeasurementImpl(**measurement)
             for measurement in self.capacity_trends or []
+        ]
+
+    def resolve_contributor_detail(self, info, **kwargs):
+        return [
+            CapacityMeasurementImpl(**measurement)
+            for measurement in self.contributor_detail or []
         ]

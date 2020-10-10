@@ -165,3 +165,11 @@ class ResponseTimeConfidenceTrendsParameters(AggregateMetricsTrendsParameters, W
 
 class FlowMixTrendsParameters(AggregateMetricsTrendsParameters, WorkItemTypeSelectionParameters):
     pass
+
+
+class CapacityTrendsParameters(AggregateMetricsTrendsParameters):
+    show_contributor_detail = graphene.Boolean(
+        required=False,
+        description="If this true then the results are broken down by contributor. Default = False",
+        default_value=False
+    )

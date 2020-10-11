@@ -492,7 +492,7 @@ class CapacityMeasurement(graphene.Interface):
     measurement_date = graphene.Date(required=True)
     measurement_window = graphene.Int(required=True)
     # Core metrics
-    total_commit_days = graphene.Float(required=True)
+    total_commit_days = graphene.Float(required=False)
     # if this is specified then measurement is for an individual contributor over the period.
     contributor_key = graphene.String(required=False)
     contributor_name = graphene.String(required=False)

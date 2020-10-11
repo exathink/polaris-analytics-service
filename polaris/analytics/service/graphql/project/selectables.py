@@ -1818,38 +1818,37 @@ class ProjectsCapacityTrends(InterfaceResolver):
     interface = CapacityTrends
 
     @classmethod
-    def get_aggregate_capacity_trends(cls, measurement_window, projects_timeline_dates):
+    def get_aggregate_capacity_trends(cls, measurement_window, project_nodes, timeline_dates):
 
         select_capacity = select([
-            projects_timeline_dates.c.id,
-            projects_timeline_dates.c.measurement_date,
+            projects.c.id,
+            timeline_dates.c.measurement_date,
             commits.c.author_contributor_key,
             func.count(commit_day(commits).distinct()).label('commit_days')
         ]).select_from(
-            projects_timeline_dates.outerjoin(
-                projects_repositories, projects_repositories.c.project_id == projects_timeline_dates.c.id
+            timeline_dates.join(
+                projects, true()
             ).join(
-                repositories, projects_repositories.c.repository_id == repositories.c.id
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
             ).join(
-                commits, commits.c.repository_id == repositories.c.id
+                commits, projects_repositories.c.repository_id == commits.c.repository_id
             )
         ).where(
             and_(
-                repositories.c.latest_commit > projects_timeline_dates.c.measurement_date - timedelta(
-                        days=measurement_window
-                    ),
                 commits.c.commit_date.between(
-                    projects_timeline_dates.c.measurement_date - timedelta(
+                    timeline_dates.c.measurement_date - timedelta(
                         days=measurement_window
                     ),
-                    projects_timeline_dates.c.measurement_date
-                )
+                    timeline_dates.c.measurement_date
+                ),
+                projects.c.id.in_(select([project_nodes.c.id]))
             )
         ).group_by(
-            projects_timeline_dates.c.id,
-            projects_timeline_dates.c.measurement_date,
+            projects.c.id,
+            timeline_dates.c.measurement_date,
             commits.c.author_contributor_key
         ).alias()
+
         capacity_metrics = select([
             select_capacity.c.id,
             select_capacity.c.measurement_date,
@@ -1865,10 +1864,10 @@ class ProjectsCapacityTrends(InterfaceResolver):
             select_capacity.c.measurement_date
         ).alias()
         return select([
-            projects_timeline_dates.c.id,
+            capacity_metrics.c.id,
             func.json_agg(
                 func.json_build_object(
-                    'measurement_date', projects_timeline_dates.c.measurement_date,
+                    'measurement_date', capacity_metrics.c.measurement_date,
                     'total_commit_days', capacity_metrics.c.total_commit_days,
                     'avg_commit_days', capacity_metrics.c.avg_commit_days,
                     'min_commit_days', capacity_metrics.c.min_commit_days,
@@ -1877,38 +1876,49 @@ class ProjectsCapacityTrends(InterfaceResolver):
                 )
             ).label('capacity_trends')
         ]).select_from(
-            projects_timeline_dates.outerjoin(
-                capacity_metrics,
-                and_(
-                    projects_timeline_dates.c.id == capacity_metrics.c.id,
-                    projects_timeline_dates.c.measurement_date == capacity_metrics.c.measurement_date
-                )
-            )
+            capacity_metrics,
         ).group_by(
-            projects_timeline_dates.c.id
+            capacity_metrics.c.id
         )
 
     @classmethod
-    def get_contributor_level_capacity_trends(cls, measurement_window, projects_timeline_dates):
+    def get_contributor_level_capacity_trends(cls, measurement_window, project_nodes, timeline_dates):
+
+        # Note: we are doing a very different query strategy here compared to
+        # other trending interfaces. Rather than joining against projects_timeline_dates,
+        # derived from joining project_nodes to timeline_dates, we are doing a cross join of the projects table
+        # with timelinedates and using the commit date filter to select commits, and *then* limiting by the
+        # id's in the project_nodes. We are doing this because
+        # the regular approach was leading to query plans in prod where it was always doing a table scan on
+        # the commits table. For some reason, the  query planner was ignoring the indexes on commit_date and repository
+        # id and selecting the commits in scope using a full table scan of commmits, which is obviously slow.
+        # the current strategy is about 500x faster as result. Dont have a clear explanation as to why
+        # the other plan was so bad, but going with this approach here since it is functionally equivalent, even if a
+        # bit less obvious in a logical sense.
 
         select_capacity = select([
-            projects_timeline_dates.c.id,
-            projects_timeline_dates.c.measurement_date,
+            projects.c.id,
+            timeline_dates.c.measurement_date,
             commits.c.author_contributor_key.label('contributor_key'),
             commits.c.author_contributor_name.label('contributor_name'),
             commit_day(commits).label('commit_day')
         ]).select_from(
-            projects_timeline_dates.outerjoin(
-                projects_repositories, projects_repositories.c.project_id == projects_timeline_dates.c.id
+            projects.join(
+                timeline_dates, true()
+            ).join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
             ).join(
                 commits, projects_repositories.c.repository_id == commits.c.repository_id
             )
         ).where(
-            commits.c.commit_date.between(
-                projects_timeline_dates.c.measurement_date - timedelta(
-                    days=measurement_window
+            and_(
+                commits.c.commit_date.between(
+                    timeline_dates.c.measurement_date - timedelta(
+                        days=measurement_window
+                    ),
+                    timeline_dates.c.measurement_date
                 ),
-                projects_timeline_dates.c.measurement_date
+                projects.c.id.in_(select([project_nodes.c.id]))
             )
         ).alias()
 
@@ -1927,25 +1937,19 @@ class ProjectsCapacityTrends(InterfaceResolver):
             select_capacity.c.contributor_name,
         ).alias()
         return select([
-            projects_timeline_dates.c.id,
+            capacity_metrics.c.id,
             func.json_agg(
                 func.json_build_object(
-                    'measurement_date', projects_timeline_dates.c.measurement_date,
+                    'measurement_date', capacity_metrics.c.measurement_date,
                     'contributor_key', capacity_metrics.c.contributor_key,
                     'contributor_name', capacity_metrics.c.contributor_name,
                     'total_commit_days', capacity_metrics.c.total_commit_days,
                 )
             ).label('contributor_detail')
         ]).select_from(
-            projects_timeline_dates.outerjoin(
-                capacity_metrics,
-                and_(
-                    projects_timeline_dates.c.id == capacity_metrics.c.id,
-                    projects_timeline_dates.c.measurement_date == capacity_metrics.c.measurement_date
-                )
-            )
+            capacity_metrics,
         ).group_by(
-            projects_timeline_dates.c.id
+            capacity_metrics.c.id
         )
 
     @classmethod
@@ -1965,12 +1969,11 @@ class ProjectsCapacityTrends(InterfaceResolver):
             interface_name='CapacityTrends'
         )
 
-        projects_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
-
         if capacity_trends_args.show_contributor_detail:
-            capacity_trends = cls.get_aggregate_capacity_trends(measurement_window, projects_timeline_dates).alias()
+            capacity_trends = cls.get_aggregate_capacity_trends(measurement_window, project_nodes,
+                                                                timeline_dates).alias()
             contributor_detail = cls.get_contributor_level_capacity_trends(measurement_window,
-                                                                           projects_timeline_dates).alias()
+                                                                           project_nodes, timeline_dates).alias()
 
             return select([
                 project_nodes.c.id,
@@ -1984,4 +1987,4 @@ class ProjectsCapacityTrends(InterfaceResolver):
                 )
             )
         else:
-            return cls.get_aggregate_capacity_trends(measurement_window, projects_timeline_dates)
+            return cls.get_aggregate_capacity_trends(measurement_window, project_nodes, timeline_dates)

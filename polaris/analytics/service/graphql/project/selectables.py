@@ -1817,8 +1817,6 @@ class ProjectsFlowMixTrends(InterfaceResolver):
 class ProjectsCapacityTrends(InterfaceResolver):
     interface = CapacityTrends
 
-
-
     @classmethod
     def get_aggregate_capacity_trends(cls, measurement_window, projects_timeline_dates):
 
@@ -1831,14 +1829,21 @@ class ProjectsCapacityTrends(InterfaceResolver):
             projects_timeline_dates.outerjoin(
                 projects_repositories, projects_repositories.c.project_id == projects_timeline_dates.c.id
             ).join(
-                commits, projects_repositories.c.repository_id == commits.c.repository_id
+                repositories, projects_repositories.c.repository_id == repositories.c.id
+            ).join(
+                commits, commits.c.repository_id == repositories.c.id
             )
         ).where(
-            commits.c.commit_date.between(
-                projects_timeline_dates.c.measurement_date - timedelta(
-                    days=measurement_window
-                ),
-                projects_timeline_dates.c.measurement_date
+            and_(
+                repositories.c.latest_commit > projects_timeline_dates.c.measurement_date - timedelta(
+                        days=measurement_window
+                    ),
+                commits.c.commit_date.between(
+                    projects_timeline_dates.c.measurement_date - timedelta(
+                        days=measurement_window
+                    ),
+                    projects_timeline_dates.c.measurement_date
+                )
             )
         ).group_by(
             projects_timeline_dates.c.id,
@@ -1964,7 +1969,8 @@ class ProjectsCapacityTrends(InterfaceResolver):
 
         if capacity_trends_args.show_contributor_detail:
             capacity_trends = cls.get_aggregate_capacity_trends(measurement_window, projects_timeline_dates).alias()
-            contributor_detail = cls.get_contributor_level_capacity_trends(measurement_window, projects_timeline_dates).alias()
+            contributor_detail = cls.get_contributor_level_capacity_trends(measurement_window,
+                                                                           projects_timeline_dates).alias()
 
             return select([
                 project_nodes.c.id,

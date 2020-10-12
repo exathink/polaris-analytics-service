@@ -473,7 +473,6 @@ class FlowMixMeasurement(graphene.Interface):
 
 
 class FlowMixMeasurementImpl(TrendMeasurementImpl):
-
     class Meta:
         interfaces = (FlowMixMeasurement,)
 
@@ -481,12 +480,37 @@ class FlowMixMeasurementImpl(TrendMeasurementImpl):
         self.flow_mix = []
         super().__init__(*args, **kwargs)
 
-        self.flow_mix = [FlowMixItem(**item) for item in self.flow_mix if item is not None and item['category'] is not None]
+        self.flow_mix = [FlowMixItem(**item) for item in self.flow_mix if
+                         item is not None and item['category'] is not None]
 
 
 class FlowMixTrends(graphene.Interface):
-
     flow_mix_trends = graphene.List(FlowMixMeasurementImpl, required=True)
+
+
+class CapacityMeasurement(graphene.Interface):
+    measurement_date = graphene.Date(required=True)
+    measurement_window = graphene.Int(required=True)
+    # Core metrics
+    total_commit_days = graphene.Float(required=False)
+    # if this is specified then measurement is for an individual contributor over the period.
+    contributor_key = graphene.String(required=False)
+    contributor_name = graphene.String(required=False)
+
+    avg_commit_days = graphene.Float(required=False)
+    min_commit_days = graphene.Float(required=False)
+    max_commit_days = graphene.Float(required=False)
+    contributor_count = graphene.Int(required=False)
+
+
+class CapacityMeasurementImpl(TrendMeasurementImpl):
+    class Meta:
+        interfaces = (CapacityMeasurement,)
+
+
+class CapacityTrends(graphene.Interface):
+    capacity_trends = graphene.List(CapacityMeasurementImpl, required=True)
+    contributor_detail = graphene.List(CapacityMeasurementImpl, required=False)
 
 
 class AggregatePullRequestMetrics(graphene.Interface):

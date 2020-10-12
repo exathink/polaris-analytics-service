@@ -16,12 +16,13 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
-    ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, PipelinePullRequestMetrics
+    ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
     TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin, \
-    ProjectInfoResolverMixin, FlowMixTrendsResolverMixin, PipelinePullRequestMetricsResolverMixin
+    ProjectInfoResolverMixin, FlowMixTrendsResolverMixin, CapacityTrendsResolverMixin, \
+    PipelinePullRequestMetricsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -41,7 +42,7 @@ from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin,
 
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
-    FlowMixTrendsParameters, PullRequestMetricsParameters
+    FlowMixTrendsParameters, CapacityTrendsParameters, PullRequestMetricsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -71,11 +72,10 @@ from .selectables import ProjectNode, \
     ProjectTraceabilityTrends, \
     ProjectResponseTimeConfidenceTrends, \
     ProjectsFlowMixTrends, \
+    ProjectsCapacityTrends, \
     ProjectPipelinePullRequestMetrics
 
 from polaris.graphql.connection_utils import CountableConnection
-
-
 
 
 class Project(
@@ -89,7 +89,9 @@ class Project(
     TraceabilityTrendsResolverMixin,
     ResponseTimeConfidenceTrendsResolverMixin,
     FlowMixTrendsResolverMixin,
+    CapacityTrendsResolverMixin,
     PipelinePullRequestMetricsResolverMixin,
+
     # Connection Mixins
     RepositoriesConnectionMixin,
     ContributorsConnectionMixin,
@@ -135,7 +137,8 @@ Implicit Interfaces: ArchivedStatus
             TraceabilityTrends,
             ResponseTimeConfidenceTrends,
             FlowMixTrends,
-            PipelinePullRequestMetrics,
+            CapacityTrends,
+            PipelinePullRequestMetrics
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -152,6 +155,7 @@ Implicit Interfaces: ArchivedStatus
             'TraceabilityTrends': ProjectTraceabilityTrends,
             'ResponseTimeConfidenceTrends': ProjectResponseTimeConfidenceTrends,
             'FlowMixTrends': ProjectsFlowMixTrends,
+            'CapacityTrends': ProjectsCapacityTrends,
             'PipelinePullRequestMetrics': ProjectPipelinePullRequestMetrics,
         }
         connection_node_resolvers = {
@@ -235,11 +239,19 @@ Implicit Interfaces: ArchivedStatus
                 required=False,
                 description='Required when resolving FlowMixTrends Interface'
             ),
+
+            capacity_trends_args=graphene.Argument(
+                CapacityTrendsParameters,
+                required=False,
+                description='Required when resolving CapacityTrends Interface'
+            ),
+
             pipeline_pull_request_metrics_args=graphene.Argument(
                 PullRequestMetricsParameters,
                 required=False,
                 description='Required when resolving PipelinePullRequestMetrics interface'
             ),
+
             **kwargs
         )
 
@@ -277,6 +289,16 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             required=False,
             default_value=True,
             description='Required when resolving TraceabilityTrends interface'
+        ),
+        flow_mix_trends_args=graphene.Argument(
+            FlowMixTrendsParameters,
+            required=False,
+            description='Required when resolving FlowMixTrends Interface'
+        ),
+        commit_days_trends_args=graphene.Argument(
+            CapacityTrendsParameters,
+            required=False,
+            description='Required when resolving CommitDaysTrends Interface'
         ),
     )
 

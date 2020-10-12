@@ -13,7 +13,7 @@ from datetime import datetime
 
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
     WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
-    ProjectSettingsImpl, FlowMixMeasurementImpl, AggregatePullRequestMetricsImpl
+    ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -42,7 +42,8 @@ class FlowMixTrendsResolverMixin(KeyIdResolverMixin):
         super().__init__(*args, **kwargs)
 
     def resolve_flow_mix_trends(self, info, **kwargs):
-        return [FlowMixMeasurementImpl(**measurement) for measurement in self.flow_mix_trends if measurement is not None]
+        return [FlowMixMeasurementImpl(**measurement) for measurement in self.flow_mix_trends if
+                measurement is not None]
 
 
 class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):
@@ -167,6 +168,26 @@ class ProjectInfoResolverMixin(KeyIdResolverMixin):
 
     def resolve_settings(self, info, **kwargs):
         return ProjectSettingsImpl(**(self.settings if self.settings is not None else {}))
+
+
+class CapacityTrendsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.capacity_trends = []
+        self.contributor_detail = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_capacity_trends(self, info, **kwargs):
+        return [
+            CapacityMeasurementImpl(**measurement)
+            for measurement in self.capacity_trends or []
+        ]
+
+    def resolve_contributor_detail(self, info, **kwargs):
+        return [
+            CapacityMeasurementImpl(**measurement)
+            for measurement in self.contributor_detail or []
+        ]
 
 
 class PipelinePullRequestMetricsResolverMixin(KeyIdResolverMixin):

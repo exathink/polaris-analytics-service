@@ -12,10 +12,8 @@
 from datetime import datetime, timedelta
 import abc
 
-from polaris.common import db
-
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
-    union_all, literal, Date, true, or_, Integer
+    union_all, literal, Date, true, or_
 
 from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics, FlowTypes, \
     WorkItemTypesToFlowTypes
@@ -23,7 +21,7 @@ from polaris.analytics.db.model import projects, projects_repositories, organiza
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
     work_items, work_item_state_transitions, work_items_commits, work_item_delivery_cycles, work_items_source_state_map, \
-    work_item_delivery_cycle_durations
+    work_item_delivery_cycle_durations, pull_requests, work_items_pull_requests
 
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
     SelectableFieldResolver
@@ -1993,3 +1991,63 @@ class ProjectsCapacityTrends(InterfaceResolver):
 
 class ProjectPipelinePullRequestMetrics(InterfaceResolver):
     interface = PipelinePullRequestMetrics
+
+    @classmethod
+    def interface_selector(cls, project_nodes, **kwargs):
+        pull_request_metrics_args = kwargs.get('pipeline_pull_request_metrics_args')
+
+        measurement_date = datetime.utcnow()
+
+        pull_request_attributes = select([
+            projects.c.id,
+            pull_requests.c.id.label('pull_request_id'),
+            pull_requests.c.state.label('state'),
+            (func.extract('epoch', measurement_date-pull_requests.c.created_at)).label('age')
+        ]).select_from(
+            work_items_pull_requests.join(
+                pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
+            ).join(
+                work_item_delivery_cycles, work_items_pull_requests.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+            ).join(
+                repositories, pull_requests.c.repository_id == repositories.c.id
+            ).join(
+                projects_repositories, repositories.c.id == projects_repositories.c.repository_id
+            )
+        ).where(
+            projects.c.key == project_nodes.c.key
+        ).distinct().alias('pull_request_attributes')
+
+        pull_request_metrics = select([
+            pull_request_attributes.c.id,
+            func.avg(pull_request_attributes.c.age).label('avg_age'),
+            func.count(pull_request_attributes.c.pull_request_id).filter(
+                or_(
+                    pull_request_attributes.c.state == 'closed',
+                    pull_request_attributes.c.state == 'merged'
+                    )
+            ).label('total_closed'),
+            func.count(pull_request_attributes.c.pull_request_id).filter(
+                pull_request_attributes.c.state == 'open'
+            ).label('total_open')
+        ]).select_from(
+            pull_request_attributes
+        ).group_by(
+            pull_request_attributes.c.id
+        ).alias('pull_request_metrics')
+
+        return select([
+            pull_request_metrics.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', measurement_date,
+                    'total_open', pull_request_metrics.c.total_open,
+                    'total_closed', pull_request_metrics.c.total_closed,
+                    'avg_age', pull_request_metrics.c.avg_age
+                )
+            ).label('pipeline_pull_request_metrics')
+        ]).select_from(
+            pull_request_metrics
+        ).group_by(
+            pull_request_metrics.c.id
+        )
+

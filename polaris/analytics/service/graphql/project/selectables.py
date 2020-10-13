@@ -12,6 +12,7 @@
 from datetime import datetime, timedelta
 import abc
 
+from polaris.common import db
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
     union_all, literal, Date, true, or_
 
@@ -2002,19 +2003,23 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
             projects.c.id,
             pull_requests.c.id.label('pull_request_id'),
             pull_requests.c.state.label('state'),
-            (func.extract('epoch', measurement_date-pull_requests.c.created_at)).label('age')
+            (func.extract('epoch', measurement_date - pull_requests.c.created_at)).label('age')
         ]).select_from(
             work_items_pull_requests.join(
                 pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
             ).join(
-                work_item_delivery_cycles, work_items_pull_requests.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+                work_item_delivery_cycles,
+                work_items_pull_requests.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
             ).join(
                 repositories, pull_requests.c.repository_id == repositories.c.id
             ).join(
                 projects_repositories, repositories.c.id == projects_repositories.c.repository_id
             )
         ).where(
-            projects.c.key == project_nodes.c.key
+            and_(
+                projects.c.key == project_nodes.c.key,
+                work_item_delivery_cycles.c.end_date == None
+            )
         ).distinct().alias('pull_request_attributes')
 
         pull_request_metrics = select([
@@ -2024,7 +2029,7 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
                 or_(
                     pull_request_attributes.c.state == 'closed',
                     pull_request_attributes.c.state == 'merged'
-                    )
+                )
             ).label('total_closed'),
             func.count(pull_request_attributes.c.pull_request_id).filter(
                 pull_request_attributes.c.state == 'open'
@@ -2039,7 +2044,7 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
             pull_request_metrics.c.id,
             func.json_agg(
                 func.json_build_object(
-                    'measurement_date', measurement_date,
+                    'measurement_date', cast(measurement_date, Date),
                     'total_open', pull_request_metrics.c.total_open,
                     'total_closed', pull_request_metrics.c.total_closed,
                     'avg_age', pull_request_metrics.c.avg_age
@@ -2050,4 +2055,3 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
         ).group_by(
             pull_request_metrics.c.id
         )
-

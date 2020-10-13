@@ -196,5 +196,5 @@ class PipelinePullRequestMetricsResolverMixin(KeyIdResolverMixin):
         self.pipeline_pull_request_metrics = None
         super().__init__(*args, **kwargs)
 
-    def resolve_pull_request_metrics(self, info, **kwargs):
+    def resolve_pipeline_pull_request_metrics(self, info, **kwargs):
         return AggregatePullRequestMetricsImpl(**self.pipeline_pull_request_metrics[0])

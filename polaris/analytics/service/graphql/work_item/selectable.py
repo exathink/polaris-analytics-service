@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 from polaris.common import db
 
-from sqlalchemy import select, bindparam, and_, func, cast, Text, Date
+from sqlalchemy import select, bindparam, and_, func, cast, Text, Date, case
 
 from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
@@ -245,8 +245,17 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
         return select([
             work_item_delivery_cycle_nodes.c.id,
             (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
-            (func.min(work_item_delivery_cycles.c.cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
+            (func.min(work_item_delivery_cycles.c.cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
+            (case([
+                (func.min(work_item_delivery_cycles.c.commit_count) > 0,
+                 func.min(
+                     func.extract('epoch',
+                                  work_item_delivery_cycles.c.latest_commit - work_item_delivery_cycles.c.earliest_commit) / (
+                                 1.0 * 3600 * 24)
+                 ))
+            ], else_=None)).label('duration'),
+            (func.min(work_item_delivery_cycles.c.latency) / (1.0 * 3600 * 24)).label('latency'),
         ]).select_from(
             work_item_delivery_cycle_nodes.outerjoin(
                 work_item_delivery_cycles,

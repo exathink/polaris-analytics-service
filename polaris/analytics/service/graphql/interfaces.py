@@ -324,6 +324,8 @@ class DeliveryCycleInfo(graphene.Interface):
 class CycleMetrics(graphene.Interface):
     lead_time = graphene.Float(required=False)
     cycle_time = graphene.Float(required=False)
+    duration = graphene.Float(required=False)
+    latency = graphene.Float(required=False)
 
 
 class DeliveryCycleSpan(graphene.Interface):

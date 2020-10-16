@@ -18,6 +18,7 @@ from datetime import datetime
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
 from polaris.analytics.service.graphql.viewer import Viewer
+from polaris.analytics.db.model import FeatureFlag, FeatureFlagEnablement
 
 feature_flags_input = [
     dict(name='New Feature 1'),

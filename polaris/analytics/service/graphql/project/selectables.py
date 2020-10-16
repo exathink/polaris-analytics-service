@@ -2003,7 +2003,7 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
             projects.c.id,
             pull_requests.c.id.label('pull_request_id'),
             pull_requests.c.state.label('state'),
-            (func.extract('epoch', measurement_date - pull_requests.c.created_at)).label('age')
+            (func.extract('epoch', measurement_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label('age')
         ]).select_from(
             work_items_pull_requests.join(
                 pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id

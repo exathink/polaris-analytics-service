@@ -16,6 +16,7 @@ from sqlalchemy import true, false
 from polaris.common import db
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
+from polaris.analytics.db.model import FeatureFlag, FeatureFlagEnablement
 
 from test.fixtures.graphql import *
 from test.constants import *

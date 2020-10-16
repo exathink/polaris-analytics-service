@@ -19,8 +19,8 @@ from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
     commits, work_items_commits as work_items_commits_table, \
-    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag, FeatureFlagEnablement, \
-    WorkItemDeliveryCycle
+    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit,\
+    WorkItemDeliveryCycle, PullRequest, work_items_pull_requests, pull_requests
 from polaris.common import db
 from polaris.utils.collections import find, Fixture
 from polaris.common.enums import WorkTrackingIntegrationType
@@ -1111,7 +1111,7 @@ def api_pull_requests_import_fixture(org_repo_fixture):
         organization_key=organization.key,
         integration_type='jira',
         commit_mapping_scope='repository',
-        commit_mapping_scope_key=None,
+        commit_mapping_scope_key=repositories['alpha'].key,
         project_id=project.id,
         **work_items_source_common
     )
@@ -1143,10 +1143,7 @@ def api_pull_requests_import_fixture(org_repo_fixture):
     pull_requests_common = dict(
         source_state='opened',
         state="open",
-        updated_at=get_date("2020-06-23"),
         merge_status="can_be_merged",
-        merged_at=get_date("2020-06-11"),
-        source_branch='test',
         target_branch="master",
         description='',
         display_id='1010',
@@ -1167,15 +1164,36 @@ def api_pull_requests_import_fixture(org_repo_fixture):
 
 class PullRequestImportApiHelper(WorkItemImportApiHelper):
 
-    def __init__(self, organization, repository, work_items_source, work_items=None, pull_requests=None):
+    def __init__(self, organization, repositories, work_items_source, work_items=None, pull_requests=None):
         super().__init__(organization, work_items_source, work_items)
-        self.repository = repository
+        self.repositories = repositories
         self.pull_requests = pull_requests
 
-    def import_pull_requests(self, pull_requests):
+    def import_pull_requests(self, pull_requests, repository):
         self.pull_requests = pull_requests
-        api.import_new_pull_requests(self.repository.key, pull_requests)
+        api.import_new_pull_requests(repository.key, pull_requests)
 
-    def resolve_pull_request_for_new_work_items(self, new_work_items):
-        self.work_items = new_work_items
-        api.resolve_pull_requests_for_new_work_items(self.organization.key, self.work_items_source.key, self.work_items)
+    def map_pull_request_to_work_item(self, work_item_key, pull_request_key, join_this=None):
+        with db.orm_session(join_this) as session:
+            work_item = WorkItem.find_by_work_item_key(session, work_item_key)
+            pull_request = PullRequest.find_by_key(session, pull_request_key)
+            delivery_cycle_id = work_item.current_delivery_cycle_id
+            session.connection().execute(
+                work_items_pull_requests.insert().values(
+                    dict(
+                        work_item_id=work_item.id,
+                        pull_request_id=pull_request.id,
+                        delivery_cycle_id=delivery_cycle_id
+                    )
+                )
+            )
+
+    def update_pull_request(self, pull_request_key, update_dict, join_this=None):
+        with db.orm_session(join_this) as session:
+            session.connection().execute(
+                pull_requests.update().where(
+                    pull_requests.c.key==pull_request_key
+                ).values(
+                    update_dict
+                )
+            )

@@ -727,6 +727,8 @@ class WorkItem(Base):
     # Work Items Source File Relationship
     source_file_changes = relationship('WorkItemSourceFileChange', cascade='all, delete-orphan')
 
+    pull_requests = relationship('PullRequest', secondary=work_items_pull_requests, back_populates='work_items')
+
     @classmethod
     def find_by_work_item_key(cls, session, work_item_key):
         return session.query(cls).filter(cls.key == work_item_key).first()
@@ -946,6 +948,12 @@ class PullRequest(Base):
     repository = relationship('Repository', foreign_keys=[repository_id])
 
     source_repository = relationship('Repository', foreign_keys=[source_repository_id])
+
+    work_items = relationship('WorkItem', secondary=work_items_pull_requests, back_populates='pull_requests')
+
+    @classmethod
+    def find_by_key(cls, session, key):
+        return session.query(cls).filter(cls.key == key).first()
 
 
 pull_requests = PullRequest.__table__

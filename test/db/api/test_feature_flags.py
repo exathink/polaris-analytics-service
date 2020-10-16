@@ -10,7 +10,7 @@
 import pytest
 
 from polaris.analytics.db import api, model
-from polaris.analytics.db.model import FeatureFlag
+from polaris.analytics.db.model import FeatureFlag, FeatureFlagEnablement
 from polaris.common import db
 import uuid
 from test.fixtures.graphql import *

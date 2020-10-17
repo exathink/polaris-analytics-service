@@ -13,6 +13,7 @@ from datetime import datetime
 
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.graphql.interfaces import NamedNode
+from .utils import parse_json_timestamp
 
 from polaris.common.enums import WorkTrackingIntegrationType as _WorkTrackingIntegrationType
 
@@ -227,6 +228,14 @@ class WorkItemDaysInState(graphene.ObjectType):
 
 
 class WorkItemStateDetail(graphene.ObjectType):
+    class Meta:
+        interfaces = (CommitSummary,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.latest_commit = parse_json_timestamp(self.latest_commit)
+        self.earliest_commit = parse_json_timestamp(self.earliest_commit)
+
     current_state_transition = graphene.Field(WorkItemStateTransitionImpl, required=False)
     current_delivery_cycle_durations = graphene.List(WorkItemDaysInState, required=False)
 
@@ -324,6 +333,8 @@ class DeliveryCycleInfo(graphene.Interface):
 class CycleMetrics(graphene.Interface):
     lead_time = graphene.Float(required=False)
     cycle_time = graphene.Float(required=False)
+    duration = graphene.Float(required=False)
+    latency = graphene.Float(required=False)
 
 
 class DeliveryCycleSpan(graphene.Interface):

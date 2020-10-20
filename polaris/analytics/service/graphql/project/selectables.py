@@ -1997,34 +1997,60 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
     def interface_selector(cls, project_nodes, **kwargs):
         pull_request_metrics_args = kwargs.get('pipeline_pull_request_metrics_args')
 
+        age_target_percentile = pull_request_metrics_args.pull_request_age_target_percentile
+
         measurement_date = datetime.utcnow()
 
-        pull_request_attributes = select([
-            projects.c.id,
-            pull_requests.c.id.label('pull_request_id'),
-            pull_requests.c.state.label('state'),
-            (func.extract('epoch', measurement_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label('age')
-        ]).select_from(
-            work_items_pull_requests.join(
-                pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
-            ).join(
-                work_item_delivery_cycles,
-                work_items_pull_requests.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
-            ).join(
-                repositories, pull_requests.c.repository_id == repositories.c.id
-            ).join(
-                projects_repositories, repositories.c.id == projects_repositories.c.repository_id
-            )
-        ).where(
-            and_(
-                projects.c.key == project_nodes.c.key,
-                work_item_delivery_cycles.c.end_date == None
-            )
-        ).distinct().alias('pull_request_attributes')
+        if pull_request_metrics_args.specs_only:
+            # Filter only those PRs which are mapped to a work item with open delivery cycle
+            pull_request_attributes = select([
+                projects.c.id,
+                pull_requests.c.id.label('pull_request_id'),
+                pull_requests.c.state.label('state'),
+                (func.extract('epoch', measurement_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label('age'),
+                 ]).select_from(
+                    work_items_pull_requests.join(
+                        pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
+                    ).join(
+                        work_item_delivery_cycles,
+                        work_items_pull_requests.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+                    ).join(
+                        repositories, pull_requests.c.repository_id == repositories.c.id
+                    ).join(
+                        projects_repositories, repositories.c.id == projects_repositories.c.repository_id
+                    )
+                ).where(
+                    and_(
+                        projects.c.key == project_nodes.c.key,
+                        work_item_delivery_cycles.c.end_date == None,
+                        pull_requests.c.state == 'open'
+                    )
+                ).distinct().alias('pull_request_attributes')
+        else:
+            pull_request_attributes = select([
+                projects.c.id,
+                pull_requests.c.id.label('pull_request_id'),
+                pull_requests.c.state.label('state'),
+                (func.extract('epoch', measurement_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label('age'),
+            ]).select_from(
+                pull_requests.join(
+                    repositories, pull_requests.c.repository_id == repositories.c.id
+                ).join(
+                    projects_repositories, repositories.c.id == projects_repositories.c.repository_id
+                )
+            ).where(
+                and_(
+                    projects.c.key == project_nodes.c.key,
+                    pull_requests.c.state == 'open'
+                )
+            ).distinct().alias('pull_request_attributes')
 
         pull_request_metrics = select([
             pull_request_attributes.c.id,
             func.avg(pull_request_attributes.c.age).label('avg_age'),
+            func.min(pull_request_attributes.c.age).label('min_age'),
+            func.max(pull_request_attributes.c.age).label('max_age'),
+            func.percentile_disc(age_target_percentile).within_group(pull_request_attributes.c.age).label('percentile_age'),
             func.count(pull_request_attributes.c.pull_request_id).filter(
                 or_(
                     pull_request_attributes.c.state == 'closed',
@@ -2047,7 +2073,10 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
                     'measurement_date', cast(measurement_date, Date),
                     'total_open', pull_request_metrics.c.total_open,
                     'total_closed', pull_request_metrics.c.total_closed,
-                    'avg_age', pull_request_metrics.c.avg_age
+                    'avg_age', pull_request_metrics.c.avg_age,
+                    'min_age', pull_request_metrics.c.min_age,
+                    'max_age', pull_request_metrics.c.max_age,
+                    'percentile_age', pull_request_metrics.c.percentile_age
                 )
             ).label('pipeline_pull_request_metrics')
         ]).select_from(

@@ -14,7 +14,7 @@ from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 
 
-class TestProjectPipelinePullRequestMetricsTrends:
+class TestProjectPipelinePullRequestMetrics:
 
     @pytest.yield_fixture()
     def setup(self, api_pull_requests_import_fixture):
@@ -62,7 +62,7 @@ class TestProjectPipelinePullRequestMetricsTrends:
         )
 
 
-    class TestPullRequestMetrics:
+    class TestSpecsPullRequestMetrics:
         @pytest.yield_fixture()
         def setup(self, setup):
             fixture = setup
@@ -74,10 +74,15 @@ class TestProjectPipelinePullRequestMetricsTrends:
                             key: $project_key,
                             interfaces: [PipelinePullRequestMetrics], 
                             pipelinePullRequestMetricsArgs: {
+                                pullRequestAgeTargetPercentile:0.9,
+                                specsOnly:true,
                                 metrics: [
                                     total_open
                                     total_closed
                                     avg_age
+                                    min_age
+                                    max_age
+                                    percentile_age
                                 ]
                             }
                         ) {
@@ -85,6 +90,9 @@ class TestProjectPipelinePullRequestMetricsTrends:
                                 totalOpen
                                 totalClosed
                                 avgAge
+                                minAge
+                                maxAge
+                                percentileAge
                             }
                         }
                 }
@@ -109,7 +117,7 @@ class TestProjectPipelinePullRequestMetricsTrends:
 
                 assert result['data']
                 project = result['data']['project']
-                assert len(project[fixture.output_attribute]) == 3
+                assert len(project[fixture.output_attribute]) == 6
 
         class TestWhenWorkItemIsOpen:
 
@@ -134,7 +142,7 @@ class TestProjectPipelinePullRequestMetricsTrends:
 
                     assert result['data']
                     project = result['data']['project']
-                    assert len(project[fixture.output_attribute]) == 3
+                    assert len(project[fixture.output_attribute]) == 6
 
             class TestWithTwoPullRequests:
 
@@ -164,7 +172,10 @@ class TestProjectPipelinePullRequestMetricsTrends:
                         metrics_values = project[fixture.output_attribute]
                         assert metrics_values['totalOpen'] == 2
                         assert metrics_values['totalClosed'] == 0
-                        assert metrics_values['avgAge'] > 0
+                        assert int(metrics_values['avgAge']) == 10
+                        assert int(metrics_values['minAge']) == 10
+                        assert int(metrics_values['maxAge']) == 10
+                        assert int(metrics_values['percentileAge']) == 10
 
 
                 class TestWhenNoOpenTwoClosedPullRequests:
@@ -179,7 +190,7 @@ class TestProjectPipelinePullRequestMetricsTrends:
                             api_helper.update_pull_request(pull_request_key=pr['key'], update_dict=dict(state='closed'))
                         yield fixture
 
-                    def it_returns_zero_total_open_two_total_closed_prs(self, setup):
+                    def it_returns_zero_total_open_prs(self, setup):
                         fixture = setup
 
                         client = Client(schema)
@@ -193,8 +204,8 @@ class TestProjectPipelinePullRequestMetricsTrends:
 
                         metrics_values = project[fixture.output_attribute]
                         assert metrics_values['totalOpen'] == 0
-                        assert metrics_values['totalClosed'] == 2
-                        assert metrics_values['avgAge'] > 0
+                        assert metrics_values['totalClosed'] == 0
+                        assert int(metrics_values['avgAge']) == 10
 
                 class TestWhenOneOpenOneClosedPullRequests:
 
@@ -206,7 +217,7 @@ class TestProjectPipelinePullRequestMetricsTrends:
                         api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'], update_dict=dict(state='closed'))
                         yield fixture
 
-                    def it_returns_one_open_one_closed_pr(self, setup):
+                    def it_returns_one_open_pr(self, setup):
                         fixture = setup
                         client = Client(schema)
 
@@ -219,8 +230,11 @@ class TestProjectPipelinePullRequestMetricsTrends:
 
                         metrics_values = project[fixture.output_attribute]
                         assert metrics_values['totalOpen'] == 1
-                        assert metrics_values['totalClosed'] == 1
-                        assert metrics_values['avgAge'] > 0
+                        assert metrics_values['totalClosed'] == 0
+                        assert int(metrics_values['avgAge']) == 10
+                        assert int(metrics_values['minAge']) == 10
+                        assert int(metrics_values['maxAge']) == 10
+                        assert int(metrics_values['percentileAge']) == 10
 
             class TestWhenDeliveryCycleIsClosed:
                 # TODO: Add this case to Query API
@@ -228,15 +242,12 @@ class TestProjectPipelinePullRequestMetricsTrends:
                 def setup(self, setup):
                     fixture = setup
                     api_helper = fixture.api_helper
-                    api_helper.update_delivery_cycles(
-                        updates=[
-                            (0, dict(property='end_date', value=fixture.start_date + timedelta(days=2)))
-                        ]
+                    api_helper.update_delivery_cycle(
+                        0, dict(end_date=fixture.start_date + timedelta(days=2))
                     )
-
                     yield fixture
 
-                def it_returns_two_open_prs(self, setup):
+                def it_returns_none(self, setup):
                     fixture = setup
                     client = Client(schema)
 
@@ -245,12 +256,7 @@ class TestProjectPipelinePullRequestMetricsTrends:
                     ))
 
                     assert result['data']
-                    project = result['data']['project']
-
-                    metrics_values = project[fixture.output_attribute]
-                    assert metrics_values['totalOpen'] == 2
-                    assert metrics_values['totalClosed'] == 0
-                    assert metrics_values['avgAge'] > 0
+                    assert result['data']['project'][fixture.output_attribute] == None
 
         class TestWhenWorkItemIsClosed:
             class TestWhenDeliveryCycleIsOpen:

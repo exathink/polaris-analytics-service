@@ -19,7 +19,7 @@ from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
     commits, work_items_commits as work_items_commits_table, \
-    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit,\
+    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, work_item_delivery_cycles, \
     WorkItemDeliveryCycle, PullRequest, work_items_pull_requests, pull_requests
 from polaris.common import db
 from polaris.utils.collections import find, Fixture
@@ -1099,6 +1099,19 @@ class WorkItemImportApiHelper:
                     ).first()
                     if delivery_cycle:
                         setattr(delivery_cycle, update['property'], update['value'])
+
+    def update_delivery_cycle(self, index, update_dict, join_this=None):
+        with db.orm_session(join_this) as session:
+            work_item = WorkItem.find_by_work_item_key(session, self.work_items[index]['key'])
+            if work_item:
+                delivery_cycle_id = work_item.current_delivery_cycle_id
+                session.connection().execute(
+                    work_item_delivery_cycles.update().where(
+                        work_item_delivery_cycles.c.delivery_cycle_id==delivery_cycle_id
+                    ).values(
+                        update_dict
+                    )
+                )
 
 
 @pytest.yield_fixture

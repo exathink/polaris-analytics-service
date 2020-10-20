@@ -61,7 +61,6 @@ class TestProjectPipelinePullRequestMetrics:
             repositories=repositories
         )
 
-
     class TestSpecsPullRequestMetrics:
         @pytest.yield_fixture()
         def setup(self, setup):
@@ -177,7 +176,6 @@ class TestProjectPipelinePullRequestMetrics:
                         assert int(metrics_values['maxAge']) == 10
                         assert int(metrics_values['percentileAge']) == 10
 
-
                 class TestWhenNoOpenTwoClosedPullRequests:
 
                     @pytest.yield_fixture()
@@ -204,8 +202,6 @@ class TestProjectPipelinePullRequestMetrics:
 
                         metrics_values = project[fixture.output_attribute]
                         assert metrics_values['totalOpen'] == 0
-                        assert metrics_values['totalClosed'] == 0
-                        assert int(metrics_values['avgAge']) == 10
 
                 class TestWhenOneOpenOneClosedPullRequests:
 
@@ -214,7 +210,8 @@ class TestProjectPipelinePullRequestMetrics:
                         fixture = setup
                         api_helper = fixture.api_helper
                         # close 1 mapped PR
-                        api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'], update_dict=dict(state='closed'))
+                        api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'],
+                                                       update_dict=dict(state='closed'))
                         yield fixture
 
                     def it_returns_one_open_pr(self, setup):
@@ -291,8 +288,6 @@ class TestProjectPipelinePullRequestMetrics:
 
                             metrics_values = project[fixture.output_attribute]
                             assert metrics_values['totalOpen'] == 0
-                            assert metrics_values['totalClosed'] == 0
-                            assert int(metrics_values['avgAge']) == 10
 
                     class TestWhenOneOpenOneClosedPullRequests:
 
@@ -324,7 +319,6 @@ class TestProjectPipelinePullRequestMetrics:
                             assert int(metrics_values['maxAge']) == 10
                             assert int(metrics_values['percentileAge']) == 10
 
-
             class TestWhenDeliveryCycleIsClosed:
                 @pytest.yield_fixture()
                 def setup(self, setup):
@@ -345,7 +339,6 @@ class TestProjectPipelinePullRequestMetrics:
 
                     assert result['data']
                     assert result['data']['project'][fixture.output_attribute] == None
-
 
     class TestAllPullRequestMetrics:
         @pytest.yield_fixture()
@@ -423,14 +416,14 @@ class TestProjectPipelinePullRequestMetrics:
                     assert int(metrics_values['maxAge']) == 10
                     assert int(metrics_values['percentileAge']) == 10
 
-
             class TestWhenOnePRIsNoSpec:
 
                 @pytest.yield_fixture()
                 def setup(self, setup):
                     fixture = setup
                     api_helper = fixture.api_helper
-                    api_helper.map_pull_request_to_work_item(fixture.work_items[0]['key'], fixture.pull_requests[0]['key'])
+                    api_helper.map_pull_request_to_work_item(fixture.work_items[0]['key'],
+                                                             fixture.pull_requests[0]['key'])
 
                     yield fixture
 
@@ -512,5 +505,3 @@ class TestProjectPipelinePullRequestMetrics:
                         assert int(metrics_values['minAge']) == 10
                         assert int(metrics_values['maxAge']) == 10
                         assert int(metrics_values['percentileAge']) == 10
-
-

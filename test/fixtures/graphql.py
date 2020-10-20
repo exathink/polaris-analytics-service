@@ -1113,6 +1113,13 @@ class WorkItemImportApiHelper:
                     )
                 )
 
+    def update_work_item(self, index, update_dict, join_this=None):
+        with db.orm_session(join_this) as session:
+            work_item = WorkItem.find_by_work_item_key(session, self.work_items[index]['key'])
+            if work_item:
+                for name, value in update_dict.items():
+                    setattr(work_item, name, value)
+
 
 @pytest.yield_fixture
 def api_pull_requests_import_fixture(org_repo_fixture):

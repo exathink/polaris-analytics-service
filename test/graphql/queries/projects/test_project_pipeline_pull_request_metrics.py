@@ -236,8 +236,96 @@ class TestProjectPipelinePullRequestMetrics:
                         assert int(metrics_values['maxAge']) == 10
                         assert int(metrics_values['percentileAge']) == 10
 
+                class TestWhenWorkItemIsClosed:
+                    @pytest.yield_fixture()
+                    def setup(self, setup):
+                        fixture = setup
+                        api_helper = fixture.api_helper
+                        api_helper.update_work_item(0, dict(state='closed'))
+                        yield fixture
+
+                    class TestWhenTwoOpenNoClosedPullRequests:
+                        def it_returns_correct_metrics(self, setup):
+                            fixture = setup
+                            client = Client(schema)
+
+                            result = client.execute(fixture.query, variable_values=dict(
+                                project_key=fixture.project.key
+                            ))
+
+                            assert result['data']
+                            project = result['data']['project']
+
+                            metrics_values = project[fixture.output_attribute]
+                            assert metrics_values['totalOpen'] == 2
+                            assert metrics_values['totalClosed'] == 0
+                            assert int(metrics_values['avgAge']) == 10
+                            assert int(metrics_values['minAge']) == 10
+                            assert int(metrics_values['maxAge']) == 10
+                            assert int(metrics_values['percentileAge']) == 10
+
+                    class TestWhenNoOpenPullRequests:
+
+                        @pytest.yield_fixture()
+                        def setup(self, setup):
+                            fixture = setup
+
+                            api_helper = fixture.api_helper
+                            # close both PRs
+                            for pr in fixture.pull_requests:
+                                api_helper.update_pull_request(pull_request_key=pr['key'],
+                                                               update_dict=dict(state='closed'))
+                            yield fixture
+
+                        def it_returns_zero_total_open_prs(self, setup):
+                            fixture = setup
+
+                            client = Client(schema)
+
+                            result = client.execute(fixture.query, variable_values=dict(
+                                project_key=fixture.project.key
+                            ))
+
+                            assert result['data']
+                            project = result['data']['project']
+
+                            metrics_values = project[fixture.output_attribute]
+                            assert metrics_values['totalOpen'] == 0
+                            assert metrics_values['totalClosed'] == 0
+                            assert int(metrics_values['avgAge']) == 10
+
+                    class TestWhenOneOpenOneClosedPullRequests:
+
+                        @pytest.yield_fixture()
+                        def setup(self, setup):
+                            fixture = setup
+                            api_helper = fixture.api_helper
+                            # close 1 mapped PR
+                            api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'],
+                                                           update_dict=dict(state='closed'))
+                            yield fixture
+
+                        def it_returns_one_open_pr(self, setup):
+                            fixture = setup
+                            client = Client(schema)
+
+                            result = client.execute(fixture.query, variable_values=dict(
+                                project_key=fixture.project.key
+                            ))
+
+                            assert result['data']
+                            project = result['data']['project']
+
+                            metrics_values = project[fixture.output_attribute]
+                            assert metrics_values['totalOpen'] == 1
+                            assert metrics_values['totalClosed'] == 0
+                            assert int(metrics_values['avgAge']) == 10
+                            assert int(metrics_values['minAge']) == 10
+                            assert int(metrics_values['maxAge']) == 10
+                            assert int(metrics_values['percentileAge']) == 10
+
+
             class TestWhenDeliveryCycleIsClosed:
-                # TODO: Add this case to Query API
                 @pytest.yield_fixture()
                 def setup(self, setup):
                     fixture = setup
@@ -258,26 +346,171 @@ class TestProjectPipelinePullRequestMetrics:
                     assert result['data']
                     assert result['data']['project'][fixture.output_attribute] == None
 
-        class TestWhenWorkItemIsClosed:
-            class TestWhenDeliveryCycleIsOpen:
-                class TestWhenTwoOpenNoClosedPullRequests:
-                    pass
 
-                class TestWhenNoOpenPullRequests:
-                    pass
+    class TestAllPullRequestMetrics:
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            fixture = setup
+            metrics_query = """
+                query getProjectPullRequestMetrics(
+                    $project_key:String!,
+                    ) {
+                        project(
+                            key: $project_key,
+                            interfaces: [PipelinePullRequestMetrics], 
+                            pipelinePullRequestMetricsArgs: {
+                                pullRequestAgeTargetPercentile:0.9,
+                                specsOnly:false,
+                                metrics: [
+                                    total_open
+                                    total_closed
+                                    avg_age
+                                    min_age
+                                    max_age
+                                    percentile_age
+                                ]
+                            }
+                        ) {
+                            pipelinePullRequestMetrics {
+                                totalOpen
+                                totalClosed
+                                avgAge
+                                minAge
+                                maxAge
+                                percentileAge
+                            }
+                        }
+                }
+            """
 
-                class TestWhenOneOpenOneClosedPullRequests:
-                    pass
+            yield Fixture(
+                parent=fixture,
+                query=metrics_query,
+                output_attribute='pipelinePullRequestMetrics'
+            )
 
-            class TesWhenDeliveryCycleIsClosed:
-                class TestWhenTwoOpenNoClosedPullRequests:
-                    pass
+        class TestWithTwoPullRequests:
 
-                class TestWhenNoOpenPullRequests:
-                    pass
+            @pytest.yield_fixture()
+            def setup(self, setup):
+                fixture = setup
+                api_helper = fixture.api_helper
+                # Import work item
+                api_helper.import_work_items(fixture.work_items)
+                # Import pull requests
+                api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
 
-                class TestWhenOneOpenOneClosedPullRequests:
-                    pass
+                yield fixture
 
+            class TestWhenBothPRsAreNoSpec:
+
+                def it_returns_two_open_prs(self, setup):
+                    fixture = setup
+                    client = Client(schema)
+
+                    result = client.execute(fixture.query, variable_values=dict(
+                        project_key=fixture.project.key
+                    ))
+
+                    assert result['data']
+                    project = result['data']['project']
+
+                    metrics_values = project[fixture.output_attribute]
+                    assert metrics_values['totalOpen'] == 2
+                    assert metrics_values['totalClosed'] == 0
+                    assert int(metrics_values['avgAge']) == 10
+                    assert int(metrics_values['minAge']) == 10
+                    assert int(metrics_values['maxAge']) == 10
+                    assert int(metrics_values['percentileAge']) == 10
+
+
+            class TestWhenOnePRIsNoSpec:
+
+                @pytest.yield_fixture()
+                def setup(self, setup):
+                    fixture = setup
+                    api_helper = fixture.api_helper
+                    api_helper.map_pull_request_to_work_item(fixture.work_items[0]['key'], fixture.pull_requests[0]['key'])
+
+                    yield fixture
+
+                def it_returns_two_open_prs(self, setup):
+                    fixture = setup
+                    client = Client(schema)
+
+                    result = client.execute(fixture.query, variable_values=dict(
+                        project_key=fixture.project.key
+                    ))
+
+                    assert result['data']
+                    project = result['data']['project']
+
+                    metrics_values = project[fixture.output_attribute]
+                    assert metrics_values['totalOpen'] == 2
+                    assert metrics_values['totalClosed'] == 0
+                    assert int(metrics_values['avgAge']) == 10
+                    assert int(metrics_values['minAge']) == 10
+                    assert int(metrics_values['maxAge']) == 10
+                    assert int(metrics_values['percentileAge']) == 10
+
+            class TestWhenBothPRsAreSpec:
+
+                @pytest.yield_fixture()
+                def setup(self, setup):
+                    fixture = setup
+                    api_helper = fixture.api_helper
+                    for pr in fixture.pull_requests:
+                        api_helper.map_pull_request_to_work_item(fixture.work_items[0]['key'], pr['key'])
+
+                    yield fixture
+
+                def it_returns_two_open_prs(self, setup):
+                    fixture = setup
+                    client = Client(schema)
+
+                    result = client.execute(fixture.query, variable_values=dict(
+                        project_key=fixture.project.key
+                    ))
+
+                    assert result['data']
+                    project = result['data']['project']
+
+                    metrics_values = project[fixture.output_attribute]
+                    assert metrics_values['totalOpen'] == 2
+                    assert metrics_values['totalClosed'] == 0
+                    assert int(metrics_values['avgAge']) == 10
+                    assert int(metrics_values['minAge']) == 10
+                    assert int(metrics_values['maxAge']) == 10
+                    assert int(metrics_values['percentileAge']) == 10
+
+                class TestWhenOnePRIsClosed:
+
+                    @pytest.yield_fixture()
+                    def setup(self, setup):
+                        fixture = setup
+                        api_helper = fixture.api_helper
+                        api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'],
+                                                       update_dict=dict(state='closed'))
+
+                        yield fixture
+
+                    def it_returns_one_open_pr(self, setup):
+                        fixture = setup
+                        client = Client(schema)
+
+                        result = client.execute(fixture.query, variable_values=dict(
+                            project_key=fixture.project.key
+                        ))
+
+                        assert result['data']
+                        project = result['data']['project']
+
+                        metrics_values = project[fixture.output_attribute]
+                        assert metrics_values['totalOpen'] == 1
+                        assert metrics_values['totalClosed'] == 0
+                        assert int(metrics_values['avgAge']) == 10
+                        assert int(metrics_values['minAge']) == 10
+                        assert int(metrics_values['maxAge']) == 10
+                        assert int(metrics_values['percentileAge']) == 10
 
 

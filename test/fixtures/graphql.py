@@ -19,8 +19,8 @@ from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
     commits, work_items_commits as work_items_commits_table, \
-    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, FeatureFlag, FeatureFlagEnablement, \
-    WorkItemDeliveryCycle
+    WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, work_item_delivery_cycles, \
+    WorkItemDeliveryCycle, PullRequest, work_items_pull_requests, pull_requests
 from polaris.common import db
 from polaris.utils.collections import find, Fixture
 from polaris.common.enums import WorkTrackingIntegrationType
@@ -1099,3 +1099,121 @@ class WorkItemImportApiHelper:
                     ).first()
                     if delivery_cycle:
                         setattr(delivery_cycle, update['property'], update['value'])
+
+    def update_delivery_cycle(self, index, update_dict, join_this=None):
+        with db.orm_session(join_this) as session:
+            work_item = WorkItem.find_by_work_item_key(session, self.work_items[index]['key'])
+            if work_item:
+                delivery_cycle_id = work_item.current_delivery_cycle_id
+                session.connection().execute(
+                    work_item_delivery_cycles.update().where(
+                        work_item_delivery_cycles.c.delivery_cycle_id==delivery_cycle_id
+                    ).values(
+                        update_dict
+                    )
+                )
+
+    def update_work_item(self, index, update_dict, join_this=None):
+        with db.orm_session(join_this) as session:
+            work_item = WorkItem.find_by_work_item_key(session, self.work_items[index]['key'])
+            if work_item:
+                for name, value in update_dict.items():
+                    setattr(work_item, name, value)
+
+
+@pytest.yield_fixture
+def api_pull_requests_import_fixture(org_repo_fixture):
+    organization, projects, repositories = org_repo_fixture
+
+    project = projects['mercury']
+    work_items_source = WorkItemsSource(
+        key=uuid.uuid4(),
+        organization_key=organization.key,
+        integration_type='jira',
+        commit_mapping_scope='repository',
+        commit_mapping_scope_key=repositories['alpha'].key,
+        project_id=project.id,
+        **work_items_source_common
+    )
+    work_items_source.init_state_map(
+        [
+            dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
+            dict(state='upnext', state_type=WorkItemsStateType.open.value),
+            dict(state='doing', state_type=WorkItemsStateType.wip.value),
+            dict(state='done', state_type=WorkItemsStateType.complete.value),
+            dict(state='closed', state_type=WorkItemsStateType.closed.value),
+        ]
+    )
+
+    with db.orm_session() as session:
+        session.add(organization)
+        organization.work_items_sources.append(work_items_source)
+
+    work_items_common = dict(
+        is_bug=True,
+        is_epic=False,
+        parent_id=None,
+        work_item_type='issue',
+        url='http://foo.com',
+        tags=['ares2'],
+        description='foo',
+        source_id=str(uuid.uuid4()),
+    )
+
+    pull_requests_common = dict(
+        source_state='opened',
+        state="open",
+        merge_status="can_be_merged",
+        target_branch="master",
+        description='',
+        display_id='1010',
+        web_url="https://gitlab.com/polaris-services/polaris-analytics-service/-/merge_requests/69"
+    )
+
+    yield organization, project, repositories, work_items_source, work_items_common, pull_requests_common
+
+    db.connection().execute("delete from analytics.work_items_pull_requests")
+    db.connection().execute("delete from analytics.pull_requests")
+    db.connection().execute("delete from analytics.work_item_state_transitions")
+    db.connection().execute("delete from analytics.work_item_delivery_cycle_durations")
+    db.connection().execute("delete from analytics.work_item_delivery_cycles")
+    db.connection().execute("delete from analytics.work_items")
+    db.connection().execute("delete from analytics.work_items_source_state_map")
+    db.connection().execute("delete from analytics.work_items_sources")
+
+
+class PullRequestImportApiHelper(WorkItemImportApiHelper):
+
+    def __init__(self, organization, repositories, work_items_source, work_items=None, pull_requests=None):
+        super().__init__(organization, work_items_source, work_items)
+        self.repositories = repositories
+        self.pull_requests = pull_requests
+
+    def import_pull_requests(self, pull_requests, repository):
+        self.pull_requests = pull_requests
+        api.import_new_pull_requests(repository.key, pull_requests)
+
+    def map_pull_request_to_work_item(self, work_item_key, pull_request_key, join_this=None):
+        with db.orm_session(join_this) as session:
+            work_item = WorkItem.find_by_work_item_key(session, work_item_key)
+            pull_request = PullRequest.find_by_key(session, pull_request_key)
+            delivery_cycle_id = work_item.current_delivery_cycle_id
+            session.connection().execute(
+                work_items_pull_requests.insert().values(
+                    dict(
+                        work_item_id=work_item.id,
+                        pull_request_id=pull_request.id,
+                        delivery_cycle_id=delivery_cycle_id
+                    )
+                )
+            )
+
+    def update_pull_request(self, pull_request_key, update_dict, join_this=None):
+        with db.orm_session(join_this) as session:
+            session.connection().execute(
+                pull_requests.update().where(
+                    pull_requests.c.key==pull_request_key
+                ).values(
+                    update_dict
+                )
+            )

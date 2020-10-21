@@ -13,7 +13,7 @@ from datetime import datetime
 
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
     WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
-    ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl
+    ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -189,3 +189,13 @@ class CapacityTrendsResolverMixin(KeyIdResolverMixin):
             CapacityMeasurementImpl(**measurement)
             for measurement in self.contributor_detail or []
         ]
+
+
+class PipelinePullRequestMetricsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.pipeline_pull_request_metrics = None
+        super().__init__(*args, **kwargs)
+
+    def resolve_pipeline_pull_request_metrics(self, info, **kwargs):
+        return AggregatePullRequestMetricsImpl(**self.pipeline_pull_request_metrics[0])

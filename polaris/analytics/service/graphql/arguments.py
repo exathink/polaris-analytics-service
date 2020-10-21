@@ -139,7 +139,6 @@ class CycleMetricsParameters(WorkItemTypeSelectionParameters, graphene.InputObje
     )
 
 
-
 class CycleMetricsTrendsParameters(AggregateMetricsTrendsParameters, CycleMetricsParameters):
     pass
 
@@ -172,4 +171,25 @@ class CapacityTrendsParameters(AggregateMetricsTrendsParameters):
         required=False,
         description="If this true then the results are broken down by contributor. Default = False",
         default_value=False
+    )
+
+
+class PullRequestMetricsEnum(Enum):
+    total_open = 'total_open'
+    total_closed = 'total_closed'
+    min_age = 'min_age'
+    max_age = 'max_age'
+    avg_age = 'avg_age'
+    percentile_age = 'percentile_age'
+
+
+class PullRequestMetricsParameters(WorkItemTypeSelectionParameters):
+    metrics = graphene.List(
+        graphene.Enum.from_enum(PullRequestMetricsEnum),
+        required=True,
+        description="Specify a list of the metrics that should be returned"
+    )
+    pull_request_age_target_percentile = graphene.Float(
+        required=False,
+        description="If percentile age is requested, then this specifies the target percentile value"
     )

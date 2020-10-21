@@ -522,3 +522,30 @@ class CapacityMeasurementImpl(TrendMeasurementImpl):
 class CapacityTrends(graphene.Interface):
     capacity_trends = graphene.List(CapacityMeasurementImpl, required=True)
     contributor_detail = graphene.List(CapacityMeasurementImpl, required=False)
+
+
+class AggregatePullRequestMetrics(graphene.Interface):
+    measurement_date = graphene.Date(required=True)
+    measurement_window = graphene.Int(required=False)
+
+    total_open = graphene.Int(required=False)
+    total_closed = graphene.Int(required=False)
+
+    min_age = graphene.Float(required=False)
+    max_age = graphene.Float(required=False)
+    avg_age = graphene.Float(required=False)
+    percentile_age = graphene.Float(required=False)
+
+
+# TrendMeasurementImpl is not needed for Pipeline Metrics,\
+# but using it for future implementation of trend metrics.
+class AggregatePullRequestMetricsImpl(TrendMeasurementImpl):
+    class Meta:
+        interfaces = (AggregatePullRequestMetrics,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class PipelinePullRequestMetrics(graphene.Interface):
+    pipeline_pull_request_metrics = graphene.Field(AggregatePullRequestMetricsImpl)

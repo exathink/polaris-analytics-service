@@ -2046,7 +2046,7 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
             ).distinct().alias('pull_request_attributes')
 
         pull_request_metrics = select([
-            pull_request_attributes.c.id,
+            project_nodes.c.id.label('project_id'),
             func.avg(pull_request_attributes.c.age).label('avg_age'),
             func.min(pull_request_attributes.c.age).label('min_age'),
             func.max(pull_request_attributes.c.age).label('max_age'),
@@ -2062,13 +2062,15 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
                 pull_request_attributes.c.state == 'open'
             ).label('total_open')
         ]).select_from(
-            pull_request_attributes
+            project_nodes.outerjoin(
+                pull_request_attributes, project_nodes.c.id == pull_request_attributes.c.id
+            )
         ).group_by(
-            pull_request_attributes.c.id
+            project_nodes.c.id
         ).alias('pull_request_metrics')
 
         return select([
-            pull_request_metrics.c.id,
+            pull_request_metrics.c.project_id.label('id'),
             func.json_agg(
                 func.json_build_object(
                     'measurement_date', cast(measurement_date, Date),
@@ -2083,5 +2085,5 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
         ]).select_from(
             pull_request_metrics
         ).group_by(
-            pull_request_metrics.c.id
+            pull_request_metrics.c.project_id
         )

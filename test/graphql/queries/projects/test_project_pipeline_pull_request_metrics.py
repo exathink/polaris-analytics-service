@@ -99,8 +99,7 @@ class TestProjectPipelinePullRequestMetrics:
 
             yield Fixture(
                 parent=fixture,
-                query=metrics_query,
-                output_attribute='pipelinePullRequestMetrics'
+                query=metrics_query
             )
 
         class TestWhenNoWorkItems:
@@ -115,8 +114,13 @@ class TestProjectPipelinePullRequestMetrics:
                 ))
 
                 assert result['data']
-                project = result['data']['project']
-                assert len(project[fixture.output_attribute]) == 6
+                assert result['data']
+                metrics_values = result['data']['project']['pipelinePullRequestMetrics']
+                assert metrics_values['totalOpen'] == 0
+                assert metrics_values['totalClosed'] == 0
+                assert metrics_values['avgAge'] == None
+                assert metrics_values['minAge'] == None
+                assert metrics_values['percentileAge'] == None
 
         class TestWhenWorkItemIsOpen:
 
@@ -140,8 +144,13 @@ class TestProjectPipelinePullRequestMetrics:
                     ))
 
                     assert result['data']
-                    project = result['data']['project']
-                    assert len(project[fixture.output_attribute]) == 6
+                    assert result['data']
+                    metrics_values = result['data']['project']['pipelinePullRequestMetrics']
+                    assert metrics_values['totalOpen'] == 0
+                    assert metrics_values['totalClosed'] == 0
+                    assert metrics_values['avgAge'] == None
+                    assert metrics_values['minAge'] == None
+                    assert metrics_values['percentileAge'] == None
 
             class TestWithTwoPullRequests:
 
@@ -168,7 +177,7 @@ class TestProjectPipelinePullRequestMetrics:
                         assert result['data']
                         project = result['data']['project']
 
-                        metrics_values = project[fixture.output_attribute]
+                        metrics_values = project['pipelinePullRequestMetrics']
                         assert metrics_values['totalOpen'] == 2
                         assert metrics_values['totalClosed'] == 0
                         assert int(metrics_values['avgAge']) == 10
@@ -198,10 +207,12 @@ class TestProjectPipelinePullRequestMetrics:
                         ))
 
                         assert result['data']
-                        project = result['data']['project']
-
-                        metrics_values = project[fixture.output_attribute]
+                        metrics_values = result['data']['project']['pipelinePullRequestMetrics']
                         assert metrics_values['totalOpen'] == 0
+                        assert metrics_values['totalClosed'] == 0
+                        assert metrics_values['avgAge'] == None
+                        assert metrics_values['minAge'] == None
+                        assert metrics_values['percentileAge'] == None
 
                 class TestWhenOneOpenOneClosedPullRequests:
 
@@ -225,7 +236,7 @@ class TestProjectPipelinePullRequestMetrics:
                         assert result['data']
                         project = result['data']['project']
 
-                        metrics_values = project[fixture.output_attribute]
+                        metrics_values = project['pipelinePullRequestMetrics']
                         assert metrics_values['totalOpen'] == 1
                         assert metrics_values['totalClosed'] == 0
                         assert int(metrics_values['avgAge']) == 10
@@ -253,7 +264,7 @@ class TestProjectPipelinePullRequestMetrics:
                             assert result['data']
                             project = result['data']['project']
 
-                            metrics_values = project[fixture.output_attribute]
+                            metrics_values = project['pipelinePullRequestMetrics']
                             assert metrics_values['totalOpen'] == 2
                             assert metrics_values['totalClosed'] == 0
                             assert int(metrics_values['avgAge']) == 10
@@ -284,10 +295,12 @@ class TestProjectPipelinePullRequestMetrics:
                             ))
 
                             assert result['data']
-                            project = result['data']['project']
-
-                            metrics_values = project[fixture.output_attribute]
+                            metrics_values = result['data']['project']['pipelinePullRequestMetrics']
                             assert metrics_values['totalOpen'] == 0
+                            assert metrics_values['totalClosed'] == 0
+                            assert metrics_values['avgAge'] == None
+                            assert metrics_values['minAge'] == None
+                            assert metrics_values['percentileAge'] == None
 
                     class TestWhenOneOpenOneClosedPullRequests:
 
@@ -311,7 +324,7 @@ class TestProjectPipelinePullRequestMetrics:
                             assert result['data']
                             project = result['data']['project']
 
-                            metrics_values = project[fixture.output_attribute]
+                            metrics_values = project['pipelinePullRequestMetrics']
                             assert metrics_values['totalOpen'] == 1
                             assert metrics_values['totalClosed'] == 0
                             assert int(metrics_values['avgAge']) == 10
@@ -329,7 +342,7 @@ class TestProjectPipelinePullRequestMetrics:
                     )
                     yield fixture
 
-                def it_returns_none(self, setup):
+                def it_returns_zero_for_all_metrics(self, setup):
                     fixture = setup
                     client = Client(schema)
 
@@ -338,7 +351,12 @@ class TestProjectPipelinePullRequestMetrics:
                     ))
 
                     assert result['data']
-                    assert result['data']['project'][fixture.output_attribute] == None
+                    metrics_values = result['data']['project']['pipelinePullRequestMetrics']
+                    assert metrics_values['totalOpen'] == 0
+                    assert metrics_values['totalClosed'] == 0
+                    assert metrics_values['avgAge'] == None
+                    assert metrics_values['minAge'] == None
+                    assert metrics_values['percentileAge'] == None
 
     class TestAllPullRequestMetrics:
         @pytest.yield_fixture()
@@ -408,7 +426,7 @@ class TestProjectPipelinePullRequestMetrics:
                     assert result['data']
                     project = result['data']['project']
 
-                    metrics_values = project[fixture.output_attribute]
+                    metrics_values = project['pipelinePullRequestMetrics']
                     assert metrics_values['totalOpen'] == 2
                     assert metrics_values['totalClosed'] == 0
                     assert int(metrics_values['avgAge']) == 10
@@ -438,7 +456,7 @@ class TestProjectPipelinePullRequestMetrics:
                     assert result['data']
                     project = result['data']['project']
 
-                    metrics_values = project[fixture.output_attribute]
+                    metrics_values = project['pipelinePullRequestMetrics']
                     assert metrics_values['totalOpen'] == 2
                     assert metrics_values['totalClosed'] == 0
                     assert int(metrics_values['avgAge']) == 10
@@ -468,7 +486,7 @@ class TestProjectPipelinePullRequestMetrics:
                     assert result['data']
                     project = result['data']['project']
 
-                    metrics_values = project[fixture.output_attribute]
+                    metrics_values = project['pipelinePullRequestMetrics']
                     assert metrics_values['totalOpen'] == 2
                     assert metrics_values['totalClosed'] == 0
                     assert int(metrics_values['avgAge']) == 10
@@ -498,7 +516,7 @@ class TestProjectPipelinePullRequestMetrics:
                         assert result['data']
                         project = result['data']['project']
 
-                        metrics_values = project[fixture.output_attribute]
+                        metrics_values = project['pipelinePullRequestMetrics']
                         assert metrics_values['totalOpen'] == 1
                         assert metrics_values['totalClosed'] == 0
                         assert int(metrics_values['avgAge']) == 10

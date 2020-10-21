@@ -1862,6 +1862,9 @@ class ProjectsCapacityTrends(InterfaceResolver):
         ).group_by(
             select_capacity.c.id,
             select_capacity.c.measurement_date
+        ).order_by(
+          select_capacity.c.id,
+          select_capacity.c.measurement_date.desc()
         ).alias()
         return select([
             capacity_metrics.c.id,
@@ -1935,6 +1938,9 @@ class ProjectsCapacityTrends(InterfaceResolver):
             select_capacity.c.measurement_date,
             select_capacity.c.contributor_key,
             select_capacity.c.contributor_name,
+        ).order_by(
+          select_capacity.c.id,
+          select_capacity.c.measurement_date.desc()
         ).alias()
         return select([
             capacity_metrics.c.id,

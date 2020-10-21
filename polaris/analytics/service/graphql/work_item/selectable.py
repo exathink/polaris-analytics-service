@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 from polaris.common import db
 
-from sqlalchemy import select, bindparam, and_, func, cast, Text, Date
+from sqlalchemy import select, bindparam, and_, func, cast, Text, Date, case, literal
 
 from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
@@ -245,8 +245,17 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
         return select([
             work_item_delivery_cycle_nodes.c.id,
             (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
-            (func.min(work_item_delivery_cycles.c.cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
+            (func.min(work_item_delivery_cycles.c.cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
+            (case([
+                (func.min(work_item_delivery_cycles.c.commit_count) > 0,
+                 func.min(
+                     func.extract('epoch',
+                                  work_item_delivery_cycles.c.latest_commit - work_item_delivery_cycles.c.earliest_commit) / (
+                             1.0 * 3600 * 24)
+                 ))
+            ], else_=None)).label('duration'),
+            (func.min(work_item_delivery_cycles.c.latency) / (1.0 * 3600 * 24)).label('latency'),
         ]).select_from(
             work_item_delivery_cycle_nodes.outerjoin(
                 work_item_delivery_cycles,
@@ -292,8 +301,17 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                         'days_in_state',
                         work_item_delivery_cycle_durations.c.cumulative_time_in_state / (1.0 * 3600 * 24)
                     )
+                ),
+                'commit_summary',
+                func.json_build_object(
+                    'commit_count',
+                    func.min(work_item_delivery_cycles.c.commit_count),
+                    'earliest_commit',
+                    func.min(work_item_delivery_cycles.c.earliest_commit),
+                    'latest_commit',
+                    func.min(work_item_delivery_cycles.c.latest_commit)
                 )
-            ).label('work_item_state_details')
+            ).label('work_item_state_details'),
 
         ]).select_from(
             work_item_nodes.outerjoin(
@@ -305,8 +323,11 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                     work_item_state_transitions.c.seq_no == work_items.c.next_state_seq_no - 1
                 )
             ).outerjoin(
+                work_item_delivery_cycles,
+                work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+            ).outerjoin(
                 work_item_delivery_cycle_durations,
-                work_item_delivery_cycle_durations.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+                work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
             ).outerjoin(
                 work_items_source_state_map,
                 and_(
@@ -377,7 +398,6 @@ class WorkItemsImplementationCost(InterfaceResolver):
 
     @staticmethod
     def interface_selector(work_item_nodes, **kwargs):
-
         return select([
             work_item_nodes.c.id,
             func.max(work_items.c.effort).label('effort'),
@@ -385,7 +405,7 @@ class WorkItemsImplementationCost(InterfaceResolver):
                 'epoch',
                 func.max(commits.c.commit_date).label('latest_commit') -
                 func.min(commits.c.commit_date).label('earliest_commit')
-            )/(1.0*24*3600)).label('duration'),
+            ) / (1.0 * 24 * 3600)).label('duration'),
 
             func.count(commits.c.author_contributor_key.distinct()).label('author_count')
         ]).select_from(

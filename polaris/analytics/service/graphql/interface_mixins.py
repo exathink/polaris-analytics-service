@@ -94,7 +94,8 @@ class WorkItemStateDetailsResolverMixin(KeyIdResolverMixin):
                     )
                     for record in self.work_item_state_details['current_delivery_cycle_durations']
                     if 'state' in record
-                ]
+                ],
+                **self.work_item_state_details['commit_summary']
             )
 
 

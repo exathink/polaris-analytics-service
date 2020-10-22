@@ -193,3 +193,7 @@ class PullRequestMetricsParameters(WorkItemTypeSelectionParameters):
         required=False,
         description="If percentile age is requested, then this specifies the target percentile value"
     )
+
+
+class PullRequestMetricsTrendsParameters(AggregateMetricsTrendsParameters, PullRequestMetricsParameters):
+    pass

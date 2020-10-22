@@ -199,3 +199,16 @@ class PipelinePullRequestMetricsResolverMixin(KeyIdResolverMixin):
 
     def resolve_pipeline_pull_request_metrics(self, info, **kwargs):
         return AggregatePullRequestMetricsImpl(**self.pipeline_pull_request_metrics[0])
+
+
+class PullRequestMetricsTrendsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.pull_request_metrics_trends = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_pull_request_trends(self, info, **kwargs):
+        return [
+            AggregatePullRequestMetricsImpl(**pull_request_metrics)
+            for pull_request_metrics in self.pull_request_metrics_trends or []
+        ]

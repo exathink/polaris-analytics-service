@@ -16,13 +16,14 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
-    ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics
+    ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
+    PullRequestMetricsTrends
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
     TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin, \
     ProjectInfoResolverMixin, FlowMixTrendsResolverMixin, CapacityTrendsResolverMixin, \
-    PipelinePullRequestMetricsResolverMixin
+    PipelinePullRequestMetricsResolverMixin, PullRequestMetricsTrendsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -42,7 +43,8 @@ from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin,
 
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
-    FlowMixTrendsParameters, CapacityTrendsParameters, PullRequestMetricsParameters
+    FlowMixTrendsParameters, CapacityTrendsParameters, PullRequestMetricsParameters, \
+    PullRequestMetricsTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -73,7 +75,8 @@ from .selectables import ProjectNode, \
     ProjectResponseTimeConfidenceTrends, \
     ProjectsFlowMixTrends, \
     ProjectsCapacityTrends, \
-    ProjectPipelinePullRequestMetrics
+    ProjectPipelinePullRequestMetrics, \
+    ProjectPullRequestMetricsTrends
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -91,6 +94,7 @@ class Project(
     FlowMixTrendsResolverMixin,
     CapacityTrendsResolverMixin,
     PipelinePullRequestMetricsResolverMixin,
+    PullRequestMetricsTrendsResolverMixin,
 
     # Connection Mixins
     RepositoriesConnectionMixin,
@@ -138,7 +142,8 @@ Implicit Interfaces: ArchivedStatus
             ResponseTimeConfidenceTrends,
             FlowMixTrends,
             CapacityTrends,
-            PipelinePullRequestMetrics
+            PipelinePullRequestMetrics,
+            PullRequestMetricsTrends
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -157,6 +162,7 @@ Implicit Interfaces: ArchivedStatus
             'FlowMixTrends': ProjectsFlowMixTrends,
             'CapacityTrends': ProjectsCapacityTrends,
             'PipelinePullRequestMetrics': ProjectPipelinePullRequestMetrics,
+            'PullRequestMetricsTrends': ProjectPullRequestMetricsTrends
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -250,6 +256,12 @@ Implicit Interfaces: ArchivedStatus
                 PullRequestMetricsParameters,
                 required=False,
                 description='Required when resolving PipelinePullRequestMetrics interface'
+            ),
+
+            pull_request_metrics_trends_args=graphene.Argument(
+                PullRequestMetricsTrendsParameters,
+                required=False,
+                description='Required when resolving PullRequestMetricsTrends interface'
             ),
 
             **kwargs

@@ -41,7 +41,7 @@ from ..interfaces import \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
-    PipelinePullRequestMetrics
+    PipelinePullRequestMetrics, PullRequestMetricsTrends
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -1863,8 +1863,8 @@ class ProjectsCapacityTrends(InterfaceResolver):
             select_capacity.c.id,
             select_capacity.c.measurement_date
         ).order_by(
-          select_capacity.c.id,
-          select_capacity.c.measurement_date.desc()
+            select_capacity.c.id,
+            select_capacity.c.measurement_date.desc()
         ).alias()
         return select([
             capacity_metrics.c.id,
@@ -1939,8 +1939,8 @@ class ProjectsCapacityTrends(InterfaceResolver):
             select_capacity.c.contributor_key,
             select_capacity.c.contributor_name,
         ).order_by(
-          select_capacity.c.id,
-          select_capacity.c.measurement_date.desc()
+            select_capacity.c.id,
+            select_capacity.c.measurement_date.desc()
         ).alias()
         return select([
             capacity_metrics.c.id,
@@ -2093,3 +2093,27 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
         ).group_by(
             pull_request_metrics.c.project_id
         )
+
+
+class ProjectPullRequestMetricsTrends(InterfaceResolver):
+    interface = PullRequestMetricsTrends
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        pull_request_metrics_trends_args = kwargs.get('pull_request_metrics_trends_args')
+
+        # Get the list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            pull_request_metrics_trends_args,
+            arg_name='pull_request_metrics_trends',
+            interface_name='PullRequestMetricTrends'
+        )
+        measurement_window = pull_request_metrics_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
+            )
+
+        return select([
+            project_nodes.c.id
+        ])

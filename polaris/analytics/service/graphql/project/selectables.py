@@ -1871,6 +1871,7 @@ class ProjectsCapacityTrends(InterfaceResolver):
             func.json_agg(
                 func.json_build_object(
                     'measurement_date', capacity_metrics.c.measurement_date,
+                    'measurement_window', measurement_window,
                     'total_commit_days', capacity_metrics.c.total_commit_days,
                     'avg_commit_days', capacity_metrics.c.avg_commit_days,
                     'min_commit_days', capacity_metrics.c.min_commit_days,
@@ -1947,6 +1948,7 @@ class ProjectsCapacityTrends(InterfaceResolver):
             func.json_agg(
                 func.json_build_object(
                     'measurement_date', capacity_metrics.c.measurement_date,
+                    'measurement_window', measurement_window,
                     'contributor_key', capacity_metrics.c.contributor_key,
                     'contributor_name', capacity_metrics.c.contributor_name,
                     'total_commit_days', capacity_metrics.c.total_commit_days,

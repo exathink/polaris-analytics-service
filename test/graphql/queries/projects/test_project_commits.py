@@ -213,6 +213,7 @@ class TestProjectCommitsConnection:
                     name=f'Issue {i}',
                     display_id='1000',
                     state='backlog',
+                    state_type='backlog',
                     created_at=start_date,
                     updated_at=start_date,
                     **parent_fixture.work_items_common
@@ -237,6 +238,7 @@ class TestProjectCommitsConnection:
                     name=f'Issue {i}',
                     display_id='1000',
                     state='backlog',
+                    state_type='backlog',
                     created_at=start_date,
                     updated_at=start_date,
                     **parent_fixture.work_items_common
@@ -300,6 +302,115 @@ class TestProjectCommitsConnection:
             ]
 
             assert len(project_commits) == 2
+
+        def it_returns_work_item_summaries_for_specs_in_the_project(self, setup_case):
+            fixture = setup_case
+
+            # In this case we are associating one of the work items in the project with each of the
+            # existing project commits. Thus all these commits should be returned
+            create_work_item_commits(
+                fixture.project_work_items[0]['key'],
+                [commit['key'] for commit in fixture.project_commits]
+            )
+
+            client = Client(schema)
+            query = """
+                query getProjectCommits($key: String!) {
+                    project(key: $key){
+                        commits(interfaces: [WorkItemsSummaries]) {
+                            edges {
+                                node {
+                                    key
+                                    workItemsSummaries {
+                                        key
+                                        name
+                                        workItemType
+                                        displayId
+                                        url
+                                        state
+                                        stateType
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+            result = client.execute(query, variable_values=dict(
+                key=fixture.project.key
+            ))
+
+            assert result['data']
+            project_commits = [
+                edge['node']
+                for edge in result['data']['project']['commits']['edges']
+            ]
+
+            assert len(project_commits) == 2
+            for commit in project_commits:
+                assert len(commit['workItemsSummaries']) == 1
+                summary = commit['workItemsSummaries'][0]
+                assert summary['name']
+                assert summary['workItemType']
+                assert summary['displayId']
+                assert summary['url']
+                assert summary['state']
+                assert summary['stateType']
+
+        def it_returns_multiple_work_item_summaries_when_a_commit_is_mapped_to_multiple_specs(self, setup_case):
+            fixture = setup_case
+
+            # In this case we are associating two work items in the project with each of the
+            # existing project commits. Thus all these commits should be returned
+            create_work_item_commits(
+                fixture.project_work_items[0]['key'],
+                [commit['key'] for commit in fixture.project_commits]
+            )
+
+            create_work_item_commits(
+                fixture.project_work_items[1]['key'],
+                [commit['key'] for commit in fixture.project_commits]
+            )
+
+            client = Client(schema)
+            query = """
+                query getProjectCommits($key: String!) {
+                    project(key: $key){
+                        commits(interfaces: [WorkItemsSummaries]) {
+                            edges {
+                                node {
+                                    key
+                                    workItemsSummaries {
+                                        key
+                                        name
+                                        workItemType
+                                        displayId
+                                        url
+                                        state
+                                        stateType
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+            result = client.execute(query, variable_values=dict(
+                key=fixture.project.key
+            ))
+
+            assert result['data']
+            project_commits = [
+                edge['node']
+                for edge in result['data']['project']['commits']['edges']
+            ]
+
+            assert len(project_commits) == 2
+            for commit in project_commits:
+                assert len(commit['workItemsSummaries']) == 2
+
+
+
 
 
         def it_returns_associated_commits_and_no_spec_commits(self, setup_case):

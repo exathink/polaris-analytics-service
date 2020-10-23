@@ -32,6 +32,8 @@ class WorkItemsSummary(graphene.ObjectType):
     work_item_type = graphene.String(required=True)
     display_id = graphene.String(required=True)
     url = graphene.String(required=True)
+    state = graphene.String(required=False)
+    state_type = graphene.String(required=False)
 
 
 class CommitChangeStats(graphene.ObjectType):

@@ -207,7 +207,7 @@ class PullRequestMetricsTrendsResolverMixin(KeyIdResolverMixin):
         self.pull_request_metrics_trends = []
         super().__init__(*args, **kwargs)
 
-    def resolve_pull_request_trends(self, info, **kwargs):
+    def resolve_pull_request_metrics_trends(self, info, **kwargs):
         return [
             AggregatePullRequestMetricsImpl(**pull_request_metrics)
             for pull_request_metrics in self.pull_request_metrics_trends or []

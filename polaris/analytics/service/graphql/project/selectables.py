@@ -2075,19 +2075,92 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
         pull_request_metrics_trends_args = kwargs.get('pull_request_metrics_trends_args')
-
+        age_target_percentile = pull_request_metrics_trends_args.pull_request_age_target_percentile
         # Get the list of dates for trending using the trends_args for control
         timeline_dates = get_timeline_dates_for_trending(
             pull_request_metrics_trends_args,
             arg_name='pull_request_metrics_trends',
-            interface_name='PullRequestMetricTrends'
+            interface_name='PullRequestMetricsTrends'
         )
+
         measurement_window = pull_request_metrics_trends_args.measurement_window
         if measurement_window is None:
             raise ProcessingException(
                 "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
             )
 
-        return select([
+        pull_request_attributes = select([
+            projects.c.id,
+            timeline_dates.c.measurement_date,
+            pull_requests.c.id.label('pull_request_id'),
+            pull_requests.c.state.label('state'),
+            pull_requests.c.updated_at,
+            (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label('age'),
+        ]).select_from(
+            timeline_dates.join(
+                projects, true()
+            ).join(
+                projects_repositories, projects.c.id == projects_repositories.c.project_id
+            ).join(
+                repositories, repositories.c.id == projects_repositories.c.repository_id
+            ).join(
+                pull_requests, pull_requests.c.repository_id == repositories.c.id
+            )
+        ).where(
+            and_(
+                pull_requests.c.state != 'open',
+                pull_requests.c.updated_at.between(
+                    timeline_dates.c.measurement_date - timedelta(
+                        days=measurement_window
+                    ),
+                    timeline_dates.c.measurement_date
+                ),
+                projects.c.id.in_(select([project_nodes.c.id]))
+            )
+        ).group_by(
+            projects.c.id,
+            timeline_dates.c.measurement_date,
+            pull_requests.c.id
+        ).alias('pull_request_attributes')
+
+
+        pull_request_metrics = select([
+            project_nodes.c.id.label('project_id'),
+            pull_request_attributes.c.measurement_date,
+            func.avg(pull_request_attributes.c.age).label('avg_age'),
+            func.min(pull_request_attributes.c.age).label('min_age'),
+            func.max(pull_request_attributes.c.age).label('max_age'),
+            func.percentile_disc(age_target_percentile).within_group(pull_request_attributes.c.age).label(
+                'percentile_age'),
+            func.count(pull_request_attributes.c.pull_request_id).label('total_closed'),
+            literal(0).label('total_open')
+        ]).select_from(
+            project_nodes.outerjoin(
+                pull_request_attributes, project_nodes.c.id == pull_request_attributes.c.id
+        )).group_by(
+            pull_request_attributes.c.measurement_date,
             project_nodes.c.id
-        ])
+        ).order_by(
+            project_nodes.c.id,
+            pull_request_attributes.c.measurement_date.desc()
+        ).alias('pull_request_metrics')
+
+        return select([
+            pull_request_metrics.c.project_id.label('id'),
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(pull_request_metrics.c.measurement_date, Date),
+                    'total_open', pull_request_metrics.c.total_open,
+                    'total_closed', pull_request_metrics.c.total_closed,
+                    'avg_age', pull_request_metrics.c.avg_age,
+                    'min_age', pull_request_metrics.c.min_age,
+                    'max_age', pull_request_metrics.c.max_age,
+                    'percentile_age', pull_request_metrics.c.percentile_age
+                )
+            ).label('pull_request_metrics_trends')
+        ]).select_from(
+            pull_request_metrics
+        ).group_by(
+            pull_request_metrics.c.project_id,
+            pull_request_metrics.c.measurement_date
+        )

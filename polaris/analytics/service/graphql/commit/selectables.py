@@ -64,6 +64,8 @@ class CommitsWorkItemsSummaries(InterfaceResolver):
                             'display_id', work_items.c.display_id,
                             'url', work_items.c.url,
                             'work_item_type', work_items.c.work_item_type,
+                            'state_type', work_items.c.state_type,
+                            'state', work_items.c.state
                         )
                     )
                 ], else_=None)

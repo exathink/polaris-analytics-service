@@ -74,7 +74,6 @@ class TestProjectPipelinePullRequestMetrics:
                             interfaces: [PipelinePullRequestMetrics], 
                             pipelinePullRequestMetricsArgs: {
                                 pullRequestAgeTargetPercentile:0.9,
-                                specsOnly:true,
                                 metrics: [
                                     total_open
                                     total_closed
@@ -371,7 +370,6 @@ class TestProjectPipelinePullRequestMetrics:
                             interfaces: [PipelinePullRequestMetrics], 
                             pipelinePullRequestMetricsArgs: {
                                 pullRequestAgeTargetPercentile:0.9,
-                                specsOnly:false,
                                 metrics: [
                                     total_open
                                     total_closed

@@ -2095,7 +2095,8 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             pull_requests.c.id.label('pull_request_id'),
             pull_requests.c.state.label('state'),
             pull_requests.c.updated_at,
-            (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label('age'),
+            (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
+                'age'),
         ]).select_from(
             timeline_dates.join(
                 projects, true()
@@ -2123,7 +2124,6 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             pull_requests.c.id
         ).alias('pull_request_attributes')
 
-
         pull_request_metrics = select([
             project_nodes.c.id.label('project_id'),
             pull_request_attributes.c.measurement_date,
@@ -2137,7 +2137,7 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
         ]).select_from(
             project_nodes.outerjoin(
                 pull_request_attributes, project_nodes.c.id == pull_request_attributes.c.id
-        )).group_by(
+            )).group_by(
             pull_request_attributes.c.measurement_date,
             project_nodes.c.id
         ).order_by(
@@ -2150,6 +2150,7 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             func.json_agg(
                 func.json_build_object(
                     'measurement_date', cast(pull_request_metrics.c.measurement_date, Date),
+                    'measurement_window', measurement_window,
                     'total_open', pull_request_metrics.c.total_open,
                     'total_closed', pull_request_metrics.c.total_closed,
                     'avg_age', pull_request_metrics.c.avg_age,
@@ -2161,6 +2162,5 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
         ]).select_from(
             pull_request_metrics
         ).group_by(
-            pull_request_metrics.c.project_id,
-            pull_request_metrics.c.measurement_date
+            pull_request_metrics.c.project_id
         )

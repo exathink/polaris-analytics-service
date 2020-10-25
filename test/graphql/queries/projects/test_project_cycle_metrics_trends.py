@@ -235,7 +235,8 @@ class TestProjectCycleMetricsTrends:
                                     max_cycle_time,
                                     percentile_cycle_time,
                                     work_items_in_scope,
-                                    work_items_with_null_cycle_time
+                                    work_items_with_null_cycle_time,
+                                    cadence
 
                                 ],
                                 leadTimeTargetPercentile: $percentile,
@@ -263,6 +264,7 @@ class TestProjectCycleMetricsTrends:
                                 earliestClosedDate
                                 latestClosedDate
                                 workItemsInScope
+                                cadence
                             }
                         }
                     }
@@ -292,6 +294,7 @@ class TestProjectCycleMetricsTrends:
             assert not measurement['latestClosedDate']
             assert measurement['workItemsInScope'] == 0
             assert measurement['workItemsWithNullCycleTime'] == 0
+            assert measurement['cadence'] == 0
 
     def it_return_correct_results_when_there_is_one_closed_item(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
@@ -345,7 +348,8 @@ class TestProjectCycleMetricsTrends:
                                     max_cycle_time,
                                     percentile_cycle_time,
                                     work_items_in_scope,
-                                    work_items_with_null_cycle_time
+                                    work_items_with_null_cycle_time,
+                                    cadence
 
                                 ],
                                 leadTimeTargetPercentile: $percentile,
@@ -367,6 +371,7 @@ class TestProjectCycleMetricsTrends:
                                 leadTimeTargetPercentile
                                 cycleTimeTargetPercentile
                                 workItemsWithNullCycleTime
+                                cadence
                                 earliestClosedDate
                                 latestClosedDate
                                 workItemsInScope
@@ -402,6 +407,7 @@ class TestProjectCycleMetricsTrends:
                 assert measurement['latestClosedDate']
                 assert measurement['workItemsInScope'] == 1
                 assert measurement['workItemsWithNullCycleTime'] == 0
+                assert measurement['cadence'] == 1
             else:
                 assert not measurement['minLeadTime']
                 assert not measurement['avgLeadTime']
@@ -415,6 +421,7 @@ class TestProjectCycleMetricsTrends:
                 assert not measurement['latestClosedDate']
                 assert measurement['workItemsInScope'] == 0
                 assert measurement['workItemsWithNullCycleTime'] == 0
+                assert measurement['cadence'] == 0
 
     def it_return_correct_results_when_there_are_closed_item_on_the_end_date_of_the_measurement_period(self,
                                                                                                        api_work_items_import_fixture):

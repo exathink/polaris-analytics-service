@@ -90,6 +90,7 @@ class CycleMetricsEnum(Enum):
     work_items_in_scope = 'work_items_in_scope'
     work_items_with_commits = 'work_items_with_commits'
     work_items_with_null_cycle_time = 'work_items_with_null_cycle_time'
+    cadence = 'cadence'
 
 
 class WorkItemTypeSelectionParameters(graphene.InputObjectType):

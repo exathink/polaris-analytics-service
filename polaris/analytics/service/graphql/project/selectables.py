@@ -875,6 +875,7 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                         )
                     ], else_=0)
                 ).label('work_items_with_commits'),
+                cadence=func.count(cast(delivery_cycles_relation.c.end_date, Date).distinct()).label('cadence')
             ),
             # Implementation Complexity Metrics
             implementation_complexity=dict(

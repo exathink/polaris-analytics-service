@@ -362,6 +362,8 @@ class AggregateCycleMetrics(DeliveryCycleSpan):
     percentile_cycle_time = graphene.Float(required=False)
     target_percentile = graphene.Float(required=False)
 
+    cadence = graphene.Int(required=False)
+
     # Implementation cost aggregates
     total_effort = graphene.Float(required=False)
     min_effort = graphene.Float(required=False)

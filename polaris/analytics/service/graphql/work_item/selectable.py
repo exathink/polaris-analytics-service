@@ -15,7 +15,7 @@ from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
     work_items_commits, repositories, commits, \
     work_items_sources, work_item_delivery_cycles, work_items_source_state_map, \
-    work_item_delivery_cycle_durations, projects, work_item_delivery_cycle_contributors, contributor_aliases
+    work_item_delivery_cycle_durations, projects, work_item_delivery_cycle_contributors, contributor_aliases, contributors
 
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
@@ -310,8 +310,23 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                     func.min(work_item_delivery_cycles.c.earliest_commit),
                     'latest_commit',
                     func.min(work_item_delivery_cycles.c.latest_commit)
+                ),
+                'implementation_cost',
+                func.json_build_object(
+                    'effort',
+                    func.min(work_item_delivery_cycles.c.effort),
+                    'duration',
+                    (
+                        func.extract(
+                            'epoch',
+                            func.min(work_item_delivery_cycles.c.latest_commit) -
+                            func.min(work_item_delivery_cycles.c.earliest_commit)
+                        ) / (24 * 3600 * 1.0)
+                    ).label('duration')
+
+
                 )
-            ).label('work_item_state_details'),
+            ).label('work_item_state_details')
 
         ]).select_from(
             work_item_nodes.outerjoin(

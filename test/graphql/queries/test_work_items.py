@@ -423,6 +423,51 @@ class TestWorkItemInstance:
             assert details['latestCommit']
             assert details['earliestCommit']
 
+        def it_returns_current_delivery_effort_and_duration(self, api_work_items_import_fixture):
+            organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+            api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+            work_item_key = uuid.uuid4().hex
+            start_date = datetime.utcnow() - timedelta(days=10)
+            api_helper.import_work_items([
+                dict(
+                    key=work_item_key,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **work_items_common
+                )
+            ]
+            )
+
+            api_helper.update_delivery_cycles(([(0, dict(property='commit_count', value=2))]))
+            api_helper.update_delivery_cycles(([(0, dict(property='earliest_commit', value=datetime.utcnow() - timedelta(days=3)))]))
+            api_helper.update_delivery_cycles(([(0, dict(property='latest_commit', value=datetime.utcnow()))]))
+            api_helper.update_delivery_cycles(([(0, dict(property='effort', value=2))]))
+
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces:[WorkItemStateDetails]){
+                            ... on WorkItemStateDetails {
+                                workItemStateDetails {
+                                    effort
+                                    duration
+                                }
+                            }
+                        }
+                    } 
+                """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            details = result['data']['workItem']['workItemStateDetails']
+            assert details['duration'] - 3.0 < 0.1
+            assert details['effort'] == 2
+
+
 
     class TestWorkItemInstanceCommits:
 

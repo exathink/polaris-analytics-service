@@ -102,7 +102,7 @@ class TestProjectPipelinePullRequestMetrics:
             )
 
         class TestWhenNoWorkItems:
-            # FIXME: Fix Query API to return zero values in such a case
+
             def it_returns_zero_value_for_each_metric(self, setup):
                 fixture = setup
 

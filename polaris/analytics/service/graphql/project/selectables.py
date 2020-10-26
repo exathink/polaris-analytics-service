@@ -2098,7 +2098,7 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
                 'age'),
         ]).select_from(
-            timeline_dates.join(
+            timeline_dates.outerjoin(
                 projects, true()
             ).join(
                 projects_repositories, projects.c.id == projects_repositories.c.project_id

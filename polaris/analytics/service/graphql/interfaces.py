@@ -206,6 +206,19 @@ class WorkItemStateTransition(graphene.Interface):
     new_state_type = graphene.String(required=False)
 
 
+class ImplementationCost(graphene.Interface):
+    effort = graphene.Float(required=False, description="Total engineering days required")
+    duration = graphene.Float(required=False,
+                              description="Span in days between earliest commit and latest commit")
+    # TODO: Revisit whether we should separate this out from this interface
+    # The calc involved here is substantially more expensive compared to the other two,
+    # and unless we can make it comparable, we should do it.
+    # right now, we are *not* returning this for the WorkItemStateDetails implementation
+    # because it is so expensive.
+    author_count = graphene.Int(required=False,
+                                description="The number of distinct authors who committed to the work item")
+
+
 class WorkItemStateTransitionImpl(graphene.ObjectType):
     class Meta:
         interfaces = (WorkItemStateTransition,)
@@ -231,7 +244,7 @@ class WorkItemDaysInState(graphene.ObjectType):
 
 class WorkItemStateDetail(graphene.ObjectType):
     class Meta:
-        interfaces = (CommitSummary,)
+        interfaces = (CommitSummary, ImplementationCost)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -462,14 +475,6 @@ class TraceabilityImpl(TrendMeasurementImpl):
 
 class TraceabilityTrends(graphene.Interface):
     traceability_trends = graphene.List(TraceabilityImpl)
-
-
-class ImplementationCost(graphene.Interface):
-    effort = graphene.Float(required=False, description="Total engineering days required")
-    duration = graphene.Float(required=False,
-                              description="Span in days between earliest commit and latest commit")
-    author_count = graphene.Int(required=False,
-                                description="The number of distinct authors who committed to the work item")
 
 
 class FlowMixItem(graphene.ObjectType):

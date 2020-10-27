@@ -105,8 +105,8 @@ class TestProjectPullRequestMetricsTrends:
                 project = result['data']['project']
                 assert len(project['pullRequestMetricsTrends']) == 31
                 for measurement in project['pullRequestMetricsTrends']:
-                    assert measurement['totalOpen'] == 0
-                    assert measurement['totalClosed'] == 0
+                    assert measurement['totalOpen'] == None
+                    assert measurement['totalClosed'] == None
                     assert measurement['avgAge'] == None
                     assert measurement['minAge'] == None
                     assert measurement['percentileAge'] == None
@@ -126,7 +126,7 @@ class TestProjectPullRequestMetricsTrends:
 
             class TestWhenTwoOpenNoClosedPullRequests:
 
-                def it_returns_correct_metrics(self, setup):
+                def it_returns_null_values_for_closed_pull_requests(self, setup):
                     fixture = setup
                     client = Client(schema)
 
@@ -138,8 +138,8 @@ class TestProjectPullRequestMetricsTrends:
                     project = result['data']['project']
                     assert len(project['pullRequestMetricsTrends']) == 31
                     for measurement in project['pullRequestMetricsTrends']:
-                        assert measurement['totalOpen'] == 0
-                        assert measurement['totalClosed'] == 0
+                        assert measurement['totalOpen'] == None
+                        assert measurement['totalClosed'] == None
                         assert measurement['avgAge'] == None
                         assert measurement['minAge'] == None
                         assert measurement['percentileAge'] == None
@@ -155,7 +155,7 @@ class TestProjectPullRequestMetricsTrends:
                                                        update_dict=dict(state='closed', updated_at=datetime.utcnow()-timedelta(days=1)))
                         yield fixture
 
-                    def it_returns_one_open_pr(self, setup):
+                    def it_returns_one_closed_pr_only_for_latest_time_window(self, setup):
                         fixture = setup
                         client = Client(schema)
 
@@ -173,6 +173,12 @@ class TestProjectPullRequestMetricsTrends:
                         assert int(metrics_values['minAge']) == 9
                         assert int(metrics_values['maxAge']) == 9
                         assert int(metrics_values['percentileAge']) == 9
+                        for measurement in project['pullRequestMetricsTrends'][1:]:
+                            assert measurement['totalOpen'] == None
+                            assert measurement['totalClosed'] == None
+                            assert measurement['avgAge'] == None
+                            assert measurement['minAge'] == None
+                            assert measurement['percentileAge'] == None
 
                     class TestWhenTwoClosedPullRequests:
 
@@ -187,7 +193,7 @@ class TestProjectPullRequestMetricsTrends:
                                                                                 days=1)))
                             yield fixture
 
-                        def it_returns_two_closed_prs(self, setup):
+                        def it_returns_two_closed_prs_only_for_latest_time_window(self, setup):
                             fixture = setup
                             client = Client(schema)
 
@@ -198,10 +204,17 @@ class TestProjectPullRequestMetricsTrends:
                             assert result['data']
                             project = result['data']['project']
                             assert len(project['pullRequestMetricsTrends']) == 31
-                            for measurement in project['pullRequestMetricsTrends']:
-                                assert measurement['totalOpen'] == 0
-                                assert measurement['totalClosed'] == 2
-                                assert int(measurement['avgAge']) == 9
-                                assert int(measurement['minAge']) == 9
-                                assert int(measurement['maxAge']) == 9
-                                assert int(measurement['percentileAge']) == 9
+                            metrics_values = project['pullRequestMetricsTrends'][0]
+                            assert metrics_values['totalOpen'] == 0
+                            assert metrics_values['totalClosed'] == 2
+                            assert int(metrics_values['avgAge']) == 9
+                            assert int(metrics_values['minAge']) == 9
+                            assert int(metrics_values['maxAge']) == 9
+                            assert int(metrics_values['percentileAge']) == 9
+                            for measurement in project['pullRequestMetricsTrends'][1:]:
+                                assert measurement['totalOpen'] == None
+                                assert measurement['totalClosed'] == None
+                                assert measurement['avgAge'] == None
+                                assert measurement['minAge'] == None
+                                assert measurement['maxAge'] == None
+                                assert measurement['percentileAge'] == None

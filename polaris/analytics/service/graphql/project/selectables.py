@@ -2082,6 +2082,7 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             arg_name='pull_request_metrics_trends',
             interface_name='PullRequestMetricsTrends'
         )
+        project_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
 
         measurement_window = pull_request_metrics_trends_args.measurement_window
         if measurement_window is None:
@@ -2090,18 +2091,16 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             )
 
         pull_request_attributes = select([
-            projects.c.id,
-            timeline_dates.c.measurement_date,
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date,
             pull_requests.c.id.label('pull_request_id'),
             pull_requests.c.state.label('state'),
             pull_requests.c.updated_at,
             (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
                 'age'),
         ]).select_from(
-            timeline_dates.outerjoin(
-                projects, true()
-            ).join(
-                projects_repositories, projects.c.id == projects_repositories.c.project_id
+            project_timeline_dates.outerjoin(
+                projects_repositories, project_timeline_dates.c.id == projects_repositories.c.project_id
             ).join(
                 repositories, repositories.c.id == projects_repositories.c.repository_id
             ).join(
@@ -2111,21 +2110,20 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             and_(
                 pull_requests.c.state != 'open',
                 pull_requests.c.updated_at.between(
-                    timeline_dates.c.measurement_date - timedelta(
+                    project_timeline_dates.c.measurement_date - timedelta(
                         days=measurement_window
                     ),
-                    timeline_dates.c.measurement_date
-                ),
-                projects.c.id.in_(select([project_nodes.c.id]))
+                    project_timeline_dates.c.measurement_date
+                )
             )
         ).group_by(
-            projects.c.id,
-            timeline_dates.c.measurement_date,
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date,
             pull_requests.c.id
         ).alias('pull_request_attributes')
 
         pull_request_metrics = select([
-            project_nodes.c.id.label('project_id'),
+            pull_request_attributes.c.id,
             pull_request_attributes.c.measurement_date,
             func.avg(pull_request_attributes.c.age).label('avg_age'),
             func.min(pull_request_attributes.c.age).label('min_age'),
@@ -2135,21 +2133,24 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             func.count(pull_request_attributes.c.pull_request_id).label('total_closed'),
             literal(0).label('total_open')
         ]).select_from(
-            project_nodes.outerjoin(
-                pull_request_attributes, project_nodes.c.id == pull_request_attributes.c.id
+            project_timeline_dates.outerjoin(
+                pull_request_attributes, and_(
+                    project_timeline_dates.c.id == pull_request_attributes.c.id,
+                    project_timeline_dates.c.measurement_date == pull_request_attributes.c.measurement_date
+                )
             )).group_by(
             pull_request_attributes.c.measurement_date,
-            project_nodes.c.id
+            pull_request_attributes.c.id
         ).order_by(
-            project_nodes.c.id,
+            pull_request_attributes.c.id,
             pull_request_attributes.c.measurement_date.desc()
         ).alias('pull_request_metrics')
 
         return select([
-            pull_request_metrics.c.project_id.label('id'),
+            project_timeline_dates.c.id,
             func.json_agg(
                 func.json_build_object(
-                    'measurement_date', cast(pull_request_metrics.c.measurement_date, Date),
+                    'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
                     'measurement_window', measurement_window,
                     'total_open', pull_request_metrics.c.total_open,
                     'total_closed', pull_request_metrics.c.total_closed,
@@ -2160,7 +2161,12 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
                 )
             ).label('pull_request_metrics_trends')
         ]).select_from(
-            pull_request_metrics
+            project_timeline_dates.outerjoin(
+                pull_request_metrics, and_(
+                    project_timeline_dates.c.id == pull_request_metrics.c.id,
+                    project_timeline_dates.c.measurement_date == pull_request_metrics.c.measurement_date
+                )
+            )
         ).group_by(
-            pull_request_metrics.c.project_id
+            project_timeline_dates.c.id
         )

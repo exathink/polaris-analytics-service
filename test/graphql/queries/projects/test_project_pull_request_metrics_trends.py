@@ -13,6 +13,7 @@ from graphene.test import Client
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 
+from test.graphql.queries.projects.shared_testing_mixins import TrendingWindowMeasurementDate
 
 class TestProjectPullRequestMetricsTrends:
 
@@ -75,6 +76,7 @@ class TestProjectPullRequestMetricsTrends:
                         ) {
                             pullRequestMetricsTrends {
                                 measurementDate,
+                                measurementWindow,
                                 totalOpen
                                 totalClosed
                                 avgAge
@@ -91,9 +93,20 @@ class TestProjectPullRequestMetricsTrends:
                 query=trends_query
             )
 
+        class TestTrendingWindowContract(TrendingWindowMeasurementDate):
+            @pytest.yield_fixture
+            def setup(self, setup):
+                fixture = setup
+
+                yield Fixture(
+                    parent=setup,
+                    output_attribute='pullRequestMetricsTrends'
+                )
+
+
         class TestWhenNoPullRequests:
 
-            def it_returns_null_values_for_each_measurement(self, setup):
+            def it_returns_zero_values_for_each_measurement(self, setup):
                 fixture = setup
 
                 client = Client(schema)
@@ -105,11 +118,11 @@ class TestProjectPullRequestMetricsTrends:
                 project = result['data']['project']
                 assert len(project['pullRequestMetricsTrends']) == 31
                 for measurement in project['pullRequestMetricsTrends']:
-                    assert measurement['totalOpen'] == None
-                    assert measurement['totalClosed'] == None
-                    assert measurement['avgAge'] == None
-                    assert measurement['minAge'] == None
-                    assert measurement['percentileAge'] == None
+                    assert measurement['totalOpen'] == 0
+                    assert measurement['totalClosed'] == 0
+                    assert measurement['avgAge'] == 0
+                    assert measurement['minAge'] == 0
+                    assert measurement['percentileAge'] == 0
 
         class TestWithTwoPullRequests:
 
@@ -138,11 +151,11 @@ class TestProjectPullRequestMetricsTrends:
                     project = result['data']['project']
                     assert len(project['pullRequestMetricsTrends']) == 31
                     for measurement in project['pullRequestMetricsTrends']:
-                        assert measurement['totalOpen'] == None
-                        assert measurement['totalClosed'] == None
-                        assert measurement['avgAge'] == None
-                        assert measurement['minAge'] == None
-                        assert measurement['percentileAge'] == None
+                        assert measurement['totalOpen'] == 0
+                        assert measurement['totalClosed'] == 0
+                        assert measurement['avgAge'] == 0
+                        assert measurement['minAge'] == 0
+                        assert measurement['percentileAge'] == 0
 
                 class TestWhenOneOpenOneClosedPullRequests:
 
@@ -174,11 +187,11 @@ class TestProjectPullRequestMetricsTrends:
                         assert int(metrics_values['maxAge']) == 9
                         assert int(metrics_values['percentileAge']) == 9
                         for measurement in project['pullRequestMetricsTrends'][1:]:
-                            assert measurement['totalOpen'] == None
-                            assert measurement['totalClosed'] == None
-                            assert measurement['avgAge'] == None
-                            assert measurement['minAge'] == None
-                            assert measurement['percentileAge'] == None
+                            assert measurement['totalOpen'] == 0
+                            assert measurement['totalClosed'] == 0
+                            assert measurement['avgAge'] == 0
+                            assert measurement['minAge'] == 0
+                            assert measurement['percentileAge'] == 0
 
                     class TestWhenTwoClosedPullRequests:
 
@@ -212,9 +225,9 @@ class TestProjectPullRequestMetricsTrends:
                             assert int(metrics_values['maxAge']) == 9
                             assert int(metrics_values['percentileAge']) == 9
                             for measurement in project['pullRequestMetricsTrends'][1:]:
-                                assert measurement['totalOpen'] == None
-                                assert measurement['totalClosed'] == None
-                                assert measurement['avgAge'] == None
-                                assert measurement['minAge'] == None
-                                assert measurement['maxAge'] == None
-                                assert measurement['percentileAge'] == None
+                                assert measurement['totalOpen'] == 0
+                                assert measurement['totalClosed'] == 0
+                                assert measurement['avgAge'] == 0
+                                assert measurement['minAge'] == 0
+                                assert measurement['maxAge'] == 0
+                                assert measurement['percentileAge'] == 0

@@ -2152,12 +2152,12 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
                 func.json_build_object(
                     'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
                     'measurement_window', measurement_window,
-                    'total_open', pull_request_metrics.c.total_open,
-                    'total_closed', pull_request_metrics.c.total_closed,
-                    'avg_age', pull_request_metrics.c.avg_age,
-                    'min_age', pull_request_metrics.c.min_age,
-                    'max_age', pull_request_metrics.c.max_age,
-                    'percentile_age', pull_request_metrics.c.percentile_age
+                    'total_open', func.coalesce(pull_request_metrics.c.total_open, 0),
+                    'total_closed', func.coalesce(pull_request_metrics.c.total_closed, 0),
+                    'avg_age', func.coalesce(pull_request_metrics.c.avg_age, 0),
+                    'min_age', func.coalesce(pull_request_metrics.c.min_age, 0),
+                    'max_age', func.coalesce(pull_request_metrics.c.max_age, 0),
+                    'percentile_age', func.coalesce(pull_request_metrics.c.percentile_age, 0)
                 )
             ).label('pull_request_metrics_trends')
         ]).select_from(

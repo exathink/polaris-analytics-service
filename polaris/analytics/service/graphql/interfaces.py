@@ -546,8 +546,6 @@ class AggregatePullRequestMetrics(graphene.Interface):
     percentile_age = graphene.Float(required=False)
 
 
-# TrendMeasurementImpl is not needed for Pipeline Metrics,\
-# but using it for future implementation of trend metrics.
 class AggregatePullRequestMetricsImpl(TrendMeasurementImpl):
     class Meta:
         interfaces = (AggregatePullRequestMetrics,)
@@ -558,3 +556,7 @@ class AggregatePullRequestMetricsImpl(TrendMeasurementImpl):
 
 class PipelinePullRequestMetrics(graphene.Interface):
     pipeline_pull_request_metrics = graphene.Field(AggregatePullRequestMetricsImpl)
+
+
+class PullRequestMetricsTrends(graphene.Interface):
+    pull_request_metrics_trends = graphene.List(AggregatePullRequestMetricsImpl)

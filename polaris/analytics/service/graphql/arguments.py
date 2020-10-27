@@ -184,7 +184,7 @@ class PullRequestMetricsEnum(Enum):
     percentile_age = 'percentile_age'
 
 
-class PullRequestMetricsParameters(WorkItemTypeSelectionParameters):
+class PullRequestMetricsParameters(graphene.InputObjectType):
     metrics = graphene.List(
         graphene.Enum.from_enum(PullRequestMetricsEnum),
         required=True,
@@ -194,3 +194,7 @@ class PullRequestMetricsParameters(WorkItemTypeSelectionParameters):
         required=False,
         description="If percentile age is requested, then this specifies the target percentile value"
     )
+
+
+class PullRequestMetricsTrendsParameters(AggregateMetricsTrendsParameters, PullRequestMetricsParameters):
+    pass

@@ -74,7 +74,6 @@ class TestProjectPipelinePullRequestMetrics:
                             interfaces: [PipelinePullRequestMetrics], 
                             pipelinePullRequestMetricsArgs: {
                                 pullRequestAgeTargetPercentile:0.9,
-                                specsOnly:true,
                                 metrics: [
                                     total_open
                                     total_closed
@@ -103,7 +102,7 @@ class TestProjectPipelinePullRequestMetrics:
             )
 
         class TestWhenNoWorkItems:
-            # FIXME: Fix Query API to return zero values in such a case
+
             def it_returns_zero_value_for_each_metric(self, setup):
                 fixture = setup
 
@@ -371,7 +370,6 @@ class TestProjectPipelinePullRequestMetrics:
                             interfaces: [PipelinePullRequestMetrics], 
                             pipelinePullRequestMetricsArgs: {
                                 pullRequestAgeTargetPercentile:0.9,
-                                specsOnly:false,
                                 metrics: [
                                     total_open
                                     total_closed

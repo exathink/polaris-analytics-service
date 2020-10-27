@@ -41,7 +41,7 @@ from ..interfaces import \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
-    PipelinePullRequestMetrics
+    PipelinePullRequestMetrics, PullRequestMetricsTrends
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -1864,8 +1864,8 @@ class ProjectsCapacityTrends(InterfaceResolver):
             select_capacity.c.id,
             select_capacity.c.measurement_date
         ).order_by(
-          select_capacity.c.id,
-          select_capacity.c.measurement_date.desc()
+            select_capacity.c.id,
+            select_capacity.c.measurement_date.desc()
         ).alias()
         return select([
             capacity_metrics.c.id,
@@ -1941,8 +1941,8 @@ class ProjectsCapacityTrends(InterfaceResolver):
             select_capacity.c.contributor_key,
             select_capacity.c.contributor_name,
         ).order_by(
-          select_capacity.c.id,
-          select_capacity.c.measurement_date.desc()
+            select_capacity.c.id,
+            select_capacity.c.measurement_date.desc()
         ).alias()
         return select([
             capacity_metrics.c.id,
@@ -2010,49 +2010,23 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
 
         measurement_date = datetime.utcnow()
 
-        if pull_request_metrics_args.specs_only:
-            # Filter only those PRs which are mapped to a work item with open delivery cycle
-            pull_request_attributes = select([
-                projects.c.id,
-                pull_requests.c.id.label('pull_request_id'),
-                pull_requests.c.state.label('state'),
-                (func.extract('epoch', measurement_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label('age'),
-            ]).select_from(
-                work_items_pull_requests.join(
-                    pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
-                ).join(
-                    work_item_delivery_cycles,
-                    work_items_pull_requests.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
-                ).join(
-                    repositories, pull_requests.c.repository_id == repositories.c.id
-                ).join(
-                    projects_repositories, repositories.c.id == projects_repositories.c.repository_id
-                )
-            ).where(
-                and_(
-                    projects.c.key == project_nodes.c.key,
-                    work_item_delivery_cycles.c.end_date == None,
-                    pull_requests.c.state == 'open'
-                )
-            ).distinct().alias('pull_request_attributes')
-        else:
-            pull_request_attributes = select([
-                projects.c.id,
-                pull_requests.c.id.label('pull_request_id'),
-                pull_requests.c.state.label('state'),
-                (func.extract('epoch', measurement_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label('age'),
-            ]).select_from(
-                pull_requests.join(
-                    repositories, pull_requests.c.repository_id == repositories.c.id
-                ).join(
-                    projects_repositories, repositories.c.id == projects_repositories.c.repository_id
-                )
-            ).where(
-                and_(
-                    projects.c.key == project_nodes.c.key,
-                    pull_requests.c.state == 'open'
-                )
-            ).distinct().alias('pull_request_attributes')
+        pull_request_attributes = select([
+            projects.c.id,
+            pull_requests.c.id.label('pull_request_id'),
+            pull_requests.c.state.label('state'),
+            (func.extract('epoch', measurement_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label('age'),
+        ]).select_from(
+            pull_requests.join(
+                repositories, pull_requests.c.repository_id == repositories.c.id
+            ).join(
+                projects_repositories, repositories.c.id == projects_repositories.c.repository_id
+            )
+        ).where(
+            and_(
+                projects.c.key == project_nodes.c.key,
+                pull_requests.c.state == 'open'
+            )
+        ).distinct().alias('pull_request_attributes')
 
         pull_request_metrics = select([
             project_nodes.c.id.label('project_id'),
@@ -2095,4 +2069,107 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
             pull_request_metrics
         ).group_by(
             pull_request_metrics.c.project_id
+        )
+
+
+class ProjectPullRequestMetricsTrends(InterfaceResolver):
+    interface = PullRequestMetricsTrends
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        pull_request_metrics_trends_args = kwargs.get('pull_request_metrics_trends_args')
+        age_target_percentile = pull_request_metrics_trends_args.pull_request_age_target_percentile
+        # Get the list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            pull_request_metrics_trends_args,
+            arg_name='pull_request_metrics_trends',
+            interface_name='PullRequestMetricsTrends'
+        )
+        project_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
+
+        measurement_window = pull_request_metrics_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
+            )
+
+        pull_request_attributes = select([
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date,
+            pull_requests.c.id.label('pull_request_id'),
+            pull_requests.c.state.label('state'),
+            pull_requests.c.updated_at,
+            (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
+                'age'),
+        ]).select_from(
+            project_timeline_dates.outerjoin(
+                projects_repositories, project_timeline_dates.c.id == projects_repositories.c.project_id
+            ).join(
+                repositories, repositories.c.id == projects_repositories.c.repository_id
+            ).join(
+                pull_requests, pull_requests.c.repository_id == repositories.c.id
+            )
+        ).where(
+            and_(
+                pull_requests.c.state != 'open',
+                pull_requests.c.updated_at.between(
+                    project_timeline_dates.c.measurement_date - timedelta(
+                        days=measurement_window
+                    ),
+                    project_timeline_dates.c.measurement_date
+                )
+            )
+        ).group_by(
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date,
+            pull_requests.c.id
+        ).alias('pull_request_attributes')
+
+        pull_request_metrics = select([
+            pull_request_attributes.c.id,
+            pull_request_attributes.c.measurement_date,
+            func.avg(pull_request_attributes.c.age).label('avg_age'),
+            func.min(pull_request_attributes.c.age).label('min_age'),
+            func.max(pull_request_attributes.c.age).label('max_age'),
+            func.percentile_disc(age_target_percentile).within_group(pull_request_attributes.c.age).label(
+                'percentile_age'),
+            func.count(pull_request_attributes.c.pull_request_id).label('total_closed'),
+            literal(0).label('total_open')
+        ]).select_from(
+            project_timeline_dates.outerjoin(
+                pull_request_attributes, and_(
+                    project_timeline_dates.c.id == pull_request_attributes.c.id,
+                    project_timeline_dates.c.measurement_date == pull_request_attributes.c.measurement_date
+                )
+            )).group_by(
+            pull_request_attributes.c.measurement_date,
+            pull_request_attributes.c.id
+        ).order_by(
+            pull_request_attributes.c.id,
+            pull_request_attributes.c.measurement_date.desc()
+        ).alias('pull_request_metrics')
+
+        return select([
+            project_timeline_dates.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
+                    'measurement_window', measurement_window,
+                    'total_open', func.coalesce(pull_request_metrics.c.total_open, 0),
+                    'total_closed', func.coalesce(pull_request_metrics.c.total_closed, 0),
+                    'avg_age', func.coalesce(pull_request_metrics.c.avg_age, 0),
+                    'min_age', func.coalesce(pull_request_metrics.c.min_age, 0),
+                    'max_age', func.coalesce(pull_request_metrics.c.max_age, 0),
+                    'percentile_age', func.coalesce(pull_request_metrics.c.percentile_age, 0)
+                )
+            ).label('pull_request_metrics_trends')
+        ]).select_from(
+            project_timeline_dates.outerjoin(
+                pull_request_metrics, and_(
+                    project_timeline_dates.c.id == pull_request_metrics.c.id,
+                    project_timeline_dates.c.measurement_date == pull_request_metrics.c.measurement_date
+                )
+            )
+        ).group_by(
+            project_timeline_dates.c.id
         )

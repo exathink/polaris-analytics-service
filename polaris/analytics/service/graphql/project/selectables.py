@@ -2011,22 +2011,22 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
         measurement_date = datetime.utcnow()
 
         pull_request_attributes = select([
-            projects.c.id,
+            project_nodes.c.id,
             pull_requests.c.id.label('pull_request_id'),
             pull_requests.c.state.label('state'),
             (func.extract('epoch', measurement_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label('age'),
         ]).select_from(
-            pull_requests.join(
-                repositories, pull_requests.c.repository_id == repositories.c.id
+            project_nodes.join(
+                projects_repositories, project_nodes.c.id == projects_repositories.c.project_id
             ).join(
-                projects_repositories, repositories.c.id == projects_repositories.c.repository_id
+                pull_requests, pull_requests.c.repository_id == projects_repositories.c.repository_id
             )
         ).where(
-            and_(
-                projects.c.key == project_nodes.c.key,
-                pull_requests.c.state == 'open'
-            )
-        ).distinct().alias('pull_request_attributes')
+            pull_requests.c.state == 'open'
+        ).group_by(
+            project_nodes.c.id,
+            pull_requests.c.id
+        ).alias('pull_request_attributes')
 
         pull_request_metrics = select([
             project_nodes.c.id.label('project_id'),

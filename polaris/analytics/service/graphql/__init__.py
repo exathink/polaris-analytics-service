@@ -49,7 +49,7 @@ class Query(graphene.ObjectType):
     public = Public.Field()
     work_item = WorkItem.Field()
     work_items_source = WorkItemsSource.Field()
-    #pull_request = PullRequest.Field()
+    pull_request = PullRequest.Field()
     feature_flag = FeatureFlag.Field()
 
     all_accounts = Account.ConnectionField()

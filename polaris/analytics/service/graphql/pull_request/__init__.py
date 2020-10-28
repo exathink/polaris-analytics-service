@@ -18,12 +18,10 @@ class PullRequest(
     NamedNodeResolverMixin,
 
     # selectable
-    #Selectable
+    Selectable
 ):
     class Meta:
-        interfaces = (
-            NamedNode
-        )
+        interfaces = (NamedNode,)
         named_node_resolver = PullRequestNode
         interface_resolvers = {}
         connection_node_resolvers = {}

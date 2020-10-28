@@ -15,7 +15,7 @@ from polaris.graphql.base_classes import NamedNodeResolver
 
 
 class PullRequestNode(NamedNodeResolver):
-    interfaces = (NamedNode)
+    interfaces = (NamedNode,)
 
     @staticmethod
     def named_node_selector(**kwargs):

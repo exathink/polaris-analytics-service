@@ -22,7 +22,8 @@ class PullRequestNode(NamedNodeResolver):
         return select([
             pull_requests.c.id,
             pull_requests.c.key,
-            pull_requests.c.title.label('name')
+            pull_requests.c.title.label('name'),
+            pull_requests.c.created_at
         ]).select_from(
             pull_requests
         ).where(

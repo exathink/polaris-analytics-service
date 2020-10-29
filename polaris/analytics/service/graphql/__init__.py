@@ -58,23 +58,23 @@ class Query(graphene.ObjectType):
     def resolve_viewer(self, info, **kwargs):
         return Viewer.resolve_field(info, **kwargs)
 
-    def resolve_account(self, info,  **kwargs):
+    def resolve_account(self, info, **kwargs):
         return Account.resolve_field(info, **kwargs)
 
     def resolve_commit(self, info, key, **kwargs):
         return Commit.resolve_field(info, key, **kwargs)
 
     def resolve_organization(self, info, key, **kwargs):
-        return Organization.resolve_field(self, info, key,  **kwargs)
+        return Organization.resolve_field(self, info, key, **kwargs)
 
     def resolve_project(self, info, key, **kwargs):
-        return Project.resolve_field(self, info, key,  **kwargs)
+        return Project.resolve_field(self, info, key, **kwargs)
 
     def resolve_repository(self, info, key, **kwargs):
-        return Repository.resolve_field(self,info, key, **kwargs)
+        return Repository.resolve_field(self, info, key, **kwargs)
 
     def resolve_contributor(self, info, key, **kwargs):
-        return Contributor.resolve_field(self,info, key, **kwargs)
+        return Contributor.resolve_field(self, info, key, **kwargs)
 
     def resolve_work_item(self, info, key, **kwargs):
         return WorkItem.resolve_field(self, info, key, **kwargs)
@@ -96,6 +96,7 @@ class Query(graphene.ObjectType):
 
     def resolve_all_feature_flags(self, info, **kwargs):
         return FeatureFlag.resolve_all_feature_flags(info, **kwargs)
+
 
 class Mutations(
     graphene.ObjectType,

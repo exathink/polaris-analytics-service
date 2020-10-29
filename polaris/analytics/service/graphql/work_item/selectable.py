@@ -15,7 +15,9 @@ from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
     work_items_commits, repositories, commits, \
     work_items_sources, work_item_delivery_cycles, work_items_source_state_map, \
-    work_item_delivery_cycle_durations, projects, work_item_delivery_cycle_contributors, contributor_aliases, contributors
+    work_item_delivery_cycle_durations, projects, \
+    work_item_delivery_cycle_contributors, contributor_aliases, contributors, \
+    pull_requests, work_items_pull_requests
 
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
@@ -317,13 +319,12 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                     func.min(work_item_delivery_cycles.c.effort),
                     'duration',
                     (
-                        func.extract(
-                            'epoch',
-                            func.min(work_item_delivery_cycles.c.latest_commit) -
-                            func.min(work_item_delivery_cycles.c.earliest_commit)
-                        ) / (24 * 3600 * 1.0)
+                            func.extract(
+                                'epoch',
+                                func.min(work_item_delivery_cycles.c.latest_commit) -
+                                func.min(work_item_delivery_cycles.c.earliest_commit)
+                            ) / (24 * 3600 * 1.0)
                     ).label('duration')
-
 
                 )
             ).label('work_item_state_details')
@@ -434,3 +435,48 @@ class WorkItemsImplementationCost(InterfaceResolver):
         ).group_by(
             work_item_nodes.c.id
         )
+
+
+class WorkItemPullRequestNode(NamedNodeResolver):
+    interfaces = (NamedNode,)
+
+    @staticmethod
+    def named_node_selector(**kwargs):
+        return select([
+            work_items_pull_requests.c.pull_request_id.label('id'),
+        ]).select_from(
+            work_items.join(
+                work_items_pull_requests
+            )
+        ).where(
+            and_(
+                work_items.c.key == bindparam('work_item_key'),
+                work_items_pull_requests.c.pull_request_id == bindparam('pull_request_id')
+            )
+        )
+
+
+class WorkItemPullRequestNodes(ConnectionResolver):
+    interfaces = (NamedNode,)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        return select([
+            pull_requests.c.id.label('id'),
+            pull_requests.c.key.label('key'),
+            pull_requests.c.title.label('name'),
+            pull_requests.c.created_at,
+            pull_requests.c.state
+        ]).select_from(
+            work_items.join(
+                work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items.c.id
+            ).join(
+                pull_requests, pull_requests.c.id == work_items_pull_requests.c.pull_request_id
+            )
+        ).where(
+            work_items.c.key == bindparam('key')
+        )
+
+    @staticmethod
+    def sort_order(pull_request_nodes, **kwargs):
+        return [pull_request_nodes.c.created_at.desc().nullsfirst()]

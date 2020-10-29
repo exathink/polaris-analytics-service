@@ -19,13 +19,15 @@ from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
     WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics, \
-    WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef, WorkItemsImplementationCost
+    WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef, WorkItemsImplementationCost, \
+    WorkItemPullRequestNodes, WorkItemPullRequestNode
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
 from polaris.graphql.selectable import Selectable
 from ..interface_mixins import KeyIdResolverMixin
 from ..commit import CommitsConnectionMixin
+from ..pull_request import PullRequestsConnectionMixin, PullRequestNode
 
 
 class WorkItemEvent(
@@ -216,12 +218,13 @@ class WorkItem(
     WorkItemEventsConnectionMixin,
     CommitsConnectionMixin,
     WorkItemDeliveryCyclesConnectionMixin,
+    PullRequestsConnectionMixin,
     # selectable
     Selectable
 ):
     class Meta:
         interfaces = (
-            NamedNode, WorkItemInfo, WorkItemsSourceRef, WorkItemEventSpan,  ProjectRef, CommitSummary,
+            NamedNode, WorkItemInfo, WorkItemsSourceRef, WorkItemEventSpan, ProjectRef, CommitSummary,
             WorkItemStateDetails, ImplementationCost
         )
         named_node_resolver = WorkItemNode
@@ -235,7 +238,8 @@ class WorkItem(
         connection_node_resolvers = {
             'work_item_events': WorkItemEventNodes,
             'work_item_delivery_cycles': WorkItemDeliveryCycleNodes,
-            'commits': WorkItemCommitNodes
+            'commits': WorkItemCommitNodes,
+            'pull_requests': WorkItemPullRequestNodes
         }
         connection_class = lambda: WorkItems
 
@@ -319,3 +323,34 @@ class RecentlyActiveWorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResol
             self.get_instance_query_params(),
             **kwargs
         )
+
+
+class WorkItemPullRequest(
+    # interface mixins
+    NamedNodeResolverMixin,
+
+    Selectable
+):
+    class Meta:
+        interfaces = (NamedNode,)
+        named_node_resolver = WorkItemPullRequestNode
+        interface_resolvers = {}
+
+        connection_class = lambda: WorkItemPullRequests
+
+    @classmethod
+    def key_to_instance_resolver_params(cls, key):
+        key_parts = key.split(':')
+        assert len(key_parts) == 2
+        return dict(work_item_key=key_parts[0], pull_request_id=key_parts[1])
+
+    @classmethod
+    def resolve_field(cls, info, work_item_event_key, **kwargs):
+        return cls.resolve_instance(work_item_event_key, **kwargs)
+
+
+class WorkItemPullRequests(
+    CountableConnection
+):
+    class Meta:
+        node = WorkItemPullRequest

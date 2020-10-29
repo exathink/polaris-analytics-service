@@ -2023,9 +2023,6 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
             )
         ).where(
             pull_requests.c.state == 'open'
-        ).group_by(
-            project_nodes.c.id,
-            pull_requests.c.id
         ).alias('pull_request_attributes')
 
         pull_request_metrics = select([

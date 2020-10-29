@@ -14,12 +14,13 @@ from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolver
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, \
     WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics, \
-    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost
+    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef
 
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
     WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics, \
-    WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef, WorkItemsImplementationCost
+    WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef, WorkItemsImplementationCost, \
+    WorkItemsParentNodeRef, WorkItemsEpicNodeRef
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -221,8 +222,8 @@ class WorkItem(
 ):
     class Meta:
         interfaces = (
-            NamedNode, WorkItemInfo, WorkItemsSourceRef, WorkItemEventSpan,  ProjectRef, CommitSummary,
-            WorkItemStateDetails, ImplementationCost
+            NamedNode, WorkItemInfo, WorkItemsSourceRef, WorkItemEventSpan, ProjectRef, CommitSummary,
+            WorkItemStateDetails, ImplementationCost, ParentNodeRef, EpicNodeRef,
         )
         named_node_resolver = WorkItemNode
         interface_resolvers = {
@@ -230,7 +231,9 @@ class WorkItem(
             'WorkItemStateDetails': WorkItemsWorkItemStateDetails,
             'WorkItemEventSpan': WorkItemsWorkItemEventSpan,
             'ProjectRef': WorkItemsProjectRef,
-            'ImplementationCost': WorkItemsImplementationCost
+            'ImplementationCost': WorkItemsImplementationCost,
+            'ParentNodeRef': WorkItemsParentNodeRef,
+            'EpicNodeRef': WorkItemsEpicNodeRef
         }
         connection_node_resolvers = {
             'work_item_events': WorkItemEventNodes,
@@ -265,6 +268,11 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
                         "between (before - days) and before"
                         "If before is not specified the it returns work items for the"
                         "previous n days starting from utc now"
+        ),
+        closed_within_days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="Return work items that were closed in the last n days"
         ),
         active_only=graphene.Argument(
             graphene.Boolean,

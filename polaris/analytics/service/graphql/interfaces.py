@@ -43,6 +43,11 @@ class CommitChangeStats(graphene.ObjectType):
     files = graphene.Int(required=True)
 
 
+class ParentNodeRef(graphene.Interface):
+    parent_name = graphene.String(required=False)
+    parent_key = graphene.String(required=False)
+
+
 class CommitInfo(NamedNode):
     commit_hash = graphene.String(required=True)
     repository = graphene.String(required=True)
@@ -66,6 +71,11 @@ class WorkItemCommitInfo(CommitInfo):
     commit_key = graphene.String(required=True)
     work_item_name = graphene.String(required=True)
     work_item_key = graphene.String(required=True)
+
+
+class EpicNodeRef(graphene.Interface):
+    epic_name = graphene.String(required=False)
+    epic_key = graphene.String(required=False)
 
 
 class WorkItemsSummaries(graphene.Interface):

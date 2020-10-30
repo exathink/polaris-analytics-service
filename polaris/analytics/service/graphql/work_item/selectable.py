@@ -22,7 +22,7 @@ from polaris.analytics.db.model import \
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics, \
-    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost
+    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef
 
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
@@ -405,6 +405,51 @@ class WorkItemsProjectRef(InterfaceResolver):
                 work_items_sources, work_item_nodes.c.work_items_source_id == work_items_sources.c.id
             ).join(
                 projects, work_items_sources.c.project_id == projects.c.id
+            )
+        ).group_by(work_item_nodes.c.id)
+
+# ------------------------------
+# Generic parent node and epic node ref implementations.
+
+
+class WorkItemsParentNodeRef(InterfaceResolver):
+    interface = ParentNodeRef
+
+    @staticmethod
+    def interface_selector(work_item_nodes, **kwargs):
+        parents = work_items.alias()
+        return select([
+            work_item_nodes.c.id,
+            func.min(parents.c.name).label('parent_name'),
+            func.min(cast(parents.c.key, Text)).label('parent_key')
+        ]).select_from(
+            work_item_nodes.join(
+                work_items, work_items.c.id == work_item_nodes.c.id
+            ).outerjoin(
+                parents, work_items.c.parent_id == parents.c.id
+            )
+
+        ).group_by(work_item_nodes.c.id)
+
+
+class WorkItemsEpicNodeRef(InterfaceResolver):
+    interface = EpicNodeRef
+
+    @staticmethod
+    def interface_selector(work_item_nodes, **kwargs):
+        parents = work_items.alias()
+        return select([
+            work_item_nodes.c.id,
+            func.min(parents.c.name).label('epic_name'),
+            func.min(cast(parents.c.key, Text)).label('epic_key')
+        ]).select_from(
+            work_item_nodes.join(
+                work_items, work_items.c.id == work_item_nodes.c.id
+            ).outerjoin(
+                parents, and_(
+                    work_items.c.parent_id == parents.c.id,
+                    parents.c.is_epic == True
+                )
             )
         ).group_by(work_item_nodes.c.id)
 

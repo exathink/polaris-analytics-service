@@ -321,9 +321,6 @@ class TestWorkItemInstance:
                        ('done', None)
                    }
 
-
-
-
         def it_returns_null_state_types_when_there_are_unmapped_durations(self, api_work_items_import_fixture):
             organization, project, work_items_source, work_items_common = api_work_items_import_fixture
             api_helper = WorkItemImportApiHelper(organization, work_items_source)
@@ -377,7 +374,6 @@ class TestWorkItemInstance:
                        ('unmapped_state', None, None)
                    }
 
-
         def it_returns_current_delivery_cycle_commit_summary(self, api_work_items_import_fixture):
             organization, project, work_items_source, work_items_common = api_work_items_import_fixture
             api_helper = WorkItemImportApiHelper(organization, work_items_source)
@@ -400,7 +396,6 @@ class TestWorkItemInstance:
             api_helper.update_delivery_cycles(([(0, dict(property='commit_count', value=2))]))
             api_helper.update_delivery_cycles(([(0, dict(property='earliest_commit', value=datetime.utcnow()))]))
             api_helper.update_delivery_cycles(([(0, dict(property='latest_commit', value=datetime.utcnow()))]))
-
 
             client = Client(schema)
             query = """
@@ -443,10 +438,10 @@ class TestWorkItemInstance:
             )
 
             api_helper.update_delivery_cycles(([(0, dict(property='commit_count', value=2))]))
-            api_helper.update_delivery_cycles(([(0, dict(property='earliest_commit', value=datetime.utcnow() - timedelta(days=3)))]))
+            api_helper.update_delivery_cycles(
+                ([(0, dict(property='earliest_commit', value=datetime.utcnow() - timedelta(days=3)))]))
             api_helper.update_delivery_cycles(([(0, dict(property='latest_commit', value=datetime.utcnow()))]))
             api_helper.update_delivery_cycles(([(0, dict(property='effort', value=2))]))
-
 
             client = Client(schema)
             query = """
@@ -466,8 +461,6 @@ class TestWorkItemInstance:
             details = result['data']['workItem']['workItemStateDetails']
             assert details['duration'] - 3.0 < 0.1
             assert details['effort'] == 2
-
-
 
     class TestWorkItemInstanceCommits:
 
@@ -505,13 +498,7 @@ class TestWorkItemInstance:
                                                                          f'{test_repo.key}:YYYYYY'}
 
 
-
-
-
-
 class TestWorkItemInstanceImplementationCost:
-
-
 
     @staticmethod
     @pytest.yield_fixture
@@ -594,7 +581,6 @@ class TestWorkItemInstanceImplementationCost:
         work_item = result['data']['workItem']
         assert work_item['effort'] == 3.5
 
-
     def it_reports_aggregate_duration_from_all_commits_on_work_item(self, implementation_cost_fixture):
         fixture = implementation_cost_fixture
         test_work_item = fixture['work_items'][0]
@@ -613,7 +599,6 @@ class TestWorkItemInstanceImplementationCost:
         assert 'data' in result
         work_item = result['data']['workItem']
         assert work_item['duration'] == 3
-
 
     def it_reports_aggregate_author_count_across_all_commits(self, implementation_cost_fixture):
         fixture = implementation_cost_fixture
@@ -656,3 +641,159 @@ class TestWorkItemInstanceImplementationCost:
         assert not work_item['effort']
 
 
+class TestWorkItemInstancePullRequests:
+
+    @pytest.yield_fixture()
+    def setup(self, api_pull_requests_import_fixture):
+        organization, project, repositories, work_items_source, work_items_common, pull_requests_common = api_pull_requests_import_fixture
+        api_helper = PullRequestImportApiHelper(organization, repositories, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4(),
+                name=f'Issue {i}',
+                display_id='1000',
+                state='open',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 1)
+        ]
+
+        pull_requests = [
+            dict(
+                repository_id=repositories['alpha'].id,
+                key=uuid.uuid4(),
+                source_id=f'100{i}',
+                source_branch='1000',
+                source_repository_id=repositories['alpha'].id,
+                title="Another change. Fixes issue #1000",
+                created_at=start_date,
+                updated_at=start_date,
+                merged_at=None,
+                **pull_requests_common
+            )
+            for i in range(0, 2)
+        ]
+
+        yield Fixture(
+            project=project,
+            api_helper=api_helper,
+            start_date=start_date,
+            work_items=work_items,
+            pull_requests=pull_requests,
+            repositories=repositories
+        )
+
+    class TestWorkItemPullRequestConnection:
+
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            fixture = setup
+            connection_query = """
+                query getWorkItemPullRequests($key:String!) {
+                            workItem(key: $key){
+                                pullRequests {
+                                    edges {
+                                        node {
+                                            id
+                                            name
+                                            key
+                                        }
+                                    }
+                                }
+                            }
+                        } 
+            """
+            yield Fixture(
+                parent=fixture,
+                query=connection_query
+            )
+
+        class TestWhenWorkItemDoesNotExist:
+
+            def it_returns_null_work_item(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    key=fixture.work_items[0]['key']
+                ))
+
+                assert result['data']
+                assert result['data']['workItem'] == None
+
+        class TestWhenWorkItemExistsButNoPullRequest:
+
+            @pytest.yield_fixture()
+            def setup(self, setup):
+                fixture = setup
+                api_helper = fixture.api_helper
+                api_helper.import_work_items(fixture.work_items)
+
+                yield fixture
+
+            def it_returns_zero_pull_requests(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    key=fixture.work_items[0]['key']
+                ))
+
+                assert result['data']
+                assert len(result['data']['workItem']['pullRequests']['edges']) == 0
+
+            class TestWhenPullRequestsNotLinked:
+
+                @pytest.yield_fixture()
+                def setup(self, setup):
+                    fixture = setup
+                    api_helper = fixture.api_helper
+                    # Import 2 PRs
+                    api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
+
+                    yield fixture
+
+                def it_returns_zero_linked_pull_requests(self, setup):
+                    fixture = setup
+
+                    client = Client(schema)
+
+                    result = client.execute(fixture.query, variable_values=dict(
+                        key=fixture.work_items[0]['key']
+                    ))
+
+                    assert result['data']
+                    assert len(result['data']['workItem']['pullRequests']['edges']) == 0
+
+                class TestWhenOnePullRequestsLinked:
+
+                    @pytest.yield_fixture()
+                    def setup(self, setup):
+                        fixture = setup
+                        api_helper = fixture.api_helper
+                        # Link 1 PR
+                        api_helper.map_pull_request_to_work_item(fixture.work_items[0]['key'],
+                                                                 fixture.pull_requests[0]['key'])
+
+                        yield fixture
+
+                    def it_returns_one_pull_request(self, setup):
+                        fixture = setup
+
+                        client = Client(schema)
+
+                        result = client.execute(fixture.query, variable_values=dict(
+                            key=fixture.work_items[0]['key']
+                        ))
+
+                        assert result['data']
+                        edges = result['data']['workItem']['pullRequests']['edges']
+                        assert len(edges) == 1
+                        assert edges[0]['node']['key'] == str(fixture.pull_requests[0]['key'])

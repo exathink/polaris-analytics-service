@@ -35,7 +35,8 @@ def work_item_delivery_cycle_key_columns(work_items, work_item_delivery_cycles):
         work_item_delivery_cycles.c.delivery_cycle_id,
         (cast(work_items.c.key, Text) + ':' + cast(work_item_delivery_cycles.c.delivery_cycle_id, Text)).label('key'),
         work_item_delivery_cycles.c.work_item_id,
-        work_items.c.work_items_source_id
+        work_items.c.work_items_source_id,
+        work_items.c.parent_id,
     ]
 
 

@@ -301,6 +301,28 @@ class WorkItemDeliveryCyclesImplementationCost(InterfaceResolver):
         )
 
 
+class WorkItemDeliveryCyclesEpicNodeRef(InterfaceResolver):
+    interface = EpicNodeRef
+
+    @staticmethod
+    def interface_selector(work_item_delivery_cycle_nodes, **kwargs):
+        parents = work_items.alias()
+        return select([
+            work_item_delivery_cycle_nodes.c.id,
+            func.min(parents.c.name).label('epic_name'),
+            func.min(cast(parents.c.key, Text)).label('epic_key')
+        ]).select_from(
+            work_item_delivery_cycle_nodes.join(
+                parents, and_(
+                    work_item_delivery_cycle_nodes.c.parent_id == parents.c.id,
+                    parents.c.is_epic == True
+                )
+            )
+        ).group_by(
+            work_item_delivery_cycle_nodes.c.id
+        )
+
+
 # -----------------------------
 # Work Item Interface Resolvers
 # -----------------------------

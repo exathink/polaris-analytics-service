@@ -21,7 +21,7 @@ from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics, \
     WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef, WorkItemsImplementationCost, \
     WorkItemsParentNodeRef, WorkItemsEpicNodeRef, WorkItemPullRequestNodes, WorkItemPullRequestNode, \
-    WorkItemDeliveryCyclesImplementationCost
+    WorkItemDeliveryCyclesImplementationCost, WorkItemDeliveryCyclesEpicNodeRef
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -146,11 +146,12 @@ class WorkItemDeliveryCycle(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost)
+        interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost, EpicNodeRef)
         named_node_resolver = WorkItemDeliveryCycleNode
         interface_resolvers = {
             'CycleMetrics': WorkItemDeliveryCycleCycleMetrics,
-            'ImplementationCost': WorkItemDeliveryCyclesImplementationCost
+            'ImplementationCost': WorkItemDeliveryCyclesImplementationCost,
+            'EpicNodeRef': WorkItemDeliveryCyclesEpicNodeRef,
         }
         connection_class = lambda: WorkItemDeliveryCycles
 

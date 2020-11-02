@@ -249,15 +249,8 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
             (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
             (func.min(work_item_delivery_cycles.c.cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
-            (case([
-                (func.min(work_item_delivery_cycles.c.commit_count) > 0,
-                 func.min(
-                     func.extract('epoch',
-                                  work_item_delivery_cycles.c.latest_commit - work_item_delivery_cycles.c.earliest_commit) / (
-                             1.0 * 3600 * 24)
-                 ))
-            ], else_=None)).label('duration'),
             (func.min(work_item_delivery_cycles.c.latency) / (1.0 * 3600 * 24)).label('latency'),
+
         ]).select_from(
             work_item_delivery_cycle_nodes.outerjoin(
                 work_item_delivery_cycles,
@@ -271,6 +264,38 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
                     work_item_delivery_cycle_nodes.c.work_items_source_id == work_items_source_state_map.c.work_items_source_id,
                     work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state
                 )
+            )).group_by(
+            work_item_delivery_cycle_nodes.c.id
+        )
+
+
+class WorkItemDeliveryCyclesImplementationCost(InterfaceResolver):
+    interface = ImplementationCost
+
+    @staticmethod
+    def interface_selector(work_item_delivery_cycle_nodes, **kwargs):
+        return select([
+            work_item_delivery_cycle_nodes.c.id,
+            func.min(work_item_delivery_cycles.c.effort).label('effort'),
+            (case([
+                (func.min(work_item_delivery_cycles.c.commit_count) > 0,
+                 func.min(
+                     func.extract('epoch',
+                                  work_item_delivery_cycles.c.latest_commit - work_item_delivery_cycles.c.earliest_commit) / (
+                             1.0 * 3600 * 24)
+                 ))
+            ], else_=None)).label('duration'),
+            func.count(contributor_aliases.c.contributor_id.distinct()).label('author_count')
+        ]).select_from(
+            work_item_delivery_cycle_nodes.outerjoin(
+                work_item_delivery_cycles,
+                work_item_delivery_cycle_nodes.c.id == work_item_delivery_cycles.c.delivery_cycle_id
+            ).outerjoin(
+                work_item_delivery_cycle_contributors,
+                work_item_delivery_cycle_contributors.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id,
+            ).join(
+                contributor_aliases,
+                work_item_delivery_cycle_contributors.c.contributor_alias_id == contributor_aliases.c.id
             )).group_by(
             work_item_delivery_cycle_nodes.c.id
         )
@@ -407,6 +432,7 @@ class WorkItemsProjectRef(InterfaceResolver):
                 projects, work_items_sources.c.project_id == projects.c.id
             )
         ).group_by(work_item_nodes.c.id)
+
 
 # ------------------------------
 # Generic parent node and epic node ref implementations.

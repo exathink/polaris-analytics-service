@@ -10,6 +10,7 @@
 from polaris.common import db
 
 from sqlalchemy import select, bindparam, and_, func, cast, Text, Date, case, literal
+from datetime import datetime
 
 from polaris.analytics.db.model import \
     work_items, work_item_state_transitions, \
@@ -22,7 +23,7 @@ from polaris.analytics.db.model import \
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics, \
-    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef
+    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, PullRequestInfo
 
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
@@ -408,6 +409,7 @@ class WorkItemsProjectRef(InterfaceResolver):
             )
         ).group_by(work_item_nodes.c.id)
 
+
 # ------------------------------
 # Generic parent node and epic node ref implementations.
 
@@ -502,7 +504,7 @@ class WorkItemPullRequestNode(NamedNodeResolver):
 
 
 class WorkItemPullRequestNodes(ConnectionResolver):
-    interfaces = (NamedNode,)
+    interfaces = (NamedNode, PullRequestInfo)
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
@@ -510,8 +512,19 @@ class WorkItemPullRequestNodes(ConnectionResolver):
             pull_requests.c.id.label('id'),
             pull_requests.c.key.label('key'),
             pull_requests.c.title.label('name'),
-            pull_requests.c.created_at,
-            pull_requests.c.state
+            pull_requests.c.created_at.label('created_at'),
+            pull_requests.c.state.label('state'),
+            pull_requests.c.merged_at.label('merged_at'),
+            (func.extract('epoch',
+                          case(
+                              [
+                                  (pull_requests.c.state != 'open',
+                                   (pull_requests.c.updated_at - pull_requests.c.created_at))
+                              ],
+                              else_=(datetime.utcnow() - pull_requests.c.created_at)
+                          )
+
+                          ) / (1.0 * 3600 * 24)).label('age')
         ]).select_from(
             work_items.join(
                 work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items.c.id

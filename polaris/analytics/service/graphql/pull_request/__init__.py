@@ -13,6 +13,7 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
 from polaris.graphql.connection_utils import CountableConnection
+from polaris.analytics.service.graphql.interfaces import PullRequestInfo
 
 
 class PullRequest(
@@ -23,7 +24,7 @@ class PullRequest(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode,)
+        interfaces = (NamedNode, PullRequestInfo)
         named_node_resolver = PullRequestNode
         interface_resolvers = {}
         connection_node_resolvers = {}

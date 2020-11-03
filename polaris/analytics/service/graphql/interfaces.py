@@ -207,6 +207,13 @@ class WorkItemInfo(graphene.Interface):
     state_type = graphene.String(required=False)
 
 
+class PullRequestInfo(graphene.Interface):
+    state = graphene.String(required=True)
+    created_at = graphene.DateTime(required=True)
+    merged_at = graphene.DateTime(required=False)
+    age = graphene.Float(required=False)
+
+
 class WorkItemStateTransition(graphene.Interface):
     event_date = graphene.DateTime(required=True)
     seq_no = graphene.Int(required=True)

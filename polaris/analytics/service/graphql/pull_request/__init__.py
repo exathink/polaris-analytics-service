@@ -8,12 +8,12 @@
 
 # Author: Pragya Goyal
 
-from polaris.analytics.service.graphql.pull_request.selectable import PullRequestNode
+from polaris.analytics.service.graphql.pull_request.selectable import PullRequestNode, PullRequestBranchRef
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
 from polaris.graphql.connection_utils import CountableConnection
-from polaris.analytics.service.graphql.interfaces import PullRequestInfo
+from polaris.analytics.service.graphql.interfaces import PullRequestInfo, BranchRef
 
 
 class PullRequest(
@@ -24,9 +24,11 @@ class PullRequest(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, PullRequestInfo)
+        interfaces = (NamedNode, PullRequestInfo, BranchRef)
         named_node_resolver = PullRequestNode
-        interface_resolvers = {}
+        interface_resolvers = {
+            "BranchRef": PullRequestBranchRef
+        }
         connection_node_resolvers = {}
         connection_class = lambda: PullRequests
 

@@ -8,14 +8,16 @@
 
 # Author: Pragya Goyal
 
-from sqlalchemy import select, bindparam
-from polaris.analytics.db.model import pull_requests
+from datetime import datetime
+from sqlalchemy import select, bindparam, func, case
+from polaris.analytics.db.model import pull_requests, repositories
 from polaris.graphql.interfaces import NamedNode
-from polaris.graphql.base_classes import NamedNodeResolver
+from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
+from polaris.analytics.service.graphql.interfaces import PullRequestInfo, BranchRef
 
 
 class PullRequestNode(NamedNodeResolver):
-    interfaces = (NamedNode,)
+    interfaces = (NamedNode, PullRequestInfo)
 
     @staticmethod
     def named_node_selector(**kwargs):
@@ -23,9 +25,42 @@ class PullRequestNode(NamedNodeResolver):
             pull_requests.c.id,
             pull_requests.c.key,
             pull_requests.c.title.label('name'),
-            pull_requests.c.created_at
+            pull_requests.c.created_at.label('created_at'),
+            pull_requests.c.state.label('state'),
+            pull_requests.c.merged_at.label('merged_at'),
+            (func.extract('epoch',
+                          case(
+                              [
+                                  (pull_requests.c.state != 'open',
+                                   (pull_requests.c.updated_at - pull_requests.c.created_at))
+                              ],
+                              else_=(datetime.utcnow() - pull_requests.c.created_at)
+                          )
+
+                          ) / (1.0 * 3600 * 24)).label('age')
         ]).select_from(
             pull_requests
         ).where(
             pull_requests.c.key == bindparam('key')
+        )
+
+
+class PullRequestBranchRef(InterfaceResolver):
+    interface = BranchRef
+
+    @staticmethod
+    def interface_selector(pull_request_nodes, **kwargs):
+        # FIXME: Should pull_request_nodes be used here or we can just directly \
+        #  use pull_requests avoiding a join of both
+        return select([
+            pull_request_nodes.c.id,
+            repositories.c.name.label('repository_name'),
+            repositories.c.key.label('repository_key'),
+            pull_requests.c.source_branch.label('branch_name')
+        ]).select_from(
+            pull_request_nodes.outerjoin(
+                pull_requests, pull_requests.c.id == pull_request_nodes.c.id
+            ).join(
+                repositories, repositories.c.id == pull_requests.c.repository_id
+            )
         )

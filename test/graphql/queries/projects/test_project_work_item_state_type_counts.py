@@ -16,7 +16,7 @@ from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 
 
-class TestProjectWorkItemStateTypeCounts:
+class TestProjectWorkItemStateTypeAggregateMetrics:
 
     def it_returns_cumulative_counts_of_all_state_type_for_work_items_in_the_project(self,
                                                                                      api_work_items_import_fixture):
@@ -86,8 +86,8 @@ class TestProjectWorkItemStateTypeCounts:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeCounts($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeCounts]) {
+                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics]) {
                             workItemStateTypeCounts {
                                 backlog
                                 open
@@ -139,8 +139,8 @@ class TestProjectWorkItemStateTypeCounts:
 
         client = Client(schema)
         query = """
-                            query getProjectWorkItemStateTypeCounts($project_key:String!) {
-                                project(key: $project_key, interfaces: [WorkItemStateTypeCounts]) {
+                            query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
+                                project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics]) {
                                     workItemStateTypeCounts {
                                         backlog
                                         unmapped
@@ -238,8 +238,8 @@ class TestProjectWorkItemStateTypeCounts:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeCounts($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeCounts], defectsOnly: true) {
+                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics], defectsOnly: true) {
                             workItemStateTypeCounts {
                                 backlog
                                 open
@@ -336,8 +336,8 @@ class TestProjectWorkItemStateTypeCounts:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeCounts($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeCounts], defectsOnly: true) {
+                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics], defectsOnly: true) {
                             workItemStateTypeCounts {
                                 backlog
                                 open
@@ -428,8 +428,8 @@ class TestProjectSpecStateTypeCounts:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeCounts($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeCounts]) {
+                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics]) {
                             specStateTypeCounts {
                                 backlog
                                 open
@@ -522,8 +522,8 @@ class TestProjectSpecStateTypeCounts:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeCounts($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeCounts]) {
+                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics]) {
                             specStateTypeCounts {
                                 backlog
                                 open
@@ -620,8 +620,8 @@ class TestProjectSpecStateTypeCounts:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeCounts($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeCounts], defectsOnly: true) {
+                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics], defectsOnly: true) {
                             specStateTypeCounts {
                                 backlog
                                 open
@@ -723,8 +723,8 @@ class TestProjectSpecStateTypeCounts:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeCounts($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeCounts], closedWithinDays: 10) {
+                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics], closedWithinDays: 10) {
                             specStateTypeCounts {
                                 backlog
                                 open

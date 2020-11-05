@@ -335,7 +335,7 @@ class StateTypeAggregateMeasure(graphene.ObjectType):
     unmapped = graphene.Float(required=False)
 
 
-class WorkItemStateTypeCounts(graphene.Interface):
+class WorkItemStateTypeAggregateMetrics(graphene.Interface):
     work_item_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=False)
     spec_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=False)
 

@@ -39,7 +39,7 @@ from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
+    WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends
 
@@ -642,8 +642,8 @@ class ProjectWorkItemEventSpan(InterfaceResolver):
         ).group_by(project_nodes.c.id)
 
 
-class ProjectWorkItemStateTypeCounts(InterfaceResolver):
-    interface = WorkItemStateTypeCounts
+class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
+    interface = WorkItemStateTypeAggregateMetrics
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):

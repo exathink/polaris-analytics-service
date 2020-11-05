@@ -54,6 +54,7 @@ def import_new_pull_requests(session, repository_key, pull_request_summaries):
                             'deleted_at',
                             'merge_status',
                             'merged_at',
+                            'closed_at',
                             'source_id',
                             'display_id',
                             'source_branch',
@@ -101,6 +102,7 @@ def import_new_pull_requests(session, repository_key, pull_request_summaries):
                         'deleted_at',
                         'merge_status',
                         'merged_at',
+                        'closed_at',
                         'source_id',
                         'display_id',
                         'source_branch',
@@ -121,6 +123,7 @@ def import_new_pull_requests(session, repository_key, pull_request_summaries):
                             pull_requests_temp.c.deleted_at,
                             pull_requests_temp.c.merge_status,
                             pull_requests_temp.c.merged_at,
+                            pull_requests_temp.c.closed_at,
                             pull_requests_temp.c.source_id,
                             pull_requests_temp.c.display_id,
                             pull_requests_temp.c.source_branch,
@@ -168,6 +171,7 @@ def update_pull_requests(session, repository_key, pull_request_summaries):
                             'deleted_at',
                             'merge_status',
                             'merged_at',
+                            'closed_at'
                         ])
                     )
                     for pull_request in pull_request_summaries
@@ -186,6 +190,7 @@ def update_pull_requests(session, repository_key, pull_request_summaries):
                     deleted_at=pull_requests_temp.c.deleted_at,
                     merge_status=pull_requests_temp.c.merge_status,
                     merged_at=pull_requests_temp.c.merged_at,
+                    closed_at=pull_requests_temp.c.closed_at
                 ).where(
                     pull_requests_temp.c.key == pull_requests.c.key
                 )

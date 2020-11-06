@@ -46,22 +46,13 @@ class FlowMixTrendsResolverMixin(KeyIdResolverMixin):
                 measurement is not None]
 
 
-class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):
-    def __init__(self, *args, **kwargs):
-        self.work_item_state_type_counts = []
-        super().__init__(*args, **kwargs)
-
-    def resolve_work_item_state_type_counts(self, info, **kwargs):
-        return StateTypeAggregateMeasure(**{
-            result.get('state_type'): result['count']
-            for result in self.work_item_state_type_counts if result is not None
-        })
 
 
 class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):
     def __init__(self, *args, **kwargs):
         self.work_item_state_type_counts = []
         self.spec_state_type_counts = []
+        self.total_effort_by_state_type = []
         super().__init__(*args, **kwargs)
 
     def resolve_work_item_state_type_counts(self, info, **kwargs):
@@ -74,6 +65,12 @@ class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):
         return StateTypeAggregateMeasure(**{
             result.get('state_type'): result['count']
             for result in self.spec_state_type_counts if result is not None
+        })
+
+    def resolve_total_effort_by_state_type(self, info, **kwargs):
+        return StateTypeAggregateMeasure(**{
+            result.get('state_type'): result['total_effort']
+            for result in self.total_effort_by_state_type if result is not None
         })
 
 

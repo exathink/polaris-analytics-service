@@ -650,7 +650,7 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
         select_work_items = select([
             project_nodes.c.id,
             func.coalesce(work_items.c.state_type, 'unmapped').label('state_type'),
-            func.count(work_items.c.id).label('count'),
+            func.count(work_item_delivery_cycles.c.delivery_cycle_id).label('count'),
             func.sum(
                 case(
                     [
@@ -658,7 +658,8 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
                     ],
                     else_=0
                 )
-            ).label('spec_count')
+            ).label('spec_count'),
+            func.sum(work_item_delivery_cycles.c.effort).label('total_effort'),
         ]).select_from(
             project_nodes.join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
@@ -711,7 +712,18 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
                         )
                     )
                 ], else_=None)
-            ).label('spec_state_type_counts')
+            ).label('spec_state_type_counts'),
+            func.json_agg(
+                case([
+                    (
+                        work_items_by_state_type.c.id != None,
+                        func.json_build_object(
+                            'state_type', work_items_by_state_type.c.state_type,
+                            'total_effort', func.coalesce(work_items_by_state_type.c.total_effort, 0)
+                        )
+                    )
+                ], else_=None)
+            ).label('total_effort_by_state_type')
 
         ]).select_from(
             project_nodes.outerjoin(

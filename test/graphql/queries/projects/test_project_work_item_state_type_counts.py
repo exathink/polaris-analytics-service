@@ -544,6 +544,101 @@ class TestProjectSpecStateTypeCounts:
         assert state_type_counts['closed'] == 1
         assert state_type_counts['complete'] is None
 
+    def it_returns_total_effort_counts_when_there_are_specs_in_the_project(self,
+                                                                                     api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        work_items = [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 2',
+                    display_id='1001',
+                    state='upnext',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 3',
+                    display_id='1002',
+                    state='upnext',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 4',
+                    display_id='1004',
+                    state='doing',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 5',
+                    display_id='1005',
+                    state='doing',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 6',
+                    display_id='1006',
+                    state='closed',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+
+            ]
+        api_helper.import_work_items(
+            work_items
+        )
+
+        api_helper.update_delivery_cycles([(3, dict(property='commit_count', value=2)), (5, dict(property='commit_count', value=1))])
+        api_helper.update_delivery_cycles(
+            [(3, dict(property='effort', value=1)), (5, dict(property='effort', value=2))])
+
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics]) {
+                            totalEffortByStateType {
+                                backlog
+                                open
+                                wip
+                                complete
+                                closed
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        state_type_counts = result['data']['project']['totalEffortByStateType']
+        assert state_type_counts['backlog'] == 0
+        assert state_type_counts['open'] == 0
+        assert state_type_counts['wip'] == 1
+        assert state_type_counts['closed'] == 2
+        assert state_type_counts['complete'] is None
+
     def it_respect_the_defects_only_parameter(self,
                                                                                      api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture

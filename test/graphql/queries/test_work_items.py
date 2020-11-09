@@ -702,6 +702,10 @@ class TestWorkItemInstancePullRequests:
                                             id
                                             name
                                             key
+                                            age
+                                            state
+                                            createdAt
+                                            endDate
                                         }
                                     }
                                 }
@@ -784,7 +788,7 @@ class TestWorkItemInstancePullRequests:
 
                         yield fixture
 
-                    def it_returns_one_pull_request(self, setup):
+                    def it_returns_one_pull_request_with_correct_metrices(self, setup):
                         fixture = setup
 
                         client = Client(schema)
@@ -797,3 +801,10 @@ class TestWorkItemInstancePullRequests:
                         edges = result['data']['workItem']['pullRequests']['edges']
                         assert len(edges) == 1
                         assert edges[0]['node']['key'] == str(fixture.pull_requests[0]['key'])
+                        pull_request = edges[0]['node']
+                        assert int(pull_request['age']) == 10
+                        assert pull_request['state'] == 'open'
+                        assert pull_request['createdAt'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
+                        assert pull_request['endDate'] == None
+
+

@@ -21,7 +21,7 @@ def pull_requests_common():
         created_at=datetime.strptime("2020-06-18 01:32:00.553000", "%Y-%m-%d %H:%M:%S.%f"),
         updated_at=datetime.strptime("2020-06-23 01:53:48.171000", "%Y-%m-%d %H:%M:%S.%f"),
         merge_status="can_be_merged",
-        merged_at=datetime.strptime("2020-06-11 18:57:08.818000", "%Y-%m-%d %H:%M:%S.%f"),
+        end_date=datetime.strptime("2020-06-11 18:57:08.818000", "%Y-%m-%d %H:%M:%S.%f"),
         source_branch="PO-178",
         target_branch="master",
         source_repository_key=rails_repository_key,

@@ -514,7 +514,7 @@ class WorkItemPullRequestNodes(ConnectionResolver):
             pull_requests.c.title.label('name'),
             pull_requests.c.created_at.label('created_at'),
             pull_requests.c.state.label('state'),
-            pull_requests.c.merged_at.label('merged_at'),
+            pull_requests.c.end_date.label('end_date'),
             (func.extract('epoch',
                           case(
                               [

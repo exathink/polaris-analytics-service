@@ -90,7 +90,7 @@ def pull_requests_common_fields():
         state="open",
         updated_at=get_date("2020-06-23"),
         merge_status="can_be_merged",
-        merged_at=get_date("2020-06-11"),
+        end_date=get_date("2020-06-11"),
         source_branch='test',
         target_branch="master",
         description='',

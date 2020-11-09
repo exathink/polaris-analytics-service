@@ -53,8 +53,7 @@ def import_new_pull_requests(session, repository_key, pull_request_summaries):
                             'updated_at',
                             'deleted_at',
                             'merge_status',
-                            'merged_at',
-                            'closed_at',
+                            'end_date',
                             'source_id',
                             'display_id',
                             'source_branch',
@@ -101,8 +100,7 @@ def import_new_pull_requests(session, repository_key, pull_request_summaries):
                         'updated_at',
                         'deleted_at',
                         'merge_status',
-                        'merged_at',
-                        'closed_at',
+                        'end_date',
                         'source_id',
                         'display_id',
                         'source_branch',
@@ -122,8 +120,7 @@ def import_new_pull_requests(session, repository_key, pull_request_summaries):
                             pull_requests_temp.c.updated_at,
                             pull_requests_temp.c.deleted_at,
                             pull_requests_temp.c.merge_status,
-                            pull_requests_temp.c.merged_at,
-                            pull_requests_temp.c.closed_at,
+                            pull_requests_temp.c.end_date,
                             pull_requests_temp.c.source_id,
                             pull_requests_temp.c.display_id,
                             pull_requests_temp.c.source_branch,
@@ -170,8 +167,7 @@ def update_pull_requests(session, repository_key, pull_request_summaries):
                             'updated_at',
                             'deleted_at',
                             'merge_status',
-                            'merged_at',
-                            'closed_at'
+                            'end_date'
                         ])
                     )
                     for pull_request in pull_request_summaries
@@ -189,8 +185,7 @@ def update_pull_requests(session, repository_key, pull_request_summaries):
                     updated_at=pull_requests_temp.c.updated_at,
                     deleted_at=pull_requests_temp.c.deleted_at,
                     merge_status=pull_requests_temp.c.merge_status,
-                    merged_at=pull_requests_temp.c.merged_at,
-                    closed_at=pull_requests_temp.c.closed_at
+                    end_date=pull_requests_temp.c.end_date
                 ).where(
                     pull_requests_temp.c.key == pull_requests.c.key
                 )

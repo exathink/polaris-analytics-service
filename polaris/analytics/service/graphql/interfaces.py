@@ -219,7 +219,7 @@ class WorkItemStateTransition(graphene.Interface):
 class PullRequestInfo(graphene.Interface):
     state = graphene.String(required=True)
     created_at = graphene.DateTime(required=True)
-    merged_at = graphene.DateTime(required=False)
+    end_date = graphene.DateTime(required=False)
     age = graphene.Float(required=False)
 
 

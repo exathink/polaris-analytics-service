@@ -674,13 +674,14 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
             select_work_items = select_work_items.where(work_items.c.is_bug == True)
 
         if 'closed_within_days' in kwargs:
-            window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
+            measurement_date = datetime.utcnow().date()
+            window_start = measurement_date - timedelta(days=kwargs.get('closed_within_days') + 1)
 
             select_work_items = select_work_items.where(
                 or_(
                     work_items.c.state_type == None,
                     work_items.c.state_type != WorkItemsStateType.closed.value,
-                    work_item_delivery_cycles.c.end_date >= window_start
+                    work_item_delivery_cycles.c.end_date.between(window_start, measurement_date + timedelta(days=1))
                 )
             )
 
@@ -1087,12 +1088,18 @@ class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
                 work_item_delivery_cycles,
                 and_(
                     work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-
-                    cast(work_item_delivery_cycles.c.end_date, Date).between(
+                    # The logic here is as follows:
+                    # It measurement date is d, then we will include evey delivery
+                    # cycle that closed on the date d which is why the end date is d + 1,
+                    # and window-1 days prior. So if window = 1 we will only include the
+                    # delivery cycles that closed on the measurement_date.
+                    work_item_delivery_cycles.c.end_date.between(
                         timeline_dates.c.measurement_date - timedelta(
-                            days=measurement_window
+                            days=measurement_window - 1
                         ),
-                        timeline_dates.c.measurement_date
+                        timeline_dates.c.measurement_date + timedelta(
+                            days=1
+                        )
                     ),
                     *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                         cycle_metrics_trends_args

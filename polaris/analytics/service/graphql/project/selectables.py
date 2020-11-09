@@ -674,13 +674,14 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
             select_work_items = select_work_items.where(work_items.c.is_bug == True)
 
         if 'closed_within_days' in kwargs:
-            window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
+            measurement_date = datetime.utcnow().date()
+            window_start = measurement_date - timedelta(days=kwargs.get('closed_within_days') + 1)
 
             select_work_items = select_work_items.where(
                 or_(
                     work_items.c.state_type == None,
                     work_items.c.state_type != WorkItemsStateType.closed.value,
-                    work_item_delivery_cycles.c.end_date >= window_start
+                    work_item_delivery_cycles.c.end_date.between(window_start, measurement_date + timedelta(days=1))
                 )
             )
 

@@ -1087,12 +1087,18 @@ class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
                 work_item_delivery_cycles,
                 and_(
                     work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-
-                    cast(work_item_delivery_cycles.c.end_date, Date).between(
+                    # The logic here is as follows:
+                    # It measurement date is d, then we will include evey delivery
+                    # cycle that closed on the date d which is why the end date is d + 1,
+                    # and window-1 days prior. So if window = 1 we will only include the
+                    # delivery cycles that closed on the measurement_date.
+                    work_item_delivery_cycles.c.end_date.between(
                         timeline_dates.c.measurement_date - timedelta(
-                            days=measurement_window
+                            days=measurement_window - 1
                         ),
-                        timeline_dates.c.measurement_date
+                        timeline_dates.c.measurement_date + timedelta(
+                            days=1
+                        )
                     ),
                     *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                         cycle_metrics_trends_args

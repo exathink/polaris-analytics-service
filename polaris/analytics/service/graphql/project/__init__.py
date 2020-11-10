@@ -17,7 +17,7 @@ from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
-    PullRequestMetricsTrends
+    PullRequestMetricsTrends, PullRequestInfo
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
@@ -40,6 +40,7 @@ from ..commit import CommitsConnectionMixin
 from ..work_items_source import WorkItemsSourcesConnectionMixin
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin, \
     WorkItemDeliveryCyclesConnectionMixin, RecentlyActiveWorkItemsConnectionMixin
+from ..pull_request import PullRequestsConnectionMixin
 
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
@@ -76,7 +77,8 @@ from .selectables import ProjectNode, \
     ProjectsFlowMixTrends, \
     ProjectsCapacityTrends, \
     ProjectPipelinePullRequestMetrics, \
-    ProjectPullRequestMetricsTrends
+    ProjectPullRequestMetricsTrends, \
+    ProjectPullRequestNodes
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -108,6 +110,7 @@ class Project(
     WorkItemEventsConnectionMixin,
     WorkItemCommitsConnectionMixin,
     WorkItemDeliveryCyclesConnectionMixin,
+    PullRequestsConnectionMixin,
     # field mixins
     CumulativeCommitCountResolverMixin,
     WeeklyContributorCountsResolverMixin,
@@ -175,7 +178,8 @@ Implicit Interfaces: ArchivedStatus
             'work_items': ProjectWorkItemNodes,
             'work_item_events': ProjectWorkItemEventNodes,
             'work_item_commits': ProjectWorkItemCommitNodes,
-            'work_item_delivery_cycles': ProjectWorkItemDeliveryCycleNodes
+            'work_item_delivery_cycles': ProjectWorkItemDeliveryCycleNodes,
+            'pull_requests': ProjectPullRequestNodes
         }
         selectable_field_resolvers = {
             'cumulative_commit_count': ProjectCumulativeCommitCount,

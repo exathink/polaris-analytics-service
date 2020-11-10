@@ -34,7 +34,7 @@ class TestProjectPullRequestMetricsTrends:
                 title="Another change. Fixes issue #1000",
                 created_at=start_date,
                 updated_at=start_date,
-                merged_at=None,
+                end_date=None,
                 **pull_requests_common
             )
             for i in range(0, 2)

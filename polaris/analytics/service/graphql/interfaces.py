@@ -216,6 +216,19 @@ class WorkItemStateTransition(graphene.Interface):
     new_state_type = graphene.String(required=False)
 
 
+class PullRequestInfo(graphene.Interface):
+    state = graphene.String(required=True)
+    created_at = graphene.DateTime(required=True)
+    end_date = graphene.DateTime(required=False)
+    age = graphene.Float(required=False)
+
+
+class BranchRef(graphene.Interface):
+    repository_name = graphene.String(required=True)
+    repository_key = graphene.String(required=True)
+    branch_name = graphene.String(required=True)
+
+
 class ImplementationCost(graphene.Interface):
     effort = graphene.Float(required=False, description="Total engineering days required")
     duration = graphene.Float(required=False,

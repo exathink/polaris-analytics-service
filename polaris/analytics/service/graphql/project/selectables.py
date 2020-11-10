@@ -2207,6 +2207,7 @@ class ProjectPullRequestNodes(ConnectionResolver):
         if kwargs.get('active_only'):
             select_pull_requests = select_pull_requests.where(pull_requests.c.state == 'open')
 
+        # TODO: Discuss if in this case we need to return PRs closed within n days + active PRs.
         if 'closed_within_days' in kwargs:
             window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
 

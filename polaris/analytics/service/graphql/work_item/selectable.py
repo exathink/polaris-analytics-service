@@ -30,7 +30,7 @@ from .sql_expressions import work_item_info_columns, work_item_event_columns, wo
     work_item_events_connection_apply_time_window_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
-
+from ..pull_request.sql_expressions import pull_request_info_columns
 
 class WorkItemNode(NamedNodeResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
@@ -509,12 +509,7 @@ class WorkItemPullRequestNodes(ConnectionResolver):
     @staticmethod
     def connection_nodes_selector(**kwargs):
         return select([
-            pull_requests.c.id.label('id'),
-            pull_requests.c.key.label('key'),
-            pull_requests.c.title.label('name'),
-            pull_requests.c.created_at.label('created_at'),
-            pull_requests.c.state.label('state'),
-            pull_requests.c.end_date.label('end_date'),
+            *pull_request_info_columns(pull_requests),
             (func.extract('epoch',
                           case(
                               [

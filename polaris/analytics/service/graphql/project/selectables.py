@@ -48,6 +48,7 @@ from ..work_item.sql_expressions import work_item_events_connection_apply_time_w
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
     work_item_info_group_expr_columns
+from ..pull_request.sql_expressions import pull_request_info_columns
 
 
 class ProjectNode(NamedNodeResolver):
@@ -2178,12 +2179,7 @@ class ProjectPullRequestNodes(ConnectionResolver):
     @staticmethod
     def connection_nodes_selector(**kwargs):
         select_pull_requests = select([
-            pull_requests.c.id.label('id'),
-            pull_requests.c.key.label('key'),
-            pull_requests.c.title.label('name'),
-            pull_requests.c.created_at.label('created_at'),
-            pull_requests.c.state.label('state'),
-            pull_requests.c.end_date.label('end_date'),
+            *pull_request_info_columns(pull_requests),
             (func.extract('epoch',
                           case(
                               [

@@ -41,13 +41,14 @@ from ..interfaces import \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
-    PipelinePullRequestMetrics, PullRequestMetricsTrends
+    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
     work_item_info_group_expr_columns
+from ..pull_request.sql_expressions import pull_request_info_columns
 
 
 class ProjectNode(NamedNodeResolver):
@@ -2189,3 +2190,41 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
         ).group_by(
             project_timeline_dates.c.id
         )
+
+
+class ProjectPullRequestNodes(ConnectionResolver):
+    interfaces = (NamedNode, PullRequestInfo)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        select_pull_requests = select([
+            *pull_request_info_columns(pull_requests)
+        ]).select_from(
+            projects.join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
+                pull_requests, pull_requests.c.repository_id == projects_repositories.c.repository_id
+            )
+        ).where(
+            projects.c.key == bindparam('key')
+        )
+
+        if kwargs.get('active_only'):
+            select_pull_requests = select_pull_requests.where(pull_requests.c.state == 'open')
+
+        # TODO: Discuss if in this case we need to return PRs closed within n days
+        if 'closed_within_days' in kwargs:
+            window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
+
+            select_pull_requests = select_pull_requests.where(
+                and_(
+                    pull_requests.c.state != 'open',
+                    pull_requests.c.end_date >= window_start
+                )
+            )
+
+        return select_pull_requests
+
+    @staticmethod
+    def sort_order(pull_request_nodes, **kwargs):
+        return [pull_request_nodes.c.created_at.desc().nullsfirst()]

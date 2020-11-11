@@ -14,6 +14,7 @@ from polaris.analytics.db.model import pull_requests, repositories
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
 from polaris.analytics.service.graphql.interfaces import PullRequestInfo, BranchRef
+from .sql_expressions import pull_request_info_columns
 
 
 class PullRequestNode(NamedNodeResolver):
@@ -22,22 +23,7 @@ class PullRequestNode(NamedNodeResolver):
     @staticmethod
     def named_node_selector(**kwargs):
         return select([
-            pull_requests.c.id,
-            pull_requests.c.key,
-            pull_requests.c.title.label('name'),
-            pull_requests.c.created_at.label('created_at'),
-            pull_requests.c.state.label('state'),
-            pull_requests.c.end_date.label('end_date'),
-            (func.extract('epoch',
-                          case(
-                              [
-                                  (pull_requests.c.state != 'open',
-                                   (pull_requests.c.updated_at - pull_requests.c.created_at))
-                              ],
-                              else_=(datetime.utcnow() - pull_requests.c.created_at)
-                          )
-
-                          ) / (1.0 * 3600 * 24)).label('age')
+            *pull_request_info_columns(pull_requests)
         ]).select_from(
             pull_requests
         ).where(

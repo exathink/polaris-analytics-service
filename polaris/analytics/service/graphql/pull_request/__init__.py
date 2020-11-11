@@ -8,6 +8,7 @@
 
 # Author: Pragya Goyal
 
+import graphene
 from polaris.analytics.service.graphql.pull_request.selectable import PullRequestNode, PullRequestBranchRef
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
@@ -45,7 +46,18 @@ class PullRequests(
 
 
 class PullRequestsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
-    pull_requests = PullRequest.ConnectionField()
+    pull_requests = PullRequest.ConnectionField(
+        closed_within_days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="Return work items that were closed in the last n days"
+        ),
+        active_only=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            description="Return only delivery cycles that are not closed"
+        )
+    )
 
     def resolve_pull_requests(self, info, **kwargs):
         return PullRequest.resolve_connection(

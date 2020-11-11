@@ -227,4 +227,4 @@ class TestProjectPullRequestsConnection:
                     ))
 
                     assert result['data']
-                    assert len(result['data']['project']['pullRequests']['edges']) == 2
+                    assert len(result['data']['project']['pullRequests']['edges']) == 1

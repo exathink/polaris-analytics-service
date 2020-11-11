@@ -10,12 +10,12 @@
 
 import graphene
 from polaris.analytics.service.graphql.pull_request.selectable import PullRequestNode, PullRequestBranchRef, \
-    PullRequestWorkItemSummaries
+    PullRequestWorkItemsSummaries
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, WorkItemsSummariesResolverMixin
 from polaris.graphql.connection_utils import CountableConnection
-from polaris.analytics.service.graphql.interfaces import PullRequestInfo, BranchRef
+from polaris.analytics.service.graphql.interfaces import PullRequestInfo, BranchRef, WorkItemsSummaries
 
 
 class PullRequest(
@@ -27,11 +27,11 @@ class PullRequest(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, PullRequestInfo, BranchRef)
+        interfaces = (NamedNode, PullRequestInfo, BranchRef, WorkItemsSummaries)
         named_node_resolver = PullRequestNode
         interface_resolvers = {
             "BranchRef": PullRequestBranchRef,
-            "WorkItemSummaries": PullRequestWorkItemSummaries
+            "WorkItemsSummaries": PullRequestWorkItemsSummaries
 
         }
         connection_node_resolvers = {}

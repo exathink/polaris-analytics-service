@@ -62,7 +62,7 @@ class PullRequestBranchRef(InterfaceResolver):
         )
 
 
-class PullRequestWorkItemSummaries(InterfaceResolver):
+class PullRequestWorkItemsSummaries(InterfaceResolver):
     interface = WorkItemsSummaries
 
     @staticmethod

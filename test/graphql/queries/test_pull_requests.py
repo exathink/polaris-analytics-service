@@ -186,3 +186,84 @@ class TestPullRequestInstance:
                 assert pull_request['repositoryKey'] == str(uuid.UUID(fixture.repositories['alpha'].key))
                 assert pull_request['repositoryName'] == 'alpha'
                 assert pull_request['branchName'] == '1000'
+
+    class TestPullRequestWorkItemsSummariesInterface:
+
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            fixture = setup
+            query = """
+                query getPullRequest($key:String!) {
+                    pullRequest(key: $key, interfaces:[NamedNode, WorkItemsSummaries]){
+                        id
+                        name
+                        key
+                        workItemsSummaries {
+                            displayId
+                            name
+                            key
+                            url
+                            workItemType
+                            state
+                            stateType
+                        }
+                    }
+                } 
+            """
+            yield Fixture(
+                parent=fixture,
+                query=query
+            )
+
+        class TestWithNoWorkItems:
+
+            @pytest.yield_fixture()
+            def setup(self, setup):
+                fixture = setup
+                api_helper = fixture.api_helper
+                # Import PRs
+                api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
+
+                yield fixture
+
+            def it_returns_no_work_items_summaries(self, setup):
+                fixture = setup
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(
+                    key=fixture.pull_requests[0]['key']
+                ))
+                assert result['data']
+                assert len(result['data']['pullRequest']["workItemsSummaries"]) == 0
+
+            class TestWithLinkedWorkItems:
+
+                @pytest.yield_fixture()
+                def setup(self, setup):
+                    fixture = setup
+                    api_helper = fixture.api_helper
+                    # Import work items
+                    api_helper.import_work_items(fixture.work_items)
+                    # Map work items to pull request 1
+                    for work_item in fixture.work_items:
+                        api_helper.map_pull_request_to_work_item(work_item['key'], fixture.pull_requests[0]['key'])
+
+                    yield fixture
+
+                def it_returns_correct_work_items_summaries(self, setup):
+                    fixture = setup
+                    client = Client(schema)
+
+                    result = client.execute(fixture.query, variable_values=dict(
+                        key=fixture.pull_requests[0]['key']
+                    ))
+                    assert result['data']
+                    work_items_summaries = result['data']['pullRequest']["workItemsSummaries"]
+                    assert len(work_items_summaries) == 1
+                    for work_item in work_items_summaries:
+                        assert work_item["displayId"]
+                        assert work_item["name"]
+                        assert work_item["key"]
+                        assert work_item["url"]
+                        assert work_item["workItemType"]
+                        assert work_item["state"]
+                        assert work_item["stateType"] == None

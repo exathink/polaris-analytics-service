@@ -2179,17 +2179,7 @@ class ProjectPullRequestNodes(ConnectionResolver):
     @staticmethod
     def connection_nodes_selector(**kwargs):
         select_pull_requests = select([
-            *pull_request_info_columns(pull_requests),
-            (func.extract('epoch',
-                          case(
-                              [
-                                  (pull_requests.c.state != 'open',
-                                   (pull_requests.c.updated_at - pull_requests.c.created_at))
-                              ],
-                              else_=(datetime.utcnow() - pull_requests.c.created_at)
-                          )
-
-                          ) / (1.0 * 3600 * 24)).label('age')
+            *pull_request_info_columns(pull_requests)
         ]).select_from(
             projects.join(
                 projects_repositories, projects_repositories.c.project_id == projects.c.id

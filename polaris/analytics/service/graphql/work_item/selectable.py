@@ -510,16 +510,7 @@ class WorkItemPullRequestNodes(ConnectionResolver):
     def connection_nodes_selector(**kwargs):
         return select([
             *pull_request_info_columns(pull_requests),
-            (func.extract('epoch',
-                          case(
-                              [
-                                  (pull_requests.c.state != 'open',
-                                   (pull_requests.c.updated_at - pull_requests.c.created_at))
-                              ],
-                              else_=(datetime.utcnow() - pull_requests.c.created_at)
-                          )
 
-                          ) / (1.0 * 3600 * 24)).label('age')
         ]).select_from(
             work_items.join(
                 work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items.c.id

@@ -366,7 +366,7 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                     'effort',
                     func.min(work_item_delivery_cycles.c.effort),
                     'duration',
-                    (
+                        (
                             func.extract(
                                 'epoch',
                                 func.min(work_item_delivery_cycles.c.latest_commit) -

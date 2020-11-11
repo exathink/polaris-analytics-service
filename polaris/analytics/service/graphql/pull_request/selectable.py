@@ -10,10 +10,10 @@
 
 from datetime import datetime
 from sqlalchemy import select, bindparam, func, case
-from polaris.analytics.db.model import pull_requests, repositories
+from polaris.analytics.db.model import pull_requests, repositories, work_items_pull_requests, work_items
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
-from polaris.analytics.service.graphql.interfaces import PullRequestInfo, BranchRef
+from polaris.analytics.service.graphql.interfaces import PullRequestInfo, BranchRef, WorkItemsSummaries
 from .sql_expressions import pull_request_info_columns
 
 
@@ -59,4 +59,38 @@ class PullRequestBranchRef(InterfaceResolver):
             ).join(
                 repositories, repositories.c.id == pull_requests.c.repository_id
             )
+        )
+
+
+class PullRequestWorkItemSummaries(InterfaceResolver):
+    interface = WorkItemsSummaries
+
+    @staticmethod
+    def interface_selector(pull_request_nodes, **kwargs):
+        return select([
+            pull_request_nodes.c.id,
+            func.json_agg(
+                case([
+                    (
+                        work_items_pull_requests.c.work_item_id != None,
+                        func.json_build_object(
+                            'key', work_items.c.key,
+                            'name', work_items.c.name,
+                            'display_id', work_items.c.display_id,
+                            'url', work_items.c.url,
+                            'work_item_type', work_items.c.work_item_type,
+                            'state_type', work_items.c.state_type,
+                            'state', work_items.c.state
+                        )
+                    )
+                ], else_=None)
+            ).label('work_items_summaries')
+        ]).select_from(
+            pull_request_nodes.outerjoin(
+                work_items_pull_requests, work_items_pull_requests.c.pull_request_id == pull_request_nodes.c.id
+            ).outerjoin(
+                work_items, work_items.c.id == work_items_pull_requests.c.work_item_id
+            )
+        ).group_by(
+            pull_request_nodes.c.id
         )

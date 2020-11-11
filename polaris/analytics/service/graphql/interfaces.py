@@ -348,9 +348,10 @@ class StateTypeAggregateMeasure(graphene.ObjectType):
     unmapped = graphene.Float(required=False)
 
 
-class WorkItemStateTypeCounts(graphene.Interface):
+class WorkItemStateTypeAggregateMetrics(graphene.Interface):
     work_item_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=False)
     spec_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=False)
+    total_effort_by_state_type = graphene.Field(StateTypeAggregateMeasure, required=False)
 
 
 class StateMapping(graphene.ObjectType):

@@ -250,15 +250,8 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
             (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
             (func.min(work_item_delivery_cycles.c.cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
-            (case([
-                (func.min(work_item_delivery_cycles.c.commit_count) > 0,
-                 func.min(
-                     func.extract('epoch',
-                                  work_item_delivery_cycles.c.latest_commit - work_item_delivery_cycles.c.earliest_commit) / (
-                             1.0 * 3600 * 24)
-                 ))
-            ], else_=None)).label('duration'),
             (func.min(work_item_delivery_cycles.c.latency) / (1.0 * 3600 * 24)).label('latency'),
+
         ]).select_from(
             work_item_delivery_cycle_nodes.outerjoin(
                 work_item_delivery_cycles,
@@ -273,6 +266,60 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
                     work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state
                 )
             )).group_by(
+            work_item_delivery_cycle_nodes.c.id
+        )
+
+
+class WorkItemDeliveryCyclesImplementationCost(InterfaceResolver):
+    interface = ImplementationCost
+
+    @staticmethod
+    def interface_selector(work_item_delivery_cycle_nodes, **kwargs):
+        return select([
+            work_item_delivery_cycle_nodes.c.id,
+            func.min(work_item_delivery_cycles.c.effort).label('effort'),
+            (case([
+                (func.min(work_item_delivery_cycles.c.commit_count) > 0,
+                 func.min(
+                     func.extract('epoch',
+                                  work_item_delivery_cycles.c.latest_commit - work_item_delivery_cycles.c.earliest_commit) / (
+                             1.0 * 3600 * 24)
+                 ))
+            ], else_=None)).label('duration'),
+            func.count(contributor_aliases.c.contributor_id.distinct()).label('author_count')
+        ]).select_from(
+            work_item_delivery_cycle_nodes.outerjoin(
+                work_item_delivery_cycles,
+                work_item_delivery_cycle_nodes.c.id == work_item_delivery_cycles.c.delivery_cycle_id
+            ).outerjoin(
+                work_item_delivery_cycle_contributors,
+                work_item_delivery_cycle_contributors.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id,
+            ).join(
+                contributor_aliases,
+                work_item_delivery_cycle_contributors.c.contributor_alias_id == contributor_aliases.c.id
+            )).group_by(
+            work_item_delivery_cycle_nodes.c.id
+        )
+
+
+class WorkItemDeliveryCyclesEpicNodeRef(InterfaceResolver):
+    interface = EpicNodeRef
+
+    @staticmethod
+    def interface_selector(work_item_delivery_cycle_nodes, **kwargs):
+        parents = work_items.alias()
+        return select([
+            work_item_delivery_cycle_nodes.c.id,
+            func.min(parents.c.name).label('epic_name'),
+            func.min(cast(parents.c.key, Text)).label('epic_key')
+        ]).select_from(
+            work_item_delivery_cycle_nodes.join(
+                parents, and_(
+                    work_item_delivery_cycle_nodes.c.parent_id == parents.c.id,
+                    parents.c.is_epic == True
+                )
+            )
+        ).group_by(
             work_item_delivery_cycle_nodes.c.id
         )
 
@@ -510,16 +557,7 @@ class WorkItemPullRequestNodes(ConnectionResolver):
     def connection_nodes_selector(**kwargs):
         return select([
             *pull_request_info_columns(pull_requests),
-            (func.extract('epoch',
-                          case(
-                              [
-                                  (pull_requests.c.state != 'open',
-                                   (pull_requests.c.updated_at - pull_requests.c.created_at))
-                              ],
-                              else_=(datetime.utcnow() - pull_requests.c.created_at)
-                          )
 
-                          ) / (1.0 * 3600 * 24)).label('age')
         ]).select_from(
             work_items.join(
                 work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items.c.id

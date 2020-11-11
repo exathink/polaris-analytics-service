@@ -14,7 +14,7 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
-    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeCounts, AggregateCycleMetrics, \
+    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
     PullRequestMetricsTrends, PullRequestInfo
@@ -69,7 +69,7 @@ from .selectables import ProjectNode, \
     ProjectWorkItemNodes, \
     ProjectWorkItemEventNodes, \
     ProjectWorkItemCommitNodes, \
-    ProjectWorkItemStateTypeCounts, \
+    ProjectWorkItemStateTypeAggregateMetrics, \
     ProjectCycleMetrics, \
     ProjectWorkItemDeliveryCycleNodes, \
     ProjectTraceabilityTrends, \
@@ -137,7 +137,7 @@ Implicit Interfaces: ArchivedStatus
             RepositoryCount,
             OrganizationRef,
             WorkItemEventSpan,
-            WorkItemStateTypeCounts,
+            WorkItemStateTypeAggregateMetrics,
             AggregateCycleMetrics,
             CycleMetricsTrends,
             PipelineCycleMetrics,
@@ -156,7 +156,7 @@ Implicit Interfaces: ArchivedStatus
             'RepositoryCount': ProjectsRepositoryCount,
             'OrganizationRef': ProjectsOrganizationRef,
             'WorkItemEventSpan': ProjectWorkItemEventSpan,
-            'WorkItemStateTypeCounts': ProjectWorkItemStateTypeCounts,
+            'WorkItemStateTypeAggregateMetrics': ProjectWorkItemStateTypeAggregateMetrics,
             'AggregateCycleMetrics': ProjectCycleMetrics,
             'CycleMetricsTrends': ProjectCycleMetricsTrends,
             'PipelineCycleMetrics': ProjectPipelineCycleMetrics,

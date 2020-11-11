@@ -1761,67 +1761,7 @@ class TestProjectWorkItemDeliveryCycles:
                 assert not node['leadTime']
                 assert not node['cycleTime']
 
-    def it_returns_latency_and_duration_for_closed_specs(self, api_work_items_import_fixture):
-        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
-        api_helper = WorkItemImportApiHelper(organization, work_items_source)
 
-        start_date = datetime.utcnow() - timedelta(days=10)
-
-        work_items = [
-            dict(
-                key=uuid.uuid4().hex,
-                name=f'Issue {i}',
-                display_id='1000',
-                state='backlog',
-                created_at=start_date,
-                updated_at=start_date,
-                **work_items_common
-            )
-            for i in range(0, 3)
-        ]
-
-        api_helper.import_work_items(work_items)
-
-        api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
-        api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=8))])
-
-        api_helper.update_delivery_cycles(([(1, dict(property='commit_count', value=3))]))
-        api_helper.update_delivery_cycles(([(1, dict(property='earliest_commit', value=start_date + timedelta(days=2)))]))
-        api_helper.update_delivery_cycles(([(1, dict(property='latest_commit', value=start_date + timedelta(days=4)))]))
-        api_helper.update_delivery_cycles(([(1, dict(property='latency', value=1.0*24*3600))]))
-
-        client = Client(schema)
-        query = """
-                                query getProjectDeliveryCycles($project_key:String!) {
-                                    project(key: $project_key) {
-                                        workItemDeliveryCycles (interfaces: [CycleMetrics]){
-                                            edges {
-                                                node {
-                                                    name
-                                                    leadTime
-                                                    cycleTime
-                                                    latency
-                                                    duration
-                                                    endDate
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            """
-        result = client.execute(query, variable_values=dict(project_key=project.key))
-        assert result['data']
-        nodes = [edge['node'] for edge in result['data']['project']['workItemDeliveryCycles']['edges']]
-        assert len(nodes) == 3
-        for node in nodes:
-            if node['name'] == 'Issue 1':
-                assert node['leadTime'] == 8.0
-                assert node['cycleTime'] == 6.0
-                assert node['latency'] == 1.0
-                assert node['duration'] == 2.0
-            else:
-                assert not node['leadTime']
-                assert not node['cycleTime']
 
     def it_returns_cycle_metrics_for_reopened_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture

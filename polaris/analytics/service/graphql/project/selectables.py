@@ -39,7 +39,7 @@ from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeCounts, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
+    WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo
 
@@ -643,15 +643,15 @@ class ProjectWorkItemEventSpan(InterfaceResolver):
         ).group_by(project_nodes.c.id)
 
 
-class ProjectWorkItemStateTypeCounts(InterfaceResolver):
-    interface = WorkItemStateTypeCounts
+class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
+    interface = WorkItemStateTypeAggregateMetrics
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
         select_work_items = select([
             project_nodes.c.id,
             func.coalesce(work_items.c.state_type, 'unmapped').label('state_type'),
-            func.count(work_items.c.id).label('count'),
+            func.count(work_item_delivery_cycles.c.delivery_cycle_id).label('count'),
             func.sum(
                 case(
                     [
@@ -659,7 +659,8 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
                     ],
                     else_=0
                 )
-            ).label('spec_count')
+            ).label('spec_count'),
+            func.sum(work_item_delivery_cycles.c.effort).label('total_effort'),
         ]).select_from(
             project_nodes.join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
@@ -674,13 +675,14 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
             select_work_items = select_work_items.where(work_items.c.is_bug == True)
 
         if 'closed_within_days' in kwargs:
-            window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
+            measurement_date = datetime.utcnow().date()
+            window_start = measurement_date - timedelta(days=kwargs.get('closed_within_days') + 1)
 
             select_work_items = select_work_items.where(
                 or_(
                     work_items.c.state_type == None,
                     work_items.c.state_type != WorkItemsStateType.closed.value,
-                    work_item_delivery_cycles.c.end_date >= window_start
+                    work_item_delivery_cycles.c.end_date.between(window_start, measurement_date + timedelta(days=1))
                 )
             )
 
@@ -712,7 +714,18 @@ class ProjectWorkItemStateTypeCounts(InterfaceResolver):
                         )
                     )
                 ], else_=None)
-            ).label('spec_state_type_counts')
+            ).label('spec_state_type_counts'),
+            func.json_agg(
+                case([
+                    (
+                        work_items_by_state_type.c.id != None,
+                        func.json_build_object(
+                            'state_type', work_items_by_state_type.c.state_type,
+                            'total_effort', func.coalesce(work_items_by_state_type.c.total_effort, 0)
+                        )
+                    )
+                ], else_=None)
+            ).label('total_effort_by_state_type')
 
         ]).select_from(
             project_nodes.outerjoin(
@@ -1076,12 +1089,18 @@ class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
                 work_item_delivery_cycles,
                 and_(
                     work_item_delivery_cycles.c.work_item_id == work_items.c.id,
-
-                    cast(work_item_delivery_cycles.c.end_date, Date).between(
+                    # The logic here is as follows:
+                    # It measurement date is d, then we will include evey delivery
+                    # cycle that closed on the date d which is why the end date is d + 1,
+                    # and window-1 days prior. So if window = 1 we will only include the
+                    # delivery cycles that closed on the measurement_date.
+                    work_item_delivery_cycles.c.end_date.between(
                         timeline_dates.c.measurement_date - timedelta(
-                            days=measurement_window
+                            days=measurement_window - 1
                         ),
-                        timeline_dates.c.measurement_date
+                        timeline_dates.c.measurement_date + timedelta(
+                            days=1
+                        )
                     ),
                     *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                         cycle_metrics_trends_args
@@ -2179,17 +2198,7 @@ class ProjectPullRequestNodes(ConnectionResolver):
     @staticmethod
     def connection_nodes_selector(**kwargs):
         select_pull_requests = select([
-            *pull_request_info_columns(pull_requests),
-            (func.extract('epoch',
-                          case(
-                              [
-                                  (pull_requests.c.state != 'open',
-                                   (pull_requests.c.updated_at - pull_requests.c.created_at))
-                              ],
-                              else_=(datetime.utcnow() - pull_requests.c.created_at)
-                          )
-
-                          ) / (1.0 * 3600 * 24)).label('age')
+            *pull_request_info_columns(pull_requests)
         ]).select_from(
             projects.join(
                 projects_repositories, projects_repositories.c.project_id == projects.c.id

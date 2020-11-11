@@ -23,17 +23,7 @@ class PullRequestNode(NamedNodeResolver):
     @staticmethod
     def named_node_selector(**kwargs):
         return select([
-            *pull_request_info_columns(pull_requests),
-            (func.extract('epoch',
-                          case(
-                              [
-                                  (pull_requests.c.state != 'open',
-                                   (pull_requests.c.updated_at - pull_requests.c.created_at))
-                              ],
-                              else_=(datetime.utcnow() - pull_requests.c.created_at)
-                          )
-
-                          ) / (1.0 * 3600 * 24)).label('age')
+            *pull_request_info_columns(pull_requests)
         ]).select_from(
             pull_requests
         ).where(

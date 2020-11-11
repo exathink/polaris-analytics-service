@@ -35,7 +35,8 @@ def work_item_delivery_cycle_key_columns(work_items, work_item_delivery_cycles):
         work_item_delivery_cycles.c.delivery_cycle_id,
         (cast(work_items.c.key, Text) + ':' + cast(work_item_delivery_cycles.c.delivery_cycle_id, Text)).label('key'),
         work_item_delivery_cycles.c.work_item_id,
-        work_items.c.work_items_source_id
+        work_items.c.work_items_source_id,
+        work_items.c.parent_id,
     ]
 
 
@@ -207,9 +208,10 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
 
 def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
     if 'closed_within_days' in kwargs:
-        window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
+        measurement_date = datetime.utcnow().date()
+        window_start = measurement_date - timedelta(days=kwargs.get('closed_within_days') - 1)
         select_stmt = select_stmt.where(
-            work_item_delivery_cycles.c.end_date >= window_start
+            work_item_delivery_cycles.c.end_date.between(window_start, measurement_date + timedelta(days=1))
         )
 
     if kwargs.get('specs_only'):

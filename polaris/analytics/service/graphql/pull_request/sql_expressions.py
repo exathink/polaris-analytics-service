@@ -15,6 +15,8 @@ def pull_request_info_columns(pull_requests):
         pull_requests.c.id,
         pull_requests.c.key,
         pull_requests.c.title.label('name'),
+        pull_requests.c.display_id,
+        pull_requests.c.web_url.label('web_url'),
         pull_requests.c.created_at,
         pull_requests.c.state,
         pull_requests.c.end_date,

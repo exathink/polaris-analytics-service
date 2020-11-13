@@ -217,10 +217,12 @@ class WorkItemStateTransition(graphene.Interface):
 
 
 class PullRequestInfo(graphene.Interface):
+    display_id = graphene.String(required=True)
     state = graphene.String(required=True)
     created_at = graphene.DateTime(required=True)
     end_date = graphene.DateTime(required=False)
     age = graphene.Float(required=False)
+    web_url = graphene.String(required=False)
 
 
 class BranchRef(graphene.Interface):

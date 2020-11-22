@@ -1595,9 +1595,11 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
                 work_item_delivery_cycles.c[metric] != None,
                 work_item_delivery_cycles.c.end_date.between(
                     projects_timeline_dates.c.measurement_date - timedelta(
-                        days=measurement_window
+                        days=measurement_window - 1
                     ),
-                    projects_timeline_dates.c.measurement_date
+                    projects_timeline_dates.c.measurement_date + timedelta(
+                        days=1
+                    )
                 ),
                 *ProjectCycleMetricsTrends.get_work_item_filter_clauses(response_time_confidence_trends_args),
                 *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(

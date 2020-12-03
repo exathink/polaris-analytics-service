@@ -17,7 +17,7 @@ from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
-    PullRequestMetricsTrends, PullRequestInfo
+    PullRequestMetricsTrends, PullRequestEventSpan
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
@@ -66,6 +66,7 @@ from .selectables import ProjectNode, \
     ProjectCycleMetricsTrends, \
     ProjectPipelineCycleMetrics, \
     ProjectWorkItemEventSpan, \
+    ProjectPullRequestEventSpan, \
     ProjectWorkItemNodes, \
     ProjectWorkItemEventNodes, \
     ProjectWorkItemCommitNodes, \
@@ -137,6 +138,7 @@ Implicit Interfaces: ArchivedStatus
             RepositoryCount,
             OrganizationRef,
             WorkItemEventSpan,
+            PullRequestEventSpan,
             WorkItemStateTypeAggregateMetrics,
             AggregateCycleMetrics,
             CycleMetricsTrends,
@@ -156,6 +158,7 @@ Implicit Interfaces: ArchivedStatus
             'RepositoryCount': ProjectsRepositoryCount,
             'OrganizationRef': ProjectsOrganizationRef,
             'WorkItemEventSpan': ProjectWorkItemEventSpan,
+            'PullRequestEventSpan': ProjectPullRequestEventSpan,
             'WorkItemStateTypeAggregateMetrics': ProjectWorkItemStateTypeAggregateMetrics,
             'AggregateCycleMetrics': ProjectCycleMetrics,
             'CycleMetricsTrends': ProjectCycleMetricsTrends,

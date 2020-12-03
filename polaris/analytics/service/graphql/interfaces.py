@@ -261,6 +261,10 @@ class WorkItemEventSpan(graphene.Interface):
     latest_work_item_event = graphene.DateTime(required=False)
 
 
+class PullRequestEventSpan(graphene.Interface):
+    latest_pull_request_event = graphene.DateTime(required=False)
+
+
 class WorkItemDaysInState(graphene.ObjectType):
     state = graphene.String(required=True)
     state_type = graphene.String(required=False)

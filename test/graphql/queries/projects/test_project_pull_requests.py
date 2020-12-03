@@ -230,3 +230,40 @@ class TestProjectPullRequests:
 
                         assert result['data']
                         assert len(result['data']['project']['pullRequests']['edges']) == 1
+
+    class TestProjectPullRequestEventSpan:
+
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            fixture = setup
+
+            latest_pull_request_date = fixture.start_date + timedelta(days=3)
+            fixture.pull_requests[0]['updated_at'] = latest_pull_request_date
+
+            fixture.api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
+
+            yield Fixture(
+                parent=fixture,
+                latest_pull_request_date=latest_pull_request_date
+            )
+
+        def it_returns_the_latest_pull_request_date(self, setup):
+            fixture = setup
+
+            query = """
+                        query getProjectPullRequests($key:String!) {
+                            project(key: $key, interfaces: [PullRequestEventSpan]){
+                                latestPullRequestEvent
+                            }
+                         }
+                    """
+
+            client = Client(schema)
+            result = client.execute(query, variable_values=dict(
+                key=fixture.project.key
+            ))
+
+            assert result['data']
+            assert graphql_date(
+                result['data']['project']['latestPullRequestEvent']
+            ) == fixture.latest_pull_request_date

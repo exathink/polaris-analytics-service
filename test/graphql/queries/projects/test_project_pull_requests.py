@@ -9,11 +9,12 @@
 # Author: Pragya Goyal
 
 from graphene.test import Client
+
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 
 
-class TestProjectPullRequestsConnection:
+class TestProjectPullRequests:
 
     @pytest.yield_fixture()
     def setup(self, api_pull_requests_import_fixture):
@@ -60,119 +61,16 @@ class TestProjectPullRequestsConnection:
             repositories=repositories
         )
 
-    class TestWithNoPullRequest:
-
-        @pytest.yield_fixture()
-        def setup(self, setup):
-            fixture = setup
-            query = """
-                query getProjectPullRequests($key:String!) {
-                    project(key: $key){
-                        pullRequests {
-                            edges {
-                                node {
-                                    id
-                                    name
-                                    key
-                                    age
-                                    state
-                                    createdAt
-                                    endDate
-                                }
-                            }
-                        }
-                    }
-                 }
-            """
-            yield Fixture(
-                parent=fixture,
-                query=query
-            )
-
-        def it_returns_empty_list(self, setup):
-            fixture = setup
-
-            client = Client(schema)
-
-            result = client.execute(fixture.query, variable_values=dict(
-                key=fixture.project.key
-            ))
-
-            assert result['data']
-            assert result['data']['project']['pullRequests']['edges'] == []
-
-        class TestWithActivePullRequests:
+    class TestProjectPullRequestsConnection:
+        class TestWithNoPullRequest:
 
             @pytest.yield_fixture()
             def setup(self, setup):
                 fixture = setup
-                api_helper = fixture.api_helper
-                # Import 2 PRs
-                api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
-
-                yield fixture
-
-            def it_returns_all_pull_requests(self, setup):
-                fixture = setup
-
-                client = Client(schema)
-
-                result = client.execute(fixture.query, variable_values=dict(
-                    key=fixture.project.key
-                ))
-
-                assert result['data']
-                assert len(result['data']['project']['pullRequests']['edges']) == 2
-
-            def it_returns_all_prs_with_active_only_false(self, setup):
-                fixture = setup
-
-                client = Client(schema)
                 query = """
-                query getProjectPullRequests($key:String!) {
-                    project(key: $key){
-                        pullRequests (activeOnly: false) {
-                            edges {
-                                node {
-                                    id
-                                    name
-                                    key
-                                    age
-                                    state
-                                    createdAt
-                                    endDate
-                                }
-                            }
-                        }
-                    }
-                 }
-            """
-
-                result = client.execute(fixture.query, variable_values=dict(
-                    key=fixture.project.key
-                ))
-
-                assert result['data']
-                assert len(result['data']['project']['pullRequests']['edges']) == 2
-
-            class TestWithOneClosedPullRequest:
-                @pytest.yield_fixture()
-                def setup(self, setup):
-                    fixture = setup
-                    api_helper = fixture.api_helper
-                    # Close 1 PR
-                    api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'],
-                                                   update_dict=dict(state='closed', end_date=datetime.utcnow()))
-                    yield fixture
-
-                def it_returns_one_pr_with_active_only_true(self, setup):
-                    fixture = setup
-
-                    client = Client(schema)
-                    query = """
                     query getProjectPullRequests($key:String!) {
                         project(key: $key){
-                            pullRequests (activeOnly: true) {
+                            pullRequests {
                                 edges {
                                     node {
                                         id
@@ -187,44 +85,185 @@ class TestProjectPullRequestsConnection:
                             }
                         }
                      }
-                    """
+                """
+                yield Fixture(
+                    parent=fixture,
+                    query=query
+                )
 
-                    result = client.execute(query, variable_values=dict(
+            def it_returns_empty_list(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    key=fixture.project.key
+                ))
+
+                assert result['data']
+                assert result['data']['project']['pullRequests']['edges'] == []
+
+            class TestWithActivePullRequests:
+
+                @pytest.yield_fixture()
+                def setup(self, setup):
+                    fixture = setup
+                    api_helper = fixture.api_helper
+                    # Import 2 PRs
+                    api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
+
+                    yield fixture
+
+                def it_returns_all_pull_requests(self, setup):
+                    fixture = setup
+
+                    client = Client(schema)
+
+                    result = client.execute(fixture.query, variable_values=dict(
                         key=fixture.project.key
                     ))
 
                     assert result['data']
-                    assert len(result['data']['project']['pullRequests']['edges']) == 1
-                    assert result['data']['project']['pullRequests']['edges'][0]['node']['key'] == str(
-                        fixture.pull_requests[1]['key'])
+                    assert len(result['data']['project']['pullRequests']['edges']) == 2
 
-                def it_returns_pr_closed_within_1_day(self, setup):
+                def it_returns_all_prs_with_active_only_false(self, setup):
                     fixture = setup
 
                     client = Client(schema)
                     query = """
-                                        query getProjectPullRequests($key:String!) {
-                                            project(key: $key){
-                                                pullRequests (closedWithinDays: 1) {
-                                                    edges {
-                                                        node {
-                                                            id
-                                                            name
-                                                            key
-                                                            age
-                                                            state
-                                                            createdAt
-                                                            endDate
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                         }
-                                        """
+                    query getProjectPullRequests($key:String!) {
+                        project(key: $key){
+                            pullRequests (activeOnly: false) {
+                                edges {
+                                    node {
+                                        id
+                                        name
+                                        key
+                                        age
+                                        state
+                                        createdAt
+                                        endDate
+                                    }
+                                }
+                            }
+                        }
+                     }
+                """
 
-                    result = client.execute(query, variable_values=dict(
+                    result = client.execute(fixture.query, variable_values=dict(
                         key=fixture.project.key
                     ))
 
                     assert result['data']
-                    assert len(result['data']['project']['pullRequests']['edges']) == 1
+                    assert len(result['data']['project']['pullRequests']['edges']) == 2
+
+                class TestWithOneClosedPullRequest:
+                    @pytest.yield_fixture()
+                    def setup(self, setup):
+                        fixture = setup
+                        api_helper = fixture.api_helper
+                        # Close 1 PR
+                        api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'],
+                                                       update_dict=dict(state='closed', end_date=datetime.utcnow()))
+                        yield fixture
+
+                    def it_returns_one_pr_with_active_only_true(self, setup):
+                        fixture = setup
+
+                        client = Client(schema)
+                        query = """
+                        query getProjectPullRequests($key:String!) {
+                            project(key: $key){
+                                pullRequests (activeOnly: true) {
+                                    edges {
+                                        node {
+                                            id
+                                            name
+                                            key
+                                            age
+                                            state
+                                            createdAt
+                                            endDate
+                                        }
+                                    }
+                                }
+                            }
+                         }
+                        """
+
+                        result = client.execute(query, variable_values=dict(
+                            key=fixture.project.key
+                        ))
+
+                        assert result['data']
+                        assert len(result['data']['project']['pullRequests']['edges']) == 1
+                        assert result['data']['project']['pullRequests']['edges'][0]['node']['key'] == str(
+                            fixture.pull_requests[1]['key'])
+
+                    def it_returns_pr_closed_within_1_day(self, setup):
+                        fixture = setup
+
+                        client = Client(schema)
+                        query = """
+                                            query getProjectPullRequests($key:String!) {
+                                                project(key: $key){
+                                                    pullRequests (closedWithinDays: 1) {
+                                                        edges {
+                                                            node {
+                                                                id
+                                                                name
+                                                                key
+                                                                age
+                                                                state
+                                                                createdAt
+                                                                endDate
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                             }
+                                            """
+
+                        result = client.execute(query, variable_values=dict(
+                            key=fixture.project.key
+                        ))
+
+                        assert result['data']
+                        assert len(result['data']['project']['pullRequests']['edges']) == 1
+
+    class TestProjectPullRequestEventSpan:
+
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            fixture = setup
+
+            latest_pull_request_date = fixture.start_date + timedelta(days=3)
+            fixture.pull_requests[0]['updated_at'] = latest_pull_request_date
+
+            fixture.api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
+
+            yield Fixture(
+                parent=fixture,
+                latest_pull_request_date=latest_pull_request_date
+            )
+
+        def it_returns_the_latest_pull_request_date(self, setup):
+            fixture = setup
+
+            query = """
+                        query getProjectPullRequests($key:String!) {
+                            project(key: $key, interfaces: [PullRequestEventSpan]){
+                                latestPullRequestEvent
+                            }
+                         }
+                    """
+
+            client = Client(schema)
+            result = client.execute(query, variable_values=dict(
+                key=fixture.project.key
+            ))
+
+            assert result['data']
+            assert graphql_date(
+                result['data']['project']['latestPullRequestEvent']
+            ) == fixture.latest_pull_request_date

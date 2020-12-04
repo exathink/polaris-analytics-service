@@ -41,7 +41,7 @@ from ..interfaces import \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
-    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo
+    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan
 
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -639,6 +639,23 @@ class ProjectWorkItemEventSpan(InterfaceResolver):
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
             ).outerjoin(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            )
+        ).group_by(project_nodes.c.id)
+
+
+class ProjectPullRequestEventSpan(InterfaceResolver):
+    interface = PullRequestEventSpan
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        return select([
+            project_nodes.c.id,
+            func.max(pull_requests.c.updated_at).label('latest_pull_request_event')
+        ]).select_from(
+            project_nodes.join(
+                projects_repositories, projects_repositories.c.project_id == project_nodes.c.id
+            ).join(
+                pull_requests, pull_requests.c.repository_id == projects_repositories.c.repository_id
             )
         ).group_by(project_nodes.c.id)
 

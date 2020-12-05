@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright: © Exathink, LLC (2011-2018) All Rights Reserved
+# Copyright: © Exathink, LLC (2011-2020) All Rights Reserved
 
 # Unauthorized use or copying of this file and its contents, via any medium
 # is strictly prohibited. The work product in this file is proprietary and
@@ -8,10 +8,11 @@
 
 # Author: Krishna Kumar
 
-from test.fixtures.graphql import *
 from graphene.test import Client
+
 from polaris.analytics.service.graphql import schema
-from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.utils.collections import dict_merge
+from test.fixtures.graphql import *
 
 
 class TestWorkItemsSourceInstance:
@@ -178,9 +179,56 @@ def work_items_sources_state_mapping_fixture(work_items_sources_fixture):
             dict(state='closed', state_type=WorkItemsStateType.closed.value)
         ])
 
-
     yield work_items_sources['github'].key
 
+
+@pytest.yield_fixture
+def work_items_sources_with_unmapped_states_fixture(work_items_sources_state_mapping_fixture):
+    work_items_source_key = work_items_sources_state_mapping_fixture
+    work_items_common = dict(
+        is_bug=True,
+        is_epic=False,
+        parent_id=None,
+        work_item_type='issue',
+        url='http://foo.com',
+        tags=['ares2'],
+        description='foo',
+        source_id=str(uuid.uuid4()),
+        next_state_seq_no=2,
+    )
+
+    with db.orm_session() as session:
+        work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+
+        work_items_source.work_items.extend([
+            WorkItem(
+                key=uuid.uuid4(),
+                name="issue 1",
+                display_id='PO-1',
+                state="Unmapped",
+                **work_items_common,
+            ),
+            # we add two work items with unmapped states here to test that only one state mapping is
+            # returned for that unmapped state
+            WorkItem(
+                key=uuid.uuid4(),
+                name="issue 2",
+                display_id='PO-2',
+                state="Unmapped",
+                **work_items_common
+            ),
+
+            # And add another unmapped state to make sure we get them all
+            WorkItem(
+                key=uuid.uuid4(),
+                name="issue 3",
+                display_id='PO-3',
+                state="Also Unmapped",
+                **work_items_common
+            )]
+        )
+
+    yield work_items_source_key
 
 @pytest.yield_fixture
 def empty_work_items_sources_state_mapping_fixture(work_items_sources_fixture):
@@ -212,18 +260,52 @@ class TestWorkItemsSourceWorkItemStateMappings:
         work_items_state_mapping = result['data']['workItemsSource']['workItemStateMappings']
 
         assert {
-            (mapping['state'], mapping['stateType'])
-            for mapping in work_items_state_mapping
-        } == {
-            ('created', WorkItemsStateType.backlog.value),
-            ('open', WorkItemsStateType.backlog.value),
-            ('upnext', WorkItemsStateType.open.value),
-            ('doing', WorkItemsStateType.wip.value),
-            ('done', WorkItemsStateType.complete.value),
-            ('closed', WorkItemsStateType.closed.value)
-        }
+                   (mapping['state'], mapping['stateType'])
+                   for mapping in work_items_state_mapping
+               } == {
+                   ('created', WorkItemsStateType.backlog.value),
+                   ('open', WorkItemsStateType.backlog.value),
+                   ('upnext', WorkItemsStateType.open.value),
+                   ('doing', WorkItemsStateType.wip.value),
+                   ('done', WorkItemsStateType.complete.value),
+                   ('closed', WorkItemsStateType.closed.value)
+               }
 
-    def it_resolves_work_items_state_mappings_when_there_are_no_mappings(self, empty_work_items_sources_state_mapping_fixture):
+    def it_resolves_unmapped_states(self, work_items_sources_with_unmapped_states_fixture):
+        source_key = work_items_sources_with_unmapped_states_fixture
+
+        client = Client(schema)
+        query = """
+                    query getWorkItemsSource($key:String!) {
+                        workItemsSource(key: $key, interfaces: [WorkItemStateMappings]){
+                            workItemStateMappings {
+                                state
+                                stateType
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(key=source_key))
+        assert 'data' in result
+        work_items_state_mapping = result['data']['workItemsSource']['workItemStateMappings']
+
+        assert {
+                   (mapping['state'], mapping['stateType'])
+                   for mapping in work_items_state_mapping
+               } == {
+                   ('created', WorkItemsStateType.backlog.value),
+                   ('open', WorkItemsStateType.backlog.value),
+                   ('upnext', WorkItemsStateType.open.value),
+                   ('doing', WorkItemsStateType.wip.value),
+                   ('done', WorkItemsStateType.complete.value),
+                   ('closed', WorkItemsStateType.closed.value),
+                   ('Unmapped', None),
+                   ('Also Unmapped', None)
+               }
+
+    def it_resolves_work_items_state_mappings_when_there_are_no_mappings(self,
+                                                                         empty_work_items_sources_state_mapping_fixture):
         source_key = empty_work_items_sources_state_mapping_fixture
 
         client = Client(schema)

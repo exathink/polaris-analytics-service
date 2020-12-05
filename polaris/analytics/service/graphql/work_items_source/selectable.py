@@ -8,7 +8,8 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, bindparam, func, case
+from polaris.common import db
+from sqlalchemy import select, bindparam, func, case, union_all, literal_column, and_
 
 from polaris.analytics.db.model import work_items_sources, work_items, work_item_state_transitions, repositories, \
     commits, work_items_commits, work_items_source_state_map
@@ -123,26 +124,51 @@ class WorkItemsSourceWorkItemStateMappings(InterfaceResolver):
 
     @staticmethod
     def interface_selector(work_items_source_nodes, **kwargs):
-        return select([
+        current_state_mapping = select([
             work_items_source_nodes.c.id,
+            work_items_source_state_map.c.state,
+            work_items_source_state_map.c.state_type
+        ]).distinct().select_from(
+            work_items_source_nodes.outerjoin(
+                work_items_source_state_map,
+                work_items_source_nodes.c.id == work_items_source_state_map.c.work_items_source_id
+            ),
+        )
+
+        unmapped_states = select([
+            work_items_source_nodes.c.id,
+            work_items.c.state,
+            literal_column('null').label('state_type'),
+        ]).distinct().select_from(
+            work_items_source_nodes.outerjoin(
+                work_items, work_items.c.work_items_source_id == work_items_source_nodes.c.id
+            )
+        ).where(
+            work_items.c.state_type == None
+        )
+
+        state_mapping = union_all(
+            current_state_mapping,
+            unmapped_states
+        ).alias()
+
+        return select([
+            state_mapping.c.id,
 
             func.json_agg(
                 case([
                     (
-                        work_items_source_state_map.c.work_items_source_id != None,
+                        and_(state_mapping.c.id != None, state_mapping.c.state != None),
                         func.json_build_object(
-                            'state', work_items_source_state_map.c.state,
-                            'state_type', work_items_source_state_map.c.state_type
+                            'state', state_mapping.c.state,
+                            'state_type', state_mapping.c.state_type
                         )
                     )
                 ], else_=None)
         ).label('work_item_state_mappings')
 
         ]).select_from(
-            work_items_source_nodes.outerjoin(
-                work_items_source_state_map,
-                work_items_source_nodes.c.id == work_items_source_state_map.c.work_items_source_id
-            )
+            state_mapping
         ).group_by(
-            work_items_source_nodes.c.id
+            state_mapping.c.id
         )

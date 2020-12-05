@@ -9,21 +9,20 @@
 # Author: Krishna Kumar
 
 
-from datetime import datetime, timedelta
 import abc
+from datetime import datetime, timedelta
 
-from polaris.common import db
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
     union_all, literal, Date, true, or_
 
 from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics, FlowTypes, \
     WorkItemTypesToFlowTypes
+from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
     work_items, work_item_state_transitions, work_items_commits, work_item_delivery_cycles, work_items_source_state_map, \
-    work_item_delivery_cycle_durations, pull_requests, work_items_pull_requests
-
+    work_item_delivery_cycle_durations, pull_requests
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
     SelectableFieldResolver
 from polaris.graphql.interfaces import NamedNode
@@ -31,24 +30,23 @@ from polaris.graphql.utils import nulls_to_zero
 from polaris.utils.collections import dict_merge
 from polaris.utils.datetime_utils import time_window
 from polaris.utils.exceptions import ProcessingException
-from polaris.analytics.db.enums import WorkItemsStateType
-from .sql_expressions import get_timeline_dates_for_trending, get_measurement_period
+from .sql_expressions import get_timeline_dates_for_trending
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics, \
+    WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
+    PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan
-
+from ..pull_request.sql_expressions import pull_request_info_columns
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
     work_item_info_group_expr_columns, date_column_is_in_measurement_window
-from ..pull_request.sql_expressions import pull_request_info_columns
 
 
 class ProjectNode(NamedNodeResolver):
@@ -692,14 +690,17 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
             select_work_items = select_work_items.where(work_items.c.is_bug == True)
 
         if 'closed_within_days' in kwargs:
-            measurement_date = datetime.utcnow().date()
-            window_start = measurement_date - timedelta(days=kwargs.get('closed_within_days') - 1)
+            measurement_date = datetime.utcnow()
 
             select_work_items = select_work_items.where(
                 or_(
                     work_items.c.state_type == None,
                     work_items.c.state_type != WorkItemsStateType.closed.value,
-                    work_item_delivery_cycles.c.end_date.between(window_start, measurement_date + timedelta(days=1))
+                    date_column_is_in_measurement_window(
+                        work_item_delivery_cycles.c.end_date,
+                        measurement_date=measurement_date,
+                        measurement_window=kwargs.get('closed_within_days')
+                    )
                 )
             )
 

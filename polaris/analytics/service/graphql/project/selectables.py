@@ -1776,11 +1776,10 @@ class ProjectsFlowMixTrends(InterfaceResolver):
             )
         ).where(
             and_(
-                work_item_delivery_cycles.c.end_date.between(
-                    projects_timeline_dates.c.measurement_date - timedelta(
-                        days=measurement_window
-                    ),
-                    projects_timeline_dates.c.measurement_date
+                date_column_is_in_measurement_window(
+                    work_item_delivery_cycles.c.end_date,
+                    measurement_date=projects_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
                 ),
                 *ProjectCycleMetricsTrends.get_work_item_filter_clauses(flow_mix_trends_args),
                 *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(

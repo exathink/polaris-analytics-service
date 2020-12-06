@@ -146,7 +146,7 @@ class TestProjectCapacityTrends:
                         key=uuid.uuid4().hex,
                         source_commit_id=uuid.uuid4().hex,
                         repository_id=test_repo.id,
-                        commit_date=start_date + timedelta(days=i),
+                        commit_date=start_date + timedelta(days=i + 1),
                         **contributor_a['as_author'],
                         **contributor_a['as_committer'],
                         **commits_common
@@ -155,7 +155,7 @@ class TestProjectCapacityTrends:
                         key=uuid.uuid4().hex,
                         source_commit_id=uuid.uuid4().hex,
                         repository_id=test_repo.id,
-                        commit_date=start_date + timedelta(days=i),
+                        commit_date=start_date + timedelta(days=i + 1),
                         **contributor_b['as_author'],
                         **contributor_b['as_committer'],
                         **commits_common

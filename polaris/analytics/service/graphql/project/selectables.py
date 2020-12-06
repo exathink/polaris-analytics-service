@@ -1869,11 +1869,10 @@ class ProjectsCapacityTrends(InterfaceResolver):
             )
         ).where(
             and_(
-                commits.c.commit_date.between(
-                    timeline_dates.c.measurement_date - timedelta(
-                        days=measurement_window
-                    ),
-                    timeline_dates.c.measurement_date
+                date_column_is_in_measurement_window(
+                    commits.c.commit_date,
+                    measurement_date=timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
                 ),
                 projects.c.id.in_(select([project_nodes.c.id]))
             )
@@ -1950,11 +1949,10 @@ class ProjectsCapacityTrends(InterfaceResolver):
             )
         ).where(
             and_(
-                commits.c.commit_date.between(
-                    timeline_dates.c.measurement_date - timedelta(
-                        days=measurement_window
-                    ),
-                    timeline_dates.c.measurement_date
+                date_column_is_in_measurement_window(
+                    commits.c.commit_date,
+                    measurement_date=timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
                 ),
                 projects.c.id.in_(select([project_nodes.c.id]))
             )

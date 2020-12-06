@@ -9,12 +9,12 @@
 # Author: Krishna Kumar
 
 from datetime import datetime, timedelta
-from sqlalchemy import and_, cast, Text, func, case, select, literal
-from polaris.analytics.db.enums import WorkItemsStateType
-from polaris.utils.exceptions import ProcessingException
 
-from polaris.analytics.db.model import work_items, work_item_delivery_cycles, work_item_delivery_cycle_durations, \
-    work_items_source_state_map
+from sqlalchemy import and_, cast, Text, func, case, select
+
+from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.analytics.db.model import work_items, work_item_delivery_cycles
+from polaris.utils.exceptions import ProcessingException
 
 
 def work_item_event_key_column(work_items, work_item_state_transitions):
@@ -206,12 +206,32 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
         return select_stmt
 
 
+# Utility function to encapsulate the windowing logic
+def date_column_is_in_measurement_window(date_column, measurement_date, measurement_window):
+    # for the given measurement date which may be a timestamp, set the measurement_date to the date
+    # value for that timestamp. This normalizes measurements to begin at the day boundary.
+    # we add the instance check here to allow us to use this with measurement_dates that are columns
+    # in  a table as well.
+    if isinstance(measurement_date, datetime):
+        measurement_date = measurement_date.date()
+    # we will end the window at the end of the day of the day of measurement, so we always include the
+    # items that occur on the measurement day in the filter.
+    window_end = measurement_date + timedelta(days=1)
+    # since we include the measurement day in the window, we reduce the overall measurements
+    # days by 1 day in starting the window - so we go measurement_window - 1 days back from the measurement_date
+    window_start = measurement_date - timedelta(days=measurement_window - 1)
+
+    return date_column.between(window_start, window_end)
+
+
 def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
     if 'closed_within_days' in kwargs:
-        measurement_date = datetime.utcnow().date()
-        window_start = measurement_date - timedelta(days=kwargs.get('closed_within_days') - 1)
         select_stmt = select_stmt.where(
-            work_item_delivery_cycles.c.end_date.between(window_start, measurement_date + timedelta(days=1))
+            date_column_is_in_measurement_window(
+                work_item_delivery_cycles.c.end_date,
+                measurement_date=datetime.utcnow(),
+                measurement_window=kwargs['closed_within_days']
+            )
         )
 
     if kwargs.get('specs_only'):

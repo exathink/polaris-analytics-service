@@ -1866,6 +1866,8 @@ class ProjectsCapacityTrends(InterfaceResolver):
                 projects_repositories, projects_repositories.c.project_id == projects.c.id
             ).join(
                 commits, projects_repositories.c.repository_id == commits.c.repository_id
+            ).join(
+                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(
@@ -1874,6 +1876,7 @@ class ProjectsCapacityTrends(InterfaceResolver):
                     measurement_date=timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 ),
+                contributor_aliases.c.robot == False,
                 projects.c.id.in_(select([project_nodes.c.id]))
             )
         ).group_by(
@@ -1946,6 +1949,8 @@ class ProjectsCapacityTrends(InterfaceResolver):
                 projects_repositories, projects_repositories.c.project_id == projects.c.id
             ).join(
                 commits, projects_repositories.c.repository_id == commits.c.repository_id
+            ).join(
+                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(
@@ -1954,6 +1959,7 @@ class ProjectsCapacityTrends(InterfaceResolver):
                     measurement_date=timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 ),
+                contributor_aliases.c.robot == False,
                 projects.c.id.in_(select([project_nodes.c.id]))
             )
         ).alias()

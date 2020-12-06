@@ -8,15 +8,13 @@
 
 # Author: Krishna Kumar
 
-import pytest
-from test.fixtures.graphql import *
-from polaris.analytics.service.graphql import schema
-
-from test.graphql.queries.projects.shared_testing_mixins import \
-    TrendingWindowMeasurementDate
 from graphene.test import Client
 
-from operator import itemgetter
+from polaris.analytics.service.graphql import schema
+from test.fixtures.graphql import *
+from test.graphql.queries.projects.shared_testing_mixins import \
+    TrendingWindowMeasurementDate
+
 
 class TestProjectCapacityTrends:
 
@@ -45,7 +43,9 @@ class TestProjectCapacityTrends:
                             key=contributor_key,
                             name=contributor_name,
                             contributor_id=contributor_id,
-                            source='vcs'
+                            source='vcs',
+                            # The last contributor we will make a robot.
+                            robot=(i == 2),
                         )
                     )
                 ).inserted_primary_key[0]
@@ -82,7 +82,7 @@ class TestProjectCapacityTrends:
 
             contributor_a=contributors_fixture[0],
             contributor_b=contributors_fixture[1],
-            contributor_c=contributors_fixture[2],
+            contributor_c_robot=contributors_fixture[2],
 
             commits_common=commits_common,
             create_test_commits=create_test_commits,
@@ -169,6 +169,8 @@ class TestProjectCapacityTrends:
                 parent=fixture,
                 test_commits=commits,
             )
+
+
 
         class TestAggregateMetrics:
 
@@ -321,3 +323,163 @@ class TestProjectCapacityTrends:
                     contributorDetail['contributorKey']
                     for contributorDetail in project['contributorDetail']
                 )) == 2
+
+
+    class TestRobotFiltering:
+        @pytest.yield_fixture
+        def setup(self, setup):
+            fixture = setup
+            test_repo = fixture.repositories['alpha']
+            contributor_a = fixture.contributor_a
+
+            contributor_c_robot = fixture.contributor_c_robot
+            commits_common = fixture.commits_common
+
+            start_date = datetime.utcnow() - timedelta(days=60)
+            commits = []
+            for i in range(0, 60):
+                commits.extend([
+                    dict(
+                        key=uuid.uuid4().hex,
+                        source_commit_id=uuid.uuid4().hex,
+                        repository_id=test_repo.id,
+                        commit_date=start_date + timedelta(days=i + 1),
+                        # in this case contributor c is committer only, should still be filtered out.
+                        **contributor_a['as_author'],
+                        **contributor_c_robot['as_committer'],
+                        **commits_common
+                    ),
+                    dict(
+                        key=uuid.uuid4().hex,
+                        source_commit_id=uuid.uuid4().hex,
+                        repository_id=test_repo.id,
+                        commit_date=start_date + timedelta(days=i + 1),
+                        # In this case contributor c is both author and committer
+                        # should be filtered out
+                        **contributor_c_robot['as_author'],
+                        **contributor_c_robot['as_committer'],
+                        **commits_common
+                    ),
+                ])
+
+            yield Fixture(
+                parent=fixture,
+                test_commits=commits,
+            )
+
+        class TestAggregateMetrics:
+
+            @pytest.yield_fixture
+            def setup(self, setup):
+                fixture = setup
+
+                measurements_query = """
+                                        query getProjectCapacityTrends(
+                                            $project_key:String!, 
+                                            $days: Int!, 
+                                            $window: Int!,
+                                            $sample: Int,
+                                        ) {
+                                            project(
+                                                key: $project_key, 
+                                                interfaces: [CapacityTrends], 
+                                                capacityTrendsArgs: {
+                                                    days: $days,
+                                                    measurementWindow: $window,
+                                                    samplingFrequency: $sample,                            
+                                                }
+
+                                            ) {
+                                                capacityTrends {
+                                                    measurementDate
+                                                    measurementWindow
+                                                    totalCommitDays
+                                                    minCommitDays
+                                                    maxCommitDays
+                                                    avgCommitDays
+                                                }
+                                            }
+                                        }
+                                    """
+                yield Fixture(
+                    parent=fixture,
+                    query=measurements_query
+                )
+
+
+
+            def it_filters_out_commits_with_robots_as_commiter(self, setup):
+                fixture = setup
+
+                fixture.create_test_commits(fixture.test_commits)
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=30,
+                    window=30,
+                    sample=7,
+
+                ))
+                assert result['data']
+                project = result['data']['project']
+                assert len(project['capacityTrends']) == 0
+
+        class TestContributorDetail:
+
+            @pytest.yield_fixture
+            def setup(self, setup):
+                fixture = setup
+
+                measurements_query = """
+                                        query getProjectCapacityTrends(
+                                            $project_key:String!, 
+                                            $days: Int!, 
+                                            $window: Int!,
+                                            $sample: Int,
+                                        ) {
+                                            project(
+                                                key: $project_key, 
+                                                interfaces: [CapacityTrends], 
+                                                capacityTrendsArgs: {
+                                                    days: $days,
+                                                    measurementWindow: $window,
+                                                    samplingFrequency: $sample,
+                                                    showContributorDetail: true                            
+                                                }
+
+                                            ) {
+                                                contributorDetail {
+                                                    measurementDate
+                                                    measurementWindow
+                                                    contributorName
+                                                    contributorKey
+                                                    totalCommitDays
+                                                }
+                                            }
+                                        }
+                                    """
+                yield Fixture(
+                    parent=fixture,
+                    query=measurements_query,
+
+                )
+
+            def it_filters_out_commits_with_robots_as_committer(self, setup):
+                fixture = setup
+
+                fixture.create_test_commits(fixture.test_commits)
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=30,
+                    window=30,
+                    sample=7,
+
+                ))
+                assert result['data']
+                project = result['data']['project']
+                assert len(project['contributorDetail']) == 0

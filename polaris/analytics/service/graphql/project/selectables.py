@@ -8,6 +8,7 @@
 
 # Author: Krishna Kumar
 
+from polaris.common import db
 
 import abc
 from datetime import datetime, timedelta
@@ -46,7 +47,7 @@ from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
-    work_item_info_group_expr_columns, date_column_is_in_measurement_window
+    work_item_info_group_expr_columns, date_column_is_in_measurement_window, apply_specs_only_filter
 
 
 class ProjectNode(NamedNodeResolver):
@@ -661,52 +662,119 @@ class ProjectPullRequestEventSpan(InterfaceResolver):
 class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
     interface = WorkItemStateTypeAggregateMetrics
 
-    @staticmethod
-    def interface_selector(project_nodes, **kwargs):
-        select_work_items = select([
-            project_nodes.c.id,
-            func.coalesce(work_items.c.state_type, 'unmapped').label('state_type'),
-            func.count(work_item_delivery_cycles.c.delivery_cycle_id).label('count'),
-            func.sum(
-                case(
-                    [
-                        (work_item_delivery_cycles.c.commit_count > 0, 1)
-                    ],
-                    else_=0
-                )
-            ).label('spec_count'),
-            func.sum(work_item_delivery_cycles.c.effort).label('total_effort'),
+    @classmethod
+    def select_non_closed_work_items(cls, project_nodes, select_work_items_columns, **kwargs):
+        non_closed_work_items = select([
+            *select_work_items_columns,
+            work_items.c.state_type
         ]).select_from(
             project_nodes.join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
+                # here we only include the current delivery cycles.
                 work_item_delivery_cycles,
                 work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
             )
+        ).where(
+            work_item_delivery_cycles.c.end_date == None
         )
-        if 'defects_only' in kwargs:
-            select_work_items = select_work_items.where(work_items.c.is_bug == True)
+        # apply work item filters
+        non_closed_work_items = work_items_connection_apply_filters(
+            non_closed_work_items,
+            work_items,
+            **kwargs
+        )
 
-        if 'closed_within_days' in kwargs:
-            measurement_date = datetime.utcnow()
+        # apply the specs only filter for work_item_delivery_cycles. Note we cannot apply the
+        # closed within days filter to open items since it will filter everything out.
+        # that's why we are explicitly only including the specs_only _filter.
+        non_closed_work_items = apply_specs_only_filter(
+            non_closed_work_items,
+            work_item_delivery_cycles,
+            **kwargs
+        )
 
-            select_work_items = select_work_items.where(
-                or_(
-                    work_items.c.state_type == None,
-                    work_items.c.state_type != WorkItemsStateType.closed.value,
-                    date_column_is_in_measurement_window(
-                        work_item_delivery_cycles.c.end_date,
-                        measurement_date=measurement_date,
-                        measurement_window=kwargs.get('closed_within_days')
-                    )
-                )
+        return non_closed_work_items
+
+    @classmethod
+    def select_closed_work_items(cls, project_nodes, select_work_items_columns, kwargs):
+        closed_work_items = select([
+            *select_work_items_columns,
+            # we cannot use the work_item's state type here because
+            # we need the state of the delivery cycle not the state
+            # of the work item. We could grab this by joining to the work item
+            # state transition table, but assuming that the delivery cycle with
+            # a non-null end date is always in a state type closed,
+            # it should be fine to just return the value directly here.
+            literal('closed').label('state_type'),
+        ]).select_from(
+            project_nodes.join(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                # This includes all closed delivery cycles of a work item so that we match
+                # the calculations/counts for the Closed items metrics.
+                work_item_delivery_cycles,
+                work_item_delivery_cycles.c.work_item_id == work_items.c.id
             )
+        ).where(
+            work_item_delivery_cycles.c.end_date != None
+        )
+        # Apply the standard filters for work items and work items delivery cycles here.
+        # For closed items we apply the delivery cycle filters so that we match
+        # the values that are calculated for closed item flow metrics.
+        closed_work_items = work_item_delivery_cycles_connection_apply_filters(
+            closed_work_items,
+            work_items,
+            work_item_delivery_cycles,
+            **kwargs
+        )
+        return closed_work_items
 
-        work_items_by_state_type = select_work_items.group_by(
-            project_nodes.c.id,
-            work_items.c.state_type
+    @classmethod
+    def interface_selector(cls, project_nodes, **kwargs):
+
+        select_work_items_columns = [
+            project_nodes.c.id.label('project_id'),
+            work_item_delivery_cycles.c.delivery_cycle_id,
+            work_item_delivery_cycles.c.effort,
+            work_item_delivery_cycles.c.end_date,
+            work_item_delivery_cycles.c.commit_count,
+            work_items.c.is_bug,
+        ]
+        # first collect the non-closed items (the top of the funnel)
+        non_closed_work_items = cls.select_non_closed_work_items(
+            project_nodes,
+            select_work_items_columns,
+            **kwargs
+        )
+
+
+        #
+        # now collect the closed items (bottom of funnel)
+        # here we include all closed delivery cycles of a work item
+        # so that we match the calculations for closed items flow metrics.
+        closed_work_items = cls.select_closed_work_items(project_nodes, select_work_items_columns, kwargs)
+
+        selected_work_items = union_all(
+            closed_work_items,
+            non_closed_work_items
+        ).alias()
+
+        # aggregate metrics by project_id and state_type
+        work_items_by_state_type = select([
+            selected_work_items.c.project_id.label('id'),
+            func.coalesce(selected_work_items.c.state_type, 'unmapped').label('state_type'),
+            func.count(selected_work_items.c.delivery_cycle_id).label('count'),
+            func.sum(selected_work_items.c.effort).label('total_effort'),
+        ]).select_from(
+            selected_work_items
+        ).group_by(
+            selected_work_items.c.project_id,
+            selected_work_items.c.state_type
         ).alias()
 
         return select([
@@ -728,17 +796,6 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
                         work_items_by_state_type.c.id != None,
                         func.json_build_object(
                             'state_type', work_items_by_state_type.c.state_type,
-                            'count', work_items_by_state_type.c.spec_count
-                        )
-                    )
-                ], else_=None)
-            ).label('spec_state_type_counts'),
-            func.json_agg(
-                case([
-                    (
-                        work_items_by_state_type.c.id != None,
-                        func.json_build_object(
-                            'state_type', work_items_by_state_type.c.state_type,
                             'total_effort', func.coalesce(work_items_by_state_type.c.total_effort, 0)
                         )
                     )
@@ -752,6 +809,10 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
         ).group_by(
             project_nodes.c.id
         )
+
+
+
+
 
 
 class ProjectCycleMetrics(InterfaceResolver):

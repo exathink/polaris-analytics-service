@@ -224,7 +224,7 @@ def date_column_is_in_measurement_window(date_column, measurement_date, measurem
     return date_column.between(window_start, window_end)
 
 
-def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
+def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs):
     if 'closed_within_days' in kwargs:
         select_stmt = select_stmt.where(
             date_column_is_in_measurement_window(
@@ -233,11 +233,21 @@ def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, 
                 measurement_window=kwargs['closed_within_days']
             )
         )
+    return select_stmt
 
+
+def apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs):
     if kwargs.get('specs_only'):
         select_stmt = select_stmt.where(
             work_item_delivery_cycles.c.commit_count > 0
         )
+    return select_stmt
+
+
+def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
+
+    select_stmt = apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs)
+    select_stmt = apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs)
 
     return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
 

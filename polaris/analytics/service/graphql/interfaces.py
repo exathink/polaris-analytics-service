@@ -356,7 +356,7 @@ class StateTypeAggregateMeasure(graphene.ObjectType):
 
 class WorkItemStateTypeAggregateMetrics(graphene.Interface):
     work_item_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=False)
-    spec_state_type_counts = graphene.Field(StateTypeAggregateMeasure, required=False)
+
     total_effort_by_state_type = graphene.Field(StateTypeAggregateMeasure, required=False)
 
 

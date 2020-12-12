@@ -9,7 +9,9 @@
 # Author: Krishna Kumar
 
 from polaris.common import db
-from sqlalchemy import select, bindparam, func, case, union_all, literal_column, and_
+from polaris.analytics.db.enums import WorkItemsStateType
+
+from sqlalchemy import select, bindparam, func, case, union_all, literal_column, and_, Text
 
 from polaris.analytics.db.model import work_items_sources, work_items, work_item_state_transitions, repositories, \
     commits, work_items_commits, work_items_source_state_map
@@ -138,7 +140,7 @@ class WorkItemsSourceWorkItemStateMappings(InterfaceResolver):
         unmapped_states = select([
             work_items_source_nodes.c.id,
             work_items.c.state,
-            literal_column('null').label('state_type'),
+            literal_column(f"'{WorkItemsStateType.unmapped.value}'").label('state_type'),
         ]).distinct().select_from(
             work_items_source_nodes.outerjoin(
                 work_items, work_items.c.work_items_source_id == work_items_source_nodes.c.id

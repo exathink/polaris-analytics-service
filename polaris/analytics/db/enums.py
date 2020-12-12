@@ -8,6 +8,7 @@ class WorkItemsStateType(Enum):
     complete = 'complete'
     backlog = 'backlog'
     closed = 'closed'
+    unmapped = 'unmapped'
 
 
 class FeatureFlagScope(Enum):

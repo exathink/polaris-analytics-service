@@ -300,8 +300,8 @@ class TestWorkItemsSourceWorkItemStateMappings:
                    ('doing', WorkItemsStateType.wip.value),
                    ('done', WorkItemsStateType.complete.value),
                    ('closed', WorkItemsStateType.closed.value),
-                   ('Unmapped', None),
-                   ('Also Unmapped', None)
+                   ('Unmapped', WorkItemsStateType.unmapped.value),
+                   ('Also Unmapped', WorkItemsStateType.unmapped.value)
                }
 
     def it_resolves_work_items_state_mappings_when_there_are_no_mappings(self,

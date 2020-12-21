@@ -1076,10 +1076,6 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
         columns = []
         excluded_types = []
 
-        if not cycle_metrics_trends_args.include_epics:
-            # include_epics is false by default so this will normally be added
-            excluded_types.append(JiraWorkItemType.epic.value)
-
         if not cycle_metrics_trends_args.include_sub_tasks:
             # include subtasks is true by default, so this needs to be explicity overriden
             # if it is not to be added.
@@ -1088,6 +1084,11 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
         columns.append(
             work_items.c.work_item_type.notin_(excluded_types)
         )
+
+        if not cycle_metrics_trends_args.include_epics:
+            # include_epics is false by default so this will normally be added
+            columns.append(work_items.c.is_epic == False)
+
         if cycle_metrics_trends_args.defects_only:
             columns.append(
                 work_items.c.is_bug == True

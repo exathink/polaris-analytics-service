@@ -627,8 +627,8 @@ class TestProjectResponseTimePredictabilityTrends:
                 api_helper = fixture.api_helper
 
                 # set up epics and subtasks
-                fixture.work_items[0]['work_item_type'] = JiraWorkItemType.epic.value
-                fixture.work_items[1]['work_item_type'] = JiraWorkItemType.sub_task.value
+                fixture.work_items[0]['is_epic'] = True
+                fixture.work_items[1]['work_item_type'] = 'subtask'
 
                 api_helper.import_work_items(fixture.work_items)
 

@@ -1449,7 +1449,7 @@ class TestProjectCycleMetricsTrends:
             for i in range(0, 3)
         ]
 
-        work_items[0]['work_item_type'] = 'epic'
+        work_items[0]['is_epic'] = True
         work_items[1]['work_item_type'] = 'subtask'
 
         api_helper.import_work_items(work_items)
@@ -1526,7 +1526,7 @@ class TestProjectCycleMetricsTrends:
             for i in range(0, 3)
         ]
 
-        work_items[0]['work_item_type'] = 'epic'
+        work_items[0]['is_epic'] = True
         work_items[1]['work_item_type'] = 'subtask'
 
         api_helper.import_work_items(work_items)

@@ -258,6 +258,121 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
         assert state_type_counts['closed'] == 1
         assert state_type_counts['complete'] is None
 
+    def it_excludes_epics_by_default(self, api_work_items_import_fixture):
+        organization, project, work_items_source, _ = api_work_items_import_fixture
+
+        work_items_common = dict(
+            work_item_type='issue',
+            url='http://foo.com',
+            tags=['ares2'],
+            description='foo',
+            source_id=str(uuid.uuid4()),
+            is_bug=False,
+            parent_id=None
+        )
+
+        api.import_new_work_items(
+            organization_key=organization.key,
+            work_item_source_key=work_items_source.key,
+            work_item_summaries=[
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    is_epic=False,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 2',
+                    display_id='1001',
+                    state='upnext',
+                    is_epic=False,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 3',
+                    display_id='1002',
+                    state='upnext',
+                    is_epic=True,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 4',
+                    display_id='1004',
+                    is_epic=False,
+                    state='doing',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 5',
+                    display_id='1005',
+                    state='doing',
+                    is_epic=True,
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 6',
+                    display_id='1006',
+                    is_epic=True,
+                    state='closed',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 6',
+                    display_id='1006',
+                    is_epic=False,
+                    state='closed',
+                    created_at=get_date("2018-12-02"),
+                    updated_at=get_date("2018-12-03"),
+                    **work_items_common
+                ),
+
+            ]
+        )
+
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics]) {
+                            workItemStateTypeCounts {
+                                backlog
+                                open
+                                wip
+                                complete
+                                closed
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        assert state_type_counts['backlog'] == 1
+        assert state_type_counts['open'] == 1
+        assert state_type_counts['wip'] == 1
+        assert state_type_counts['closed'] == 1
+        assert state_type_counts['complete'] is None
+
     def it_supports_filtering_by_defects_only_when_there_are_no_defects(self, api_work_items_import_fixture):
         organization, project, work_items_source, _ = api_work_items_import_fixture
 

@@ -100,6 +100,10 @@ class ProjectWorkItemsSourceNodes(ConnectionResolver):
             )
         ).where(projects.c.key == bindparam('key'))
 
+    @staticmethod
+    def sort_order(project_work_item_source_nodes, **kwargs):
+        return [project_work_item_source_nodes.c.id.desc()]
+
 
 class ProjectRecentlyActiveWorkItemsNodes(ConnectionResolver):
     interfaces = (NamedNode, WorkItemInfo, CommitCount)

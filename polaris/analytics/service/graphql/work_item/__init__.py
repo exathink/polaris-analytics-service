@@ -283,7 +283,18 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
         active_only=graphene.Argument(
             graphene.Boolean,
             required=False,
-            description="Return only delivery cycles that are not closed"
+            description="Return only delivery cycles that are in open, wip, or complete phases"
+        ),
+        funnel_view=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            description="Return a record for the each work item that is currently in "
+                        "backlog, open, wip, or complete state (the top of the funnel) "
+                        "and a record for each closed delivery cycle "
+                        "for closed work items (bottom of the funnel)."
+                        "A work item may show up once in the top of the funnel and multiple times"
+                        "in the bottom of the funnel if it has many delivery cycles. Funnel view can be combined"
+                        "with specs_only, defects_only and closed_within_days params to limit the selection further."
         ),
         specs_only=graphene.Argument(
             graphene.Boolean,

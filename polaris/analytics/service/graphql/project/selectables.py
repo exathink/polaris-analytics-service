@@ -31,7 +31,7 @@ from polaris.graphql.utils import nulls_to_zero
 from polaris.utils.collections import dict_merge
 from polaris.utils.datetime_utils import time_window
 from polaris.utils.exceptions import ProcessingException
-from .sql_expressions import get_timeline_dates_for_trending, select_non_closed_work_items, select_closed_work_items
+from .sql_expressions import get_timeline_dates_for_trending, select_funnel_work_items
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
@@ -305,17 +305,11 @@ class ProjectRecentlyActiveContributorNodes(ConnectionResolver):
 class ProjectWorkItemNodes(ConnectionResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
 
-    @staticmethod
-    def connection_nodes_selector(**kwargs):
-        select_stmt = select([
-            work_items_sources.c.key.label('work_items_source_key'),
-            work_items_sources.c.name.label('work_items_source_name'),
-            work_items_sources.c.integration_type.label('work_tracking_integration_type'),
-            work_items.c.name,
-            work_items.c.key,
-            *work_item_info_columns(work_items),
-            work_items.c.id
-        ]).select_from(
+    @classmethod
+    def default_connection_nodes_selector(cls, work_items_connection_columns, **kwargs):
+        select_stmt = select(
+            work_items_connection_columns
+        ).select_from(
             projects.join(
                 work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
@@ -330,6 +324,36 @@ class ProjectWorkItemNodes(ConnectionResolver):
         select_stmt = work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
         return work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles,
                                                                   **kwargs)
+
+    @classmethod
+    def funnel_view_connection_nodes_selector(cls, work_items_connection_columns, **kwargs):
+        project_nodes = select([
+            projects.c.id,
+            projects.c.name,
+            projects.c.key
+        ]).where(
+            projects.c.key == bindparam('key')
+        ).alias()
+
+        select_work_items = select_funnel_work_items(project_nodes, work_items_connection_columns, **kwargs)
+        return select([select_work_items])
+
+    @classmethod
+    def connection_nodes_selector(cls, **kwargs):
+        work_items_connection_columns = [
+            work_items.c.id,
+            work_items.c.name,
+            work_items.c.key,
+            work_items_sources.c.key.label('work_items_source_key'),
+            work_items_sources.c.name.label('work_items_source_name'),
+            work_items_sources.c.integration_type.label('work_tracking_integration_type'),
+            *work_item_info_columns(work_items),
+
+        ]
+        if 'funnel_view' in kwargs:
+            return cls.funnel_view_connection_nodes_selector(work_items_connection_columns, **kwargs)
+        else:
+            return cls.default_connection_nodes_selector(work_items_connection_columns, **kwargs)
 
     @staticmethod
     def sort_order(project_work_items_nodes, **kwargs):
@@ -666,10 +690,6 @@ class ProjectPullRequestEventSpan(InterfaceResolver):
 class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
     interface = WorkItemStateTypeAggregateMetrics
 
-
-
-
-
     @classmethod
     def interface_selector(cls, project_nodes, **kwargs):
 
@@ -681,36 +701,8 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
             work_item_delivery_cycles.c.commit_count,
             work_items.c.is_bug,
         ]
-        # first collect the non-closed items (the top of the funnel)
-        non_closed_work_items_columns = [
-            *shared_work_items_columns,
-            work_items.c.state_type
-        ]
-        non_closed_work_items = select_non_closed_work_items(
-            project_nodes,
-            non_closed_work_items_columns,
-            **kwargs
-        )
 
-        # now collect the closed items (bottom of funnel)
-        # here we include all closed delivery cycles of a work item
-        # so that we match the calculations for closed items flow metrics.
-        closed_work_items_columns = [
-            *shared_work_items_columns,
-            # we cannot use the work_item's state type here because
-            # we need the state of the delivery cycle not the state
-            # of the work item. We could grab this by joining to the work item
-            # state transition table, but assuming that the delivery cycle with
-            # a non-null end date is always in a state type closed,
-            # it should be fine to just return the value directly here.
-            literal('closed').label('state_type'),
-        ]
-        closed_work_items = select_closed_work_items(project_nodes, closed_work_items_columns, **kwargs)
-
-        selected_work_items = union_all(
-            closed_work_items,
-            non_closed_work_items
-        ).alias()
+        selected_work_items = select_funnel_work_items(project_nodes, shared_work_items_columns, **kwargs)
 
         # aggregate metrics by project_id and state_type
         work_items_by_state_type = select([

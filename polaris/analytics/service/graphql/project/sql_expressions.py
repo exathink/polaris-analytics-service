@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 from datetime import datetime, timedelta
-from sqlalchemy import select, cast, func, Date
+from sqlalchemy import select, cast, func, Date, literal, union_all
 
 from polaris.utils.exceptions import ProcessingException
 from polaris.analytics.db.model import work_items, work_items_sources, work_item_delivery_cycles
@@ -120,3 +120,46 @@ def select_closed_work_items(project_nodes, select_work_items_columns, **kwargs)
         **kwargs
     )
     return closed_work_items
+
+
+def select_funnel_work_items(project_nodes, select_work_items_columns, **kwargs):
+    # we need to strip out the state type column
+    # from the input list if it is provided, since have custom logic
+    # around how we show state type for the top of the funnel and the
+    # bottom of the funnel.
+    select_columns = [
+        column
+        for column in select_work_items_columns
+        if column.name != 'state_type'
+    ]
+
+    # first collect the non-closed items (the top of the funnel)
+    non_closed_work_items_columns = [
+        *select_columns,
+        work_items.c.state_type
+    ]
+    non_closed_work_items = select_non_closed_work_items(
+        project_nodes,
+        non_closed_work_items_columns,
+        **kwargs
+    )
+
+    # now collect the closed items (bottom of funnel)
+    # here we include all closed delivery cycles of a work item
+    # so that we match the calculations for closed items flow metrics.
+    closed_work_items_columns = [
+        *select_columns,
+        # we cannot use the work_item's state type here because
+        # we need the state of the delivery cycle not the state
+        # of the work item. We could grab this by joining to the work item
+        # state transition table, but assuming that the delivery cycle with
+        # a non-null end date is always in a state type closed,
+        # it should be fine to just return the value directly here.
+        literal('closed').label('state_type'),
+    ]
+    closed_work_items = select_closed_work_items(project_nodes, closed_work_items_columns, **kwargs)
+
+    return union_all(
+        closed_work_items,
+        non_closed_work_items
+    ).alias()

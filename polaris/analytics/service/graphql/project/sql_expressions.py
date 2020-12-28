@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from sqlalchemy import select, cast, func, Date
 
 from polaris.utils.exceptions import ProcessingException
+from polaris.analytics.db.model import work_items, work_items_sources, work_item_delivery_cycles
+from ..work_item.sql_expressions import apply_specs_only_filter, work_items_connection_apply_filters, work_item_delivery_cycles_connection_apply_filters
 
 
 def get_measurement_period(trends_args, arg_name=None, interface_name=None):
@@ -58,3 +60,63 @@ def get_timeline_dates_for_trending(trends_args, arg_name=None, interface_name=N
             Date
         ).label('measurement_date')
     ]).alias()
+
+
+def select_non_closed_work_items(project_nodes, select_work_items_columns, **kwargs):
+    non_closed_work_items = select(select_work_items_columns).select_from(
+        project_nodes.join(
+            work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
+        ).join(
+            work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+        ).join(
+            # here we only include the current delivery cycles.
+            work_item_delivery_cycles,
+            work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+        )
+    ).where(
+        work_item_delivery_cycles.c.end_date == None
+    )
+    # apply work item filters
+    non_closed_work_items = work_items_connection_apply_filters(
+        non_closed_work_items,
+        work_items,
+        **kwargs
+    )
+
+    # apply the specs only filter for work_item_delivery_cycles. Note we cannot apply the
+    # closed within days filter to open items since it will filter everything out.
+    # that's why we are explicitly only including the specs_only _filter.
+    non_closed_work_items = apply_specs_only_filter(
+        non_closed_work_items,
+        work_item_delivery_cycles,
+        **kwargs
+    )
+
+    return non_closed_work_items
+
+
+def select_closed_work_items(project_nodes, select_work_items_columns, **kwargs):
+    closed_work_items = select(select_work_items_columns).select_from(
+        project_nodes.join(
+            work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
+        ).join(
+            work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+        ).join(
+            # This includes all closed delivery cycles of a work item so that we match
+            # the calculations/counts for the Closed items metrics.
+            work_item_delivery_cycles,
+            work_item_delivery_cycles.c.work_item_id == work_items.c.id
+        )
+    ).where(
+        work_item_delivery_cycles.c.end_date != None
+    )
+    # Apply the standard filters for work items and work items delivery cycles here.
+    # For closed items we apply the delivery cycle filters so that we match
+    # the values that are calculated for closed item flow metrics.
+    closed_work_items = work_item_delivery_cycles_connection_apply_filters(
+        closed_work_items,
+        work_items,
+        work_item_delivery_cycles,
+        **kwargs
+    )
+    return closed_work_items

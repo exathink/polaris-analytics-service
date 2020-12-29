@@ -952,6 +952,7 @@ class TestProjectWorkItemsFunnelView:
             project=project,
             work_items=work_items,
             api_helper=api_helper,
+            work_items_common=work_items_common
 
         )
     def it_returns_work_items_in_all_state_types(self, setup):
@@ -979,9 +980,45 @@ class TestProjectWorkItemsFunnelView:
         work_items = result['data']['project']['workItems']['edges']
         assert len(work_items) == 6
 
+    def it_returns_unmapped_work_items_as_unmapped(self, setup):
+        fixture = setup
+        fixture.api_helper.import_work_items([
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 7',
+                display_id='1007',
+                state='unknown_state',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **fixture.work_items_common
+            )
+        ]),
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemsFunnelView($project_key:String!) {
+                        project(key: $project_key) {
+                            workItems(funnelView: true) {
+                                edges { 
+                                    node {
+                                        name
+                                        displayId
+                                        state
+                                        stateType
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_items = [edge['node'] for edge in result['data']['project']['workItems']['edges']]
+        assert len(work_items) == 7
+        assert find(work_items, lambda work_item: work_item['name'] == 'Issue 7')['stateType'] == 'unmapped'
+
     def it_respects_the_closed_within_days_param(self, setup):
         fixture = setup
-
 
         fixture.api_helper.update_work_items(
             [

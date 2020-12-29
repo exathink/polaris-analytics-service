@@ -707,7 +707,7 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
         # aggregate metrics by project_id and state_type
         work_items_by_state_type = select([
             selected_work_items.c.project_id.label('id'),
-            func.coalesce(selected_work_items.c.state_type, 'unmapped').label('state_type'),
+            selected_work_items.c.state_type,
             func.count(selected_work_items.c.delivery_cycle_id).label('count'),
             func.sum(selected_work_items.c.effort).label('total_effort'),
         ]).select_from(

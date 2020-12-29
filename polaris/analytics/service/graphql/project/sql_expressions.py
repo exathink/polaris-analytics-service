@@ -136,7 +136,7 @@ def select_funnel_work_items(project_nodes, select_work_items_columns, **kwargs)
     # first collect the non-closed items (the top of the funnel)
     non_closed_work_items_columns = [
         *select_columns,
-        work_items.c.state_type
+        func.coalesce(work_items.c.state_type, 'unmapped').label('state_type')
     ]
     non_closed_work_items = select_non_closed_work_items(
         project_nodes,

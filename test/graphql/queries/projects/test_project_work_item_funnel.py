@@ -13,7 +13,7 @@ from graphene.test import Client
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 
-
+# This tests the aggregate counts in the funnel view
 class TestProjectWorkItemStateTypeAggregateMetrics:
 
     def it_returns_cumulative_counts_of_all_state_type_for_work_items_in_the_project(self,
@@ -779,6 +779,7 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 assert state_type_counts['complete'] is None
 
 
+# This tests the effort values that show up in the funnel.
 class TestProjectTotalEffortByStateType:
 
     def it_returns_total_effort_counts_when_there_are_specs_in_the_project(self,
@@ -875,3 +876,228 @@ class TestProjectTotalEffortByStateType:
         assert state_type_counts['wip'] == 1
         assert state_type_counts['closed'] == 2
         assert state_type_counts['complete'] is None
+
+
+# This tests the detailed work items that are selected in the funnel details view.
+class TestProjectWorkItemsFunnelView:
+
+    @pytest.yield_fixture
+    def setup(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 1',
+                display_id='1000',
+                state='backlog',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 2',
+                display_id='1001',
+                state='upnext',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 3',
+                display_id='1002',
+                state='upnext',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 4',
+                display_id='1004',
+                state='upnext',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 5',
+                display_id='1005',
+                state='upnext',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 6',
+                display_id='1006',
+                state='closed',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+
+        ]
+
+        api_helper.import_work_items(
+            work_items
+        )
+
+        yield Fixture(
+            project=project,
+            work_items=work_items,
+            api_helper=api_helper,
+
+        )
+    def it_returns_work_items_in_all_state_types(self, setup):
+        fixture = setup
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemsFunnelView($project_key:String!) {
+                        project(key: $project_key) {
+                            workItems(funnelView: true) {
+                                edges { 
+                                    node {
+                                        name
+                                        displayId
+                                        state
+                                        stateType
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_items = result['data']['project']['workItems']['edges']
+        assert len(work_items) == 6
+
+    def it_respects_the_closed_within_days_param(self, setup):
+        fixture = setup
+
+
+        fixture.api_helper.update_work_items(
+            [
+                # close # 4 so we have closed work items within the window.
+                (4, 'closed', datetime.utcnow() - timedelta(days=3)),
+            ]
+        )
+        # work item 6 is already closed, but it is outside the window so it should be skipped.
+
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemsFunnelView($project_key:String!) {
+                        project(key: $project_key) {
+                            workItems(funnelView: true, closedWithinDays: 10) {
+                                edges { 
+                                    node {
+                                        name
+                                        displayId
+                                        state
+                                        stateType
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_items = result['data']['project']['workItems']['edges']
+        assert len(work_items) == 5
+
+    def it_respects_the_specs_only_param(self, setup):
+        fixture = setup
+
+        fixture.api_helper.update_delivery_cycles(
+            [
+                # make # 4 and #5 specs
+                (4, dict(property='commit_count', value=2)),
+                (5, dict(property='commit_count', value=2))
+            ]
+        )
+
+
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemsFunnelView($project_key:String!) {
+                        project(key: $project_key) {
+                            workItems(funnelView: true, specsOnly: true) {
+                                edges { 
+                                    node {
+                                        name
+                                        displayId
+                                        state
+                                        stateType
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_items = result['data']['project']['workItems']['edges']
+        assert len(work_items) == 2
+
+
+    def it_returns_multiple_closed_delivery_cycles_for_the_same_work_item(self, setup):
+        fixture = setup
+
+
+        fixture.api_helper.update_work_items(
+            [
+                # close # 4 so we have closed work items within the window.
+                (4, 'closed', datetime.utcnow() - timedelta(days=3)),
+            ]
+        )
+
+        fixture.api_helper.update_work_items(
+            [
+                # reopen it
+                (4, 'doing', datetime.utcnow() - timedelta(days=2)),
+            ]
+        )
+
+        fixture.api_helper.update_work_items(
+            [
+                # close it again
+                (4, 'closed', datetime.utcnow() - timedelta(days=1)),
+            ]
+        )
+        # work item 6 is already closed, but it is outside the window so it should be skipped.
+        # so we get 6 entries back in total again.
+
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemsFunnelView($project_key:String!) {
+                        project(key: $project_key) {
+                            workItems(funnelView: true, closedWithinDays: 10) {
+                                edges { 
+                                    node {
+                                        name
+                                        displayId
+                                        state
+                                        stateType
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_items = result['data']['project']['workItems']['edges']
+        assert len(work_items) == 6
+        # Issue 5 shows up twice since it was closed twice.
+        assert len([work_item for work_item in work_items if work_item['node']['name'] == 'Issue 5']) == 2

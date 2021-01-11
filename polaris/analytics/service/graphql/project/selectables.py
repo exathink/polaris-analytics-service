@@ -47,7 +47,8 @@ from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
-    work_item_info_group_expr_columns, date_column_is_in_measurement_window, apply_specs_only_filter
+    work_item_info_group_expr_columns, apply_specs_only_filter
+from ..utils import date_column_is_in_measurement_window
 
 
 class ProjectNode(NamedNodeResolver):
@@ -2153,11 +2154,10 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
         ).where(
             and_(
                 pull_requests.c.state != 'open',
-                pull_requests.c.updated_at.between(
-                    project_timeline_dates.c.measurement_date - timedelta(
-                        days=measurement_window
-                    ),
-                    project_timeline_dates.c.measurement_date
+                date_column_is_in_measurement_window(
+                    pull_requests.c.updated_at,
+                    measurement_date=project_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
                 )
             )
         ).group_by(

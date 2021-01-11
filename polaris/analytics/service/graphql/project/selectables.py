@@ -441,6 +441,11 @@ class ProjectWorkItemDeliveryCycleNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
+        if kwargs.get('active_only'):
+            delivery_cycles_join_clause = work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+        else:
+            delivery_cycles_join_clause = work_item_delivery_cycles.c.work_item_id == work_items.c.id
+
         select_stmt = select([
             work_item_delivery_cycles.c.delivery_cycle_id.label('id'),
             *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles),
@@ -451,7 +456,7 @@ class ProjectWorkItemDeliveryCycleNodes(ConnectionResolver):
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
-                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+                work_item_delivery_cycles, delivery_cycles_join_clause
             )
         ).where(
             projects.c.key == bindparam('key')

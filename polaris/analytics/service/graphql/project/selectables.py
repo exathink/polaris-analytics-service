@@ -2154,11 +2154,10 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
         ).where(
             and_(
                 pull_requests.c.state != 'open',
-                pull_requests.c.updated_at.between(
-                    project_timeline_dates.c.measurement_date - timedelta(
-                        days=measurement_window
-                    ),
-                    project_timeline_dates.c.measurement_date
+                date_column_is_in_measurement_window(
+                    pull_requests.c.updated_at,
+                    measurement_date=project_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
                 )
             )
         ).group_by(

@@ -312,7 +312,13 @@ class Project(Base):
         # we have to make a deep copy here since sqlalchemy does not recognize in place modifications
         # to the dict in the jsonb field
         current = copy.deepcopy(self.settings) if self.settings is not None else dict()
-        if update_project_settings_input.flow_metrics_settings:
+        self.update_flow_metrics_settings(current, update_project_settings_input)
+        self.update_analysis_periods(current, update_project_settings_input)
+        self.settings = current
+
+    @staticmethod
+    def update_flow_metrics_settings(current, update_project_settings_input):
+        if getattr(update_project_settings_input, 'flow_metrics_settings', None) is not None:
             flow_metrics_input = update_project_settings_input.flow_metrics_settings
 
             if 'flow_metrics_settings' not in current:
@@ -327,7 +333,8 @@ class Project(Base):
                 flow_metrics_settings['cycle_time_target'] = flow_metrics_input.cycle_time_target
 
             if flow_metrics_input.response_time_confidence_target:
-                flow_metrics_settings['response_time_confidence_target'] = flow_metrics_input.response_time_confidence_target
+                flow_metrics_settings[
+                    'response_time_confidence_target'] = flow_metrics_input.response_time_confidence_target
 
             if flow_metrics_input.lead_time_confidence_target:
                 flow_metrics_settings['lead_time_confidence_target'] = flow_metrics_input.lead_time_confidence_target
@@ -335,7 +342,24 @@ class Project(Base):
             if flow_metrics_input.cycle_time_confidence_target:
                 flow_metrics_settings['cycle_time_confidence_target'] = flow_metrics_input.cycle_time_confidence_target
 
-        self.settings = current
+    @staticmethod
+    def update_analysis_periods(current, update_project_settings_input):
+        if getattr(update_project_settings_input, 'analysis_periods', None) is not None:
+            analysis_periods_input = update_project_settings_input.analysis_periods
+
+            if 'analysis_periods' not in current:
+                current['analysis_periods'] = dict()
+
+            analysis_periods = current['analysis_periods']
+
+            if analysis_periods_input.wip_analysis_period:
+                analysis_periods['wip_analysis_period'] = analysis_periods_input.wip_analysis_period
+
+            if analysis_periods_input.flow_analysis_period:
+                analysis_periods['flow_analysis_period'] = analysis_periods_input.flow_analysis_period
+
+            if analysis_periods_input.trends_analysis_period:
+                analysis_periods['trends_analysis_period'] = analysis_periods_input.trends_analysis_period
 
 
 projects = Project.__table__

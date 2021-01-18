@@ -1311,3 +1311,64 @@ class TestUpdateProjectSettings:
                 lead_time_confidence_target=0.8,
                 cycle_time_confidence_target=0.9
             )
+
+    def it_updates_the_analysis_periods(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                analysisPeriods=dict(
+                    wipAnalysisPeriod=14,
+                    flowAnalysisPeriod=30,
+                    trendsAnalysisPeriod=45
+                )
+            )
+        ))
+        assert response['data']['updateProjectSettings']['success']
+        with db.orm_session() as session:
+            project = Project.find_by_project_key(session, test_projects[0]['key'])
+            assert project.settings['analysis_periods'] == dict(
+                wip_analysis_period=14,
+                flow_analysis_period=30,
+                trends_analysis_period=45
+            )
+
+    def it_only_updates_the_analysis_periods_that_were_passed(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        # update once
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                analysisPeriods=dict(
+                    wipAnalysisPeriod=14,
+                    flowAnalysisPeriod=30,
+                    trendsAnalysisPeriod=45
+                )
+            )
+        ))
+
+        # update again
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                analysisPeriods=dict(
+                    wipAnalysisPeriod=7,
+
+                )
+            )
+        ))
+
+        assert response['data']['updateProjectSettings']['success']
+        with db.orm_session() as session:
+            project = Project.find_by_project_key(session, test_projects[0]['key'])
+            assert project.settings['analysis_periods'] == dict(
+                wip_analysis_period=7,
+                flow_analysis_period=30,
+                trends_analysis_period=45
+            )

@@ -98,6 +98,7 @@ class TestProjectSettings:
                         lead_time_confidence_target=0.9,
                         cycle_time_confidence_target=0.75
                     )
+
                 )
                 with db.orm_session() as session:
                     project = Project.find_by_project_key(session, fixture.project['key'])
@@ -132,3 +133,110 @@ class TestProjectSettings:
 
                 assert flow_metrics_settings['cycleTimeConfidenceTarget'] \
                        == fixture.settings.flow_metrics_settings.cycle_time_confidence_target
+
+    class TestAnalysisPeriods:
+        @pytest.yield_fixture
+        def setup(self, setup_projects):
+            project = test_projects[0]
+
+            query = """
+                    query getProjectSettings($project_key:String!) {
+                        project(key: $project_key) {
+                            settings {
+                                analysisPeriods {
+                                    wipAnalysisPeriod
+                                    flowAnalysisPeriod
+                                    trendsAnalysisPeriod
+                                }
+                            }
+                        }
+                    }
+            """
+            yield Fixture(
+                project=project,
+                query=query
+            )
+
+        class WhenSettingsIsNull:
+            @pytest.yield_fixture
+            def setup(self, setup):
+                fixture = setup
+
+                with db.orm_session() as session:
+                    project = Project.find_by_project_key(session, fixture.project['key'])
+                    project.settings = None
+
+                yield fixture
+
+            def it_returns_a_valid_result(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                flow_metrics = project['settings']['analysisPeriods']
+                assert flow_metrics
+                assert not flow_metrics['wipAnalysisPeriod']
+                assert not flow_metrics['flowAnalysisPeriod']
+                assert not flow_metrics['trendsAnalysisPeriod']
+
+        class WhenSettingsIsEmpty:
+
+            def it_returns_a_valid_result(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                flow_metrics = project['settings']['analysisPeriods']
+                assert flow_metrics
+                assert not flow_metrics['wipAnalysisPeriod']
+                assert not flow_metrics['flowAnalysisPeriod']
+                assert not flow_metrics['trendsAnalysisPeriod']
+
+        class WhenSettingsIsNotEmpty:
+            @pytest.yield_fixture
+            def setup(self, setup):
+                fixture = setup
+                settings_fixture = Fixture(
+                    analysis_periods=Fixture(
+                        wip_analysis_period=7,
+                        flow_analysis_period=14,
+                        trends_analysis_period=30
+                    )
+
+                )
+                with db.orm_session() as session:
+                    project = Project.find_by_project_key(session, fixture.project['key'])
+                    project.update_settings(
+                        settings_fixture
+                    )
+
+                yield Fixture(
+                    parent=fixture,
+                    settings=settings_fixture
+                )
+
+            def it_shows_analysis_periods(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                analysis_periods = project['settings']['analysisPeriods']
+                assert analysis_periods
+
+                assert analysis_periods['wipAnalysisPeriod'] \
+                       == fixture.settings.analysis_periods.wip_analysis_period
+
+                assert analysis_periods['flowAnalysisPeriod'] \
+                       == fixture.settings.analysis_periods.flow_analysis_period
+
+                assert analysis_periods['trendsAnalysisPeriod'] \
+                       == fixture.settings.analysis_periods.trends_analysis_period

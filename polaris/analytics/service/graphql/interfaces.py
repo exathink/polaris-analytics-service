@@ -169,8 +169,28 @@ class FlowMetricsSettingsImpl(FlowMetricsSettings, graphene.ObjectType):
     pass
 
 
+class AnalysisPeriods:
+    wip_analysis_period = graphene.Int(
+        required=False,
+        description="The default analysis window for closed work item metrics shown in the Wip Dashboard"
+    )
+    flow_analysis_period = graphene.Int(
+        required=False,
+        description="The default analysis window for closed work item metrics shown in the Flow Dashboard"
+    )
+    trends_analysis_period = graphene.Int(
+        required=False,
+        description="The default analysis window for closed work item metrics shown in the Trends Dashboard"
+    )
+
+
+class AnalysisPeriodsImpl(AnalysisPeriods, graphene.ObjectType):
+    pass
+
+
 class ProjectSettings(graphene.Interface):
     flow_metrics_settings = graphene.Field(FlowMetricsSettingsImpl, required=False)
+    analysis_periods = graphene.Field(AnalysisPeriodsImpl, required=False)
 
 
 class ProjectSettingsImpl(graphene.ObjectType):
@@ -179,9 +199,11 @@ class ProjectSettingsImpl(graphene.ObjectType):
 
     def __init__(self, *args, **kwargs):
         self.flow_metrics_settings = {}
+        self.analysis_periods = {}
         super().__init__(*args, **kwargs)
 
         self.flow_metrics_settings = FlowMetricsSettingsImpl(**(self.flow_metrics_settings or {}))
+        self.analysis_periods = AnalysisPeriodsImpl(**(self.analysis_periods or {}))
 
 
 class ProjectInfo(graphene.Interface):

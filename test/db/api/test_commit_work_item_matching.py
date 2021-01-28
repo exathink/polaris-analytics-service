@@ -10,7 +10,7 @@
 
 
 from polaris.analytics.db.impl.work_item_resolver import GithubWorkItemResolver, PivotalTrackerWorkItemResolver, \
-    JiraWorkItemResolver
+    JiraWorkItemResolver, GitlabWorkItemResolver
 
 
 class TestGithubCommitWorkItemResolution:
@@ -35,6 +35,33 @@ class TestGithubCommitWorkItemResolution:
         commit_message = "This fixes issue that the branch was created for. No other animals were harmed"
 
         resolved = GithubWorkItemResolver.resolve(commit_message, branch_name='2378')
+
+        assert len(resolved) == 1
+        assert resolved[0] == '2378'
+
+
+class TestGitlabCommitWorkItemResolution:
+
+    def it_resolves_a_commit_with_a_single_work_item_id(self):
+        commit_message = "This fixes issue #2378. No other animals were harmed"
+
+        resolved = GitlabWorkItemResolver.resolve(commit_message, branch_name='master')
+
+        assert len(resolved) == 1
+        assert resolved[0] == '2378'
+
+    def it_resolves_a_commit_with_multiple_work_item_ids(self):
+        commit_message = "This fixes issue #2378 and #24532 No other animals were harmed"
+
+        resolved = GitlabWorkItemResolver.resolve(commit_message, branch_name='master')
+
+        assert len(resolved) == 2
+        assert resolved == ['2378', '24532']
+
+    def it_resolves_a_work_item_from_branch_name(self):
+        commit_message = "This fixes issue that the branch was created for. No other animals were harmed"
+
+        resolved = GitlabWorkItemResolver.resolve(commit_message, branch_name='2378')
 
         assert len(resolved) == 1
         assert resolved[0] == '2378'

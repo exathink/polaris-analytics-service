@@ -284,8 +284,8 @@ class TestProjectFlowMixTrends:
 
                 assert current['flowMix'] == [
                     OrderedDict([('category', 'defect'), ('workItemCount', 2.0), ('totalEffort', num_defect_types)]),
-                    OrderedDict([('category', 'feature'), ('workItemCount', 6.0), ('totalEffort', num_feature_types)]),
-                    OrderedDict([('category', 'task'), ('workItemCount', 5.0), ('totalEffort', num_task_types)])
+                    OrderedDict([('category', 'feature'), ('workItemCount', 5.0), ('totalEffort', num_feature_types)]),
+                    OrderedDict([('category', 'task'), ('workItemCount', 6.0), ('totalEffort', num_task_types)])
                 ]
 
         class TestParameters:

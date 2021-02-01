@@ -47,7 +47,8 @@ class WorkItemTypesToFlowTypes:
         PivotalTrackerWorkItemType.story.value,
         GithubWorkItemType.issue.value,
         GitlabWorkItemType.story.value,
-        GitlabWorkItemType.enhancement.value
+        GitlabWorkItemType.enhancement.value,
+        GitlabWorkItemType.issue.value
     ]
 
     task_types = [
@@ -55,8 +56,7 @@ class WorkItemTypesToFlowTypes:
         JiraWorkItemType.sub_task.value,
         PivotalTrackerWorkItemType.chore.value,
         GithubWorkItemType.pull_request.value,
-        GitlabWorkItemType.task.value,
-        GitlabWorkItemType.issue.value
+        GitlabWorkItemType.task.value
     ]
 
     defect_types = [

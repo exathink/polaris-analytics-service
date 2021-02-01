@@ -289,8 +289,8 @@ class TestProjectFlowMixTrends:
                     OrderedDict(
                         [('category', 'defect'), ('workItemCount', 2.0), ('totalEffort', float(num_defect_types))]),
                     OrderedDict(
-                        [('category', 'feature'), ('workItemCount', 6.0), ('totalEffort', float(num_feature_types))]),
-                    OrderedDict([('category', 'task'), ('workItemCount', 5.0), ('totalEffort', float(num_task_types))])
+                        [('category', 'feature'), ('workItemCount', 4.0), ('totalEffort', float(num_feature_types))]),
+                    OrderedDict([('category', 'task'), ('workItemCount', 7.0), ('totalEffort', float(num_task_types))])
                 ]
 
         class TestParameters:

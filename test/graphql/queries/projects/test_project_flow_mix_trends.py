@@ -113,8 +113,6 @@ class TestProjectFlowMixTrends:
             api_helper = fixture.api_helper
             api_helper.import_work_items(work_items)
 
-
-
             measurements_query = """
                             query getProjectFlowMixTrends(
                                 $project_key:String!, 
@@ -179,11 +177,12 @@ class TestProjectFlowMixTrends:
                 current, _ = project['flowMixTrends']
                 # we have on of each type
                 assert current['flowMix'] == [
-                    OrderedDict([('category', 'defect'), ('workItemCount', num_defect_types), ('totalEffort', None)]),
-                    OrderedDict([('category', 'feature'), ('workItemCount', num_feature_types), ('totalEffort', None)]),
-                    OrderedDict([('category', 'task'), ('workItemCount', num_task_types), ('totalEffort', None)])]
-
-
+                    OrderedDict(
+                        [('category', 'defect'), ('workItemCount', float(num_defect_types)), ('totalEffort', None)]),
+                    OrderedDict(
+                        [('category', 'feature'), ('workItemCount', float(num_feature_types)), ('totalEffort', None)]),
+                    OrderedDict(
+                        [('category', 'task'), ('workItemCount', float(num_task_types)), ('totalEffort', None)])]
 
             def it_respects_the_is_bug_flag_on_a_work_item_to_override_the_work_item_type(self, setup):
                 fixture = setup
@@ -210,7 +209,8 @@ class TestProjectFlowMixTrends:
                 current, _ = project['flowMixTrends']
                 # we have on of each type
                 assert current['flowMix'] == [
-                    OrderedDict([('category', 'defect'), ('workItemCount', len(all_work_item_types)), ('totalEffort', None)])]
+                    OrderedDict(
+                        [('category', 'defect'), ('workItemCount', len(all_work_item_types)), ('totalEffort', None)])]
 
             def it_reports_only_the_total_work_items_even_if_there_are_multiple_delivery_cycles_for_some(self, setup):
                 fixture = setup
@@ -286,11 +286,12 @@ class TestProjectFlowMixTrends:
                 current, _ = project['flowMixTrends']
 
                 assert current['flowMix'] == [
-                    OrderedDict([('category', 'defect'), ('workItemCount', 1.0), ('totalEffort', num_defect_types)]),
-                    OrderedDict([('category', 'feature'), ('workItemCount', 3.0), ('totalEffort', num_feature_types)]),
-                    OrderedDict([('category', 'task'), ('workItemCount', 4.0), ('totalEffort', num_task_types)])
+                    OrderedDict(
+                        [('category', 'defect'), ('workItemCount', 2.0), ('totalEffort', float(num_defect_types))]),
+                    OrderedDict(
+                        [('category', 'feature'), ('workItemCount', 4.0), ('totalEffort', float(num_feature_types))]),
+                    OrderedDict([('category', 'task'), ('workItemCount', 7.0), ('totalEffort', float(num_task_types))])
                 ]
-
 
         class TestParameters:
             @pytest.yield_fixture

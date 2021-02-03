@@ -154,7 +154,6 @@ class ContributorContributorAliases(InterfaceResolver):
                     (
                         contributor_aliases.c.contributor_id == contributor_nodes.c.id,
                         func.json_build_object(
-                            'id', contributor_aliases.c.id,
                             'key', contributor_aliases.c.key,
                             'name', contributor_aliases.c.name,
                             'alias', contributor_aliases.c.source_alias,

@@ -21,9 +21,9 @@ from .selectables import AccountNode, AccountCommitSummary, AccountUserInfo, Acc
     AllAccountNodes, AccountUserNodes
 from polaris.analytics.service.graphql.feature_flag.selectable import ScopedFeatureFlagsNodes
 
-from ..contributor import ContributorsConnectionMixin
+from ..contributor import ContributorsConnectionMixin, ContributorContributorAliases
 from ..interface_mixins import NamedNodeResolverMixin
-from ..interfaces import AccountInfo, CommitSummary, ContributorCount, UserInfo, OwnerInfo
+from ..interfaces import AccountInfo, CommitSummary, ContributorCount, UserInfo, OwnerInfo, ContributorAliases
 from ..organization import OrganizationsConnectionMixin, RecentlyActiveOrganizationsConnectionMixin
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
 from ..repository import RepositoriesConnectionMixin, RecentlyActiveRepositoriesConnectionMixin
@@ -55,14 +55,15 @@ class Account(
         return super().resolve_feature_flags(info, scope='account', scope_key=self.key, **kwargs)
 
     class Meta:
-        interfaces = (NamedNode, OwnerInfo, UserInfo, AccountInfo, CommitSummary, ContributorCount)
+        interfaces = (NamedNode, OwnerInfo, UserInfo, AccountInfo, CommitSummary, ContributorCount, ContributorAliases)
         named_node_resolver = AccountNode
         connection_class = lambda: Accounts
 
         interface_resolvers = {
             'CommitSummary': AccountCommitSummary,
             'ContributorCount': AccountContributorCount,
-            'UserInfo': AccountUserInfo
+            'UserInfo': AccountUserInfo,
+            'ContributorAliases': ContributorContributorAliases
         }
         connection_node_resolvers = {
             'organizations': AccountOrganizationsNodes,

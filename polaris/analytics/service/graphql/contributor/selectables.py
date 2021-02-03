@@ -18,7 +18,7 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract
+from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, SelectableFieldResolver
 
@@ -28,7 +28,7 @@ from polaris.utils.datetime_utils import time_window
 from polaris.analytics.db.model import repositories, repositories_contributor_aliases, contributors, \
     contributor_aliases, commits
 
-from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount
+from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount, ContributorAliases
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 
 
@@ -141,6 +141,37 @@ class ContributorsRepositoryCount(InterfaceResolver):
         else:
             return ContributorsRepositoryCount.contributor_level_of_detail(contributor_nodes, **kwargs)
 
+
+class ContributorContributorAliases(InterfaceResolver):
+    interface = ContributorAliases
+
+    @staticmethod
+    def interface_selector(contributor_nodes, **kwargs):
+        return select([
+            contributor_nodes.c.id,
+            func.json_agg(
+                case([
+                    (
+                        contributor_aliases.c.contributor_id == contributor_nodes.c.id,
+                        func.json_build_object(
+                            'key', contributor_aliases.c.key,
+                            'name', contributor_aliases.c.name,
+                            'alias', contributor_aliases.c.source_alias
+                            # 'latest_commit', repositories_contributor_aliases.c.latest_commit,
+                            # 'commit_count', repositories_contributor_aliases.c.commit_count
+                        )
+                    )
+                ], else_=None)
+                ).label('contributor_aliases')
+        ]).select_from(
+            contributor_nodes.join(
+                contributor_aliases, contributor_aliases.c.key == contributor_nodes.c.key
+            ).join(
+                repositories_contributor_aliases, repositories_contributor_aliases.c.contributor_alias_id == contributor_aliases.c.id
+            )
+        ).group_by(
+            contributor_nodes.c.id
+        )
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Connection Resolvers

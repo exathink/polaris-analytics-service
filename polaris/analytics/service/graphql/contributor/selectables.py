@@ -28,7 +28,7 @@ from polaris.utils.datetime_utils import time_window
 from polaris.analytics.db.model import repositories, repositories_contributor_aliases, contributors, \
     contributor_aliases, commits
 
-from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount, ContributorAliases
+from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount, ContributorAliasesInfo
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 
 
@@ -143,7 +143,7 @@ class ContributorsRepositoryCount(InterfaceResolver):
 
 
 class ContributorContributorAliases(InterfaceResolver):
-    interface = ContributorAliases
+    interface = ContributorAliasesInfo
 
     @staticmethod
     def interface_selector(contributor_nodes, **kwargs):
@@ -154,15 +154,17 @@ class ContributorContributorAliases(InterfaceResolver):
                     (
                         contributor_aliases.c.contributor_id == contributor_nodes.c.id,
                         func.json_build_object(
+                            'id', contributor_aliases.c.id,
                             'key', contributor_aliases.c.key,
                             'name', contributor_aliases.c.name,
-                            'alias', contributor_aliases.c.source_alias
-                            # 'latest_commit', repositories_contributor_aliases.c.latest_commit,
-                            # 'commit_count', repositories_contributor_aliases.c.commit_count
+                            'alias', contributor_aliases.c.source_alias,
+                            'latest_commit', repositories_contributor_aliases.c.latest_commit,
+                            'earliest_commit', repositories_contributor_aliases.c.earliest_commit,
+                            'commit_count', repositories_contributor_aliases.c.commit_count,
                         )
                     )
                 ], else_=None)
-                ).label('contributor_aliases')
+                ).label('contributor_aliases_info')
         ]).select_from(
             contributor_nodes.join(
                 contributor_aliases, contributor_aliases.c.key == contributor_nodes.c.key

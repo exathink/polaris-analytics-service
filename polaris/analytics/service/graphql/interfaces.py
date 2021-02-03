@@ -108,14 +108,14 @@ class ContributorCount(graphene.Interface):
     contributor_count = graphene.Int(required=False, default_value=0)
 
 
-class ContributorAlias(graphene.ObjectType):
+class ContributorAliasInfo(graphene.ObjectType, CommitSummary):
     key = graphene.String(required=True)
     name = graphene.String(required=True)
     alias = graphene.String(required=True)
 
 
-class ContributorAliases(graphene.Interface):
-    contributor_aliases = graphene.Field(graphene.List(ContributorAlias, required=False))
+class ContributorAliasesInfo(graphene.Interface):
+    contributor_aliases_info = graphene.Field(graphene.List(ContributorAliasInfo, required=False))
 
 
 class ProjectCount(graphene.Interface):

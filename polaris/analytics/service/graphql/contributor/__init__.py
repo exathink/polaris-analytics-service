@@ -17,8 +17,8 @@ from .selectables import \
     ContributorsCommitSummary, ContributorsRepositoryCount, ContributorRecentlyActiveRepositories, \
     ContributorCumulativeCommitCount, ContributorContributorAliases
 
-from ..interfaces import CommitSummary, RepositoryCount, ContributorAliases
-from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
+from ..interfaces import CommitSummary, RepositoryCount, ContributorAliasesInfo
+from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, ContributorAliasesInfoResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -44,6 +44,8 @@ class Contributor(
     NamedNodeResolverMixin,
     # connection mixins
     CommitsConnectionMixin,
+    # Interface resolver mixin
+    ContributorAliasesInfoResolverMixin,
     # Selectable fields
     ContributorRepositoriesActivitySummaryResolverMixin,
     ContributorRecentlyActiveRepositoriesResolverMixin,
@@ -52,12 +54,12 @@ class Contributor(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, RepositoryCount, ContributorAliases)
+        interfaces = (NamedNode, CommitSummary, RepositoryCount, ContributorAliasesInfo)
         named_node_resolver = ContributorNodes
         interface_resolvers = {
             'CommitSummary': ContributorsCommitSummary,
             'RepositoryCount': ContributorsRepositoryCount,
-            'ContributorAliases': ContributorContributorAliases
+            'ContributorAliasesInfo': ContributorContributorAliases
         }
         selectable_field_resolvers = {
             'repositories_activity_summary': ContributorRepositoriesActivitySummary,
@@ -68,8 +70,6 @@ class Contributor(
             'commits': ContributorCommitNodes
         }
         connection_class = lambda: Contributors
-
-
 
     @classmethod
     def resolve_field(cls, parent, info, key, **kwargs):

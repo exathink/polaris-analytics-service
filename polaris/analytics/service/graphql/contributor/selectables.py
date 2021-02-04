@@ -147,6 +147,7 @@ class ContributorContributorAliases(InterfaceResolver):
 
     @staticmethod
     def repository_level_of_detail(contributor_repository_nodes, **kwargs):
+        commit_from_date = datetime.utcnow() - timedelta(days=kwargs.get('commit_within_days'))
         select_contributor_aliases = select([
             contributor_repository_nodes.c.id,
             contributor_aliases.c.key,
@@ -166,6 +167,8 @@ class ContributorContributorAliases(InterfaceResolver):
                 contributor_aliases,
                 repositories_contributor_aliases.c.contributor_alias_id == contributor_aliases.c.id
             )
+        ).where(
+            repositories_contributor_aliases.c.latest_commit >= commit_from_date
         ).group_by(
             contributor_repository_nodes.c.id,
             contributor_aliases.c.key,

@@ -298,6 +298,10 @@ class AccountContributorNodes(ConnectionResolver):
             )
         ).distinct()
 
+    @staticmethod
+    def apply_distinct_columns(**kwargs):
+        return ['key', 'name']
+
 
 class AccountUserNodes(ConnectionResolver):
     interfaces = (KeyIdNode, ScopedRole)

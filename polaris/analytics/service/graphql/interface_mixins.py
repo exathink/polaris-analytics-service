@@ -13,7 +13,7 @@ from datetime import datetime
 
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
     WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
-    ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl, ContributorAliasInfo
+    ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl, ContributorAliasInfoImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -32,7 +32,7 @@ class ContributorAliasesInfoResolverMixin(KeyIdResolverMixin):
         super().__init__(*args, **kwargs)
 
     def resolve_contributor_aliases_info(self, info, **kwargs):
-        return [ContributorAliasInfo(**alias_info) for alias_info in self.contributor_aliases_info if alias_info is not None]
+        return [ContributorAliasInfoImpl(**alias_info) for alias_info in self.contributor_aliases_info if alias_info is not None]
 
 
 class WorkItemsSummariesResolverMixin(KeyIdResolverMixin):

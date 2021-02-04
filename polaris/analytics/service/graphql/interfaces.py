@@ -108,14 +108,24 @@ class ContributorCount(graphene.Interface):
     contributor_count = graphene.Int(required=False, default_value=0)
 
 
-class ContributorAliasInfo(graphene.ObjectType, CommitSummary):
+class ContributorAliasInfo(CommitSummary):
     key = graphene.String(required=True)
     name = graphene.String(required=True)
     alias = graphene.String(required=True)
 
 
+class ContributorAliasInfoImpl(graphene.ObjectType):
+    class Meta:
+        interfaces = (ContributorAliasInfo,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.latest_commit = parse_json_timestamp(self.latest_commit)
+        self.earliest_commit = parse_json_timestamp(self.earliest_commit)
+
+
 class ContributorAliasesInfo(graphene.Interface):
-    contributor_aliases_info = graphene.Field(graphene.List(ContributorAliasInfo, required=False))
+    contributor_aliases_info = graphene.Field(graphene.List(ContributorAliasInfoImpl, required=False))
 
 
 class ProjectCount(graphene.Interface):

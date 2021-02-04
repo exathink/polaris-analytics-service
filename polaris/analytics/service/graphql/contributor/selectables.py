@@ -146,34 +146,59 @@ class ContributorContributorAliases(InterfaceResolver):
     interface = ContributorAliasesInfo
 
     @staticmethod
-    def interface_selector(contributor_nodes, **kwargs):
-        return select([
-            contributor_nodes.c.id,
-            func.json_agg(
-                case([
-                    (
-                        contributor_aliases.c.contributor_id == contributor_nodes.c.id,
-                        func.json_build_object(
-                            'key', contributor_aliases.c.key,
-                            'name', contributor_aliases.c.name,
-                            'alias', contributor_aliases.c.source_alias,
-                            'latest_commit', repositories_contributor_aliases.c.latest_commit,
-                            'earliest_commit', repositories_contributor_aliases.c.earliest_commit,
-                            'commit_count', repositories_contributor_aliases.c.commit_count,
-                        )
-                    )
-                ], else_=None)
-                ).label('contributor_aliases_info')
+    def repository_level_of_detail(contributor_repository_nodes, **kwargs):
+        select_contributor_aliases = select([
+            contributor_repository_nodes.c.id,
+            contributor_aliases.c.key,
+            func.min(contributor_aliases.c.name).label('name'),
+            func.min(contributor_aliases.c.source_alias).label('source_alias'),
+            func.min(repositories_contributor_aliases.c.earliest_commit).label('earliest_commit'),
+            func.max(repositories_contributor_aliases.c.latest_commit).label('latest_commit'),
+            func.sum(repositories_contributor_aliases.c.commit_count).label('commit_count')
         ]).select_from(
-            contributor_nodes.join(
-                contributor_aliases, contributor_aliases.c.key == contributor_nodes.c.key
-            ).join(
-                repositories_contributor_aliases, repositories_contributor_aliases.c.contributor_alias_id == contributor_aliases.c.id
+            contributor_repository_nodes.outerjoin(
+                repositories_contributor_aliases,
+                and_(
+                    repositories_contributor_aliases.c.repository_id == contributor_repository_nodes.c.repository_id,
+                    repositories_contributor_aliases.c.contributor_id == contributor_repository_nodes.c.id
+                )
+            ).outerjoin(
+                contributor_aliases,
+                repositories_contributor_aliases.c.contributor_alias_id == contributor_aliases.c.id
             )
         ).group_by(
-            contributor_nodes.c.id
+            contributor_repository_nodes.c.id,
+            contributor_aliases.c.key,
+        ).alias()
+        return select([
+            select_contributor_aliases.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'key', select_contributor_aliases.c.key,
+                    'name', select_contributor_aliases.c.name,
+                    'alias', select_contributor_aliases.c.source_alias,
+                    'latest_commit', select_contributor_aliases.c.latest_commit,
+                    'earliest_commit', select_contributor_aliases.c.earliest_commit,
+                    'commit_count', select_contributor_aliases.c.commit_count,
+                )
+                ).label('contributor_aliases_info')
+        ]).select_from(
+            select_contributor_aliases
+        ).group_by(
+            select_contributor_aliases.c.id
         )
 
+    @staticmethod
+    def contributor_level_of_detail(contributor_repository_nodes, **kwargs):
+        raise NotImplementedError()
+
+    @staticmethod
+    def interface_selector(contributor_nodes, **kwargs):
+        level_of_detail = kwargs.get('level_of_detail')
+        if level_of_detail == 'repository':
+            return ContributorContributorAliases.repository_level_of_detail(contributor_nodes, **kwargs)
+        else:
+            return ContributorContributorAliases.contributor_level_of_detail(contributor_nodes, **kwargs)
 # ----------------------------------------------------------------------------------------------------------------------
 # Connection Resolvers
 

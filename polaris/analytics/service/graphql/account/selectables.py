@@ -273,6 +273,7 @@ class AccountContributorNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
+        commit_from_date = datetime.utcnow() - timedelta(days=kwargs.get('commit_within_days'))
         return select([
             contributors.c.id,
             contributors.c.key,
@@ -294,7 +295,8 @@ class AccountContributorNodes(ConnectionResolver):
         ).where(
             and_(
                 accounts.c.key == bindparam('key'),
-                repositories_contributor_aliases.c.robot == False
+                repositories_contributor_aliases.c.robot == False,
+                repositories_contributor_aliases.c.latest_commit >= commit_from_date
             )
         ).distinct()
 

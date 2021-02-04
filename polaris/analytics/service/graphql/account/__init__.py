@@ -79,7 +79,16 @@ class Account(
 
     @classmethod
     def Field(cls, **kwargs):
-        return super().Field(key_is_required=False, **kwargs)
+        return super().Field(
+            key_is_required=False,
+            commit_within_days=graphene.Argument(
+                graphene.Int,
+                required=False,
+                description="When finding contributor aliases "
+                            "return only contributors that have committed code to the project in this many days",
+                default_value=30
+            ),
+            **kwargs)
 
     @classmethod
     def check_access(cls, key):

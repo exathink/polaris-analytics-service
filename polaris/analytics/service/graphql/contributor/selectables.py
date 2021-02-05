@@ -20,7 +20,8 @@
 
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case
 from polaris.graphql.interfaces import NamedNode
-from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, SelectableFieldResolver
+from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
+    SelectableFieldResolver
 
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
@@ -28,7 +29,8 @@ from polaris.utils.datetime_utils import time_window
 from polaris.analytics.db.model import repositories, repositories_contributor_aliases, contributors, \
     contributor_aliases, commits
 
-from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount, ContributorAliasesInfo
+from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount, \
+    ContributorAliasesInfo
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 
 
@@ -181,7 +183,7 @@ class ContributorContributorAliases(InterfaceResolver):
                     'earliest_commit', select_contributor_aliases.c.earliest_commit,
                     'commit_count', select_contributor_aliases.c.commit_count,
                 )
-                ).label('contributor_aliases_info')
+            ).label('contributor_aliases_info')
         ]).select_from(
             select_contributor_aliases
         ).group_by(
@@ -199,6 +201,8 @@ class ContributorContributorAliases(InterfaceResolver):
             return ContributorContributorAliases.repository_level_of_detail(contributor_nodes, **kwargs)
         else:
             return ContributorContributorAliases.contributor_level_of_detail(contributor_nodes, **kwargs)
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Connection Resolvers
 

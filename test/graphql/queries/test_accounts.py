@@ -233,3 +233,24 @@ class TestAccount:
             assert len(contributors) == 1
             for contributor in contributors:
                 assert uuid.UUID(contributor['node']['key']).hex == test_contributor_key
+
+
+class TestAccountContributorsConnection:
+
+    def setup(self, account_contributor_with_aliases_setup):
+        pass
+
+    class TestWithoutFilterWithoutInterface:
+        pass
+
+    class TestWithFilterWithoutInterface:
+        pass
+
+    class TestWithFilterWithContributorAliasesInterface:
+        pass
+
+    class TestWithFilterWithCommitSummaryInterface:
+        pass
+
+    class TestWithFilterWithCommitSummaryContributorAliasesInterface:
+        pass

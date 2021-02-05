@@ -262,11 +262,15 @@ class ContributorImportApiHelper:
 
         return contributor_objects, contributor_alias_objects
 
-    def update_contributor(self, contributor_key, update_dict):
-        pass
-
-    def update_contributor_alias(self, alias_key, update_dict):
-        pass
+    def update_contributor_alias(self, alias_key, updated_dict, join_this=None):
+        with db.orm_session(join_this) as session:
+            session.connection().execute(
+                contributor_aliases.update().where(
+                    contributor_aliases.key==alias_key
+                ).values(
+                    updated_dict
+                )
+            )
 
     def add_repository_contributor_alias(self, mapping, join_this=None):
         with db.orm_session(join_this) as session:
@@ -442,7 +446,9 @@ class TestAccountContributorsConnection:
             )
 
             yield Fixture(
-                parent=fixture
+                parent=fixture,
+                contributor_objects=contributor_objects,
+                contributor_alias_objects=contributor_alias_objects
             )
 
         def it_returns_all_contributors_with_their_aliases(self, setup):
@@ -466,13 +472,80 @@ class TestAccountContributorsConnection:
                     assert contributor['commitCount'] == contributor['contributorAliasesInfo'][0]['commitCount']
 
         class TestWithFilterWithoutInterface:
-            pass
+            @pytest.yield_fixture()
+            def setup(self, setup):
+                fixture = setup
+                plain_query = """
+                                        query getAccountContributorNodes($account_key:String!) {
+                                            account(key: $account_key) {
+                                                contributors{
+                                                    edges {
+                                                        node {
+                                                          id
+                                                          key 
+                                                          name  
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    """
+                yield Fixture(
+                    parent=fixture,
+                    plain_query=plain_query
+                )
 
-    class TestWithFilterWithContributorAliasesInterface:
-        pass
+            def it_returns_only_contributor_named_nodes(self, setup):
+                fixture = setup
+                client = Client(schema)
 
-    class TestWithFilterWithCommitSummaryInterface:
-        pass
+                with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
+                    response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key))
 
-    class TestWithFilterWithCommitSummaryContributorAliasesInterface:
-        pass
+                    assert 'data' in response
+                    result = response['data']['account']
+                    assert len(result['contributors']['edges']) == 3
+
+        class TestWithContributorWithMultipleAliases:
+
+            @pytest.yield_fixture()
+            def setup(self, setup):
+                fixture = setup
+                api_helper = fixture.api_helper
+                # Map second contributor_alias to first contributor
+                api_helper.update_contributor_alias(
+                    alias_key=fixture.contributor_alias_objects[1].key,
+                    updated_dict=dict(
+                        contributor_id=fixture.contributor_objects[0].id
+                    )
+                )
+                api_helper.update_repository_contributor_alias(
+                    repository_id=fixture.repositories['alpha'].id,
+                    contributor_alias_id=fixture.contributor_alias_objects[1].id,
+                    updated_mapping=dict(
+                        contributor_id=fixture.contributor_objects[0].id
+                    )
+                )
+
+                yield Fixture(
+                    parent=fixture
+                )
+
+            def it_returns_all_distinct_contributors_with_their_mapped_aliases(self, setup):
+                fixture = setup
+                client = Client(schema)
+
+                with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
+                    response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key))
+
+                    assert 'data' in response
+                    result = response['data']['account']
+                    assert len(result['contributors']['edges']) == 2
+                    contributors = result['contributors']['edges']
+                    c1 = contributors[0]['node']
+                    c2 = contributors[1]['node']
+                    assert (
+                            (len(c1['contributorAliasesInfo']) == 1 and len(c2['contributorAliasesInfo']) == 2)
+                            or
+                            (len(c1['contributorAliasesInfo']) == 2 and len(c2['contributorAliasesInfo']) == 1)
+                    )

@@ -20,7 +20,7 @@ from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
     commits, work_items_commits as work_items_commits_table, \
     WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, work_item_delivery_cycles, \
-    WorkItemDeliveryCycle, PullRequest, work_items_pull_requests, pull_requests
+    WorkItemDeliveryCycle, PullRequest, work_items_pull_requests, pull_requests, repositories_contributor_aliases
 from polaris.common import db
 from polaris.utils.collections import find, Fixture
 from polaris.common.enums import WorkTrackingIntegrationType
@@ -159,6 +159,20 @@ def commits_fixture(org_repo_fixture, cleanup):
                 )
             )
         ).inserted_primary_key[0]
+
+        session.connection.execute(
+            repositories_contributor_aliases.insert(
+                dict(
+                    repository_id=repositories['alpha'].id,
+                    contributor_alias_id=contributor_alias_id,
+                    earliest_commit=get_date("2018-12-03"),
+                    latest_commit=get_date("2021-02-03"),
+                    commit_count=200,
+                    contributor_id=contributor_id,
+                    robot=False
+                )
+            )
+        )
 
     contributor = dict(alias_id=contributor_alias_id, contributor_id=contributor_id)
     yield organization, projects, repositories, contributor

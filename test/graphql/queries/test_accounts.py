@@ -206,4 +206,30 @@ class TestAccount:
         for project in projects:
             assert project['node']['repositoryCount'] == 2
 
+    def it_implements_account_contributor_connection(self, commits_fixture):
+        organization, projects, repositories, contributor = commits_fixture
+        client = Client(schema)
 
+        with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
+            response = client.execute("""
+                        query getAccountContributorNodes($account_key:String!) {
+                            account(key: $account_key) {
+                                contributors{
+                                    edges {
+                                        node {
+                                            key
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    """, variable_values=dict(account_key=test_account_key)
+            )
+
+            assert 'data' in response
+            result = response['data']['account']
+            contributors = result['contributors']['edges']
+            assert contributors
+            assert len(contributors) == 1
+            for contributor in contributors:
+                assert uuid.UUID(contributor['node']['key']).hex == test_contributor_key

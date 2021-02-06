@@ -15,10 +15,10 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from .selectables import \
     ContributorNodes, ContributorCommitNodes, ContributorRepositoriesActivitySummary,\
     ContributorsCommitSummary, ContributorsRepositoryCount, ContributorRecentlyActiveRepositories, \
-    ContributorCumulativeCommitCount
+    ContributorCumulativeCommitCount, ContributorContributorAliases
 
-from ..interfaces import CommitSummary, RepositoryCount
-from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
+from ..interfaces import CommitSummary, RepositoryCount, ContributorAliasesInfo
+from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, ContributorAliasesInfoResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -44,6 +44,8 @@ class Contributor(
     NamedNodeResolverMixin,
     # connection mixins
     CommitsConnectionMixin,
+    # Interface resolver mixin
+    ContributorAliasesInfoResolverMixin,
     # Selectable fields
     ContributorRepositoriesActivitySummaryResolverMixin,
     ContributorRecentlyActiveRepositoriesResolverMixin,
@@ -52,11 +54,12 @@ class Contributor(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, RepositoryCount)
+        interfaces = (NamedNode, CommitSummary, RepositoryCount, ContributorAliasesInfo)
         named_node_resolver = ContributorNodes
         interface_resolvers = {
             'CommitSummary': ContributorsCommitSummary,
-            'RepositoryCount': ContributorsRepositoryCount
+            'RepositoryCount': ContributorsRepositoryCount,
+            'ContributorAliasesInfo': ContributorContributorAliases
         }
         selectable_field_resolvers = {
             'repositories_activity_summary': ContributorRepositoriesActivitySummary,
@@ -67,8 +70,6 @@ class Contributor(
             'commits': ContributorCommitNodes
         }
         connection_class = lambda: Contributors
-
-
 
     @classmethod
     def resolve_field(cls, parent, info, key, **kwargs):
@@ -87,7 +88,15 @@ class Contributors(
 
 class ContributorsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
 
-    contributors = Contributor.ConnectionField()
+    contributors = Contributor.ConnectionField(
+        commit_within_days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="When finding contributor aliases "
+                        "return only contributors that have committed code to the project in this many days",
+            default_value=30
+        )
+    )
 
     def resolve_contributors(self, info, **kwargs):
         return Contributor.resolve_connection(

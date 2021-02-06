@@ -25,7 +25,7 @@ from polaris.analytics.db.model import organizations, accounts_organizations, ac
     projects, repositories, projects_repositories, contributors, commits, \
     repositories_contributor_aliases, \
     work_items_sources, account_members
-
+from ..contributor.sql_expressions import contributors_connection_apply_filters
 from polaris.auth.db.model import users
 
 from ..interfaces import CommitSummary, UserInfo, \
@@ -273,7 +273,7 @@ class AccountContributorNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
-        return select([
+        select_stmt = select([
             contributors.c.id,
             contributors.c.key,
             contributors.c.name,
@@ -294,9 +294,14 @@ class AccountContributorNodes(ConnectionResolver):
         ).where(
             and_(
                 accounts.c.key == bindparam('key'),
-                repositories_contributor_aliases.c.robot == False
+                repositories_contributor_aliases.c.robot == False,
             )
         ).distinct()
+        return contributors_connection_apply_filters(select_stmt, **kwargs)
+
+    @staticmethod
+    def apply_distinct_columns(**kwargs):
+        return ['key', 'name']
 
 
 class AccountUserNodes(ConnectionResolver):

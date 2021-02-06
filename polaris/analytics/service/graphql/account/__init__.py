@@ -22,7 +22,7 @@ from .selectables import AccountNode, AccountCommitSummary, AccountUserInfo, Acc
 from polaris.analytics.service.graphql.feature_flag.selectable import ScopedFeatureFlagsNodes
 
 from ..contributor import ContributorsConnectionMixin
-from ..interface_mixins import NamedNodeResolverMixin
+from ..interface_mixins import NamedNodeResolverMixin, ContributorAliasesInfoResolverMixin
 from ..interfaces import AccountInfo, CommitSummary, ContributorCount, UserInfo, OwnerInfo
 from ..organization import OrganizationsConnectionMixin, RecentlyActiveOrganizationsConnectionMixin
 from ..project import ProjectsConnectionMixin, RecentlyActiveProjectsConnectionMixin
@@ -35,7 +35,7 @@ from ..feature_flag import FeatureFlagsConnectionMixin
 class Account(
     # Interface Mixins
     NamedNodeResolverMixin,
-
+    ContributorAliasesInfoResolverMixin,
     # ConnectionMixins
     OrganizationsConnectionMixin,
     ProjectsConnectionMixin,

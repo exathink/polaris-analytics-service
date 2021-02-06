@@ -108,7 +108,7 @@ class ContributorCount(graphene.Interface):
     contributor_count = graphene.Int(required=False, default_value=0)
 
 
-class ContributorAliasInfo(CommitSummary):
+class ContributorAliasInfo(graphene.Interface):
     key = graphene.String(required=True)
     name = graphene.String(required=True)
     alias = graphene.String(required=True)
@@ -116,7 +116,7 @@ class ContributorAliasInfo(CommitSummary):
 
 class ContributorAliasInfoImpl(graphene.ObjectType):
     class Meta:
-        interfaces = (ContributorAliasInfo,)
+        interfaces = (ContributorAliasInfo, CommitSummary)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

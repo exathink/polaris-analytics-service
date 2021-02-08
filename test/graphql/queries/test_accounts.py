@@ -600,3 +600,108 @@ class TestAccountContributorsConnection:
                         assert len(c1['contributorAliasesInfo']) == 2
 
                         assert c1['commitCount'] == 350
+
+            class TestWithMultipleRepositories:
+
+                @pytest.yield_fixture()
+                def setup(self, setup):
+                    fixture = setup
+                    api_helper = fixture.api_helper
+                    # update repository_id for one alias where multiple aliases
+                    api_helper.update_repository_contributor_alias(
+                        repository_id=fixture.repositories['alpha'].id,
+                        contributor_alias_id=fixture.contributor_alias_objects[1].id,
+                        updated_mapping=dict(
+                            repository_id=fixture.repositories['beta'].id
+                        )
+                    )
+
+                    yield Fixture(
+                        parent=fixture
+                    )
+
+                def it_returns_contributors_with_aliases_with_commits_in_different_repositories_in_same_account(self,
+                                                                                                                setup):
+                    fixture = setup
+
+                    client = Client(schema)
+
+                    with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
+                        response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key,
+                                                                                      commit_within_days=20))
+
+                        assert 'data' in response
+                        result = response['data']['account']
+                        assert len(result['contributors']['edges']) == 2
+                        contributors = result['contributors']['edges']
+                        c1 = contributors[0]['node']
+                        c2 = contributors[1]['node']
+                        assert (
+                                (len(c1['contributorAliasesInfo']) == 1 and len(c2['contributorAliasesInfo']) == 2 \
+                                 and c1['commitCount'] == 300 and c2['commitCount'] == 350)
+                                or
+                                (len(c1['contributorAliasesInfo']) == 2 and len(c2['contributorAliasesInfo']) == 1 \
+                                 and c1['commitCount'] == 350 and c2['commitCount'] == 300)
+                        )
+
+                def it_does_not_return_contributor_aliases_with_commits_in_different_repositories_out_of_account(self,
+                                                                                                                 setup):
+                    fixture = setup
+
+                    api_helper = fixture.api_helper
+                    with db.orm_session() as session:
+                        account = Account(
+                            key=uuid.uuid4(),
+                            name='new-test-account',
+                            owner_key=uuid.uuid4(),
+                            created=datetime.utcnow(),
+                            updated=datetime.utcnow()
+                        )
+                        session.add(account)
+                        organization = Organization(
+                            key=uuid.uuid4(),
+                            name='new-est-org',
+                            public=False
+                        )
+                        session.add(organization)
+                        account.organizations.append(organization)
+                        session.flush()
+                        new_repo = Repository(
+                            key=uuid.uuid4().hex,
+                            organization_id=organization.id,
+                            name="Open source repo",
+                            url=f'git@github.com/open_source',
+                            commit_count=2,
+                            earliest_commit=get_date("2020-01-10"),
+                            latest_commit=datetime.utcnow() - timedelta(days=1),
+                            integration_type='github'
+                        )
+                        session.add(new_repo)
+                    # update repository_id for one alias where multiple aliases
+                    api_helper.update_repository_contributor_alias(
+                        repository_id=fixture.repositories['beta'].id,
+                        contributor_alias_id=fixture.contributor_alias_objects[1].id,
+                        updated_mapping=dict(
+                            repository_id=new_repo.id
+                        )
+                    )
+
+                    client = Client(schema)
+
+                    with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
+                        response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key,
+                                                                                      commit_within_days=20))
+
+                        assert 'data' in response
+                        result = response['data']['account']
+                        assert len(result['contributors']['edges']) == 2
+                        contributors = result['contributors']['edges']
+                        c1 = contributors[0]['node']
+                        c2 = contributors[1]['node']
+                        assert len(c1['contributorAliasesInfo']) == 1
+                        assert len(c2['contributorAliasesInfo']) == 1
+                        assert (
+                                (c1['commitCount'] == 300 and c2['commitCount'] == 250)
+                                or
+                                (c1['commitCount'] == 250 and c2['commitCount'] == 300)
+                        )

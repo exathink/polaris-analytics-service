@@ -243,19 +243,19 @@ class ContributorImportApiHelper:
         with db.orm_session() as session:
             for info in self.contributors_info:
                 contributor = Contributor(
-                        key=info['key'],
-                        name=info['name']
+                    key=info['key'],
+                    name=info['name']
                 )
                 session.add(contributor)
                 session.flush()
                 contributor_objects.append(contributor)
                 contributor_alias = ContributorAlias(
-                        key=info['key'],
-                        name=info['name'],
-                        source_alias=info['source_alias'],
-                        contributor_id=contributor.id,
-                        source='vcs',
-                        robot=False
+                    key=info['key'],
+                    name=info['name'],
+                    source_alias=info['source_alias'],
+                    contributor_id=contributor.id,
+                    source='vcs',
+                    robot=False
                 )
                 session.add(contributor_alias)
                 contributor_alias_objects.append(contributor_alias)
@@ -266,7 +266,7 @@ class ContributorImportApiHelper:
         with db.orm_session(join_this) as session:
             session.connection().execute(
                 contributor_aliases.update().where(
-                    contributor_aliases.key==alias_key
+                    contributor_aliases.key == alias_key
                 ).values(
                     updated_dict
                 )
@@ -277,16 +277,16 @@ class ContributorImportApiHelper:
             session.connection().execute(
                 repositories_contributor_aliases.insert(
                     mapping
+                )
             )
-        )
 
     def update_repository_contributor_alias(self, repository_id, contributor_alias_id, updated_mapping, join_this=None):
         with db.orm_session(join_this) as session:
             session.connection().execute(
                 repositories_contributor_aliases.update().where(
                     and_(
-                        repositories_contributor_aliases.c.repository_id==repository_id,
-                        repositories_contributor_aliases.c.contributor_alias_id==contributor_alias_id
+                        repositories_contributor_aliases.c.repository_id == repository_id,
+                        repositories_contributor_aliases.c.contributor_alias_id == contributor_alias_id
                     )
                 ).values(
                     updated_mapping
@@ -320,9 +320,9 @@ class TestAccountContributorsConnection:
         api_helper = ContributorImportApiHelper(repositories, contributor_aliases_info)
 
         query = """
-                    query getAccountContributorNodes($account_key:String!) {
+                    query getAccountContributorNodes($account_key:String!, $commit_within_days:Int!) {
                         account(key: $account_key) {
-                            contributors(interfaces:[CommitSummary, ContributorAliasesInfo], commitWithinDays:20){
+                            contributors(interfaces:[CommitSummary, ContributorAliasesInfo], commitWithinDays:$commit_within_days){
                                 edges {
                                     node {
                                         id
@@ -355,7 +355,6 @@ class TestAccountContributorsConnection:
         )
 
     class TestWithNoContributors:
-
         class TestWithoutFilterWithoutInterface:
 
             @pytest.yield_fixture()
@@ -384,7 +383,7 @@ class TestAccountContributorsConnection:
                 client = Client(schema)
 
                 with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
-                    response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key))
+                    response = client.execute(fixture.plain_query, variable_values=dict(account_key=test_account_key))
 
                     assert 'data' in response
                     result = response['data']['account']
@@ -397,7 +396,8 @@ class TestAccountContributorsConnection:
                 client = Client(schema)
 
                 with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
-                    response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key))
+                    response = client.execute(fixture.query,
+                                              variable_values=dict(account_key=test_account_key, commit_within_days=20))
 
                     assert 'data' in response
                     result = response['data']['account']
@@ -417,7 +417,7 @@ class TestAccountContributorsConnection:
                     contributor_alias_id=contributor_alias_objects[0].id,
                     earliest_commit=get_date("2018-12-03"),
                     latest_commit=datetime.utcnow() - timedelta(days=10),
-                    commit_count=200,
+                    commit_count=250,
                     contributor_id=contributor_objects[0].id,
                     robot=False
                 )
@@ -456,7 +456,8 @@ class TestAccountContributorsConnection:
             client = Client(schema)
 
             with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
-                response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key))
+                response = client.execute(fixture.query,
+                                          variable_values=dict(account_key=test_account_key, commit_within_days=20))
 
                 assert 'data' in response
                 result = response['data']['account']
@@ -500,7 +501,8 @@ class TestAccountContributorsConnection:
                 client = Client(schema)
 
                 with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
-                    response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key))
+                    response = client.execute(fixture.query,
+                                              variable_values=dict(account_key=test_account_key, commit_within_days=20))
 
                     assert 'data' in response
                     result = response['data']['account']
@@ -536,7 +538,8 @@ class TestAccountContributorsConnection:
                 client = Client(schema)
 
                 with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
-                    response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key))
+                    response = client.execute(fixture.query,
+                                              variable_values=dict(account_key=test_account_key, commit_within_days=20))
 
                     assert 'data' in response
                     result = response['data']['account']
@@ -545,7 +548,55 @@ class TestAccountContributorsConnection:
                     c1 = contributors[0]['node']
                     c2 = contributors[1]['node']
                     assert (
-                            (len(c1['contributorAliasesInfo']) == 1 and len(c2['contributorAliasesInfo']) == 2)
+                            (len(c1['contributorAliasesInfo']) == 1 and len(c2['contributorAliasesInfo']) == 2 \
+                             and c1['commitCount'] == 300 and c2['commitCount'] == 350)
                             or
-                            (len(c1['contributorAliasesInfo']) == 2 and len(c2['contributorAliasesInfo']) == 1)
+                            (len(c1['contributorAliasesInfo']) == 2 and len(c2['contributorAliasesInfo']) == 1 \
+                             and c1['commitCount'] == 350 and c2['commitCount'] == 300)
                     )
+
+            class TestWithLatestCommitsOutsideSpecifiedWindow:
+
+                @pytest.yield_fixture()
+                def setup(self, setup):
+                    fixture = setup
+                    api_helper = fixture.api_helper
+                    # update latest_commit date for one alias with multiple aliases
+                    api_helper.update_repository_contributor_alias(
+                        repository_id=fixture.repositories['alpha'].id,
+                        contributor_alias_id=fixture.contributor_alias_objects[1].id,
+                        updated_mapping=dict(
+                            latest_commit=datetime.utcnow() - timedelta(days=22)
+                        )
+                    )
+                    # update latest_commit date for one with single alias
+                    api_helper.update_repository_contributor_alias(
+                        repository_id=fixture.repositories['alpha'].id,
+                        contributor_alias_id=fixture.contributor_alias_objects[2].id,
+                        updated_mapping=dict(
+                            latest_commit=datetime.utcnow() - timedelta(days=22)
+                        )
+                    )
+
+                    yield Fixture(
+                        parent=fixture
+                    )
+
+                def it_returns_contributors_with_latest_commit_within_specified_window(self, setup):
+                    fixture = setup
+
+                    client = Client(schema)
+
+                    with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
+                        response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key,
+                                                                                      commit_within_days=20))
+
+                        assert 'data' in response
+                        result = response['data']['account']
+                        assert len(result['contributors']['edges']) == 1
+                        contributors = result['contributors']['edges']
+                        c1 = contributors[0]['node']
+                        # Aliases with commits before commit within days are also returned
+                        assert len(c1['contributorAliasesInfo']) == 2
+
+                        assert c1['commitCount'] == 350

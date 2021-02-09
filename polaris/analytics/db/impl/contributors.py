@@ -51,10 +51,18 @@ def update_contributor_for_contributor_alias(session, contributor, contributor_a
                 contributor_id=contributor.id
             )
         )
-
-
     else:
         raise ProcessingException(f'Could not find contributor alias with key {contributor_alias_key}')
+
+
+def update_all_contributor_aliases(session, contributor, updated_fields):
+    session.connection().execute(
+        contributor_aliases.update().where(
+            contributor_aliases.c.contributor_id == contributor.id
+        ).values(
+            updated_fields
+        )
+    )
 
 
 def update_contributor_for_contributor_aliases(session, contributor_key, updated_info):
@@ -65,6 +73,12 @@ def update_contributor_for_contributor_aliases(session, contributor_key, updated
         if updated_info.get('contributor_alias_keys'):
             for alias_key in updated_info.get('contributor_alias_keys'):
                 update_contributor_for_contributor_alias(session, contributor, alias_key)
+        if updated_info.get('excluded_from_analysis'):
+            update_all_contributor_aliases(session,
+                                           contributor,
+                                           updated_fields=dict(
+                                               robot=updated_info.get('excluded_from_analysis')
+                                           ))
 
         return dict(
             updated_info=updated_info

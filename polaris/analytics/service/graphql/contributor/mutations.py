@@ -19,6 +19,7 @@ logger = logging.getLogger('polaris.analytics.graphql')
 class ContributorUpdatedInfo(graphene.InputObjectType):
     contributor_name = graphene.String(required=False)
     contributor_alias_keys = graphene.List(graphene.String, required=False)
+    excluded_from_analysis = graphene.Boolean(required=False)
 
 
 class ContributorAliasMapping(graphene.InputObjectType):
@@ -35,12 +36,12 @@ class UpdateContributorForContributorAliases(graphene.Mutation):
     def mutate(self, info, contributor_alias_mapping):
         logger.info('Update ContributorForContributorAlias called')
         result = api.update_contributor_for_contributor_aliases(
-                    contributor_key=contributor_alias_mapping.get('contributor_key'),
-                    updated_info=contributor_alias_mapping.get('updated_info')
+            contributor_key=contributor_alias_mapping.get('contributor_key'),
+            updated_info=contributor_alias_mapping.get('updated_info')
         )
         if result['success']:
             return UpdateContributorForContributorAliases(
-                    updated_info=result.get('updated_info')
+                updated_info=result.get('updated_info')
             )
         else:
             raise ProcessingException(result.get('exception'))

@@ -73,7 +73,7 @@ def update_contributor_for_contributor_aliases(session, contributor_key, updated
         if updated_info.get('contributor_alias_keys'):
             for alias_key in updated_info.get('contributor_alias_keys'):
                 update_contributor_for_contributor_alias(session, contributor, alias_key)
-        if updated_info.get('excluded_from_analysis'):
+        if updated_info.get('excluded_from_analysis') is not None:
             update_all_contributor_aliases(session,
                                            contributor,
                                            updated_fields=dict(

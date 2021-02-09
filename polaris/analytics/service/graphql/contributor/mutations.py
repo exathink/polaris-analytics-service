@@ -30,6 +30,8 @@ class ContributorAliasMapping(graphene.InputObjectType):
 class UpdateContributorAliasesStatus(graphene.ObjectType):
     contributor_key = graphene.String(required=True)
     success = graphene.Boolean(required=True)
+    message = graphene.String(required=False)
+    exception = graphene.String(required=False)
 
 
 class UpdateContributorForContributorAliases(graphene.Mutation):
@@ -44,11 +46,13 @@ class UpdateContributorForContributorAliases(graphene.Mutation):
             contributor_key=contributor_alias_mapping.get('contributor_key'),
             updated_info=contributor_alias_mapping.get('updated_info')
         )
-        if result['success']:
+        if result:
             return UpdateContributorForContributorAliases(
                 UpdateContributorAliasesStatus(
                     contributor_key=contributor_alias_mapping.get('contributor_key'),
-                    success=result.get('success')
+                    success=result.get('success'),
+                    message=result.get('message'),
+                    exception=result.get('exception')
                 )
             )
         else:

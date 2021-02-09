@@ -155,9 +155,9 @@ def update_contributor_for_contributor_aliases(contributor_key, updated_info):
                 )
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Update contributor for contributor aliases", exc)
+        return db.process_exception("Update contributor for contributor aliases failed", exc)
     except Exception as e:
-        return db.failure_message('Update contributor for contributor aliases', e)
+        return db.failure_message('Update contributor for contributor aliases failed', e)
 
 
 def import_project(organization_key, project_summary):

@@ -9,7 +9,6 @@
 # Author: Krishna Kumar
 
 
-
 from test.fixtures.contributors import *
 
 from graphene.test import Client
@@ -25,15 +24,21 @@ class TestUpdateContributorForContributorAlias:
                 updateContributorForContributorAliases(
                     contributorAliasMapping: $contributorAliasMapping
                 ){
-                    updatedAliasKeys
+                    updateStatus 
+                    {
+                        contributorKey
+                        success
+                    }
                 }
             }
         """
         result = client.execute(query, variable_values=dict(
             contributorAliasMapping=dict(
                 contributorKey=joe_contributor_key,
-                contributorAliasKeys=[joe_alt_contributor_key]
+                updatedInfo=dict(
+                    contributorAliasKeys=[joe_alt_contributor_key]
+                )
             )
         ))
         assert 'errors' not in result
-        assert result['data']['updateContributorForContributorAliases']['updatedAliasKeys'] == [joe_alt_contributor_key]
+        assert result['data']['updateContributorForContributorAliases']['updateStatus']['success']

@@ -19,7 +19,9 @@ class TestUpdateContributorForContributorAliases:
     def it_points_the_contributor_alias_to_the_new_contributor(self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
             joe_contributor_key,
-            [joe_alt_contributor_key]
+            dict(
+                contributor_alias_keys=[joe_alt_contributor_key]
+            )
         )
         assert result['success']
 
@@ -32,7 +34,9 @@ class TestUpdateContributorForContributorAliases:
             self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
             joe_contributor_key,
-            [joe_alt_contributor_key]
+            dict(
+                contributor_alias_keys=[joe_alt_contributor_key]
+            )
         )
         assert result['success']
         assert db.connection().execute(
@@ -43,7 +47,9 @@ class TestUpdateContributorForContributorAliases:
             self,setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
             joe_contributor_key,
-            [joe_alt_contributor_key]
+            dict(
+                contributor_alias_keys=[joe_alt_contributor_key]
+            )
         )
         assert result['success']
         assert db.connection().execute(
@@ -55,7 +61,9 @@ class TestUpdateContributorForContributorAliases:
             self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
             joe_contributor_key,
-            [billy_contributor_key]
+            dict(
+                contributor_alias_keys=[billy_contributor_key]
+            )
         )
         assert result['success']
         assert db.connection().execute(
@@ -66,7 +74,9 @@ class TestUpdateContributorForContributorAliases:
             self,setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
             joe_contributor_key,
-            [billy_contributor_key]
+            dict(
+                contributor_alias_keys=[billy_contributor_key]
+            )
         )
         assert result['success']
         assert db.connection().execute(
@@ -79,7 +89,9 @@ class TestUpdateContributorForContributorAliases:
             self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
             joe_contributor_key,
-            [joe_alt_contributor_key]
+            dict(
+                contributor_alias_keys=[joe_alt_contributor_key]
+            )
         )
         assert result['success']
         assert db.connection().execute(
@@ -93,7 +105,9 @@ class TestUpdateContributorForContributorAliases:
             self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
             joe_contributor_key,
-            [joe_alt_contributor_key]
+            dict(
+                contributor_alias_keys=[joe_alt_contributor_key]
+            )
         )
         assert result['success']
         assert db.connection().execute(

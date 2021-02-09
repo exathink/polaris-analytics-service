@@ -18,7 +18,6 @@ class TestUpdateContributorForContributorAliases:
 
     def it_points_the_contributor_alias_to_the_new_contributor(self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
-            rails_organization_key,
             joe_contributor_key,
             [joe_alt_contributor_key]
         )
@@ -32,7 +31,6 @@ class TestUpdateContributorForContributorAliases:
     def it_attributes_all_commits_authored_by_the_alias_to_the_new_contributor(
             self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
-            rails_organization_key,
             joe_contributor_key,
             [joe_alt_contributor_key]
         )
@@ -44,7 +42,6 @@ class TestUpdateContributorForContributorAliases:
     def it_removes_attributions_for_all_commits_authored_by_the_alias_to_the_old_contributor(
             self,setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
-            rails_organization_key,
             joe_contributor_key,
             [joe_alt_contributor_key]
         )
@@ -57,7 +54,6 @@ class TestUpdateContributorForContributorAliases:
     def it_attributes_all_commits_committed_by_the_alias_to_the_new_contributor(
             self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
-            rails_organization_key,
             joe_contributor_key,
             [billy_contributor_key]
         )
@@ -69,7 +65,6 @@ class TestUpdateContributorForContributorAliases:
     def it_removes_attributions_for_all_commits_committed_by_the_alias_to_the_old_contributor(
             self,setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
-            rails_organization_key,
             joe_contributor_key,
             [billy_contributor_key]
         )
@@ -83,7 +78,6 @@ class TestUpdateContributorForContributorAliases:
     def it_removes_the_old_contributor_from_the_repositories_they_contributed_to(
             self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
-            rails_organization_key,
             joe_contributor_key,
             [joe_alt_contributor_key]
         )
@@ -98,7 +92,6 @@ class TestUpdateContributorForContributorAliases:
     def it_attributes_all_repositories_to_the_new_contributor(
             self, setup_commits_for_contributor_updates):
         result = update_contributor_for_contributor_aliases(
-            rails_organization_key,
             joe_contributor_key,
             [joe_alt_contributor_key]
         )

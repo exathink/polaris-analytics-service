@@ -31,7 +31,6 @@ class TestUpdateContributorForContributorAlias:
         """
         result = client.execute(query, variable_values=dict(
             contributorAliasMapping=dict(
-                organizationKey=rails_organization_key,
                 contributorKey=joe_contributor_key,
                 contributorAliasKeys=[joe_alt_contributor_key]
             )

@@ -57,14 +57,17 @@ def update_contributor_for_contributor_alias(session, contributor, contributor_a
         raise ProcessingException(f'Could not find contributor alias with key {contributor_alias_key}')
 
 
-def update_contributor_for_contributor_aliases(session, contributor_key, contributor_alias_keys):
+def update_contributor_for_contributor_aliases(session, contributor_key, updated_info):
     contributor = Contributor.find_by_contributor_key(session, contributor_key)
     if contributor:
-        for alias_key in contributor_alias_keys:
-            update_contributor_for_contributor_alias(session, contributor, alias_key)
+        if updated_info.get('contributor_name') is not None:
+            contributor.update(dict(name=updated_info.get('contributor_name')))
+        if updated_info.get('contributor_alias_keys'):
+            for alias_key in updated_info.get('contributor_alias_keys'):
+                update_contributor_for_contributor_alias(session, contributor, alias_key)
 
         return dict(
-            updated_alias_keys=contributor_alias_keys
+            updated_info=updated_info
         )
     else:
         raise ProcessingException(f"Contributor with key: {contributor_key} was not found")

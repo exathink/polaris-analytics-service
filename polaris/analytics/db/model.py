@@ -470,6 +470,12 @@ class Contributor(Base):
     def find_by_contributor_key(cls, session, contributor_key):
         return session.query(cls).filter(cls.key == contributor_key).first()
 
+    def update(self, contributor_data):
+        updatable_fields = ['name']
+        for attribute, value in contributor_data.items():
+            if attribute in updatable_fields:
+                setattr(self, attribute, value)
+
 
 contributors = Contributor.__table__
 

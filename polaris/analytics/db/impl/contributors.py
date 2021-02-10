@@ -28,7 +28,7 @@ def unlink_contributor_alias_from_contributor(session, contributor, contributor_
         # rewrite denormalized author_contributor info on commits referencing this alias
         session.connection().execute(
             commits.update().where(
-                commits.c.author_contributor_alias_id == contributor.id
+                commits.c.author_contributor_alias_id == contributor_alias.id
             ).values(
                 author_contributor_key=original_contributor.key,
                 author_contributor_name=original_contributor.name
@@ -37,7 +37,7 @@ def unlink_contributor_alias_from_contributor(session, contributor, contributor_
         # rewrite denormalized commiter_contributor info on commits referencing this alias
         session.connection().execute(
             commits.update().where(
-                commits.c.committer_contributor_alias_id == contributor.id
+                commits.c.committer_contributor_alias_id == contributor_alias.id
             ).values(
                 committer_contributor_key=original_contributor.key,
                 committer_contributor_name=original_contributor.name
@@ -46,7 +46,7 @@ def unlink_contributor_alias_from_contributor(session, contributor, contributor_
         # rewrite the denormalized contributor info on repository_contributor aliases
         session.connection().execute(
             repositories_contributor_aliases.update().where(
-                repositories_contributor_aliases.c.contributor_alias_id == contributor.id
+                repositories_contributor_aliases.c.contributor_alias_id == contributor_alias.id
             ).values(
                 contributor_id=original_contributor.id
             )

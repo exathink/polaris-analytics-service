@@ -18,6 +18,7 @@ logger = logging.getLogger('polaris.analytics.graphql')
 
 class ContributorUpdatedInfo(graphene.InputObjectType):
     contributor_name = graphene.String(required=False)
+    unlink_contributor_alias_keys = graphene.List(graphene.String, required=False)
     contributor_alias_keys = graphene.List(graphene.String, required=False)
     excluded_from_analysis = graphene.Boolean(required=False)
 

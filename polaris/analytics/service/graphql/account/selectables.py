@@ -307,6 +307,19 @@ class AccountContributorNodes(ConnectionResolver):
             filtered_contributors.join(
                 repositories_contributor_aliases,
                 filtered_contributors.c.id == repositories_contributor_aliases.c.contributor_id
+            ).join(
+                repositories
+            ).join(
+                organizations
+            ).join(
+                accounts_organizations
+            ).join(
+                accounts
+            )
+        ).where(
+            and_(
+                accounts.c.key == bindparam('key'),
+                repositories_contributor_aliases.c.robot == False,
             )
         ).distinct()
         return repository_contributors_nodes
@@ -394,7 +407,6 @@ class AccountUserInfo(InterfaceResolver):
             func.concat(users.c.first_name, ' ', users.c.last_name).label('name'),
             users.c.first_name,
             users.c.last_name
-
         ]).select_from(
             users
         ).where(

@@ -20,7 +20,7 @@ def unlink_contributor_alias_from_contributor(session, contributor, contributor_
         # set the original contributor_id for this alias
         session.connection().execute(
             contributor_aliases.update().where(
-                contributor_aliases.c.id == contributor.id
+                contributor_aliases.c.key == contributor_alias.key
             ).values(
                 contributor_id=original_contributor.id
             )

@@ -359,6 +359,20 @@ class TestUpdateWorkItems:
         assert db.connection().execute(
             "select count(id) from analytics.work_items where state_type = 'closed'").scalar() == 2
 
+    def it_updates_work_item_type(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(work_item_type='enhancement')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute(
+            "select count(id) from analytics.work_items where work_item_type = 'enhancement'").scalar() == 2
+
     def it_updates_completed_at(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
 

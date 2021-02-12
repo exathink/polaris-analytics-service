@@ -116,3 +116,30 @@ class TestUpdateContributorForContributorAliases:
             f"inner join analytics.contributors on repositories_contributor_aliases.contributor_id = contributors.id "
             f"where contributors.key='{joe_contributor_key}'"
         ).scalar() == 2
+
+    def it_updates_name_of_contributor(self, setup_commits_for_contributor_updates):
+        result = update_contributor_for_contributor_aliases(
+            joe_contributor_key,
+            dict(
+                contributor_name='Joe 2.0'
+            )
+        )
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(id) from analytics.contributors where key='{joe_contributor_key}' and name='Joe 2.0'").scalar() == 1
+
+    def it_sets_robot_true_for_contributor_aliases_excluded_from_analysis(self, setup_commits_for_contributor_updates):
+        result = update_contributor_for_contributor_aliases(
+            joe_contributor_key,
+            dict(
+                contributor_alias_keys=[joe_alt_contributor_key],
+                excluded_from_analysis=True
+            )
+        )
+        assert result['success']
+        assert db.connection().execute(
+            f"select count(contributor_aliases.id) "
+            f"from analytics.contributor_aliases "
+            f"join analytics.contributors on contributor_aliases.contributor_id = contributors.id "
+            f"where contributors.key='{joe_contributor_key}' and contributor_aliases.robot=true"
+        ).scalar() == 2

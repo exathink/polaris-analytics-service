@@ -144,21 +144,20 @@ def update_work_items(organization_key, work_item_source_key, work_item_summarie
         return db.failure_message('Update new_work_items failed', e)
 
 
-def update_contributor_for_contributor_aliases(organization_key, contributor_key, contributor_alias_keys):
+def update_contributor_for_contributor_aliases(contributor_key, updated_info):
     try:
         with db.orm_session() as session:
             return success(
                 impl.update_contributor_for_contributor_aliases(
                     session,
-                    organization_key,
                     contributor_key,
-                    contributor_alias_keys
+                    updated_info
                 )
             )
     except SQLAlchemyError as exc:
-        return db.process_exception("Update contributor for contributor aliases", exc)
+        return db.process_exception("Update contributor for contributor aliases failed", exc)
     except Exception as e:
-        return db.failure_message('Update contributor for contributor aliases', e)
+        return db.failure_message('Update contributor for contributor aliases failed', e)
 
 
 def import_project(organization_key, project_summary):

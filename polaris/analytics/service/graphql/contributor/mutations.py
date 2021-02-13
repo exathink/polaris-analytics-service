@@ -16,28 +16,45 @@ from polaris.utils.exceptions import ProcessingException
 logger = logging.getLogger('polaris.analytics.graphql')
 
 
+class ContributorUpdatedInfo(graphene.InputObjectType):
+    contributor_name = graphene.String(required=False)
+    unlink_contributor_alias_keys = graphene.List(graphene.String, required=False)
+    contributor_alias_keys = graphene.List(graphene.String, required=False)
+    excluded_from_analysis = graphene.Boolean(required=False)
+
+
 class ContributorAliasMapping(graphene.InputObjectType):
-    organization_key = graphene.String(required=True)
     contributor_key = graphene.String(required=True)
-    contributor_alias_keys = graphene.List(graphene.String, required=True)
+    updated_info = graphene.Field(ContributorUpdatedInfo, required=True)
+
+
+class UpdateContributorAliasesStatus(graphene.ObjectType):
+    contributor_key = graphene.String(required=True)
+    success = graphene.Boolean(required=True)
+    message = graphene.String(required=False)
+    exception = graphene.String(required=False)
 
 
 class UpdateContributorForContributorAliases(graphene.Mutation):
     class Arguments:
         contributor_alias_mapping = ContributorAliasMapping(required=True)
 
-    updated_alias_keys = graphene.List(graphene.String)
+    update_status = graphene.Field(UpdateContributorAliasesStatus, required=True)
 
     def mutate(self, info, contributor_alias_mapping):
         logger.info('Update ContributorForContributorAlias called')
         result = api.update_contributor_for_contributor_aliases(
-                    organization_key=contributor_alias_mapping.get('organization_key'),
-                    contributor_key=contributor_alias_mapping.get('contributor_key'),
-                    contributor_alias_keys=contributor_alias_mapping.get('contributor_alias_keys')
-                )
-        if result['success']:
+            contributor_key=contributor_alias_mapping.get('contributor_key'),
+            updated_info=contributor_alias_mapping.get('updated_info')
+        )
+        if result:
             return UpdateContributorForContributorAliases(
-                    updated_alias_keys=result.get('updated_alias_keys')
+                UpdateContributorAliasesStatus(
+                    contributor_key=contributor_alias_mapping.get('contributor_key'),
+                    success=result.get('success'),
+                    message=result.get('message'),
+                    exception=result.get('exception')
+                )
             )
         else:
             raise ProcessingException(result.get('exception'))

@@ -11,5 +11,5 @@
 from polaris.analytics.db import api as db_api
 
 
-def update_contributor_for_contributor_aliases(organization_key, contributor_key, contributor_alias_keys):
-    return db_api.update_contributor_for_contributor_aliases(organization_key, contributor_key, contributor_alias_keys)
+def update_contributor_for_contributor_aliases(contributor_key, updated_info):
+    return db_api.update_contributor_for_contributor_aliases(contributor_key, updated_info)

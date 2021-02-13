@@ -13,6 +13,48 @@ from polaris.analytics.db.model import contributor_aliases, commits, repositorie
 from polaris.utils.exceptions import ProcessingException
 
 
+def unlink_contributor_alias_from_contributor(session, contributor, contributor_alias_key):
+    contributor_alias = ContributorAlias.find_by_contributor_alias_key(session, contributor_alias_key)
+    original_contributor = Contributor.find_by_contributor_key(session, contributor_alias_key)
+    if contributor_alias and original_contributor:
+        # set the original contributor_id for this alias
+        session.connection().execute(
+            contributor_aliases.update().where(
+                contributor_aliases.c.key == contributor_alias.key
+            ).values(
+                contributor_id=original_contributor.id
+            )
+        )
+        # rewrite denormalized author_contributor info on commits referencing this alias
+        session.connection().execute(
+            commits.update().where(
+                commits.c.author_contributor_alias_id == contributor_alias.id
+            ).values(
+                author_contributor_key=original_contributor.key,
+                author_contributor_name=original_contributor.name
+            )
+        )
+        # rewrite denormalized commiter_contributor info on commits referencing this alias
+        session.connection().execute(
+            commits.update().where(
+                commits.c.committer_contributor_alias_id == contributor_alias.id
+            ).values(
+                committer_contributor_key=original_contributor.key,
+                committer_contributor_name=original_contributor.name
+            )
+        )
+        # rewrite the denormalized contributor info on repository_contributor aliases
+        session.connection().execute(
+            repositories_contributor_aliases.update().where(
+                repositories_contributor_aliases.c.contributor_alias_id == contributor_alias.id
+            ).values(
+                contributor_id=original_contributor.id
+            )
+        )
+    else:
+        raise ProcessingException(f'Could not find contributor alias with key {contributor_alias_key}')
+
+
 def update_contributor_for_contributor_alias(session, contributor, contributor_alias_key):
     contributor_alias = ContributorAlias.find_by_contributor_alias_key(session, contributor_alias_key)
     if contributor_alias:
@@ -51,20 +93,40 @@ def update_contributor_for_contributor_alias(session, contributor, contributor_a
                 contributor_id=contributor.id
             )
         )
-
-
     else:
         raise ProcessingException(f'Could not find contributor alias with key {contributor_alias_key}')
 
 
-def update_contributor_for_contributor_aliases(session, organization_key, contributor_key, contributor_alias_keys):
+def update_all_contributor_aliases(session, contributor, updated_fields):
+    session.connection().execute(
+        contributor_aliases.update().where(
+            contributor_aliases.c.contributor_id == contributor.id
+        ).values(
+            updated_fields
+        )
+    )
+
+
+def update_contributor_for_contributor_aliases(session, contributor_key, updated_info):
     contributor = Contributor.find_by_contributor_key(session, contributor_key)
     if contributor:
-        for alias_key in contributor_alias_keys:
-            update_contributor_for_contributor_alias(session, contributor, alias_key)
-
+        # Note: The order of processing these parameters is important. So should be preserved.
+        if updated_info.get('contributor_name') is not None:
+            contributor.update(dict(name=updated_info.get('contributor_name')))
+        if updated_info.get('unlink_contributor_alias_keys'):
+            for alias_key in updated_info.get('unlink_contributor_alias_keys'):
+                unlink_contributor_alias_from_contributor(session, contributor, alias_key)
+        if updated_info.get('contributor_alias_keys'):
+            for alias_key in updated_info.get('contributor_alias_keys'):
+                update_contributor_for_contributor_alias(session, contributor, alias_key)
+        if updated_info.get('excluded_from_analysis') is not None:
+            update_all_contributor_aliases(session,
+                                           contributor,
+                                           updated_fields=dict(
+                                               robot=updated_info.get('excluded_from_analysis')
+                                           ))
         return dict(
-            updated_alias_keys=contributor_alias_keys
+            updated_info=updated_info
         )
     else:
         raise ProcessingException(f"Contributor with key: {contributor_key} was not found")

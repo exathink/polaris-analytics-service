@@ -705,3 +705,38 @@ class TestAccountContributorsConnection:
                                 or
                                 (c1['commitCount'] == 250 and c2['commitCount'] == 300)
                         )
+
+            def it_returns_total_commit_count_for_the_account_contributor_irrespective_of_time_window(self, setup):
+                fixture = setup
+
+                api_helper = fixture.api_helper
+
+                # add another repository_contributor_alias
+                api_helper.add_repository_contributor_alias(
+                    dict(
+                        repository_id=fixture.repositories['beta'].id,
+                        contributor_alias_id=fixture.contributor_alias_objects[2].id,
+                        earliest_commit=get_date("2018-12-03"),
+                        latest_commit=datetime.utcnow() - timedelta(days=100),
+                        commit_count=100,
+                        contributor_id=fixture.contributor_objects[2].id,
+                        robot=False
+                    )
+                )
+
+                client = Client(schema)
+
+                with patch('polaris.analytics.service.graphql.account.Account.check_access', return_value=True):
+                    response = client.execute(fixture.query, variable_values=dict(account_key=test_account_key,
+                                                                                  commit_within_days=20))
+                    assert 'data' in response
+                    result = response['data']['account']
+                    assert len(result['contributors']['edges']) == 2
+                    contributors = result['contributors']['edges']
+                    c1 = contributors[0]['node']
+                    c2 = contributors[1]['node']
+                    assert (
+                            (c1['commitCount'] == 400 and c2['commitCount'] == 350)
+                            or
+                            (c1['commitCount'] == 350 and c2['commitCount'] == 400)
+                    )

@@ -22,9 +22,9 @@ class TestUpdateContributorForContributorAlias:
     def it_returns_success_when_contributor_aliases_are_updated(self, setup_commits_for_contributor_updates):
         client = Client(schema)
         query = """
-            mutation updateAlias($contributorAliasMapping: ContributorAliasMapping! ){
+            mutation updateAlias($contributorInfo: ContributorInfo! ){
                 updateContributor(
-                    contributorAliasMapping: $contributorAliasMapping
+                    contributorInfo: $contributorInfo
                 ){
                     updateStatus 
                     {
@@ -35,7 +35,7 @@ class TestUpdateContributorForContributorAlias:
             }
         """
         result = client.execute(query, variable_values=dict(
-            contributorAliasMapping=dict(
+            contributorInfo=dict(
                 contributorKey=joe_contributor_key,
                 updatedInfo=dict(
                     contributorAliasKeys=[joe_alt_contributor_key]
@@ -48,9 +48,9 @@ class TestUpdateContributorForContributorAlias:
     def it_sets_a_contributor_to_be_excluded_from_analysis(self, setup_commits_for_contributor_updates):
         client = Client(schema)
         query = """
-                    mutation updateAlias($contributorAliasMapping: ContributorAliasMapping! ){
+                    mutation updateAlias($contributorInfo: ContributorInfo! ){
                         updateContributor(
-                            contributorAliasMapping: $contributorAliasMapping
+                            contributorInfo: $contributorInfo
                         ){
                             updateStatus 
                             {
@@ -61,7 +61,7 @@ class TestUpdateContributorForContributorAlias:
                     }
                 """
         result = client.execute(query, variable_values=dict(
-            contributorAliasMapping=dict(
+            contributorInfo=dict(
                 contributorKey=joe_contributor_key,
                 updatedInfo=dict(
                     excludedFromAnalysis=True
@@ -82,9 +82,9 @@ class TestUpdateContributorForContributorAlias:
         test_contributor_key =uuid.uuid4()
         client = Client(schema)
         query = """
-                    mutation updateAlias($contributorAliasMapping: ContributorAliasMapping! ){
+                    mutation updateAlias($contributorInfo: ContributorInfo! ){
                         updateContributor(
-                            contributorAliasMapping: $contributorAliasMapping
+                            contributorInfo: $contributorInfo
                         ){
                             updateStatus 
                             {
@@ -97,7 +97,7 @@ class TestUpdateContributorForContributorAlias:
                     }
                 """
         result = client.execute(query, variable_values=dict(
-            contributorAliasMapping=dict(
+            contributorInfo=dict(
                 contributorKey=test_contributor_key,
                 updatedInfo=dict(
                     contributorAliasKeys=[joe_alt_contributor_key]
@@ -112,9 +112,9 @@ class TestUpdateContributorForContributorAlias:
         test_contributor_key = uuid.uuid4()
         client = Client(schema)
         query = """
-                            mutation updateAlias($contributorAliasMapping: ContributorAliasMapping! ){
+                            mutation updateAlias($contributorInfo: ContributorInfo! ){
                                 updateContributor(
-                                    contributorAliasMapping: $contributorAliasMapping
+                                    contributorInfo: $contributorInfo
                                 ){
                                     updateStatus 
                                     {
@@ -127,7 +127,7 @@ class TestUpdateContributorForContributorAlias:
                             }
                         """
         result = client.execute(query, variable_values=dict(
-            contributorAliasMapping=dict(
+            contributorInfo=dict(
                 contributorKey=joe_contributor_key,
                 updatedInfo=dict(
                     contributorAliasKeys=[test_contributor_key]

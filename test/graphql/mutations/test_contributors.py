@@ -12,6 +12,8 @@
 from test.fixtures.contributors import *
 
 from graphene.test import Client
+from unittest.mock import patch
+
 from polaris.analytics.service.graphql import schema
 
 
@@ -42,6 +44,39 @@ class TestUpdateContributorForContributorAlias:
         ))
         assert 'errors' not in result
         assert result['data']['updateContributor']['updateStatus']['success']
+
+    def it_sets_a_contributor_to_be_excluded_from_analysis(self, setup_commits_for_contributor_updates):
+        client = Client(schema)
+        query = """
+                    mutation updateAlias($contributorAliasMapping: ContributorAliasMapping! ){
+                        updateContributor(
+                            contributorAliasMapping: $contributorAliasMapping
+                        ){
+                            updateStatus 
+                            {
+                                contributorKey
+                                success
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(
+            contributorAliasMapping=dict(
+                contributorKey=joe_contributor_key,
+                updatedInfo=dict(
+                    excludedFromAnalysis=True
+                )
+            )
+        ))
+        assert 'errors' not in result
+        assert result['data']['updateContributor']['updateStatus']['success']
+        # Check using db query if the contributor is excluded from analysis
+        db.connection().execute(
+            f"select count(repository_id) from analytics.repositories_contributor_aliases "
+            f"join analytics.contributor_aliases on repositories_contributor_aliases.contributor_alias_id=contributor_aliases.id "
+            f"where contributor_aliases.key='{joe_contributor_key}' "
+            f"and contributor_aliases.robot=true "
+            f"and repositories_contributor_aliases.robot=true").scalar() == 1
 
     def it_returns_failure_message_when_contributor_not_found(self, setup_commits_for_contributor_updates):
         test_contributor_key =uuid.uuid4()

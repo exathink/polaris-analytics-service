@@ -144,11 +144,11 @@ def update_work_items(organization_key, work_item_source_key, work_item_summarie
         return db.failure_message('Update new_work_items failed', e)
 
 
-def update_contributor_for_contributor_aliases(contributor_key, updated_info):
+def update_contributor(contributor_key, updated_info):
     try:
         with db.orm_session() as session:
             return success(
-                impl.update_contributor_for_contributor_aliases(
+                impl.update_contributor(
                     session,
                     contributor_key,
                     updated_info

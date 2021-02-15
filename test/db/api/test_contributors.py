@@ -10,14 +10,14 @@
 
 from test.fixtures.contributors import *
 
-from polaris.analytics.db.api import update_contributor_for_contributor_aliases
+from polaris.analytics.db.api import update_contributor
 from polaris.analytics.db.model import ContributorAlias
 
 
 class TestUpdateContributorForContributorAliases:
 
     def it_points_the_contributor_alias_to_the_new_contributor(self, setup_commits_for_contributor_updates):
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 contributor_alias_keys=[joe_alt_contributor_key]
@@ -31,7 +31,7 @@ class TestUpdateContributorForContributorAliases:
 
     def it_attributes_all_commits_authored_by_the_alias_to_the_new_contributor(
             self, setup_commits_for_contributor_updates):
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 contributor_alias_keys=[joe_alt_contributor_key]
@@ -44,7 +44,7 @@ class TestUpdateContributorForContributorAliases:
 
     def it_removes_attributions_for_all_commits_authored_by_the_alias_to_the_old_contributor(
             self, setup_commits_for_contributor_updates):
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 contributor_alias_keys=[joe_alt_contributor_key]
@@ -57,7 +57,7 @@ class TestUpdateContributorForContributorAliases:
 
     def it_attributes_all_commits_committed_by_the_alias_to_the_new_contributor(
             self, setup_commits_for_contributor_updates):
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 contributor_alias_keys=[billy_contributor_key]
@@ -70,7 +70,7 @@ class TestUpdateContributorForContributorAliases:
 
     def it_removes_attributions_for_all_commits_committed_by_the_alias_to_the_old_contributor(
             self, setup_commits_for_contributor_updates):
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 contributor_alias_keys=[billy_contributor_key]
@@ -85,7 +85,7 @@ class TestUpdateContributorForContributorAliases:
 
     def it_removes_the_old_contributor_from_the_repositories_they_contributed_to(
             self, setup_commits_for_contributor_updates):
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 contributor_alias_keys=[joe_alt_contributor_key]
@@ -101,7 +101,7 @@ class TestUpdateContributorForContributorAliases:
 
     def it_attributes_all_repositories_to_the_new_contributor(
             self, setup_commits_for_contributor_updates):
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 contributor_alias_keys=[joe_alt_contributor_key]
@@ -116,7 +116,7 @@ class TestUpdateContributorForContributorAliases:
         ).scalar() == 2
 
     def it_updates_name_of_contributor(self, setup_commits_for_contributor_updates):
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 contributor_name='Joe 2.0'
@@ -127,7 +127,7 @@ class TestUpdateContributorForContributorAliases:
             f"select count(id) from analytics.contributors where key='{joe_contributor_key}' and name='Joe 2.0'").scalar() == 1
 
     def it_sets_robot_true_for_contributor_aliases_excluded_from_analysis(self, setup_commits_for_contributor_updates):
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 contributor_alias_keys=[joe_alt_contributor_key],
@@ -144,7 +144,7 @@ class TestUpdateContributorForContributorAliases:
 
     def it_unlinks_contributor_alias_from_a_contributor(self, setup_commits_for_contributor_updates):
         # Merge first
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 contributor_alias_keys=[joe_alt_contributor_key]
@@ -152,7 +152,7 @@ class TestUpdateContributorForContributorAliases:
         )
         assert result['success']
         # Unlink now
-        result = update_contributor_for_contributor_aliases(
+        result = update_contributor(
             joe_contributor_key,
             dict(
                 unlink_contributor_alias_keys=[joe_alt_contributor_key]

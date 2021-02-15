@@ -21,7 +21,7 @@ class TestUpdateContributorForContributorAlias:
         client = Client(schema)
         query = """
             mutation updateAlias($contributorAliasMapping: ContributorAliasMapping! ){
-                updateContributorForContributorAliases(
+                updateContributor(
                     contributorAliasMapping: $contributorAliasMapping
                 ){
                     updateStatus 
@@ -41,14 +41,14 @@ class TestUpdateContributorForContributorAlias:
             )
         ))
         assert 'errors' not in result
-        assert result['data']['updateContributorForContributorAliases']['updateStatus']['success']
+        assert result['data']['updateContributor']['updateStatus']['success']
 
     def it_returns_failure_message_when_contributor_not_found(self, setup_commits_for_contributor_updates):
         test_contributor_key =uuid.uuid4()
         client = Client(schema)
         query = """
                     mutation updateAlias($contributorAliasMapping: ContributorAliasMapping! ){
-                        updateContributorForContributorAliases(
+                        updateContributor(
                             contributorAliasMapping: $contributorAliasMapping
                         ){
                             updateStatus 
@@ -70,15 +70,15 @@ class TestUpdateContributorForContributorAlias:
             )
         ))
         assert 'errors' not in result
-        assert not result['data']['updateContributorForContributorAliases']['updateStatus']['success']
-        assert result['data']['updateContributorForContributorAliases']['updateStatus']['exception'] == f"Contributor with key: {test_contributor_key} was not found"
+        assert not result['data']['updateContributor']['updateStatus']['success']
+        assert result['data']['updateContributor']['updateStatus']['exception'] == f"Contributor with key: {test_contributor_key} was not found"
 
     def it_returns_failure_message_when_contributor_alias_not_found(self, setup_commits_for_contributor_updates):
         test_contributor_key = uuid.uuid4()
         client = Client(schema)
         query = """
                             mutation updateAlias($contributorAliasMapping: ContributorAliasMapping! ){
-                                updateContributorForContributorAliases(
+                                updateContributor(
                                     contributorAliasMapping: $contributorAliasMapping
                                 ){
                                     updateStatus 
@@ -100,5 +100,5 @@ class TestUpdateContributorForContributorAlias:
             )
         ))
         assert 'errors' not in result
-        assert not result['data']['updateContributorForContributorAliases']['updateStatus']['success']
-        assert result['data']['updateContributorForContributorAliases']['updateStatus']['exception'] == f"Could not find contributor alias with key {test_contributor_key}"
+        assert not result['data']['updateContributor']['updateStatus']['success']
+        assert result['data']['updateContributor']['updateStatus']['exception'] == f"Could not find contributor alias with key {test_contributor_key}"

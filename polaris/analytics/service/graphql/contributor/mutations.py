@@ -23,12 +23,12 @@ class ContributorUpdatedInfo(graphene.InputObjectType):
     excluded_from_analysis = graphene.Boolean(required=False)
 
 
-class ContributorAliasMapping(graphene.InputObjectType):
+class ContributorInfo(graphene.InputObjectType):
     contributor_key = graphene.String(required=True)
     updated_info = graphene.Field(ContributorUpdatedInfo, required=True)
 
 
-class UpdateContributorAliasesStatus(graphene.ObjectType):
+class UpdateContributorStatus(graphene.ObjectType):
     contributor_key = graphene.String(required=True)
     success = graphene.Boolean(required=True)
     message = graphene.String(required=False)
@@ -37,20 +37,20 @@ class UpdateContributorAliasesStatus(graphene.ObjectType):
 
 class UpdateContributor(graphene.Mutation):
     class Arguments:
-        contributor_alias_mapping = ContributorAliasMapping(required=True)
+        contributor_info = ContributorInfo(required=True)
 
-    update_status = graphene.Field(UpdateContributorAliasesStatus, required=True)
+    update_status = graphene.Field(UpdateContributorStatus, required=True)
 
-    def mutate(self, info, contributor_alias_mapping):
+    def mutate(self, info, contributor_info):
         logger.info('Update ContributorForContributorAlias called')
         result = api.update_contributor(
-            contributor_key=contributor_alias_mapping.get('contributor_key'),
-            updated_info=contributor_alias_mapping.get('updated_info')
+            contributor_key=contributor_info.get('contributor_key'),
+            updated_info=contributor_info.get('updated_info')
         )
         if result:
             return UpdateContributor(
-                UpdateContributorAliasesStatus(
-                    contributor_key=contributor_alias_mapping.get('contributor_key'),
+                UpdateContributorStatus(
+                    contributor_key=contributor_info.get('contributor_key'),
                     success=result.get('success'),
                     message=result.get('message'),
                     exception=result.get('exception')

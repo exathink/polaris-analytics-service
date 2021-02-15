@@ -35,7 +35,7 @@ class UpdateContributorAliasesStatus(graphene.ObjectType):
     exception = graphene.String(required=False)
 
 
-class UpdateContributorForContributorAliases(graphene.Mutation):
+class UpdateContributor(graphene.Mutation):
     class Arguments:
         contributor_alias_mapping = ContributorAliasMapping(required=True)
 
@@ -43,12 +43,12 @@ class UpdateContributorForContributorAliases(graphene.Mutation):
 
     def mutate(self, info, contributor_alias_mapping):
         logger.info('Update ContributorForContributorAlias called')
-        result = api.update_contributor_for_contributor_aliases(
+        result = api.update_contributor(
             contributor_key=contributor_alias_mapping.get('contributor_key'),
             updated_info=contributor_alias_mapping.get('updated_info')
         )
         if result:
-            return UpdateContributorForContributorAliases(
+            return UpdateContributor(
                 UpdateContributorAliasesStatus(
                     contributor_key=contributor_alias_mapping.get('contributor_key'),
                     success=result.get('success'),

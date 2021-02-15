@@ -107,7 +107,7 @@ def update_all_contributor_aliases(session, contributor, updated_fields):
     )
 
 
-def update_contributor_for_contributor_aliases(session, contributor_key, updated_info):
+def update_contributor(session, contributor_key, updated_info):
     contributor = Contributor.find_by_contributor_key(session, contributor_key)
     if contributor:
         # Note: The order of processing these parameters is important. So should be preserved.

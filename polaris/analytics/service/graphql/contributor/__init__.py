@@ -32,12 +32,12 @@ from .selectable_fields import \
 
 from ..selectable_field_mixins import CumulativeCommitCountResolverMixin
 
-from .mutations import UpdateContributorForContributorAliases
+from .mutations import UpdateContributor
 
 
 # Mutations
 class ContributorMutationsMixin:
-    update_contributor_for_contributor_aliases = UpdateContributorForContributorAliases.Field()
+    update_contributor = UpdateContributor.Field()
 
 
 class Contributor(

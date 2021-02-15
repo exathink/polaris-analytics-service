@@ -105,6 +105,13 @@ def update_all_contributor_aliases(session, contributor, updated_fields):
             updated_fields
         )
     )
+    session.connection().execute(
+        repositories_contributor_aliases.update().where(
+            repositories_contributor_aliases.c.contributor_id ==contributor.id
+        ).values(
+            updated_fields
+        )
+    )
 
 
 def update_contributor_for_contributor_aliases(session, contributor_key, updated_info):

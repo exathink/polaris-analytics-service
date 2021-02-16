@@ -698,7 +698,6 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
 
     @classmethod
     def interface_selector(cls, project_nodes, **kwargs):
-
         shared_work_items_columns = [
             project_nodes.c.id.label('project_id'),
             work_item_delivery_cycles.c.delivery_cycle_id,
@@ -755,10 +754,6 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
         ).group_by(
             project_nodes.c.id
         )
-
-
-
-
 
 
 class ProjectCycleMetrics(InterfaceResolver):

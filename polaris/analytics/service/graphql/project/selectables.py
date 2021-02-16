@@ -757,6 +757,10 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
         )
 
 
+
+
+
+
 class ProjectCycleMetrics(InterfaceResolver):
     interface = AggregateCycleMetrics
 
@@ -1076,17 +1080,6 @@ class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
 
             func.max(work_item_delivery_cycles.c.end_date).label('latest_closed_date'),
             func.min(work_item_delivery_cycles.c.end_date).label('earliest_closed_date'),
-            func.sum(
-            case([
-                (
-                    date_column_is_in_measurement_window(
-                        work_item_delivery_cycles.c.start_date,
-                        measurement_date=timeline_dates.c.measurement_date,
-                        measurement_window=measurement_window
-                    ), 1
-                )
-            ], else_=0)
-            ).label('arrival_rate'),
             *[
                 # This interpolates columns that calculate the specific cycle
                 # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args

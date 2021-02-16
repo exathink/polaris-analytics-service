@@ -472,6 +472,8 @@ class AggregateCycleMetrics(DeliveryCycleSpan):
     lead_time_target_percentile = graphene.Float(required=False)
     cycle_time_target_percentile = graphene.Float(required=False)
 
+    arrival_rate = graphene.Int(required=False)
+
 
 class TrendMeasurementImpl(graphene.ObjectType):
 

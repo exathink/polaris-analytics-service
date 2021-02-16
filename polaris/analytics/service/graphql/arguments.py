@@ -92,6 +92,8 @@ class CycleMetricsEnum(Enum):
     work_items_with_null_cycle_time = 'work_items_with_null_cycle_time'
     cadence = 'cadence'
 
+    arrival_rate = 'arrival_rate'
+
 
 class WorkItemTypeSelectionParameters(graphene.InputObjectType):
     include_epics = graphene.Boolean(

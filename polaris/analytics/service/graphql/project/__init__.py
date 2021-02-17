@@ -17,7 +17,7 @@ from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
-    PullRequestMetricsTrends, PullRequestEventSpan
+    PullRequestMetricsTrends, PullRequestEventSpan, ArrivalRateTrends
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
@@ -45,7 +45,7 @@ from ..pull_request import PullRequestsConnectionMixin
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
     FlowMixTrendsParameters, CapacityTrendsParameters, PullRequestMetricsParameters, \
-    PullRequestMetricsTrendsParameters
+    PullRequestMetricsTrendsParameters, ArrivalRateTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -79,7 +79,8 @@ from .selectables import ProjectNode, \
     ProjectsCapacityTrends, \
     ProjectPipelinePullRequestMetrics, \
     ProjectPullRequestMetricsTrends, \
-    ProjectPullRequestNodes
+    ProjectPullRequestNodes, \
+    ProjectArrivalRateTrends
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -148,7 +149,8 @@ Implicit Interfaces: ArchivedStatus
             FlowMixTrends,
             CapacityTrends,
             PipelinePullRequestMetrics,
-            PullRequestMetricsTrends
+            PullRequestMetricsTrends,
+            ArrivalRateTrends
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -168,7 +170,8 @@ Implicit Interfaces: ArchivedStatus
             'FlowMixTrends': ProjectsFlowMixTrends,
             'CapacityTrends': ProjectsCapacityTrends,
             'PipelinePullRequestMetrics': ProjectPipelinePullRequestMetrics,
-            'PullRequestMetricsTrends': ProjectPullRequestMetricsTrends
+            'PullRequestMetricsTrends': ProjectPullRequestMetricsTrends,
+            'ArrivalRateTrends': ProjectArrivalRateTrends
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -269,6 +272,12 @@ Implicit Interfaces: ArchivedStatus
                 PullRequestMetricsTrendsParameters,
                 required=False,
                 description='Required when resolving PullRequestMetricsTrends interface'
+            ),
+
+            arrival_rate_trends_args=graphene.Argument(
+                ArrivalRateTrendsParameters,
+                required=False,
+                description='Required when resolving ArrivalRateTrends interface'
             ),
 
             **kwargs

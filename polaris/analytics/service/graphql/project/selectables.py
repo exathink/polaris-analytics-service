@@ -41,7 +41,7 @@ from ..interfaces import \
     WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
-    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan
+    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, ArrivalRateTrends
 from ..pull_request.sql_expressions import pull_request_info_columns
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -2247,3 +2247,24 @@ class ProjectPullRequestNodes(ConnectionResolver):
     @staticmethod
     def sort_order(pull_request_nodes, **kwargs):
         return [pull_request_nodes.c.created_at.desc().nullsfirst()]
+
+
+class ProjectArrivalRateTrends(InterfaceResolver):
+    interface = ArrivalRateTrends
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        arrival_rate_trends_args = kwargs.get('arrival_rate_trends_args')
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            arrival_rate_trends_args,
+            arg_name='arrival_rate_trends',
+            interface_name='ArrivalRateTrends'
+        )
+        measurement_window = arrival_rate_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+            )
+        return select([])

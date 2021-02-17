@@ -2296,11 +2296,11 @@ class ProjectArrivalRateTrends(InterfaceResolver):
             )
         ).group_by(
             project_timeline_dates.c.id,
-            project_timeline_dates.c.measurement_date,
+            project_timeline_dates.c.measurement_date
         ).distinct().alias('arrival_rate_trends')
 
         return select([
-            arrival_rate_trends.c.id,
+            project_timeline_dates.c.id,
             func.json_agg(
                 func.json_build_object(
                     'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
@@ -2310,7 +2310,13 @@ class ProjectArrivalRateTrends(InterfaceResolver):
                 )
             ).label('arrival_rate_trends')
         ]).select_from(
-                arrival_rate_trends
+            project_timeline_dates.outerjoin(
+                arrival_rate_trends,
+                and_(
+                    arrival_rate_trends.c.id == project_timeline_dates.c.id,
+                    arrival_rate_trends.c.measurement_date == project_timeline_dates.c.measurement_date
+                )
+            )
         ).group_by(
-            arrival_rate_trends.c.id
+            project_timeline_dates.c.id
         )

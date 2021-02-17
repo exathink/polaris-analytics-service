@@ -13,7 +13,8 @@ from datetime import datetime
 
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
     WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
-    ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl, ContributorAliasInfoImpl
+    ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl, \
+    ContributorAliasInfoImpl, ArrivalRateMeasurementImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -212,4 +213,17 @@ class PullRequestMetricsTrendsResolverMixin(KeyIdResolverMixin):
         return [
             AggregatePullRequestMetricsImpl(**pull_request_metrics)
             for pull_request_metrics in self.pull_request_metrics_trends or []
+        ]
+
+
+class ArrivalRateTrendsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.arrival_rate_trends = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_arrival_rate_trends(self, info, **kwargs):
+        return [
+            ArrivalRateMeasurementImpl(**arrival_rate_metrics)
+            for arrival_rate_metrics in self.arrival_rate_trends or []
         ]

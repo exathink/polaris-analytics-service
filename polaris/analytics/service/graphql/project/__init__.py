@@ -23,7 +23,7 @@ from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
     TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin, \
     ProjectInfoResolverMixin, FlowMixTrendsResolverMixin, CapacityTrendsResolverMixin, \
-    PipelinePullRequestMetricsResolverMixin, PullRequestMetricsTrendsResolverMixin
+    PipelinePullRequestMetricsResolverMixin, PullRequestMetricsTrendsResolverMixin, ArrivalRateTrendsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -99,6 +99,7 @@ class Project(
     CapacityTrendsResolverMixin,
     PipelinePullRequestMetricsResolverMixin,
     PullRequestMetricsTrendsResolverMixin,
+    ArrivalRateTrendsResolverMixin,
 
     # Connection Mixins
     RepositoriesConnectionMixin,

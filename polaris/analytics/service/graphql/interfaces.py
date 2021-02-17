@@ -645,6 +645,9 @@ class ArrivalRateMeasurementImpl(TrendMeasurementImpl):
     class Meta:
         interfaces = (ArrivalRateMeasurement,)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
 
 class ArrivalRateTrends(graphene.Interface):
     arrival_rate_trends = graphene.List(ArrivalRateMeasurementImpl, required=True)

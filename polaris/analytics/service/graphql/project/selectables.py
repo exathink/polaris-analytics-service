@@ -2231,7 +2231,6 @@ class ProjectPullRequestNodes(ConnectionResolver):
         if kwargs.get('active_only'):
             select_pull_requests = select_pull_requests.where(pull_requests.c.state == 'open')
 
-        # TODO: Discuss if in this case we need to return PRs closed within n days
         if 'closed_within_days' in kwargs:
             window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
 
@@ -2262,9 +2261,26 @@ class ProjectArrivalRateTrends(InterfaceResolver):
             arg_name='arrival_rate_trends',
             interface_name='ArrivalRateTrends'
         )
+
+        project_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
+
         measurement_window = arrival_rate_trends_args.measurement_window
         if measurement_window is None:
             raise ProcessingException(
                 "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
             )
-        return select([])
+        return select([
+            project_timeline_dates.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
+                    'measurement_window', measurement_window,
+                    'arrival_rate', literal(1),
+                    'close_rate', literal(1)
+                )
+            ).label('arrival_rate_trends')
+        ]).select_from(
+            project_timeline_dates
+        ).group_by(
+            project_timeline_dates.c.id
+        )

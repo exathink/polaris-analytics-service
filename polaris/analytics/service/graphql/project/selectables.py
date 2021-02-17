@@ -2269,18 +2269,48 @@ class ProjectArrivalRateTrends(InterfaceResolver):
             raise ProcessingException(
                 "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
             )
-        return select([
+
+        arrival_rate_trends = select([
             project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date,
+            func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
+                and_(
+                    work_item_delivery_cycles.c.start_date >= project_timeline_dates.c.measurement_date,
+                    work_item_delivery_cycles.c.start_date < project_timeline_dates.c.measurement_date + timedelta(days=measurement_window)
+                )
+            ).label('arrival_rate'),
+            func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
+                and_(
+                    work_item_delivery_cycles.c.end_date >= project_timeline_dates.c.measurement_date,
+                    work_item_delivery_cycles.c.end_date < project_timeline_dates.c.measurement_date + timedelta(
+                        days=measurement_window)
+                )
+            ).label('close_rate')
+        ]).select_from(
+            project_timeline_dates.join(
+                work_items_sources, work_items_sources.c.project_id == project_timeline_dates.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            )
+        ).group_by(
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date,
+        ).distinct().alias('arrival_rate_trends')
+
+        return select([
+            arrival_rate_trends.c.id,
             func.json_agg(
                 func.json_build_object(
                     'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
                     'measurement_window', measurement_window,
-                    'arrival_rate', literal(1),
-                    'close_rate', literal(1)
+                    'arrival_rate', arrival_rate_trends.c.arrival_rate,
+                    'close_rate', arrival_rate_trends.c.close_rate
                 )
             ).label('arrival_rate_trends')
         ]).select_from(
-            project_timeline_dates
+                arrival_rate_trends
         ).group_by(
-            project_timeline_dates.c.id
+            arrival_rate_trends.c.id
         )

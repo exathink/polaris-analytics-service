@@ -198,3 +198,20 @@ class PullRequestMetricsParameters(graphene.InputObjectType):
 
 class PullRequestMetricsTrendsParameters(AggregateMetricsTrendsParameters, PullRequestMetricsParameters):
     pass
+
+
+class ArrivalMetricsEnum(Enum):
+    arrival_rate = 'arrival_rate'
+    close_rate = 'close_rate'
+
+
+class ArrivalRateParameters(WorkItemTypeSelectionParameters, graphene.InputObjectType):
+    metrics = graphene.List(
+        graphene.Enum.from_enum(ArrivalMetricsEnum),
+        required=True,
+        description="Specify a list of the metrics that should be returned"
+    )
+
+
+class ArrivalRateTrendsParameters(AggregateMetricsTrendsParameters, ArrivalRateParameters, graphene.InputObjectType):
+    pass

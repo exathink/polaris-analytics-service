@@ -41,7 +41,7 @@ from ..interfaces import \
     WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
-    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, ArrivalRateTrends
+    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends
 from ..pull_request.sql_expressions import pull_request_info_columns
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -2248,29 +2248,29 @@ class ProjectPullRequestNodes(ConnectionResolver):
         return [pull_request_nodes.c.created_at.desc().nullsfirst()]
 
 
-class ProjectArrivalRateTrends(InterfaceResolver):
-    interface = ArrivalRateTrends
+class ProjectFlowRateTrends(InterfaceResolver):
+    interface = FlowRateTrends
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
-        arrival_rate_trends_args = kwargs.get('arrival_rate_trends_args')
+        flow_rate_trends_args = kwargs.get('flow_rate_trends_args')
 
         # Get the a list of dates for trending using the trends_args for control
         timeline_dates = get_timeline_dates_for_trending(
-            arrival_rate_trends_args,
-            arg_name='arrival_rate_trends',
-            interface_name='ArrivalRateTrends'
+            flow_rate_trends_args,
+            arg_name='flow_rate_trends',
+            interface_name='FlowRateTrends'
         )
 
         project_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
 
-        measurement_window = arrival_rate_trends_args.measurement_window
+        measurement_window = flow_rate_trends_args.measurement_window
         if measurement_window is None:
             raise ProcessingException(
                 "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
             )
 
-        arrival_rate_trends = select([
+        flow_rate_trends = select([
             project_timeline_dates.c.id,
             project_timeline_dates.c.measurement_date,
             func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
@@ -2293,14 +2293,14 @@ class ProjectArrivalRateTrends(InterfaceResolver):
             )
         )
 
-        arrival_rate_trends = apply_specs_only_filter(arrival_rate_trends, work_item_delivery_cycles,
-                                                      **arrival_rate_trends_args)
-        arrival_rate_trends = apply_defects_only_filter(arrival_rate_trends, work_items, **arrival_rate_trends_args)
+        flow_rate_trends = apply_specs_only_filter(flow_rate_trends, work_item_delivery_cycles,
+                                                      **flow_rate_trends_args)
+        flow_rate_trends = apply_defects_only_filter(flow_rate_trends, work_items, **flow_rate_trends_args)
 
-        arrival_rate_trends = arrival_rate_trends.group_by(
+        flow_rate_trends = flow_rate_trends.group_by(
             project_timeline_dates.c.id,
             project_timeline_dates.c.measurement_date
-        ).distinct().alias('arrival_rate_trends')
+        ).distinct().alias('flow_rate_trends')
 
         return select([
             project_timeline_dates.c.id,
@@ -2308,16 +2308,16 @@ class ProjectArrivalRateTrends(InterfaceResolver):
                 func.json_build_object(
                     'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
                     'measurement_window', measurement_window,
-                    'arrival_rate', arrival_rate_trends.c.arrival_rate,
-                    'close_rate', arrival_rate_trends.c.close_rate
+                    'arrival_rate', flow_rate_trends.c.arrival_rate,
+                    'close_rate', flow_rate_trends.c.close_rate
                 )
-            ).label('arrival_rate_trends')
+            ).label('flow_rate_trends')
         ]).select_from(
             project_timeline_dates.outerjoin(
-                arrival_rate_trends,
+                flow_rate_trends,
                 and_(
-                    arrival_rate_trends.c.id == project_timeline_dates.c.id,
-                    arrival_rate_trends.c.measurement_date == project_timeline_dates.c.measurement_date
+                    flow_rate_trends.c.id == project_timeline_dates.c.id,
+                    flow_rate_trends.c.measurement_date == project_timeline_dates.c.measurement_date
                 )
             )
         ).group_by(

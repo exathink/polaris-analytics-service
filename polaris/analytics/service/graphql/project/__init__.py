@@ -17,13 +17,13 @@ from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
-    PullRequestMetricsTrends, PullRequestEventSpan, ArrivalRateTrends
+    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
     TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin, \
     ProjectInfoResolverMixin, FlowMixTrendsResolverMixin, CapacityTrendsResolverMixin, \
-    PipelinePullRequestMetricsResolverMixin, PullRequestMetricsTrendsResolverMixin, ArrivalRateTrendsResolverMixin
+    PipelinePullRequestMetricsResolverMixin, PullRequestMetricsTrendsResolverMixin, FlowRateTrendsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -45,7 +45,7 @@ from ..pull_request import PullRequestsConnectionMixin
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
     FlowMixTrendsParameters, CapacityTrendsParameters, PullRequestMetricsParameters, \
-    PullRequestMetricsTrendsParameters, ArrivalRateTrendsParameters
+    PullRequestMetricsTrendsParameters, FlowRateTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -80,7 +80,7 @@ from .selectables import ProjectNode, \
     ProjectPipelinePullRequestMetrics, \
     ProjectPullRequestMetricsTrends, \
     ProjectPullRequestNodes, \
-    ProjectArrivalRateTrends
+    ProjectFlowRateTrends
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -99,7 +99,7 @@ class Project(
     CapacityTrendsResolverMixin,
     PipelinePullRequestMetricsResolverMixin,
     PullRequestMetricsTrendsResolverMixin,
-    ArrivalRateTrendsResolverMixin,
+    FlowRateTrendsResolverMixin,
 
     # Connection Mixins
     RepositoriesConnectionMixin,
@@ -151,7 +151,7 @@ Implicit Interfaces: ArchivedStatus
             CapacityTrends,
             PipelinePullRequestMetrics,
             PullRequestMetricsTrends,
-            ArrivalRateTrends
+            FlowRateTrends
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -172,7 +172,7 @@ Implicit Interfaces: ArchivedStatus
             'CapacityTrends': ProjectsCapacityTrends,
             'PipelinePullRequestMetrics': ProjectPipelinePullRequestMetrics,
             'PullRequestMetricsTrends': ProjectPullRequestMetricsTrends,
-            'ArrivalRateTrends': ProjectArrivalRateTrends
+            'FlowRateTrends': ProjectFlowRateTrends
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -275,10 +275,10 @@ Implicit Interfaces: ArchivedStatus
                 description='Required when resolving PullRequestMetricsTrends interface'
             ),
 
-            arrival_rate_trends_args=graphene.Argument(
-                ArrivalRateTrendsParameters,
+            flow_rate_trends_args=graphene.Argument(
+                FlowRateTrendsParameters,
                 required=False,
-                description='Required when resolving ArrivalRateTrends interface'
+                description='Required when resolving FlowRateTrends interface'
             ),
 
             **kwargs

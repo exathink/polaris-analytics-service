@@ -2274,17 +2274,14 @@ class ProjectArrivalRateTrends(InterfaceResolver):
             project_timeline_dates.c.id,
             project_timeline_dates.c.measurement_date,
             func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
-                and_(
-                    work_item_delivery_cycles.c.start_date >= project_timeline_dates.c.measurement_date -timedelta(days=measurement_window),
-                    work_item_delivery_cycles.c.start_date < project_timeline_dates.c.measurement_date
-                )
-            ).label('arrival_rate'),
+                work_item_delivery_cycles.c.start_date.between(
+                    (project_timeline_dates.c.measurement_date - timedelta(days=measurement_window - 1)),
+                    (project_timeline_dates.c.measurement_date + timedelta(days=1)))
+                ).label('arrival_rate'),
             func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
-                and_(
-                    work_item_delivery_cycles.c.end_date >= project_timeline_dates.c.measurement_date - timedelta(
-                        days=measurement_window),
-                    work_item_delivery_cycles.c.end_date < project_timeline_dates.c.measurement_date
-                )
+                work_item_delivery_cycles.c.end_date.between(
+                    (project_timeline_dates.c.measurement_date - timedelta(days=measurement_window - 1)),
+                    (project_timeline_dates.c.measurement_date + timedelta(days=1)))
             ).label('close_rate')
         ]).select_from(
             project_timeline_dates.join(
@@ -2296,13 +2293,14 @@ class ProjectArrivalRateTrends(InterfaceResolver):
             )
         )
 
-        arrival_rate_trends = apply_specs_only_filter(arrival_rate_trends, work_item_delivery_cycles, **arrival_rate_trends_args)
+        arrival_rate_trends = apply_specs_only_filter(arrival_rate_trends, work_item_delivery_cycles,
+                                                      **arrival_rate_trends_args)
         arrival_rate_trends = apply_defects_only_filter(arrival_rate_trends, work_items, **arrival_rate_trends_args)
 
         arrival_rate_trends = arrival_rate_trends.group_by(
             project_timeline_dates.c.id,
             project_timeline_dates.c.measurement_date
-        ).distinct().cte()
+        ).distinct().alias('arrival_rate_trends')
 
         return select([
             project_timeline_dates.c.id,

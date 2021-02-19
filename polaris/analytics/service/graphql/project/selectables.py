@@ -47,7 +47,7 @@ from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
-    work_item_info_group_expr_columns, apply_specs_only_filter
+    work_item_info_group_expr_columns, apply_specs_only_filter, apply_defects_only_filter
 from ..utils import date_column_is_in_measurement_window
 
 
@@ -2275,15 +2275,15 @@ class ProjectArrivalRateTrends(InterfaceResolver):
             project_timeline_dates.c.measurement_date,
             func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
                 and_(
-                    work_item_delivery_cycles.c.start_date >= project_timeline_dates.c.measurement_date,
-                    work_item_delivery_cycles.c.start_date < project_timeline_dates.c.measurement_date + timedelta(days=measurement_window)
+                    work_item_delivery_cycles.c.start_date >= project_timeline_dates.c.measurement_date -timedelta(days=measurement_window),
+                    work_item_delivery_cycles.c.start_date < project_timeline_dates.c.measurement_date
                 )
             ).label('arrival_rate'),
             func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
                 and_(
-                    work_item_delivery_cycles.c.end_date >= project_timeline_dates.c.measurement_date,
-                    work_item_delivery_cycles.c.end_date < project_timeline_dates.c.measurement_date + timedelta(
-                        days=measurement_window)
+                    work_item_delivery_cycles.c.end_date >= project_timeline_dates.c.measurement_date - timedelta(
+                        days=measurement_window),
+                    work_item_delivery_cycles.c.end_date < project_timeline_dates.c.measurement_date
                 )
             ).label('close_rate')
         ]).select_from(
@@ -2294,10 +2294,15 @@ class ProjectArrivalRateTrends(InterfaceResolver):
             ).join(
                 work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
             )
-        ).group_by(
+        )
+
+        arrival_rate_trends = apply_specs_only_filter(arrival_rate_trends, work_item_delivery_cycles, **arrival_rate_trends_args)
+        arrival_rate_trends = apply_defects_only_filter(arrival_rate_trends, work_items, **arrival_rate_trends_args)
+
+        arrival_rate_trends = arrival_rate_trends.group_by(
             project_timeline_dates.c.id,
             project_timeline_dates.c.measurement_date
-        ).distinct().alias('arrival_rate_trends')
+        ).distinct().cte()
 
         return select([
             project_timeline_dates.c.id,

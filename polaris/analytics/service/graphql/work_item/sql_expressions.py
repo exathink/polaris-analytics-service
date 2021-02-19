@@ -235,6 +235,14 @@ def apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs):
     return select_stmt
 
 
+def apply_defects_only_filter(select_stmt, work_items, **kwargs):
+    if kwargs.get('defects_only'):
+        select_stmt = select_stmt.where(
+            work_items.c.is_bug == True
+        )
+    return select_stmt
+
+
 def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
 
     select_stmt = apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs)

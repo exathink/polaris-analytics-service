@@ -2274,14 +2274,18 @@ class ProjectFlowRateTrends(InterfaceResolver):
             project_timeline_dates.c.id,
             project_timeline_dates.c.measurement_date,
             func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
-                work_item_delivery_cycles.c.start_date.between(
-                    (project_timeline_dates.c.measurement_date - timedelta(days=measurement_window - 1)),
-                    (project_timeline_dates.c.measurement_date + timedelta(days=1)))
+                date_column_is_in_measurement_window(
+                    work_item_delivery_cycles.c.start_date,
+                    measurement_date=project_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                )
                 ).label('arrival_rate'),
             func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
-                work_item_delivery_cycles.c.end_date.between(
-                    (project_timeline_dates.c.measurement_date - timedelta(days=measurement_window - 1)),
-                    (project_timeline_dates.c.measurement_date + timedelta(days=1)))
+                date_column_is_in_measurement_window(
+                    work_item_delivery_cycles.c.end_date,
+                    measurement_date=project_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                )
             ).label('close_rate')
         ]).select_from(
             project_timeline_dates.join(

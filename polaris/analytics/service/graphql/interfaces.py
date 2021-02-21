@@ -632,3 +632,22 @@ class PipelinePullRequestMetrics(graphene.Interface):
 
 class PullRequestMetricsTrends(graphene.Interface):
     pull_request_metrics_trends = graphene.List(AggregatePullRequestMetricsImpl)
+
+
+class FlowRateMeasurement(graphene.Interface):
+    measurement_date = graphene.Date(required=True)
+    measurement_window = graphene.Int(required=True)
+    arrival_rate = graphene.Int(required=True)
+    close_rate = graphene.Int(required=True)
+
+
+class FlowRateMeasurementImpl(TrendMeasurementImpl):
+    class Meta:
+        interfaces = (FlowRateMeasurement,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class FlowRateTrends(graphene.Interface):
+    flow_rate_trends = graphene.List(FlowRateMeasurementImpl, required=True)

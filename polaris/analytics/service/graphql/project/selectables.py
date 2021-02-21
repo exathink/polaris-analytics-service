@@ -41,13 +41,13 @@ from ..interfaces import \
     WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
-    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan
+    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends
 from ..pull_request.sql_expressions import pull_request_info_columns
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
-    work_item_info_group_expr_columns, apply_specs_only_filter
+    work_item_info_group_expr_columns, apply_specs_only_filter, apply_defects_only_filter
 from ..utils import date_column_is_in_measurement_window
 
 
@@ -698,7 +698,6 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
 
     @classmethod
     def interface_selector(cls, project_nodes, **kwargs):
-
         shared_work_items_columns = [
             project_nodes.c.id.label('project_id'),
             work_item_delivery_cycles.c.delivery_cycle_id,
@@ -755,10 +754,6 @@ class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
         ).group_by(
             project_nodes.c.id
         )
-
-
-
-
 
 
 class ProjectCycleMetrics(InterfaceResolver):
@@ -2236,7 +2231,6 @@ class ProjectPullRequestNodes(ConnectionResolver):
         if kwargs.get('active_only'):
             select_pull_requests = select_pull_requests.where(pull_requests.c.state == 'open')
 
-        # TODO: Discuss if in this case we need to return PRs closed within n days
         if 'closed_within_days' in kwargs:
             window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
 
@@ -2252,3 +2246,84 @@ class ProjectPullRequestNodes(ConnectionResolver):
     @staticmethod
     def sort_order(pull_request_nodes, **kwargs):
         return [pull_request_nodes.c.created_at.desc().nullsfirst()]
+
+
+class ProjectFlowRateTrends(InterfaceResolver):
+    interface = FlowRateTrends
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        flow_rate_trends_args = kwargs.get('flow_rate_trends_args')
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            flow_rate_trends_args,
+            arg_name='flow_rate_trends',
+            interface_name='FlowRateTrends'
+        )
+
+        project_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
+
+        measurement_window = flow_rate_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+            )
+
+        flow_rate_trends = select([
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date,
+            func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
+                date_column_is_in_measurement_window(
+                    work_item_delivery_cycles.c.start_date,
+                    measurement_date=project_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                )
+                ).label('arrival_rate'),
+            func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
+                date_column_is_in_measurement_window(
+                    work_item_delivery_cycles.c.end_date,
+                    measurement_date=project_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                )
+            ).label('close_rate')
+        ]).select_from(
+            project_timeline_dates.join(
+                work_items_sources, work_items_sources.c.project_id == project_timeline_dates.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            )
+        )
+
+        flow_rate_trends = apply_specs_only_filter(flow_rate_trends, work_item_delivery_cycles,
+                                                      **flow_rate_trends_args)
+        flow_rate_trends = apply_defects_only_filter(flow_rate_trends, work_items, **flow_rate_trends_args)
+
+        flow_rate_trends = flow_rate_trends.group_by(
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date
+        ).distinct().alias('flow_rate_trends')
+
+        return select([
+            project_timeline_dates.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
+                    'measurement_window', measurement_window,
+                    'arrival_rate', flow_rate_trends.c.arrival_rate,
+                    'close_rate', flow_rate_trends.c.close_rate
+                )
+            ).label('flow_rate_trends')
+        ]).select_from(
+            project_timeline_dates.outerjoin(
+                flow_rate_trends,
+                and_(
+                    flow_rate_trends.c.id == project_timeline_dates.c.id,
+                    flow_rate_trends.c.measurement_date == project_timeline_dates.c.measurement_date
+                )
+            )
+        ).group_by(
+            project_timeline_dates.c.id
+        )

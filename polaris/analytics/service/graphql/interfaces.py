@@ -674,4 +674,4 @@ class BacklogMeasurementImpl(TrendMeasurementImpl):
 
 
 class BacklogTrends(graphene.Interface):
-    backlog_trends = graphene.List(required=True)
+    backlog_trends = graphene.List(BacklogMeasurement, required=True)

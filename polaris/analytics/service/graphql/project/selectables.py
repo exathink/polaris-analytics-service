@@ -41,7 +41,8 @@ from ..interfaces import \
     WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
-    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends
+    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends, \
+    BacklogTrends
 from ..pull_request.sql_expressions import pull_request_info_columns
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -2327,3 +2328,38 @@ class ProjectFlowRateTrends(InterfaceResolver):
         ).group_by(
             project_timeline_dates.c.id
         )
+
+
+class ProjectBacklogTrends(InterfaceResolver):
+    interface = BacklogTrends
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        backlog_trends_args = kwargs.get('backlog_trends_args')
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            backlog_trends_args,
+            arg_name='backlog_trends',
+            interface_name='BacklogTrends'
+        )
+
+        project_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
+
+        measurement_window = backlog_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+            )
+
+        return select([
+            project_timeline_dates.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
+                    'measurement_window', measurement_window
+                )
+            ).label('backlog_trends')
+        ]).select_from(
+            project_timeline_dates
+            )

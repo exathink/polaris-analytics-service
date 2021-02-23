@@ -2375,20 +2375,28 @@ class ProjectBacklogTrends(InterfaceResolver):
             func.count(work_items.c.id).filter(
                 and_(
                     work_items.c.state_type != WorkItemsStateType.closed.value,
-                    work_items.c.updated_at <= daily_timeline_dates.c.measurement_date
+                    or_(
+                        work_item_delivery_cycles.c.end_date > daily_timeline_dates.c.measurement_date,
+                        work_item_delivery_cycles.c.end_date == None
+                    )
                 )
             ).label('backlog_size'),
             func.count(work_items.c.id).filter(
                 and_(
                     work_items.c.state_type != WorkItemsStateType.closed.value,
-                    work_items.c.updated_at <= daily_timeline_dates.c.day_of_window
+                    or_(
+                        work_item_delivery_cycles.c.end_date > daily_timeline_dates.c.day_of_window,
+                        work_item_delivery_cycles.c.end_date == None
+                    )
                 )
-            ).label('backlog_size_per_day')
+            ).label('backlog_size_each_day')
         ]).select_from(
             daily_timeline_dates.join(
                 work_items_sources, work_items_sources.c.project_id == daily_timeline_dates.c.id
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).outerjoin(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
             )
         )
 
@@ -2405,12 +2413,12 @@ class ProjectBacklogTrends(InterfaceResolver):
             backlog_metrics.c.id,
             backlog_metrics.c.measurement_date,
             backlog_metrics.c.backlog_size,
-            func.min(backlog_metrics.c.backlog_size_per_day).label('min_backlog_size'),
-            func.max(backlog_metrics.c.backlog_size_per_day).label('max_backlog_size'),
-            func.avg(backlog_metrics.c.backlog_size_per_day).label('avg_backlog_size'),
-            func.percentile_disc(0.25).within_group(backlog_metrics.c.backlog_size_per_day).label('q1_backlog_size'),
-            func.percentile_disc(0.5).within_group(backlog_metrics.c.backlog_size_per_day).label('median_backlog_size'),
-            func.percentile_disc(0.75).within_group(backlog_metrics.c.backlog_size_per_day).label('q3_backlog_size')
+            func.min(backlog_metrics.c.backlog_size_each_day).label('min_backlog_size'),
+            func.max(backlog_metrics.c.backlog_size_each_day).label('max_backlog_size'),
+            func.avg(backlog_metrics.c.backlog_size_each_day).label('avg_backlog_size'),
+            func.percentile_disc(0.25).within_group(backlog_metrics.c.backlog_size_each_day).label('q1_backlog_size'),
+            func.percentile_disc(0.5).within_group(backlog_metrics.c.backlog_size_each_day).label('median_backlog_size'),
+            func.percentile_disc(0.75).within_group(backlog_metrics.c.backlog_size_each_day).label('q3_backlog_size')
         ]).select_from(
             backlog_metrics
         ).group_by(

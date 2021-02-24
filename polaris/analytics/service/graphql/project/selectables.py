@@ -2387,7 +2387,12 @@ class ProjectBacklogTrends(InterfaceResolver):
                 work_item_delivery_cycles.c.end_date == None,
                 work_item_delivery_cycles.c.end_date > all_dates_in_period.c.date_of_window
             )
-        ).group_by(
+        )
+
+        daily_backlog_counts = apply_defects_only_filter(daily_backlog_counts, work_items, **backlog_trends_args)
+        daily_backlog_counts = apply_specs_only_filter(daily_backlog_counts, work_item_delivery_cycles, **backlog_trends_args)
+
+        daily_backlog_counts = daily_backlog_counts.group_by(
             project_nodes.c.id,
             all_dates_in_period.c.date_of_window
         ).cte()

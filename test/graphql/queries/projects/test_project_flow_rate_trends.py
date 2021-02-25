@@ -174,7 +174,7 @@ class TestProjectFlowRateTrends:
                 # 1 closed issue with commits, 1 closed bug with commits, 1 open bug without commits
                 api_helper.update_delivery_cycle(0, dict(end_date=datetime.utcnow()))
                 api_helper.update_delivery_cycle(1, dict(end_date=datetime.utcnow()))
-                api_helper.update_delivery_cycle(1, dict(end_date=None))
+                api_helper.update_delivery_cycle(2, dict(end_date=None))
 
                 yield Fixture(
                     parent=fixture

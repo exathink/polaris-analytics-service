@@ -31,7 +31,7 @@ from polaris.graphql.utils import nulls_to_zero
 from polaris.utils.collections import dict_merge
 from polaris.utils.datetime_utils import time_window
 from polaris.utils.exceptions import ProcessingException
-from .sql_expressions import get_timeline_dates_for_trending, select_funnel_work_items
+from .sql_expressions import get_timeline_dates_for_trending, select_funnel_work_items, get_measurement_period
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
@@ -41,7 +41,8 @@ from ..interfaces import \
     WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
-    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends
+    PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends, \
+    BacklogTrends
 from ..pull_request.sql_expressions import pull_request_info_columns
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -2279,7 +2280,7 @@ class ProjectFlowRateTrends(InterfaceResolver):
                     measurement_date=project_timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 )
-                ).label('arrival_rate'),
+            ).label('arrival_rate'),
             func.count(work_item_delivery_cycles.c.delivery_cycle_id).filter(
                 date_column_is_in_measurement_window(
                     work_item_delivery_cycles.c.end_date,
@@ -2298,7 +2299,7 @@ class ProjectFlowRateTrends(InterfaceResolver):
         )
 
         flow_rate_trends = apply_specs_only_filter(flow_rate_trends, work_item_delivery_cycles,
-                                                      **flow_rate_trends_args)
+                                                   **flow_rate_trends_args)
         flow_rate_trends = apply_defects_only_filter(flow_rate_trends, work_items, **flow_rate_trends_args)
 
         flow_rate_trends = flow_rate_trends.group_by(
@@ -2322,6 +2323,149 @@ class ProjectFlowRateTrends(InterfaceResolver):
                 and_(
                     flow_rate_trends.c.id == project_timeline_dates.c.id,
                     flow_rate_trends.c.measurement_date == project_timeline_dates.c.measurement_date
+                )
+            )
+        ).group_by(
+            project_timeline_dates.c.id
+        )
+
+
+class ProjectBacklogTrends(InterfaceResolver):
+    interface = BacklogTrends
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        backlog_trends_args = kwargs.get('backlog_trends_args')
+
+        # Get the list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            backlog_trends_args,
+            arg_name='backlog_trends',
+            interface_name='BacklogTrends'
+        )
+
+        project_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
+
+        measurement_window = backlog_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+            )
+        measurement_period_start_date, measurement_period_end_date = get_measurement_period(
+            backlog_trends_args,
+            arg_name='backlog_trends',
+            interface_name='BacklogTrends'
+        )
+
+        all_dates_in_period = select([
+            cast(
+                func.generate_series(
+                    measurement_period_end_date,
+                    measurement_period_start_date - timedelta(days=measurement_window),
+                    timedelta(days=-1)
+                ),
+                Date
+            ).label('date_of_window')
+        ]).alias()
+
+        daily_backlog_counts = select([
+            project_nodes.c.id.label('project_id'),
+            all_dates_in_period.c.date_of_window,
+            func.count(work_items.c.id).label('backlog_size')
+        ]).select_from(
+            work_items.join(
+                work_item_delivery_cycles, work_items.c.id == work_item_delivery_cycles.c.work_item_id
+            ).join(
+                work_items_sources, work_items_sources.c.id == work_items.c.work_items_source_id
+            ).join(
+                project_nodes, project_nodes.c.id == work_items_sources.c.project_id
+            ).join(
+                all_dates_in_period, literal(True)
+            )
+        ).where(
+            or_(
+                work_item_delivery_cycles.c.end_date == None,
+                work_item_delivery_cycles.c.end_date > all_dates_in_period.c.date_of_window
+            )
+        )
+
+        daily_backlog_counts = apply_defects_only_filter(daily_backlog_counts, work_items, **backlog_trends_args)
+        daily_backlog_counts = apply_specs_only_filter(daily_backlog_counts, work_item_delivery_cycles, **backlog_trends_args)
+
+        daily_backlog_counts = daily_backlog_counts.group_by(
+            project_nodes.c.id,
+            all_dates_in_period.c.date_of_window
+        ).cte()
+
+        daily_backlog_counts_timeline_dates = select([
+            daily_backlog_counts.c.project_id,
+            daily_backlog_counts.c.date_of_window,
+            daily_backlog_counts.c.backlog_size,
+            timeline_dates.c.measurement_date
+        ]).select_from(
+            daily_backlog_counts.join(
+                timeline_dates, literal(True)
+            )
+        ).where(
+            and_(
+                daily_backlog_counts.c.date_of_window <= timeline_dates.c.measurement_date,
+                daily_backlog_counts.c.date_of_window > timeline_dates.c.measurement_date - timedelta(days=30)
+            )
+        ).group_by(
+            timeline_dates.c.measurement_date,
+            daily_backlog_counts.c.date_of_window,
+            daily_backlog_counts.c.project_id,
+            daily_backlog_counts.c.backlog_size
+        ).alias()
+
+        window_backlog_counts = daily_backlog_counts.alias()
+
+        backlog_trends = select([
+            daily_backlog_counts_timeline_dates.c.project_id.label('id'),
+            daily_backlog_counts_timeline_dates.c.measurement_date,
+            window_backlog_counts.c.backlog_size,
+            func.min(daily_backlog_counts_timeline_dates.c.backlog_size).label('min_backlog_size'),
+            func.max(daily_backlog_counts_timeline_dates.c.backlog_size).label('max_backlog_size'),
+            func.avg(daily_backlog_counts_timeline_dates.c.backlog_size).label('avg_backlog_size'),
+            func.percentile_disc(0.25).within_group(daily_backlog_counts_timeline_dates.c.backlog_size).label(
+                'q1_backlog_size'),
+            func.percentile_disc(0.5).within_group(daily_backlog_counts_timeline_dates.c.backlog_size).label(
+                'median_backlog_size'),
+            func.percentile_disc(0.75).within_group(daily_backlog_counts_timeline_dates.c.backlog_size).label(
+                'q3_backlog_size')
+        ]).select_from(
+            daily_backlog_counts_timeline_dates.join(
+                window_backlog_counts,
+                window_backlog_counts.c.date_of_window == daily_backlog_counts_timeline_dates.c.measurement_date
+            )
+        ).group_by(
+            daily_backlog_counts_timeline_dates.c.project_id,
+            daily_backlog_counts_timeline_dates.c.measurement_date,
+            window_backlog_counts.c.date_of_window,
+            window_backlog_counts.c.backlog_size
+        ).distinct().alias('backlog_trends')
+
+        return select([
+            project_timeline_dates.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
+                    'measurement_window', measurement_window,
+                    'backlog_size', backlog_trends.c.backlog_size,
+                    'min_backlog_size', backlog_trends.c.min_backlog_size,
+                    'max_backlog_size', backlog_trends.c.max_backlog_size,
+                    'q1_backlog_size', backlog_trends.c.q1_backlog_size,
+                    'q3_backlog_size', backlog_trends.c.q3_backlog_size,
+                    'median_backlog_size', backlog_trends.c.median_backlog_size,
+                    'avg_backlog_size', backlog_trends.c.avg_backlog_size
+                )
+            ).label('backlog_trends')
+        ]).select_from(
+            project_timeline_dates.outerjoin(
+                backlog_trends,
+                and_(
+                    backlog_trends.c.id == project_timeline_dates.c.id,
+                    backlog_trends.c.measurement_date == project_timeline_dates.c.measurement_date
                 )
             )
         ).group_by(

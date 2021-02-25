@@ -14,7 +14,7 @@ from datetime import datetime
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
     WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
     ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl, \
-    ContributorAliasInfoImpl, FlowRateMeasurementImpl
+    ContributorAliasInfoImpl, FlowRateMeasurementImpl, BacklogMeasurementImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -33,7 +33,8 @@ class ContributorAliasesInfoResolverMixin(KeyIdResolverMixin):
         super().__init__(*args, **kwargs)
 
     def resolve_contributor_aliases_info(self, info, **kwargs):
-        return [ContributorAliasInfoImpl(**alias_info) for alias_info in self.contributor_aliases_info if alias_info is not None]
+        return [ContributorAliasInfoImpl(**alias_info) for alias_info in self.contributor_aliases_info if
+                alias_info is not None]
 
 
 class WorkItemsSummariesResolverMixin(KeyIdResolverMixin):
@@ -55,8 +56,6 @@ class FlowMixTrendsResolverMixin(KeyIdResolverMixin):
     def resolve_flow_mix_trends(self, info, **kwargs):
         return [FlowMixMeasurementImpl(**measurement) for measurement in self.flow_mix_trends if
                 measurement is not None]
-
-
 
 
 class WorkItemStateTypeSummaryResolverMixin(KeyIdResolverMixin):
@@ -226,4 +225,17 @@ class FlowRateTrendsResolverMixin(KeyIdResolverMixin):
         return [
             FlowRateMeasurementImpl(**flow_rate_metrics)
             for flow_rate_metrics in self.flow_rate_trends or []
+        ]
+
+
+class BacklogTrendsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.backlog_trends = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_backlog_trends(self, info, **kwargs):
+        return [
+            BacklogMeasurementImpl(**backlog_metrics)
+            for backlog_metrics in self.backlog_trends or []
         ]

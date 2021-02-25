@@ -215,3 +215,25 @@ class FlowRateParameters(WorkItemTypeSelectionParameters, graphene.InputObjectTy
 
 class FlowRateTrendsParameters(AggregateMetricsTrendsParameters, FlowRateParameters, graphene.InputObjectType):
     pass
+
+
+class BacklogMeasurementEnum(Enum):
+    backlog_size = 'backlog_size'
+    min_backlog_size = 'min_backlog_size'
+    max_backlog_size = 'max_backlog_size'
+    q1_backlog_size = 'q1_backlog_size'
+    q3_backlog_size = 'q3_backlog_size'
+    median_backlog_size = 'median_backlog_size'
+    avg_backlog_size = 'avg_backlog_size'
+
+
+class BacklogMeasurementParameters(WorkItemTypeSelectionParameters, graphene.InputObjectType):
+    metrics = graphene.List(
+        graphene.Enum.from_enum(BacklogMeasurementEnum),
+        required=True,
+        description="Specify a list of the metrics that should be returned"
+    )
+
+
+class BacklogTrendsParameters(AggregateMetricsTrendsParameters, BacklogMeasurementParameters):
+    pass

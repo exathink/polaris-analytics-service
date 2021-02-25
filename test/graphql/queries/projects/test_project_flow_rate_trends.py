@@ -89,3 +89,247 @@ class TestProjectFlowRateTrends:
                 query=query,
                 output_attribute='flowRateTrends'
             )
+
+    class TestForAllWorkitemsInBacklog:
+
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            fixture = setup
+
+            api_helper = fixture.api_helper
+            api_helper.import_work_items(fixture.work_items)
+
+            yield Fixture(
+                parent=fixture
+            )
+
+        class TestWithNoFilter:
+
+            def it_returns_the_correct_flow_rates_for_all_work_items(self, setup):
+                fixture = setup
+
+                query = """
+                    query getProjectFlowRateTrends(
+                        $project_key:String!,
+                        $days: Int!,
+                        $window: Int!,
+                        $sample: Int
+                    ) {
+                        project(
+                            key: $project_key,
+                            interfaces: [FlowRateTrends],
+                            flowRateTrendsArgs: {
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                                metrics: [
+                                    arrival_rate,
+                                    close_rate
+                                ],
+                            }
+                        )
+                        {
+                            flowRateTrends {
+                                measurementDate
+                                measurementWindow
+                                arrivalRate
+                                closeRate
+                            }
+                        }
+                    }
+            """
+
+                client = Client(schema)
+
+                result = client.execute(query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=30,
+                    window=30,
+                    sample=15
+                ))
+                assert result['data']
+                project = result['data']['project']
+                assert len(project['flowRateTrends']) == 3
+                flowRateTrends = project['flowRateTrends']
+                for trends in flowRateTrends:
+                    assert trends['closeRate'] == 0
+                    if trends['arrivalRate'] != 0:
+                        assert trends['arrivalRate'] == 3
+
+        class TestWithFilters:
+
+            @pytest.yield_fixture()
+            def setup(self, setup):
+                fixture = setup
+
+                api_helper = fixture.api_helper
+                # 1 issue 2 bugs
+                api_helper.update_work_item(0, dict(work_item_type='issue', is_bug=False))
+                # 1 issue with commits, 1 bug with commits, 1 bug with no commits
+                api_helper.update_delivery_cycle(0, dict(commit_count=1))
+                api_helper.update_delivery_cycle(1, dict(commit_count=2))
+                # 1 closed issue with commits, 1 closed bug with commits, 1 open bug without commits
+                api_helper.update_delivery_cycle(0, dict(end_date=datetime.utcnow()))
+                api_helper.update_delivery_cycle(1, dict(end_date=datetime.utcnow()))
+
+                yield Fixture(
+                    parent=fixture
+                )
+
+            class TestWithSpecsOnlyFilter:
+
+                def it_returns_only_specs(self, setup):
+                    fixture = setup
+
+                    query = """
+                                        query getProjectFlowRateTrends(
+                                            $project_key:String!,
+                                            $days: Int!,
+                                            $window: Int!,
+                                            $sample: Int
+                                        ) {
+                                            project(
+                                                key: $project_key,
+                                                interfaces: [FlowRateTrends],
+                                                flowRateTrendsArgs: {
+                                                    days: $days,
+                                                    measurementWindow: $window,
+                                                    samplingFrequency: $sample,
+                                                    metrics: [
+                                                        arrival_rate,
+                                                        close_rate
+                                                    ],
+                                                    specsOnly: true
+                                                }
+                                            )
+                                            {
+                                                flowRateTrends {
+                                                    measurementDate
+                                                    measurementWindow
+                                                    arrivalRate
+                                                    closeRate
+                                                }
+                                            }
+                                        }
+                                """
+
+                    client = Client(schema)
+
+                    result = client.execute(query, variable_values=dict(
+                        project_key=fixture.project.key,
+                        days=11,
+                        window=30,
+                        sample=15
+                    ))
+                    assert result['data']
+                    project = result['data']['project']
+                    assert len(project['flowRateTrends']) == 1
+                    trends = project['flowRateTrends'][0]
+                    assert trends['closeRate'] == 2
+                    assert trends['arrivalRate'] == 2
+
+            class TestWithDefectsOnlyFilter:
+
+                def it_returns_only_defects(self, setup):
+                    fixture = setup
+
+                    query = """
+                                        query getProjectFlowRateTrends(
+                                            $project_key:String!,
+                                            $days: Int!,
+                                            $window: Int!,
+                                            $sample: Int
+                                        ) {
+                                            project(
+                                                key: $project_key,
+                                                interfaces: [FlowRateTrends],
+                                                flowRateTrendsArgs: {
+                                                    days: $days,
+                                                    measurementWindow: $window,
+                                                    samplingFrequency: $sample,
+                                                    metrics: [
+                                                        arrival_rate,
+                                                        close_rate
+                                                    ],
+                                                    defectsOnly: true
+                                                }
+                                            )
+                                            {
+                                                flowRateTrends {
+                                                    measurementDate
+                                                    measurementWindow
+                                                    arrivalRate
+                                                    closeRate
+                                                }
+                                            }
+                                        }
+                                """
+
+                    client = Client(schema)
+
+                    result = client.execute(query, variable_values=dict(
+                        project_key=fixture.project.key,
+                        days=11,
+                        window=30,
+                        sample=15
+                    ))
+                    assert result['data']
+                    project = result['data']['project']
+                    assert len(project['flowRateTrends']) == 1
+                    trends = project['flowRateTrends'][0]
+                    assert trends['closeRate'] == 1
+                    assert trends['arrivalRate'] == 2
+
+            class TestWithSpecsOnlyDefectsOnlyFilters:
+
+                def it_returns_defects_which_are_specs_too(self, setup):
+                    fixture = setup
+
+                    query = """
+                                        query getProjectFlowRateTrends(
+                                            $project_key:String!,
+                                            $days: Int!,
+                                            $window: Int!,
+                                            $sample: Int
+                                        ) {
+                                            project(
+                                                key: $project_key,
+                                                interfaces: [FlowRateTrends],
+                                                flowRateTrendsArgs: {
+                                                    days: $days,
+                                                    measurementWindow: $window,
+                                                    samplingFrequency: $sample,
+                                                    metrics: [
+                                                        arrival_rate,
+                                                        close_rate
+                                                    ],
+                                                    specsOnly: true,
+                                                    defectsOnly: true
+                                                }
+                                            )
+                                            {
+                                                flowRateTrends {
+                                                    measurementDate
+                                                    measurementWindow
+                                                    arrivalRate
+                                                    closeRate
+                                                }
+                                            }
+                                        }
+                                """
+
+                    client = Client(schema)
+
+                    result = client.execute(query, variable_values=dict(
+                        project_key=fixture.project.key,
+                        days=11,
+                        window=30,
+                        sample=15
+                    ))
+                    assert result['data']
+                    project = result['data']['project']
+                    assert len(project['flowRateTrends']) == 1
+                    trends = project['flowRateTrends'][0]
+                    assert trends['closeRate'] == 1
+                    assert trends['arrivalRate'] == 1
+

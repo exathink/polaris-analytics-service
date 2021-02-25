@@ -12,6 +12,9 @@ from graphene.test import Client
 
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
+from polaris.utils.collections import Fixture
+from test.graphql.queries.projects.shared_testing_mixins import \
+    TrendingWindowMeasurementDate
 
 
 class TestProjectFlowRateTrends:
@@ -36,37 +39,53 @@ class TestProjectFlowRateTrends:
             for i in range(0, 3)
         ]
 
-        api_helper.import_work_items(work_items)
+        yield Fixture(
+            work_items=work_items,
+            project=project,
+            api_helper=api_helper,
+            start_date=start_date
+        )
 
-        client = Client(schema)
-        query = """
-                query getProjectFlowRateTrends(
-                    $project_key:String!,
-                    $commitWithinDays: Int!,
-                    $window: Int!,
-                    $sample: Int
-                ) {
-                    project(
-                        key: $project_key,
-                        interfaces: [FlowRateTrends],
-                        flowRateTrendsArgs: {
-                            days: $days,
-                            measurementWindow: $window,
-                            samplingFrequency: $sample,
-                            metrics: [
-                                arrival_rate,
-                                close_rate
-                            ],
-                        }
-                    )
-                    {
-                        flowRateTrends {
-                            measurementDate
-                            measurementWindow
-                            arrivalRate
-                            closeRate
+    class TestTrendingWindows(
+        TrendingWindowMeasurementDate
+    ):
+
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            fixture = setup
+
+            query = """
+                    query getProjectFlowRateTrends(
+                        $project_key:String!,
+                        $days: Int!,
+                        $window: Int!,
+                        $sample: Int
+                    ) {
+                        project(
+                            key: $project_key,
+                            interfaces: [FlowRateTrends],
+                            flowRateTrendsArgs: {
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                                metrics: [
+                                    arrival_rate,
+                                    close_rate
+                                ],
+                            }
+                        )
+                        {
+                            flowRateTrends {
+                                measurementDate
+                                measurementWindow
+                                arrivalRate
+                                closeRate
+                            }
                         }
                     }
-                }
-        """
-
+            """
+            yield Fixture(
+                parent=fixture,
+                query=query,
+                output_attribute='flowRateTrends'
+            )

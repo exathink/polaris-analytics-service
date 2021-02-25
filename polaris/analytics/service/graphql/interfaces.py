@@ -637,8 +637,8 @@ class PullRequestMetricsTrends(graphene.Interface):
 class FlowRateMeasurement(graphene.Interface):
     measurement_date = graphene.Date(required=True)
     measurement_window = graphene.Int(required=True)
-    arrival_rate = graphene.Int(required=True)
-    close_rate = graphene.Int(required=True)
+    arrival_rate = graphene.Int(required=False)
+    close_rate = graphene.Int(required=False)
 
 
 class FlowRateMeasurementImpl(TrendMeasurementImpl):

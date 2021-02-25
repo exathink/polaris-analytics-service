@@ -165,12 +165,16 @@ class TestProjectFlowRateTrends:
                 api_helper = fixture.api_helper
                 # 1 issue 2 bugs
                 api_helper.update_work_item(0, dict(work_item_type='issue', is_bug=False))
+                api_helper.update_work_item(1, dict(work_item_type='bug', is_bug=True))
+                api_helper.update_work_item(2, dict(work_item_type='bug', is_bug=True))
                 # 1 issue with commits, 1 bug with commits, 1 bug with no commits
                 api_helper.update_delivery_cycle(0, dict(commit_count=1))
                 api_helper.update_delivery_cycle(1, dict(commit_count=2))
+                api_helper.update_delivery_cycle(2, dict(commit_count=0))
                 # 1 closed issue with commits, 1 closed bug with commits, 1 open bug without commits
                 api_helper.update_delivery_cycle(0, dict(end_date=datetime.utcnow()))
                 api_helper.update_delivery_cycle(1, dict(end_date=datetime.utcnow()))
+                api_helper.update_delivery_cycle(1, dict(end_date=None))
 
                 yield Fixture(
                     parent=fixture

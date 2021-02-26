@@ -2409,7 +2409,7 @@ class ProjectBacklogTrends(InterfaceResolver):
         ).where(
             and_(
                 daily_backlog_counts.c.date_of_window <= timeline_dates.c.measurement_date,
-                daily_backlog_counts.c.date_of_window > timeline_dates.c.measurement_date - timedelta(days=30)
+                daily_backlog_counts.c.date_of_window > timeline_dates.c.measurement_date - timedelta(days=measurement_window)
             )
         ).group_by(
             timeline_dates.c.measurement_date,

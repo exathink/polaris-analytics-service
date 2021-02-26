@@ -90,7 +90,7 @@ class TestProjectFlowRateTrends:
                 output_attribute='flowRateTrends'
             )
 
-    class TestForAllWorkitemsInBacklog:
+    class TestForAllWorkitems:
 
         @pytest.yield_fixture()
         def setup(self, setup):

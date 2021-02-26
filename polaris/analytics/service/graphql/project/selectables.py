@@ -14,7 +14,7 @@ import abc
 from datetime import datetime, timedelta
 
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
-    union_all, literal, Date, true, or_
+    union_all, literal, Date, true, or_, desc
 
 from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics, FlowTypes, \
     WorkItemTypesToFlowTypes
@@ -2409,7 +2409,7 @@ class ProjectBacklogTrends(InterfaceResolver):
         ).where(
             and_(
                 daily_backlog_counts.c.date_of_window <= timeline_dates.c.measurement_date,
-                daily_backlog_counts.c.date_of_window > timeline_dates.c.measurement_date - timedelta(days=30)
+                daily_backlog_counts.c.date_of_window > timeline_dates.c.measurement_date - timedelta(days=measurement_window)
             )
         ).group_by(
             timeline_dates.c.measurement_date,
@@ -2443,6 +2443,8 @@ class ProjectBacklogTrends(InterfaceResolver):
             daily_backlog_counts_timeline_dates.c.measurement_date,
             window_backlog_counts.c.date_of_window,
             window_backlog_counts.c.backlog_size
+        ).order_by(
+            desc(daily_backlog_counts_timeline_dates.c.measurement_date)
         ).distinct().alias('backlog_trends')
 
         return select([

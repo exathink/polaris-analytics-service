@@ -108,8 +108,10 @@ class TestProjectBacklogTrends:
                 # 4 work items of type bug, all with no commits, non-closed
                 api_helper.import_work_items(fixture.work_items)
                 # 2 delivery cycles set to old start date, and end_date a day ago
-                api_helper.update_delivery_cycle(0, dict(start_date=fixture.start_date, end_date=datetime.utcnow()-timedelta(days=1)))
-                api_helper.update_delivery_cycle(1, dict(start_date=fixture.start_date, end_date=datetime.utcnow()-timedelta(days=1)))
+                api_helper.update_delivery_cycle(0, dict(start_date=fixture.start_date,
+                                                         end_date=datetime.utcnow() - timedelta(days=1)))
+                api_helper.update_delivery_cycle(1, dict(start_date=fixture.start_date,
+                                                         end_date=datetime.utcnow() - timedelta(days=1)))
                 # 2 work items and their delivery cycles updated to latest date
                 api_helper.update_work_item(2, dict(created_at=datetime.utcnow()))
                 api_helper.update_work_item(3, dict(created_at=datetime.utcnow()))
@@ -186,7 +188,6 @@ class TestProjectBacklogTrends:
                         assert trends['q1BacklogSize'] == 4
                         assert trends['medianBacklogSize'] == 4
                         assert trends['q3BacklogSize'] == 4
-
 
             class TestWithFilters:
 
@@ -343,3 +344,67 @@ class TestProjectBacklogTrends:
                             assert trends['medianBacklogSize'] == 2
                             assert trends['q3BacklogSize'] == 2
 
+                class TestWithSpecsOnlyDefectsOnlyFilters:
+
+                    def it_returns_only_defects(self, setup):
+                        fixture = setup
+
+                        query = """
+                                                query getProjectBacklogTrends(
+                                                    $project_key:String!,
+                                                    $days: Int!,
+                                                    $window: Int!,
+                                                    $sample: Int
+                                                ) {
+                                                    project(
+                                                        key: $project_key,
+                                                        interfaces: [BacklogTrends],
+                                                        backlogTrendsArgs: {
+                                                            days: $days,
+                                                            measurementWindow: $window,
+                                                            samplingFrequency: $sample,
+                                                            metrics: [
+                                                                min_backlog_size
+                                                                max_backlog_size
+                                                                q1_backlog_size
+                                                                q3_backlog_size
+                                                                median_backlog_size
+                                                                avg_backlog_size
+                                                            ],
+                                                            defectsOnly: true,
+                                                            specsOnly: true
+                                                        }
+                                                    )
+                                                    {
+                                                        backlogTrends {
+                                                            measurementDate
+                                                            measurementWindow
+                                                            minBacklogSize
+                                                            maxBacklogSize
+                                                            q1BacklogSize
+                                                            q3BacklogSize
+                                                            medianBacklogSize
+                                                            avgBacklogSize
+                                                        }
+                                                    }
+                                                }
+                                        """
+                        client = Client(schema)
+
+                        result = client.execute(query, variable_values=dict(
+                            project_key=fixture.project.key,
+                            days=15,
+                            window=9,
+                            sample=12
+                        ))
+                        assert result['data']
+                        project = result['data']['project']
+                        assert len(project['backlogTrends']) == 2
+                        backlogTrends = project['backlogTrends']
+                        for trends in backlogTrends:
+                            assert trends['minBacklogSize'] == 1
+                            assert trends['avgBacklogSize'] == 1
+                            assert trends['maxBacklogSize'] == 1
+                            assert trends['q1BacklogSize'] == 1
+                            assert trends['medianBacklogSize'] == 1
+                            assert trends['q3BacklogSize'] == 1

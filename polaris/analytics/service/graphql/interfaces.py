@@ -656,13 +656,13 @@ class FlowRateTrends(graphene.Interface):
 class BacklogMeasurement(graphene.Interface):
     measurement_date = graphene.Date(required=True)
     measurement_window = graphene.Int(required=True)
-    backlog_size = graphene.Int(required=True)
-    min_backlog_size = graphene.Int(required=True)
-    max_backlog_size = graphene.Int(required=True)
-    q1_backlog_size = graphene.Int(required=True)
-    q3_backlog_size = graphene.Int(required=True)
-    median_backlog_size = graphene.Int(required=True)
-    avg_backlog_size = graphene.Int(required=True)
+    backlog_size = graphene.Int(required=False)
+    min_backlog_size = graphene.Int(required=False)
+    max_backlog_size = graphene.Int(required=False)
+    q1_backlog_size = graphene.Int(required=False)
+    q3_backlog_size = graphene.Int(required=False)
+    median_backlog_size = graphene.Int(required=False)
+    avg_backlog_size = graphene.Int(required=False)
 
 
 class BacklogMeasurementImpl(TrendMeasurementImpl):

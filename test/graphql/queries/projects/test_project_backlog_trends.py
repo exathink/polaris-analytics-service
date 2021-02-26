@@ -279,3 +279,67 @@ class TestProjectBacklogTrends:
                             assert trends['medianBacklogSize'] == 2
                             assert trends['q3BacklogSize'] == 2
 
+                class TestWithDefectsOnlyFilter:
+
+                    def it_returns_only_defects(self, setup):
+                        fixture = setup
+
+                        query = """
+                                                query getProjectBacklogTrends(
+                                                    $project_key:String!,
+                                                    $days: Int!,
+                                                    $window: Int!,
+                                                    $sample: Int
+                                                ) {
+                                                    project(
+                                                        key: $project_key,
+                                                        interfaces: [BacklogTrends],
+                                                        backlogTrendsArgs: {
+                                                            days: $days,
+                                                            measurementWindow: $window,
+                                                            samplingFrequency: $sample,
+                                                            metrics: [
+                                                                min_backlog_size
+                                                                max_backlog_size
+                                                                q1_backlog_size
+                                                                q3_backlog_size
+                                                                median_backlog_size
+                                                                avg_backlog_size
+                                                            ],
+                                                            defectsOnly: true
+                                                        }
+                                                    )
+                                                    {
+                                                        backlogTrends {
+                                                            measurementDate
+                                                            measurementWindow
+                                                            minBacklogSize
+                                                            maxBacklogSize
+                                                            q1BacklogSize
+                                                            q3BacklogSize
+                                                            medianBacklogSize
+                                                            avgBacklogSize
+                                                        }
+                                                    }
+                                                }
+                                        """
+                        client = Client(schema)
+
+                        result = client.execute(query, variable_values=dict(
+                            project_key=fixture.project.key,
+                            days=15,
+                            window=9,
+                            sample=12
+                        ))
+                        assert result['data']
+                        project = result['data']['project']
+                        assert len(project['backlogTrends']) == 2
+                        backlogTrends = project['backlogTrends']
+                        for trends in backlogTrends:
+                            assert trends['minBacklogSize'] == 2
+                            assert trends['avgBacklogSize'] == 2
+                            assert trends['maxBacklogSize'] == 2
+                            assert trends['q1BacklogSize'] == 2
+                            assert trends['medianBacklogSize'] == 2
+                            assert trends['q3BacklogSize'] == 2
+

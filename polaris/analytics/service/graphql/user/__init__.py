@@ -46,7 +46,15 @@ class Users(
 
 
 class UsersConnectionMixin(ConnectionResolverMixin):
-    users = User.ConnectionField()
+    users = User.ConnectionField(
+        active_only=graphene.Argument(
+            graphene.Boolean,
+            required=False,
+            description="When getting user info "
+                        "include only active users",
+            default_value=True
+        ),
+    )
 
     def resolve_users(self, info, **kwargs):
         return User.resolve_connection(

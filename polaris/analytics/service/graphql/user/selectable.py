@@ -36,7 +36,7 @@ class UserUserInfo:
 
     @staticmethod
     def selectable(user_node, **kwargs):
-        return select([
+        select_stmt = select([
             users.c.key,
             func.concat(users.c.first_name, ' ', users.c.last_name).label('name'),
             users.c.first_name,
@@ -47,3 +47,9 @@ class UserUserInfo:
                 users, user_node.c.key == users.c.key
             )
         )
+        if kwargs.get('active_only'):
+            return select_stmt.where(
+                users.c.active == True
+            )
+        else:
+            return select_stmt

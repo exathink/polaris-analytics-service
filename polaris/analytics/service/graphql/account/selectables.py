@@ -328,6 +328,10 @@ class AccountContributorNodes(ConnectionResolver):
     def apply_distinct_columns(**kwargs):
         return ['key', 'name']
 
+    @staticmethod
+    def sort_order(account_contributor_nodes, **kwargs):
+        return [account_contributor_nodes.c.key.desc(), account_contributor_nodes.c.name.desc()]
+
 
 class AccountUserNodes(ConnectionResolver):
     interfaces = (KeyIdNode, ScopedRole)

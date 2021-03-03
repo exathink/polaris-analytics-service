@@ -94,7 +94,6 @@ class ContributorsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             required=False,
             description="When finding contributor aliases "
                         "return only contributors that have committed code to the project in this many days",
-            default_value=30
         )
     )
 

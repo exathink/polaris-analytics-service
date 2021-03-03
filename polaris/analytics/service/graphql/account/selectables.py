@@ -25,6 +25,8 @@ from polaris.analytics.db.model import organizations, accounts_organizations, ac
     projects, repositories, projects_repositories, contributors, commits, \
     repositories_contributor_aliases, \
     work_items_sources, account_members
+from polaris.auth.db.model import users
+
 from ..contributor.sql_expressions import contributors_connection_apply_filters
 from polaris.auth.db.model import users
 
@@ -338,17 +340,25 @@ class AccountUserNodes(ConnectionResolver):
         # need to join users by key since it is in the auth schema.
         # the connection resolver mixin provides the join_field as the key
         # to ensure this happens.
-        return select([
+        select_stmt = select([
             account_members.c.user_key.label('key'),
             accounts.c.key.label('scope_key'),
             account_members.c.role
         ]).select_from(
             accounts.join(
                 account_members
+            ).join(
+                users, users.c.key == account_members.c.user_key
             )
         ).where(
             accounts.c.key == bindparam('key')
         )
+        if kwargs.get('active_only'):
+            return select_stmt.where(
+                users.c.active == True
+            )
+        else:
+            return select_stmt
 
 
 class AccountCommitSummary(InterfaceResolver):

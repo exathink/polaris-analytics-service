@@ -310,6 +310,11 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             graphene.List(WorkItemsStateType),
             required=False,
             description="Include only work items with the specified state types"
+        ),
+        include_epics=graphene.Boolean(
+            required=False,
+            description='Include epics in the work items. Defaults to false',
+            default_value=False
         )
     )
 

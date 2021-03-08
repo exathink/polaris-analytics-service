@@ -510,7 +510,6 @@ class WorkItemsImplementationCost(InterfaceResolver):
     @staticmethod
     def interface_selector(work_item_nodes, **kwargs):
         if kwargs.get('include_epics'):
-
             epics = select([
                 work_item_nodes.c.id
             ]).select_from(
@@ -518,8 +517,8 @@ class WorkItemsImplementationCost(InterfaceResolver):
                     work_items, work_item_nodes.c.id == work_items.c.id
                 )
             ).where(
-                work_items.c.is_epic==True
-            ).alias()
+                work_items.c.is_epic == True
+            ).cte()
 
             epic_cost_details = select([
                 epics.c.id.label('epic_id'),
@@ -566,8 +565,12 @@ class WorkItemsImplementationCost(InterfaceResolver):
                     epic_commits, epic_commits.c.epic_id == epics.c.id
                 )
             ).group_by(
-                epics.c.id
-            ).cte()
+                epics.c.id,
+                epic_cost_details.c.budget,
+                epic_cost_details.c.effort,
+                epic_commits.c.duration,
+                epic_commits.c.author_count
+            )
 
             non_epics_implementation_cost = select([
                 work_item_nodes.c.id,
@@ -591,7 +594,7 @@ class WorkItemsImplementationCost(InterfaceResolver):
                 )
             ).group_by(
                 work_item_nodes.c.id
-            ).where(work_items.c.is_epic == False).cte()
+            ).where(work_items.c.is_epic == False)
 
             return non_epics_implementation_cost.union(epics_implementation_cost)
 

@@ -274,6 +274,7 @@ class BranchRef(graphene.Interface):
 
 
 class ImplementationCost(graphene.Interface):
+    budget = graphene.Float(required=False, description="Total engineering days estimated as per budget")
     effort = graphene.Float(required=False, description="Total engineering days required")
     duration = graphene.Float(required=False,
                               description="Span in days between earliest commit and latest commit")

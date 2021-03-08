@@ -32,6 +32,7 @@ from .sql_expressions import work_item_info_columns, work_item_event_columns, wo
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 from ..pull_request.sql_expressions import pull_request_info_columns
 
+
 class WorkItemNode(NamedNodeResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
 
@@ -366,7 +367,7 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                     'effort',
                     func.min(work_item_delivery_cycles.c.effort),
                     'duration',
-                        (
+                    (
                             func.extract(
                                 'epoch',
                                 func.min(work_item_delivery_cycles.c.latest_commit) -
@@ -510,6 +511,8 @@ class WorkItemsImplementationCost(InterfaceResolver):
     def interface_selector(work_item_nodes, **kwargs):
         return select([
             work_item_nodes.c.id,
+            # FIXME: Using max for budget as we need an aggregate function here. But this may not be right.
+            func.max(work_items.c.budget).label('budget'),
             func.max(work_items.c.effort).label('effort'),
             (func.extract(
                 'epoch',

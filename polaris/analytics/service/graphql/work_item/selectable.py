@@ -251,9 +251,66 @@ class WorkItemsWorkItemProgress(InterfaceResolver):
         non_epics_progress = select([])
 
         if kwargs.get('include_epics'):
-            epics_progress = select([])
+            epics = select([
+                work_item_nodes.c.id
+            ]).select_from(
+                work_item_nodes.join(
+                    work_items, work_item_nodes.c.id == work_items.c.id
+                )
+            ).where(
+                work_items.c.is_epic == True
+            ).cte()
 
-            return non_epics_progress.union(epics_progress)
+            epics_span = select([
+                epics.c.id,
+                (case([
+                    (func.sum(
+                        case([
+                            (work_item_delivery_cycles.c.end_date == None, 1)
+                        ], else_=0)) > 0, False)
+                ], else_=True)).label('closed'),
+                func.min(work_item_delivery_cycles.c.start_date).label('start_date'),
+                (case([
+                    (func.sum(case([
+                        (work_item_delivery_cycles.c.end_date == None, 1)
+                    ], else_=0)) > 0, None)
+                ], else_=func.max(work_item_delivery_cycles.c.end_date))).label('end_date'),
+                func.max(work_item_delivery_cycles.c.latest_commit).label('last_update')
+            ]).select_from(
+                epics.join(
+                    work_items, work_items.c.parent_id == epics.c.id
+                ).join(
+                    work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+                )
+            ).group_by(
+                epics.c.id
+            ).alias()
+
+            epics_progress = select([
+                epics.c.id,
+                epics_span.c.closed,
+                epics_span.c.start_date,
+                epics_span.c.end_date,
+                epics_span.c.last_update,
+                (case([
+                    (epics_span.c.end_date == None,
+                     func.extract('epoch', datetime.now() - epics_span.c.start_date) / (1.0 * 3600 * 24))
+                ], else_=func.extract('epoch', epics_span.c.end_date - epics_span.c.start_date) / (
+                        1.0 * 3600 * 24))).label('elapsed')
+
+            ]).select_from(
+                epics.outerjoin(
+                    epics_span, epics_span.c.id == epics.c.id
+                )
+            ).group_by(
+                epics.c.id,
+                epics_span.c.closed,
+                epics_span.c.start_date,
+                epics_span.c.end_date,
+                epics_span.c.last_update
+            )
+
+            return epics_progress
         else:
             return non_epics_progress
 

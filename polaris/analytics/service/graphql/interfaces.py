@@ -418,6 +418,11 @@ class DeliveryCycleInfo(graphene.Interface):
     end_date = graphene.DateTime(required=False)
 
 
+class WorkItemProgress(DeliveryCycleInfo):
+    last_update = graphene.DateTime(required=False)
+    elapsed = graphene.DateTime(required=False)
+
+
 class CycleMetrics(graphene.Interface):
     lead_time = graphene.Float(required=False)
     cycle_time = graphene.Float(required=False)

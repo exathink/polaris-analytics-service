@@ -23,7 +23,9 @@ from polaris.analytics.db.model import \
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics, \
-    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, PullRequestInfo
+    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, \
+    PullRequestInfo, \
+    WorkItemProgress
 
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
@@ -239,6 +241,21 @@ class WorkItemDeliveryCycleNodes(ConnectionResolver):
     @staticmethod
     def sort_order(work_item_delivery_cycle_nodes, **kwargs):
         return [work_item_delivery_cycle_nodes.c.end_date.desc().nullsfirst()]
+
+
+class WorkItemsWorkItemProgress(InterfaceResolver):
+    interface = WorkItemProgress
+
+    @staticmethod
+    def interface_selector(work_item_nodes, **kwargs):
+        non_epics_progress = select([])
+
+        if kwargs.get('include_epics'):
+            epics_progress = select([])
+
+            return non_epics_progress.union(epics_progress)
+        else:
+            return non_epics_progress
 
 
 class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):

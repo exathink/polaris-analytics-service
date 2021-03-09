@@ -534,7 +534,8 @@ class WorkItemsImplementationCost(InterfaceResolver):
 
         if kwargs.get('include_epics'):
             epics = select([
-                work_item_nodes.c.id
+                work_item_nodes.c.id,
+                work_items.c.budget,
             ]).select_from(
                 work_item_nodes.join(
                     work_items, work_item_nodes.c.id == work_items.c.id
@@ -545,7 +546,6 @@ class WorkItemsImplementationCost(InterfaceResolver):
 
             epic_cost_details = select([
                 epics.c.id.label('epic_id'),
-                func.sum(work_items.c.budget).label('budget'),
                 func.sum(work_items.c.effort).label('effort')
             ]).select_from(
                 epics.join(
@@ -577,7 +577,7 @@ class WorkItemsImplementationCost(InterfaceResolver):
 
             epics_implementation_cost = select([
                 epics.c.id,
-                epic_cost_details.c.budget,
+                epics.c.budget,
                 epic_cost_details.c.effort,
                 epic_commits.c.duration,
                 epic_commits.c.author_count
@@ -589,7 +589,7 @@ class WorkItemsImplementationCost(InterfaceResolver):
                 )
             ).group_by(
                 epics.c.id,
-                epic_cost_details.c.budget,
+                epics.c.budget,
                 epic_cost_details.c.effort,
                 epic_commits.c.duration,
                 epic_commits.c.author_count

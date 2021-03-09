@@ -177,7 +177,7 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
             ])
         )
     # this false by by default, so we exclude epics unless it is explictly requested.
-    if 'include_epics' not in kwargs:
+    if kwargs.get('include_epics') is None or kwargs.get('include_epics') == False:
         select_stmt = select_stmt.where(
             work_items.c.is_epic == False
         )

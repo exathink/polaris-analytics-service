@@ -509,6 +509,29 @@ class WorkItemsImplementationCost(InterfaceResolver):
 
     @staticmethod
     def interface_selector(work_item_nodes, **kwargs):
+        non_epics_implementation_cost = select([
+            work_item_nodes.c.id,
+            func.max(work_items.c.budget).label('budget'),
+            func.max(work_items.c.effort).label('effort'),
+            (func.extract(
+                'epoch',
+                func.max(commits.c.commit_date).label('latest_commit') -
+                func.min(commits.c.commit_date).label('earliest_commit')
+            ) / (1.0 * 24 * 3600)).label('duration'),
+
+            func.count(commits.c.author_contributor_key.distinct()).label('author_count')
+        ]).select_from(
+            work_item_nodes.join(
+                work_items, work_item_nodes.c.id == work_items.c.id
+            ).join(
+                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
+            ).join(
+                commits, work_items_commits.c.commit_id == commits.c.id
+            )
+        ).group_by(
+            work_item_nodes.c.id
+        ).where(work_items.c.is_epic == False)
+
         if kwargs.get('include_epics'):
             epics = select([
                 work_item_nodes.c.id
@@ -571,56 +594,9 @@ class WorkItemsImplementationCost(InterfaceResolver):
                 epic_commits.c.duration,
                 epic_commits.c.author_count
             )
-
-            non_epics_implementation_cost = select([
-                work_item_nodes.c.id,
-                # FIXME: Using max for budget as we need an aggregate function here. But this may not be right.
-                func.max(work_items.c.budget).label('budget'),
-                func.max(work_items.c.effort).label('effort'),
-                (func.extract(
-                    'epoch',
-                    func.max(commits.c.commit_date).label('latest_commit') -
-                    func.min(commits.c.commit_date).label('earliest_commit')
-                ) / (1.0 * 24 * 3600)).label('duration'),
-
-                func.count(commits.c.author_contributor_key.distinct()).label('author_count')
-            ]).select_from(
-                work_item_nodes.join(
-                    work_items, work_item_nodes.c.id == work_items.c.id
-                ).join(
-                    work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
-                ).join(
-                    commits, work_items_commits.c.commit_id == commits.c.id
-                )
-            ).group_by(
-                work_item_nodes.c.id
-            ).where(work_items.c.is_epic == False)
-
             return non_epics_implementation_cost.union(epics_implementation_cost)
-
-        return select([
-            work_item_nodes.c.id,
-            # FIXME: Using max for budget as we need an aggregate function here. But this may not be right.
-            func.max(work_items.c.budget).label('budget'),
-            func.max(work_items.c.effort).label('effort'),
-            (func.extract(
-                'epoch',
-                func.max(commits.c.commit_date).label('latest_commit') -
-                func.min(commits.c.commit_date).label('earliest_commit')
-            ) / (1.0 * 24 * 3600)).label('duration'),
-
-            func.count(commits.c.author_contributor_key.distinct()).label('author_count')
-        ]).select_from(
-            work_item_nodes.join(
-                work_items, work_item_nodes.c.id == work_items.c.id
-            ).join(
-                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
-            ).join(
-                commits, work_items_commits.c.commit_id == commits.c.id
-            )
-        ).group_by(
-            work_item_nodes.c.id
-        )
+        else:
+            return non_epics_implementation_cost
 
 
 class WorkItemPullRequestNode(NamedNodeResolver):

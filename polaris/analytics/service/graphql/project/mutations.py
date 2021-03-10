@@ -78,6 +78,11 @@ class WorkItemsInfo(graphene.InputObjectType):
     updated_info = graphene.Field(WorkItemUpdatedInfo, required=True)
 
 
+class UpdateProjectWorkItemsInput(graphene.InputObjectType):
+    project_key = graphene.String(required=True)
+    work_items_info = graphene.List(WorkItemsInfo, required=True)
+
+
 class UpdateProjectWorkItemsStatus(graphene.ObjectType):
     work_items_keys = graphene.List(graphene.String, required=True)
     success = graphene.Boolean(required=True)
@@ -87,11 +92,11 @@ class UpdateProjectWorkItemsStatus(graphene.ObjectType):
 
 class UpdateProjectWorkItems(graphene.Mutation):
     class Arguments:
-        work_items_info = WorkItemsInfo(required=True)
+        update_project_work_items_input = UpdateProjectWorkItemsInput(required=True)
 
     update_status = graphene.Field(UpdateProjectWorkItemsStatus)
 
-    def mutate(self, info, work_items_info):
+    def mutate(self, info, update_project_work_items_input):
         logger.info('UpdateProjectWorkItems called')
         result = dict(
             work_items_keys=[],
@@ -119,7 +124,6 @@ class UpdateProjectSettingsInput(graphene.InputObjectType):
     key = graphene.String(required=True)
     flow_metrics_settings = graphene.Field(FlowMetricsSettingsInput, required=False)
     analysis_periods = graphene.Field(AnalysisPeriodsInput, required=False)
-
 
 
 class UpdateProjectSettings(graphene.Mutation):

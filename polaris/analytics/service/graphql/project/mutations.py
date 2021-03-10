@@ -139,3 +139,4 @@ class ProjectMutationsMixin:
     archive_project = ArchiveProject.Field()
     update_project_state_maps = UpdateProjectStateMaps.Field()
     update_project_settings = UpdateProjectSettings.Field()
+    update_project_work_items = UpdateProjectWorkItems.Field()

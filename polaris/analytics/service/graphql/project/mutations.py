@@ -15,6 +15,7 @@ from polaris.analytics.db import api as db_api
 from polaris.analytics import api
 from ..interfaces import WorkItemsStateType
 from ..input_types import FlowMetricsSettingsInput, AnalysisPeriodsInput
+from polaris.utils.exceptions import ProcessingException
 
 logger = logging.getLogger('polaris.analytics.mutations')
 
@@ -65,6 +66,50 @@ class UpdateProjectStateMaps(graphene.Mutation):
         logger.info('UpdateProjectStateMaps called')
         result = db_api.update_project_work_items_source_state_mappings(update_project_state_maps_input)
         return UpdateProjectStateMaps(success=result['success'], error_message=result.get('exception'))
+
+
+class WorkItemUpdatedInfo(graphene.InputObjectType):
+    budget = graphene.Float(required=False)
+    # can add more fields as per need
+
+
+class WorkItemsInfo(graphene.InputObjectType):
+    work_item_key = graphene.String(required=True)
+    updated_info = graphene.Field(WorkItemUpdatedInfo, required=True)
+
+
+class UpdateProjectWorkItemsStatus(graphene.ObjectType):
+    work_items_keys = graphene.List(graphene.String, required=True)
+    success = graphene.Boolean(required=True)
+    message = graphene.String(required=False)
+    exception = graphene.String(required=False)
+
+
+class UpdateProjectWorkItems(graphene.Mutation):
+    class Arguments:
+        work_items_info = WorkItemsInfo(required=True)
+
+    update_status = graphene.Field(UpdateProjectWorkItemsStatus)
+
+    def mutate(self, info, work_items_info):
+        logger.info('UpdateProjectWorkItems called')
+        result = dict(
+            work_items_keys=[],
+            success=True,
+            message='',
+            exception=None
+        )
+        if result:
+            return UpdateProjectWorkItems(
+                UpdateProjectWorkItemsStatus(
+                    work_items_keys=result.get('work_items_keys'),
+                    success=result.get('success'),
+                    message=result.get('message'),
+                    exception=result.get('exception')
+                )
+            )
+        else:
+            raise ProcessingException('Could not update project work items')
 
 
 # Update project settings

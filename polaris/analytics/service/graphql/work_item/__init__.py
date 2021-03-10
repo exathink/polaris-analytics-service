@@ -274,8 +274,13 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             description="Return work items last updated within the specified number of days. "
                         "If before is specified, it returns work items updated "
                         "between (before - days) and before"
-                        "If before is not specified the it returns work items for the"
+                        "If before is not specified then it returns work items for the"
                         "previous n days starting from utc now"
+        ),
+        active_within_days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="Return work items that were active in the last n days",
         ),
         closed_within_days=graphene.Argument(
             graphene.Int,

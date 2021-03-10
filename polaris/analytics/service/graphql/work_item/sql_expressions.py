@@ -10,7 +10,7 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, cast, Text, func, case, select
+from sqlalchemy import and_, cast, Text, func, case, select, or_
 
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import work_items, work_item_delivery_cycles
@@ -176,7 +176,8 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
                 WorkItemsStateType.complete.value
             ])
         )
-    # this false by by default, so we exclude epics unless it is explictly requested.
+
+    # this false by default, so we exclude epics unless it is explictly requested.
     if kwargs.get('include_epics') is None or kwargs.get('include_epics') == False:
         select_stmt = select_stmt.where(
             work_items.c.is_epic == False
@@ -227,6 +228,21 @@ def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kw
     return select_stmt
 
 
+def apply_active_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs):
+    if 'active_within_days' in kwargs:
+        select_stmt = select_stmt.where(
+            or_(
+                work_item_delivery_cycles.c.end_date==None,
+                date_column_is_in_measurement_window(
+                    work_item_delivery_cycles.c.end_date,
+                    measurement_date=datetime.utcnow(),
+                    measurement_window=kwargs['active_within_days']
+                )
+            )
+        )
+    return select_stmt
+
+
 def apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs):
     if kwargs.get('specs_only'):
         select_stmt = select_stmt.where(
@@ -246,6 +262,7 @@ def apply_defects_only_filter(select_stmt, work_items, **kwargs):
 def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
 
     select_stmt = apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs)
+    select_stmt = apply_active_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs)
     select_stmt = apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs)
 
     return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)

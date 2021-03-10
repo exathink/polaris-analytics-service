@@ -248,7 +248,63 @@ class WorkItemsWorkItemProgress(InterfaceResolver):
 
     @staticmethod
     def interface_selector(work_item_nodes, **kwargs):
-        non_epics_progress = select([])
+
+        non_epic_work_items = select([
+            work_item_nodes.c.id
+        ]).select_from(
+            work_item_nodes.join(
+                work_items, work_item_nodes.c.id == work_items.c.id
+            )
+        ).where(
+            work_items.c.is_epic == False
+        ).cte()
+
+        non_epic_work_items_span = select([
+            non_epic_work_items.c.id,
+            (case([
+                (func.sum(
+                    case([
+                        (work_item_delivery_cycles.c.end_date == None, 1)
+                    ], else_=0)) > 0, False)
+            ], else_=True)).label('closed'),
+            func.min(work_item_delivery_cycles.c.start_date).label('start_date'),
+            (case([
+                (func.sum(case([
+                    (work_item_delivery_cycles.c.end_date == None, 1)
+                ], else_=0)) > 0, None)
+            ], else_=func.max(work_item_delivery_cycles.c.end_date))).label('end_date'),
+            func.max(work_item_delivery_cycles.c.latest_commit).label('last_update')
+        ]).select_from(
+            non_epic_work_items.join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == non_epic_work_items.c.id
+            )
+        ).group_by(
+            non_epic_work_items.c.id
+        ).alias()
+
+        non_epic_work_items_progress = select([
+            non_epic_work_items.c.id,
+            non_epic_work_items_span.c.closed,
+            non_epic_work_items_span.c.start_date,
+            non_epic_work_items_span.c.end_date,
+            non_epic_work_items_span.c.last_update,
+            (case([
+                (non_epic_work_items_span.c.end_date == None,
+                 func.extract('epoch', datetime.now() - non_epic_work_items_span.c.start_date) / (1.0 * 3600 * 24))
+            ], else_=func.extract('epoch',
+                                  non_epic_work_items_span.c.end_date - non_epic_work_items_span.c.start_date) / (
+                             1.0 * 3600 * 24))).label('elapsed')
+        ]).select_from(
+            non_epic_work_items.outerjoin(
+                non_epic_work_items_span, non_epic_work_items_span.c.id == non_epic_work_items.c.id
+            )
+        ).group_by(
+            non_epic_work_items.c.id,
+            non_epic_work_items_span.c.closed,
+            non_epic_work_items_span.c.start_date,
+            non_epic_work_items_span.c.end_date,
+            non_epic_work_items_span.c.last_update
+        )
 
         if kwargs.get('include_epics'):
             epics = select([
@@ -310,9 +366,9 @@ class WorkItemsWorkItemProgress(InterfaceResolver):
                 epics_span.c.last_update
             )
 
-            return epics_progress
+            return epics_progress.union(non_epic_work_items_progress)
         else:
-            return non_epics_progress
+            return non_epic_work_items_progress
 
 
 class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):

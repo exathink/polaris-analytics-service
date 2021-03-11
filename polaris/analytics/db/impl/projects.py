@@ -135,7 +135,7 @@ def update_project_work_items(session, project_work_items):
 
     return dict(
         project_key=project_work_items.project_key,
-        work_items_keys=[]
+        work_items_keys=[info['work_item_key'] for info in project_work_items.work_items_info]
     )
 
 

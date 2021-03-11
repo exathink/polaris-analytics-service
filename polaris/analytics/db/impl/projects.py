@@ -118,6 +118,13 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         recompute_work_item_delivery_cycles_cycle_time(session, work_items_source.id)
 
 
+def update_project_work_items(session, project_work_items):
+    return dict(
+        project_key=project_work_items.project_key,
+        work_items_keys=[]
+    )
+
+
 def update_project_work_items_source_state_mappings(session, project_state_maps):
     updated = []
     # Check if project exists

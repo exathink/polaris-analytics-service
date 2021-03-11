@@ -98,12 +98,7 @@ class UpdateProjectWorkItems(graphene.Mutation):
 
     def mutate(self, info, update_project_work_items_input):
         logger.info('UpdateProjectWorkItems called')
-        result = dict(
-            work_items_keys=[],
-            success=True,
-            message='',
-            exception=None
-        )
+        result = db_api.update_project_work_items(project_work_items=update_project_work_items_input)
         if result:
             return UpdateProjectWorkItems(
                 UpdateProjectWorkItemsStatus(

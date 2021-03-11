@@ -176,6 +176,21 @@ def import_project(organization_key, project_summary):
         return db.failure_message('Import Project', e)
 
 
+def update_project_work_items(project_work_items):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.update_project_work_items(
+                    session,
+                    project_work_items
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Update project work items failed", exc)
+    except Exception as e:
+        return db.failure_message("Update project work items failed", e)
+
+
 def update_project_work_items_source_state_mappings(project_state_mappings):
     try:
         with db.orm_session() as session:

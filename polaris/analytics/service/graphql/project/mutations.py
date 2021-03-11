@@ -68,14 +68,10 @@ class UpdateProjectStateMaps(graphene.Mutation):
         return UpdateProjectStateMaps(success=result['success'], error_message=result.get('exception'))
 
 
-class WorkItemUpdatedInfo(graphene.InputObjectType):
-    budget = graphene.Float(required=False)
-    # can add more fields as per need
-
-
 class WorkItemsInfo(graphene.InputObjectType):
     work_item_key = graphene.String(required=True)
-    updated_info = graphene.Field(WorkItemUpdatedInfo, required=True)
+    budget = graphene.Float(required=False)
+    # can add more fields as per need
 
 
 class UpdateProjectWorkItemsInput(graphene.InputObjectType):

@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 import logging
 
-from sqlalchemy.sql.expression import and_, select, distinct
+from sqlalchemy.sql.expression import and_, select, distinct, bindparam
 
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import Project, WorkItemsSource, work_items, work_items_source_state_map, \
@@ -119,6 +119,20 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
 
 
 def update_project_work_items(session, project_work_items):
+    updated = []
+    project = Project.find_by_project_key(session, project_work_items.project_key)
+    if project is not None:
+        stmt = work_items.update(). \
+            where(work_items.c.key == bindparam('work_item_key')). \
+            values({
+            'budget': bindparam('budget')
+        })
+        rowcount = session.connection().execute(stmt, project_work_items.work_items_info).rowcount
+        if rowcount != len(project_work_items.work_items_info):
+            raise ProcessingException(f"Could not update project work items")
+    else:
+        raise ProcessingException(f'Could not find project with key {project_work_items.project_key}')
+
     return dict(
         project_key=project_work_items.project_key,
         work_items_keys=[]

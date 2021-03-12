@@ -1377,7 +1377,9 @@ class TestUpdateProjectSettings:
 class TestUpdateWorkItems:
 
     @pytest.yield_fixture
-    def setup(self, setup_projects):
+    def setup(self, setup_work_items):
+        project = setup_work_items
+        work_items = project.work_items_sources[0].work_items
         query = """
                 mutation updateProjectWorkItems($updateProjectWorkItemsInput: UpdateProjectWorkItemsInput!) {
                     updateProjectWorkItems(updateProjectWorkItemsInput:$updateProjectWorkItemsInput) {
@@ -1391,8 +1393,38 @@ class TestUpdateWorkItems:
                 }
             """
         yield Fixture(
+            project=project,
+            work_items=work_items,
             query=query
         )
+
+    def it_updates_budget_for_work_items(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectWorkItemsInput=dict(
+                projectKey=str(test_projects[0]['key']),
+                workItemsInfo=[
+                    dict(
+                        workItemKey=fixture.work_items[0].key,
+                        budget=2.5
+                    ),
+                    dict(
+                        workItemKey=fixture.work_items[1].key,
+                        budget=2
+                    )
+                ]
+            )
+        ))
+
+        assert response['data']['updateProjectWorkItems']['updateStatus']['success']
+        with db.orm_session() as session:
+            work_item_1 = WorkItem.find_by_work_item_key(session, fixture.work_items[0].key)
+            assert work_item_1.budget == 2.5
+            work_item_2 = WorkItem.find_by_work_item_key(session, fixture.work_items[1].key)
+            assert work_item_2.budget == 2
 
 
 

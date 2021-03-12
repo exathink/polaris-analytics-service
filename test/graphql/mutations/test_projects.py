@@ -1372,3 +1372,27 @@ class TestUpdateProjectSettings:
                 flow_analysis_period=30,
                 trends_analysis_period=45
             )
+
+
+class TestUpdateWorkItems:
+
+    @pytest.yield_fixture
+    def setup(self, setup_projects):
+        query = """
+                mutation updateProjectWorkItems($updateProjectWorkItemsInput: UpdateProjectWorkItemsInput!) {
+                    updateProjectWorkItems(updateProjectWorkItemsInput:$updateProjectWorkItemsInput) {
+                        updateStatus {
+                            workItemsKeys
+                            success
+                            message
+                            exception
+                        }
+                    }
+                }
+            """
+        yield Fixture(
+            query=query
+        )
+
+
+

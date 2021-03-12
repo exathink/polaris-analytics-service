@@ -80,7 +80,7 @@ class UpdateProjectWorkItemsInput(graphene.InputObjectType):
 
 
 class UpdateProjectWorkItemsStatus(graphene.ObjectType):
-    work_items_keys = graphene.List(graphene.String, required=True)
+    work_items_keys = graphene.List(graphene.String, required=False)
     success = graphene.Boolean(required=True)
     message = graphene.String(required=False)
     exception = graphene.String(required=False)

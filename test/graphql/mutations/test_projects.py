@@ -1426,5 +1426,54 @@ class TestUpdateWorkItems:
             work_item_2 = WorkItem.find_by_work_item_key(session, fixture.work_items[1].key)
             assert work_item_2.budget == 2
 
+    def it_returns_exception_when_project_key_is_incorrect(self, setup):
+        fixture = setup
 
+        client = Client(schema)
+        new_test_project_key = uuid.uuid4()
 
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectWorkItemsInput=dict(
+                projectKey=str(new_test_project_key),
+                workItemsInfo=[
+                    dict(
+                        workItemKey=fixture.work_items[0].key,
+                        budget=2.5
+                    ),
+                    dict(
+                        workItemKey=fixture.work_items[1].key,
+                        budget=2
+                    )
+                ]
+            )
+        ))
+
+        assert not response['data']['updateProjectWorkItems']['updateStatus']['success']
+        assert response['data']['updateProjectWorkItems']['updateStatus'][
+                   'exception'] == f"Could not find project with key {new_test_project_key}"
+
+    def it_returns_failure_when_work_item_key_is_incorrect(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+        new_test_work_item_key = uuid.uuid4()
+
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectWorkItemsInput=dict(
+                projectKey=str(test_projects[0]['key']),
+                workItemsInfo=[
+                    dict(
+                        workItemKey=fixture.work_items[0].key,
+                        budget=2.5
+                    ),
+                    dict(
+                        workItemKey=new_test_work_item_key,
+                        budget=2
+                    )
+                ]
+            )
+        ))
+
+        assert not response['data']['updateProjectWorkItems']['updateStatus']['success']
+        assert response['data']['updateProjectWorkItems']['updateStatus'][
+                   'exception'] == "Could not update project work items"

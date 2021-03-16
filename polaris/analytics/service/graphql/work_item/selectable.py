@@ -653,9 +653,9 @@ class WorkItemsImplementationCost(InterfaceResolver):
         ]).select_from(
             work_item_nodes.join(
                 work_items, work_item_nodes.c.id == work_items.c.id
-            ).join(
+            ).outerjoin(
                 work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
-            ).join(
+            ).outerjoin(
                 commits, work_items_commits.c.commit_id == commits.c.id
             )
         ).group_by(

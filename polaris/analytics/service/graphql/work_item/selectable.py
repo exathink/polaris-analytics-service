@@ -677,7 +677,7 @@ class WorkItemsImplementationCost(InterfaceResolver):
             epics.c.id.label('epic_id'),
             func.sum(work_items.c.effort).label('effort')
         ]).select_from(
-            epics.join(
+            epics.outerjoin(
                 work_items, work_items.c.parent_id == epics.c.id
             )
         ).group_by(
@@ -695,9 +695,9 @@ class WorkItemsImplementationCost(InterfaceResolver):
         ]).select_from(
             epics.join(
                 work_items, work_items.c.parent_id == epics.c.id
-            ).join(
+            ).outerjoin(
                 work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
-            ).join(
+            ).outerjoin(
                 commits, commits.c.id == work_items_commits.c.commit_id
             )
         ).group_by(

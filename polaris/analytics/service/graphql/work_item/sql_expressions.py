@@ -178,7 +178,13 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
             ])
         )
 
-    # this false by default, so we exclude epics unless it is explictly requested.
+    # This is false by default, so we exclude subtasks unless it is explicitly requested.
+    if kwargs.get('include_subtasks') is None or kwargs.get('include_subtasks') == False:
+        select_stmt = select_stmt.where(
+            work_items.c.work_item_type != 'subtask'
+        )
+
+    # This is false by default, so we exclude epics unless it is explicitly requested.
     if kwargs.get('include_epics') is None or kwargs.get('include_epics') == False:
         select_stmt = select_stmt.where(
             work_items.c.is_epic == False
@@ -258,7 +264,7 @@ def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_
                 and_(
                     work_items.c.is_epic == False,
                     or_(
-                        work_item_delivery_cycles.c.end_date==None,
+                        work_item_delivery_cycles.c.end_date == None,
                         date_column_is_in_measurement_window(
                             work_item_delivery_cycles.c.end_date,
                             measurement_date=datetime.utcnow(),
@@ -302,7 +308,6 @@ def apply_defects_only_filter(select_stmt, work_items, **kwargs):
 
 
 def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
-
     select_stmt = apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs)
     select_stmt = apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs)
     select_stmt = apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs)

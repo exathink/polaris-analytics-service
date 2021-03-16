@@ -322,6 +322,11 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             required=False,
             description='Include epics in the work items. Defaults to false',
             default_value=False
+        ),
+        include_subtasks=graphene.Boolean(
+            required=False,
+            description='Include subtasks in the work items. Defaults to false',
+            default_value=False
         )
     )
 

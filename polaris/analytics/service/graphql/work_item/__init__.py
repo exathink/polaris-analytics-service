@@ -326,7 +326,7 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
         include_subtasks=graphene.Boolean(
             required=False,
             description='Include subtasks in the work items. Defaults to false',
-            default_value=False
+            default_value=True
         )
     )
 

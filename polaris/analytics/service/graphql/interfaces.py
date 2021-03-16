@@ -418,7 +418,7 @@ class DeliveryCycleInfo(graphene.Interface):
     end_date = graphene.DateTime(required=False)
 
 
-class WorkItemProgress(DeliveryCycleInfo):
+class DevelopmentProgress(DeliveryCycleInfo):
     last_update = graphene.DateTime(required=False)
     elapsed = graphene.Float(required=False)
 

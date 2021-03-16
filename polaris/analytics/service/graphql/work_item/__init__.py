@@ -15,14 +15,14 @@ from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo
     WorkItemsSourceRef, WorkItemStateTransition, \
     WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics, \
     WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, \
-    WorkItemProgress
+    DevelopmentProgress
 
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
     WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics, \
     WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef, WorkItemsImplementationCost, \
     WorkItemsParentNodeRef, WorkItemsEpicNodeRef, WorkItemPullRequestNodes, WorkItemPullRequestNode, \
-    WorkItemDeliveryCyclesImplementationCost, WorkItemDeliveryCyclesEpicNodeRef, WorkItemsWorkItemProgress
+    WorkItemDeliveryCyclesImplementationCost, WorkItemDeliveryCyclesEpicNodeRef, WorkItemsDevelopmentProgress
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -229,7 +229,7 @@ class WorkItem(
     class Meta:
         interfaces = (
             NamedNode, WorkItemInfo, WorkItemsSourceRef, WorkItemEventSpan, ProjectRef, CommitSummary,
-            WorkItemStateDetails, ImplementationCost, ParentNodeRef, EpicNodeRef, WorkItemProgress
+            WorkItemStateDetails, ImplementationCost, ParentNodeRef, EpicNodeRef, DevelopmentProgress
         )
         named_node_resolver = WorkItemNode
         interface_resolvers = {
@@ -240,7 +240,7 @@ class WorkItem(
             'ImplementationCost': WorkItemsImplementationCost,
             'ParentNodeRef': WorkItemsParentNodeRef,
             'EpicNodeRef': WorkItemsEpicNodeRef,
-            'WorkItemProgress': WorkItemsWorkItemProgress
+            'DevelopmentProgress': WorkItemsDevelopmentProgress
         }
         connection_node_resolvers = {
             'work_item_events': WorkItemEventNodes,

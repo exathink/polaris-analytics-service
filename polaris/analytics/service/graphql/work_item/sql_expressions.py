@@ -53,7 +53,8 @@ def work_item_info_columns(work_items):
         work_items.c.state_type,
         work_items.c.created_at,
         work_items.c.updated_at,
-        work_items.c.is_bug
+        work_items.c.is_bug,
+        work_items.c.budget
     ]
 
 
@@ -211,9 +212,6 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
         )
     else:
         return select_stmt
-
-
-
 
 
 def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs):

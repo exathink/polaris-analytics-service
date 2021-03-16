@@ -226,18 +226,62 @@ def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kw
     return select_stmt
 
 
-def apply_active_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs):
+def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
     if 'active_within_days' in kwargs:
+        child_work_items = work_items.alias()
+        epics = select([
+            work_items.c.id,
+            child_work_items.c.id.label('child_id')
+        ]).select_from(
+            work_items.join(
+                child_work_items, child_work_items.c.parent_id == work_items.c.id
+            )
+        ).alias()
+
+        epic_cycles = select([
+            epics.c.id,
+            (case([
+                (func.sum(case([
+                    (work_item_delivery_cycles.c.end_date == None, 1)
+                ], else_=0)) > 0, None)
+            ], else_=func.max(work_item_delivery_cycles.c.end_date))).label('end_date')
+        ]).select_from(
+            epics.join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == epics.c.child_id
+            )
+        ).group_by(
+            epics.c.id
+        ).cte()
+
         select_stmt = select_stmt.where(
             or_(
-                work_item_delivery_cycles.c.end_date==None,
-                date_column_is_in_measurement_window(
-                    work_item_delivery_cycles.c.end_date,
-                    measurement_date=datetime.utcnow(),
-                    measurement_window=kwargs['active_within_days']
+                and_(
+                    work_items.c.is_epic == False,
+                    or_(
+                        work_item_delivery_cycles.c.end_date==None,
+                        date_column_is_in_measurement_window(
+                            work_item_delivery_cycles.c.end_date,
+                            measurement_date=datetime.utcnow(),
+                            measurement_window=kwargs['active_within_days']
+                        )
+                    )
+                ),
+                and_(
+                    work_items.c.is_epic == True,
+                    and_(
+                        epic_cycles.c.id == work_items.c.id,
+                        or_(
+                            epic_cycles.c.end_date == None,
+                            date_column_is_in_measurement_window(
+                                epic_cycles.c.end_date,
+                                measurement_date=datetime.utcnow(),
+                                measurement_window=kwargs['active_within_days']
+                            )
+                        )
+                    )
                 )
             )
-        )
+        ).distinct()
     return select_stmt
 
 
@@ -260,7 +304,7 @@ def apply_defects_only_filter(select_stmt, work_items, **kwargs):
 def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
 
     select_stmt = apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs)
-    select_stmt = apply_active_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs)
+    select_stmt = apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs)
     select_stmt = apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs)
 
     return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)

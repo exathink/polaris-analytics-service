@@ -662,71 +662,68 @@ class WorkItemsImplementationCost(InterfaceResolver):
             work_item_nodes.c.id
         ).where(work_items.c.is_epic == False)
 
-        if kwargs.get('include_epics'):
-            epics = select([
-                work_item_nodes.c.id,
-                work_items.c.budget,
-            ]).select_from(
-                work_item_nodes.join(
-                    work_items, work_item_nodes.c.id == work_items.c.id
-                )
-            ).where(
-                work_items.c.is_epic == True
-            ).cte()
-
-            epic_cost_details = select([
-                epics.c.id.label('epic_id'),
-                func.sum(work_items.c.effort).label('effort')
-            ]).select_from(
-                epics.join(
-                    work_items, work_items.c.parent_id == epics.c.id
-                )
-            ).group_by(
-                epics.c.id
-            ).alias()
-
-            epic_commits = select([
-                epics.c.id.label('epic_id'),
-                (func.extract(
-                    'epoch',
-                    func.max(commits.c.commit_date).label('latest_commit') -
-                    func.min(commits.c.commit_date).label('earliest_commit')
-                ) / (1.0 * 24 * 3600)).label('duration'),
-                func.count(commits.c.author_contributor_key.distinct()).label('author_count')
-            ]).select_from(
-                epics.join(
-                    work_items, work_items.c.parent_id == epics.c.id
-                ).join(
-                    work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
-                ).join(
-                    commits, commits.c.id == work_items_commits.c.commit_id
-                )
-            ).group_by(
-                epics.c.id
-            ).alias()
-
-            epics_implementation_cost = select([
-                epics.c.id,
-                epics.c.budget,
-                epic_cost_details.c.effort,
-                epic_commits.c.duration,
-                epic_commits.c.author_count
-            ]).select_from(
-                epics.outerjoin(
-                    epic_cost_details, epic_cost_details.c.epic_id == epics.c.id
-                ).outerjoin(
-                    epic_commits, epic_commits.c.epic_id == epics.c.id
-                )
-            ).group_by(
-                epics.c.id,
-                epics.c.budget,
-                epic_cost_details.c.effort,
-                epic_commits.c.duration,
-                epic_commits.c.author_count
+        epics = select([
+            work_item_nodes.c.id,
+            work_items.c.budget,
+        ]).select_from(
+            work_item_nodes.join(
+                work_items, work_item_nodes.c.id == work_items.c.id
             )
-            return non_epics_implementation_cost.union(epics_implementation_cost)
-        else:
-            return non_epics_implementation_cost
+        ).where(
+            work_items.c.is_epic == True
+        ).cte()
+
+        epic_cost_details = select([
+            epics.c.id.label('epic_id'),
+            func.sum(work_items.c.effort).label('effort')
+        ]).select_from(
+            epics.join(
+                work_items, work_items.c.parent_id == epics.c.id
+            )
+        ).group_by(
+            epics.c.id
+        ).alias()
+
+        epic_commits = select([
+            epics.c.id.label('epic_id'),
+            (func.extract(
+                'epoch',
+                func.max(commits.c.commit_date).label('latest_commit') -
+                func.min(commits.c.commit_date).label('earliest_commit')
+            ) / (1.0 * 24 * 3600)).label('duration'),
+            func.count(commits.c.author_contributor_key.distinct()).label('author_count')
+        ]).select_from(
+            epics.join(
+                work_items, work_items.c.parent_id == epics.c.id
+            ).join(
+                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
+            ).join(
+                commits, commits.c.id == work_items_commits.c.commit_id
+            )
+        ).group_by(
+            epics.c.id
+        ).alias()
+
+        epics_implementation_cost = select([
+            epics.c.id,
+            epics.c.budget,
+            epic_cost_details.c.effort,
+            epic_commits.c.duration,
+            epic_commits.c.author_count
+        ]).select_from(
+            epics.outerjoin(
+                epic_cost_details, epic_cost_details.c.epic_id == epics.c.id
+            ).outerjoin(
+                epic_commits, epic_commits.c.epic_id == epics.c.id
+            )
+        ).group_by(
+            epics.c.id,
+            epics.c.budget,
+            epic_cost_details.c.effort,
+            epic_commits.c.duration,
+            epic_commits.c.author_count
+        )
+        return non_epics_implementation_cost.union(epics_implementation_cost)
 
 
 class WorkItemPullRequestNode(NamedNodeResolver):

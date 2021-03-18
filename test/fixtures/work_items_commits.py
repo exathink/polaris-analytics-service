@@ -94,7 +94,6 @@ def work_items_commits_fixture(commits_fixture):
 
     # Add work item commits mapping
 
-
     # Add state transitions
     for work_item in test_work_items:
         create_transitions(work_item['key'], [
@@ -219,12 +218,38 @@ def implementation_effort_commits_fixture(org_repo_fixture, cleanup):
     yield organization, projects, repositories, contributors_fixture
 
 
+def update_delivery_cycle_commit_info(work_item_key, commit_keys):
+    with db.orm_session() as session:
+        work_item = WorkItem.find_by_work_item_key(session, work_item_key)
+        if work_item:
+            for commit_key in commit_keys:
+                commit = Commit.find_by_commit_key(session, commit_key)
+                if commit:
+                    delivery_cycle = find(
+                        work_item.delivery_cycles,
+                        lambda dc:
+                        # This is the old date based rule we were using
+                        # to map delivery cycles to commits.
+                        # Not using current_delivery_cycle_id as that may not be updated
+                        dc.start_date <= commit.commit_date and
+                        (dc.end_date is None or commit.commit_date <= dc.end_date)
+                    )
+                    # Update delivery_cycle table with latest and earliest commit
+                    if delivery_cycle:
+                        if delivery_cycle.latest_commit == None or commit.commit_date > delivery_cycle.latest_commit:
+                            delivery_cycle.latest_commit = commit.commit_date
+                        if delivery_cycle.earliest_commit == None or commit.commit_date < delivery_cycle.earliest_commit:
+                            delivery_cycle.earliest_commit = commit.commit_date
+
+
 @pytest.yield_fixture()
 def implementation_effort_fixture(implementation_effort_commits_fixture):
     def add_work_item_commits(work_item_commits):
         for entry in work_item_commits:
             # shimming this to call the standard fixture function
             create_work_item_commits(entry['work_item_key'], [entry['commit_key']])
+            # update delivery cycle with earliest and latest commit
+            update_delivery_cycle_commit_info(entry['work_item_key'], [entry['commit_key']])
 
     organization, projects, repositories, contributors = implementation_effort_commits_fixture
 

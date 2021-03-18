@@ -13,7 +13,6 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy import true, false, and_
 
-
 from polaris.analytics.db.enums import WorkItemsStateType
 
 from polaris.analytics.db import api
@@ -33,7 +32,6 @@ test_contributor_key = uuid.uuid4().hex
 test_repositories = ['alpha', 'beta', 'gamma', 'delta']
 test_projects = ['mercury', 'venus']
 test_contributor_name = 'Joe Blow'
-
 
 
 def graphql_date(date):
@@ -375,9 +373,6 @@ def create_work_item_commits(work_item_key, commit_keys):
                     )
                 else:
                     assert None, f"Failed to find commit with key {commit_key}"
-
-
-
         else:
             assert None, f"Failed to find work item with key {work_item_key}"
 
@@ -1121,7 +1116,7 @@ class WorkItemImportApiHelper:
                 delivery_cycle_id = work_item.current_delivery_cycle_id
                 session.connection().execute(
                     work_item_delivery_cycles.update().where(
-                        work_item_delivery_cycles.c.delivery_cycle_id==delivery_cycle_id
+                        work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycle_id
                     ).values(
                         update_dict
                     )
@@ -1226,7 +1221,7 @@ class PullRequestImportApiHelper(WorkItemImportApiHelper):
         with db.orm_session(join_this) as session:
             session.connection().execute(
                 pull_requests.update().where(
-                    pull_requests.c.key==pull_request_key
+                    pull_requests.c.key == pull_request_key
                 ).values(
                     update_dict
                 )

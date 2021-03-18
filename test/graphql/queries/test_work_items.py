@@ -555,6 +555,8 @@ class TestWorkItemInstanceImplementationCost:
             for i in range(0, 3)
         ]
         add_work_item_commits(work_item_commits)
+        # Update delivery cycles with latest and earliest commit
+
 
         yield fixture
 

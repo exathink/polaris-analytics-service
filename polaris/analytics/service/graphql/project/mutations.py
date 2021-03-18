@@ -15,6 +15,7 @@ from polaris.analytics.db import api as db_api
 from polaris.analytics import api
 from ..interfaces import WorkItemsStateType
 from ..input_types import FlowMetricsSettingsInput, AnalysisPeriodsInput
+from polaris.utils.exceptions import ProcessingException
 
 logger = logging.getLogger('polaris.analytics.mutations')
 
@@ -67,6 +68,46 @@ class UpdateProjectStateMaps(graphene.Mutation):
         return UpdateProjectStateMaps(success=result['success'], error_message=result.get('exception'))
 
 
+class WorkItemsInfo(graphene.InputObjectType):
+    work_item_key = graphene.String(required=True)
+    budget = graphene.Float(required=False)
+    # can add more fields as per need
+
+
+class UpdateProjectWorkItemsInput(graphene.InputObjectType):
+    project_key = graphene.String(required=True)
+    work_items_info = graphene.List(WorkItemsInfo, required=True)
+
+
+class UpdateProjectWorkItemsStatus(graphene.ObjectType):
+    work_items_keys = graphene.List(graphene.String, required=False)
+    success = graphene.Boolean(required=True)
+    message = graphene.String(required=False)
+    exception = graphene.String(required=False)
+
+
+class UpdateProjectWorkItems(graphene.Mutation):
+    class Arguments:
+        update_project_work_items_input = UpdateProjectWorkItemsInput(required=True)
+
+    update_status = graphene.Field(UpdateProjectWorkItemsStatus)
+
+    def mutate(self, info, update_project_work_items_input):
+        logger.info('UpdateProjectWorkItems called')
+        result = db_api.update_project_work_items(project_work_items=update_project_work_items_input)
+        if result:
+            return UpdateProjectWorkItems(
+                UpdateProjectWorkItemsStatus(
+                    work_items_keys=result.get('work_items_keys'),
+                    success=result.get('success'),
+                    message=result.get('message'),
+                    exception=result.get('exception')
+                )
+            )
+        else:
+            raise ProcessingException('Could not update project work items')
+
+
 # Update project settings
 
 
@@ -74,7 +115,6 @@ class UpdateProjectSettingsInput(graphene.InputObjectType):
     key = graphene.String(required=True)
     flow_metrics_settings = graphene.Field(FlowMetricsSettingsInput, required=False)
     analysis_periods = graphene.Field(AnalysisPeriodsInput, required=False)
-
 
 
 class UpdateProjectSettings(graphene.Mutation):
@@ -94,3 +134,4 @@ class ProjectMutationsMixin:
     archive_project = ArchiveProject.Field()
     update_project_state_maps = UpdateProjectStateMaps.Field()
     update_project_settings = UpdateProjectSettings.Field()
+    update_project_work_items = UpdateProjectWorkItems.Field()

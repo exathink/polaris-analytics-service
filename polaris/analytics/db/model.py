@@ -741,6 +741,7 @@ class WorkItem(Base):
     # starting with the effort metric.
 
     effort = Column(Float, nullable=True)
+    budget = Column(Float, nullable=True)
 
     # Work Items Source relationship
     work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'))

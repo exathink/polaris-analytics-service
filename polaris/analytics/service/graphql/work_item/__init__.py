@@ -14,14 +14,15 @@ from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolver
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, \
     WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics, \
-    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef
+    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, \
+    DevelopmentProgress
 
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
     WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics, \
     WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef, WorkItemsImplementationCost, \
     WorkItemsParentNodeRef, WorkItemsEpicNodeRef, WorkItemPullRequestNodes, WorkItemPullRequestNode, \
-    WorkItemDeliveryCyclesImplementationCost, WorkItemDeliveryCyclesEpicNodeRef
+    WorkItemDeliveryCyclesImplementationCost, WorkItemDeliveryCyclesEpicNodeRef, WorkItemsDevelopmentProgress
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -228,7 +229,7 @@ class WorkItem(
     class Meta:
         interfaces = (
             NamedNode, WorkItemInfo, WorkItemsSourceRef, WorkItemEventSpan, ProjectRef, CommitSummary,
-            WorkItemStateDetails, ImplementationCost, ParentNodeRef, EpicNodeRef,
+            WorkItemStateDetails, ImplementationCost, ParentNodeRef, EpicNodeRef, DevelopmentProgress
         )
         named_node_resolver = WorkItemNode
         interface_resolvers = {
@@ -238,7 +239,8 @@ class WorkItem(
             'ProjectRef': WorkItemsProjectRef,
             'ImplementationCost': WorkItemsImplementationCost,
             'ParentNodeRef': WorkItemsParentNodeRef,
-            'EpicNodeRef': WorkItemsEpicNodeRef
+            'EpicNodeRef': WorkItemsEpicNodeRef,
+            'DevelopmentProgress': WorkItemsDevelopmentProgress
         }
         connection_node_resolvers = {
             'work_item_events': WorkItemEventNodes,
@@ -272,8 +274,13 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             description="Return work items last updated within the specified number of days. "
                         "If before is specified, it returns work items updated "
                         "between (before - days) and before"
-                        "If before is not specified the it returns work items for the"
+                        "If before is not specified then it returns work items for the"
                         "previous n days starting from utc now"
+        ),
+        active_within_days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="Return work items that were active in the last n days",
         ),
         closed_within_days=graphene.Argument(
             graphene.Int,
@@ -310,6 +317,16 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             graphene.List(WorkItemsStateType),
             required=False,
             description="Include only work items with the specified state types"
+        ),
+        include_epics=graphene.Boolean(
+            required=False,
+            description='Include epics in the work items. Defaults to false',
+            default_value=False
+        ),
+        include_subtasks=graphene.Boolean(
+            required=False,
+            description='Include subtasks in the work items. Defaults to false',
+            default_value=True
         )
     )
 

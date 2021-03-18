@@ -23,7 +23,9 @@ from polaris.analytics.db.model import \
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics, \
-    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, PullRequestInfo
+    WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, \
+    PullRequestInfo, \
+    DevelopmentProgress
 
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
@@ -31,6 +33,7 @@ from .sql_expressions import work_item_info_columns, work_item_event_columns, wo
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 from ..pull_request.sql_expressions import pull_request_info_columns
+
 
 class WorkItemNode(NamedNodeResolver):
     interfaces = (NamedNode, WorkItemInfo, WorkItemsSourceRef)
@@ -240,6 +243,130 @@ class WorkItemDeliveryCycleNodes(ConnectionResolver):
         return [work_item_delivery_cycle_nodes.c.end_date.desc().nullsfirst()]
 
 
+class WorkItemsDevelopmentProgress(InterfaceResolver):
+    interface = DevelopmentProgress
+
+    @staticmethod
+    def interface_selector(work_item_nodes, **kwargs):
+        non_epic_work_items = select([
+            work_item_nodes.c.id
+        ]).select_from(
+            work_item_nodes.join(
+                work_items, work_item_nodes.c.id == work_items.c.id
+            )
+        ).where(
+            work_items.c.is_epic == False
+        ).cte()
+
+        non_epic_work_items_span = select([
+            non_epic_work_items.c.id,
+            (case([
+                (func.sum(
+                    case([
+                        (work_item_delivery_cycles.c.end_date == None, 1)
+                    ], else_=0)) > 0, False)
+            ], else_=True)).label('closed'),
+            func.min(work_item_delivery_cycles.c.start_date).label('start_date'),
+            (case([
+                (func.sum(case([
+                    (work_item_delivery_cycles.c.end_date == None, 1)
+                ], else_=0)) > 0, None)
+            ], else_=func.max(work_item_delivery_cycles.c.end_date))).label('end_date'),
+            func.max(work_item_delivery_cycles.c.latest_commit).label('last_update')
+        ]).select_from(
+            non_epic_work_items.outerjoin(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == non_epic_work_items.c.id
+            )
+        ).group_by(
+            non_epic_work_items.c.id
+        ).alias()
+
+        non_epic_work_items_progress = select([
+            non_epic_work_items.c.id,
+            non_epic_work_items_span.c.closed,
+            non_epic_work_items_span.c.start_date,
+            non_epic_work_items_span.c.end_date,
+            non_epic_work_items_span.c.last_update,
+            (case([
+                (non_epic_work_items_span.c.end_date == None,
+                 func.extract('epoch', datetime.now() - non_epic_work_items_span.c.start_date) / (1.0 * 3600 * 24))
+            ], else_=func.extract('epoch',
+                                  non_epic_work_items_span.c.end_date - non_epic_work_items_span.c.start_date) / (
+                             1.0 * 3600 * 24))).label('elapsed')
+        ]).select_from(
+            non_epic_work_items.outerjoin(
+                non_epic_work_items_span, non_epic_work_items_span.c.id == non_epic_work_items.c.id
+            )
+        ).group_by(
+            non_epic_work_items.c.id,
+            non_epic_work_items_span.c.closed,
+            non_epic_work_items_span.c.start_date,
+            non_epic_work_items_span.c.end_date,
+            non_epic_work_items_span.c.last_update
+        )
+
+        epics = select([
+            work_item_nodes.c.id
+        ]).select_from(
+            work_item_nodes.join(
+                work_items, work_item_nodes.c.id == work_items.c.id
+            )
+        ).where(
+            work_items.c.is_epic == True
+        ).cte()
+
+        epics_span = select([
+            epics.c.id,
+            (case([
+                (func.sum(
+                    case([
+                        (work_item_delivery_cycles.c.end_date == None, 1)
+                    ], else_=0)) > 0, False)
+            ], else_=True)).label('closed'),
+            func.min(work_item_delivery_cycles.c.start_date).label('start_date'),
+            (case([
+                (func.sum(case([
+                    (work_item_delivery_cycles.c.end_date == None, 1)
+                ], else_=0)) > 0, None)
+            ], else_=func.max(work_item_delivery_cycles.c.end_date))).label('end_date'),
+            func.max(work_item_delivery_cycles.c.latest_commit).label('last_update')
+        ]).select_from(
+            epics.outerjoin(
+                work_items, work_items.c.parent_id == epics.c.id
+            ).outerjoin(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            )
+        ).group_by(
+            epics.c.id
+        ).alias()
+
+        epics_progress = select([
+            epics.c.id,
+            epics_span.c.closed,
+            epics_span.c.start_date,
+            epics_span.c.end_date,
+            epics_span.c.last_update,
+            (case([
+                (epics_span.c.end_date == None,
+                 func.extract('epoch', datetime.now() - epics_span.c.start_date) / (1.0 * 3600 * 24))
+            ], else_=func.extract('epoch', epics_span.c.end_date - epics_span.c.start_date) / (
+                    1.0 * 3600 * 24))).label('elapsed')
+
+        ]).select_from(
+            epics.outerjoin(
+                epics_span, epics_span.c.id == epics.c.id
+            )
+        ).group_by(
+            epics.c.id,
+            epics_span.c.closed,
+            epics_span.c.start_date,
+            epics_span.c.end_date,
+            epics_span.c.last_update
+        )
+
+        return epics_progress.union(non_epic_work_items_progress)
+
+
 class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
     interface = CycleMetrics
 
@@ -366,7 +493,7 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                     'effort',
                     func.min(work_item_delivery_cycles.c.effort),
                     'duration',
-                        (
+                    (
                             func.extract(
                                 'epoch',
                                 func.min(work_item_delivery_cycles.c.latest_commit) -
@@ -508,8 +635,9 @@ class WorkItemsImplementationCost(InterfaceResolver):
 
     @staticmethod
     def interface_selector(work_item_nodes, **kwargs):
-        return select([
+        non_epics_implementation_cost = select([
             work_item_nodes.c.id,
+            func.max(work_items.c.budget).label('budget'),
             func.max(work_items.c.effort).label('effort'),
             (func.extract(
                 'epoch',
@@ -521,14 +649,77 @@ class WorkItemsImplementationCost(InterfaceResolver):
         ]).select_from(
             work_item_nodes.join(
                 work_items, work_item_nodes.c.id == work_items.c.id
-            ).join(
+            ).outerjoin(
                 work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
-            ).join(
+            ).outerjoin(
                 commits, work_items_commits.c.commit_id == commits.c.id
             )
         ).group_by(
             work_item_nodes.c.id
+        ).where(work_items.c.is_epic == False)
+
+        epics = select([
+            work_item_nodes.c.id,
+            work_items.c.budget,
+        ]).select_from(
+            work_item_nodes.join(
+                work_items, work_item_nodes.c.id == work_items.c.id
+            )
+        ).where(
+            work_items.c.is_epic == True
+        ).cte()
+
+        epic_cost_details = select([
+            epics.c.id.label('epic_id'),
+            func.sum(work_items.c.effort).label('effort')
+        ]).select_from(
+            epics.outerjoin(
+                work_items, work_items.c.parent_id == epics.c.id
+            )
+        ).group_by(
+            epics.c.id
+        ).alias()
+
+        epic_commits = select([
+            epics.c.id.label('epic_id'),
+            (func.extract(
+                'epoch',
+                func.max(commits.c.commit_date).label('latest_commit') -
+                func.min(commits.c.commit_date).label('earliest_commit')
+            ) / (1.0 * 24 * 3600)).label('duration'),
+            func.count(commits.c.author_contributor_key.distinct()).label('author_count')
+        ]).select_from(
+            epics.join(
+                work_items, work_items.c.parent_id == epics.c.id
+            ).outerjoin(
+                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
+            ).outerjoin(
+                commits, commits.c.id == work_items_commits.c.commit_id
+            )
+        ).group_by(
+            epics.c.id
+        ).alias()
+
+        epics_implementation_cost = select([
+            epics.c.id,
+            epics.c.budget,
+            epic_cost_details.c.effort,
+            epic_commits.c.duration,
+            epic_commits.c.author_count
+        ]).select_from(
+            epics.outerjoin(
+                epic_cost_details, epic_cost_details.c.epic_id == epics.c.id
+            ).outerjoin(
+                epic_commits, epic_commits.c.epic_id == epics.c.id
+            )
+        ).group_by(
+            epics.c.id,
+            epics.c.budget,
+            epic_cost_details.c.effort,
+            epic_commits.c.duration,
+            epic_commits.c.author_count
         )
+        return non_epics_implementation_cost.union(epics_implementation_cost)
 
 
 class WorkItemPullRequestNode(NamedNodeResolver):

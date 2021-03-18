@@ -274,6 +274,7 @@ class BranchRef(graphene.Interface):
 
 
 class ImplementationCost(graphene.Interface):
+    budget = graphene.Float(required=False, description="Total engineering days estimated as per budget")
     effort = graphene.Float(required=False, description="Total engineering days required")
     duration = graphene.Float(required=False,
                               description="Span in days between earliest commit and latest commit")
@@ -415,6 +416,11 @@ class DeliveryCycleInfo(graphene.Interface):
     closed = graphene.Boolean(required=False)
     start_date = graphene.DateTime(required=False)
     end_date = graphene.DateTime(required=False)
+
+
+class DevelopmentProgress(DeliveryCycleInfo):
+    last_update = graphene.DateTime(required=False)
+    elapsed = graphene.Float(required=False)
 
 
 class CycleMetrics(graphene.Interface):

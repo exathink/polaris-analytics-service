@@ -257,8 +257,9 @@ class TestProjectEpicWorkItems:
         api_helper.update_work_item_attributes(0, dict(is_epic=True, budget=3.0, name='Only Epic'))
         with db.orm_session() as session:
             epic = WorkItem.find_by_work_item_key(session, work_items[0]['key'])
-        api_helper.update_work_item_attributes(1, dict(parent_id=epic.id))
-        api_helper.update_work_item_attributes(2, dict(parent_id=epic.id))
+        api_helper.update_work_item_attributes(1, dict(parent_id=epic.id, budget=1.0))
+        api_helper.update_work_item_attributes(2, dict(parent_id=epic.id, budget=1.0))
+        api_helper.update_work_item_attributes(3, dict(budget=3.0))
 
         # Add contributors
         contributor_info = [
@@ -342,7 +343,7 @@ class TestProjectEpicWorkItems:
                 query=query
             )
 
-        def it_returns_correct_epic_node_refs(self, setup):
+        def it_returns_correct_epic_node_refs_and_budget(self, setup):
             fixture = setup
             client = Client(schema)
             result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key))
@@ -355,6 +356,15 @@ class TestProjectEpicWorkItems:
                         uuid.UUID(fixture.work_items[2]['key'])):
                     assert wi['node']['epicKey'] == str(fixture.epic.key)
                     assert wi['node']['epicName'] == str(fixture.epic.name)
+                    assert wi['node']['budget'] == 1.0
                 else:
                     assert not wi['node']['epicKey']
                     assert not wi['node']['epicName']
+                    assert wi['node']['budget'] == 3.0
+                assert wi['node']['effort'] is None
+                assert wi['node']['duration'] is None
+                assert wi['node']['authorCount'] == 0
+                assert wi['node']['closed'] == False
+                assert wi['node']['startDate'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
+                assert wi['node']['endDate'] is None
+                assert int(wi['node']['elapsed']) == 10

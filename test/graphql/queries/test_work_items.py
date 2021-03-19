@@ -555,8 +555,6 @@ class TestWorkItemInstanceImplementationCost:
             for i in range(0, 3)
         ]
         add_work_item_commits(work_item_commits)
-        # Update delivery cycles with latest and earliest commit
-
 
         yield fixture
 
@@ -641,6 +639,65 @@ class TestWorkItemInstanceImplementationCost:
         assert not work_item['authorCount']
         assert not work_item['duration']
         assert not work_item['effort']
+
+
+class TestEpicWorkItemInstanceImplementationCost:
+    @pytest.yield_fixture()
+    def setup(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+        # Convert 1 work item to epic and others as its children
+        api_helper.update_work_item_attributes(0, dict(is_epic=True, budget=3.0))
+        with db.orm_session() as session:
+            epic_id = WorkItem.find_by_work_item_key(session, work_items[0]['key']).id
+        api_helper.update_work_item_attributes(1, dict(parent_id=epic_id))
+        api_helper.update_work_item_attributes(2, dict(parent_id=epic_id))
+
+        query = """
+                query getWorkItem($key:String!) {
+                    workItem(key: $key, interfaces: [ImplementationCost]){
+                            effort
+                            duration
+                            authorCount
+                            budget
+                    }
+                } 
+        """
+
+        yield Fixture(
+            query=query,
+            api_helper=api_helper,
+            work_items=work_items
+        )
+
+    def it_returns_null_values_as_no_commits(self, setup):
+        fixture = setup
+        test_work_item = fixture.work_items[0]
+
+        client = Client(schema)
+        result = client.execute(fixture.query, variable_values=dict(key=test_work_item['key']))
+        assert 'data' in result
+        work_item = result['data']['workItem']
+        assert not work_item['authorCount']
+        assert not work_item['duration']
+        assert not work_item['effort']
+        assert work_item['budget']
 
 
 class TestWorkItemInstancePullRequests:

@@ -22,7 +22,8 @@ import pytest
 from test.fixtures.graphql import *
 from datetime import datetime, timedelta
 
-from polaris.analytics.db.model import WorkItemDeliveryCycle
+from polaris.analytics.db.model import WorkItemDeliveryCycle, work_item_delivery_cycle_contributors
+from sqlalchemy.dialects.postgresql import insert
 
 earliest_commit_date = datetime.utcnow().replace(microsecond=0) - timedelta(days=5)
 latest_commit_date = datetime.utcnow().replace(microsecond=0) - timedelta(days=2)
@@ -240,6 +241,24 @@ def update_delivery_cycle_commit_info(work_item_key, commit_keys):
                             delivery_cycle.latest_commit = commit.commit_date
                         if delivery_cycle.earliest_commit == None or commit.commit_date < delivery_cycle.earliest_commit:
                             delivery_cycle.earliest_commit = commit.commit_date
+                        # create entry in work_item_delivery_cycle_contributors
+                        stmt = insert(work_item_delivery_cycle_contributors).values(
+                            delivery_cycle_id=delivery_cycle.delivery_cycle_id,
+                            contributor_alias_id=commit.committer_contributor_alias_id,
+                            total_lines_as_author=10,
+                            total_lines_as_reviewer=20
+                        )
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=[
+                                work_item_delivery_cycle_contributors.c.delivery_cycle_id,
+                                work_item_delivery_cycle_contributors.c.contributor_alias_id
+                            ],
+                            set_=dict(
+                                total_lines_as_author=stmt.excluded.total_lines_as_author,
+                                total_lines_as_reviewer=stmt.excluded.total_lines_as_reviewer
+                            )
+                        )
+                        session.connection().execute(stmt)
 
 
 @pytest.yield_fixture()

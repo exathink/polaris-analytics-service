@@ -472,14 +472,9 @@ class TestProjectEpicWorkItems:
                 all_work_items = result['data']['project']['workItems']['edges']
                 assert len(all_work_items) == 4
                 for wi in all_work_items:
-                    if wi['node']['key'] == str(fixture.epic.key):
-                        assert wi['node']['effort'] == 7
-                        assert wi['node']['authorCount'] == 2
-                    else:
-                        assert wi['node']['effort'] == 3.5
-                        assert wi['node']['authorCount'] == 1
-                    if wi['node']['key'] == str(uuid.UUID(fixture.work_items[1]['key'])) or wi['node']['key'] == str(
-                            uuid.UUID(fixture.work_items[2]['key'])):
+                    if wi['node']['key'] == str(uuid.UUID(fixture.work_items[1]['key'])) \
+                            or wi['node']['key'] == str(
+                        uuid.UUID(fixture.work_items[2]['key'])):
                         assert wi['node']['epicKey'] == str(fixture.epic.key)
                         assert wi['node']['epicName'] == str(fixture.epic.name)
                         assert wi['node']['budget'] == 1.0
@@ -487,6 +482,13 @@ class TestProjectEpicWorkItems:
                         assert not wi['node']['epicKey']
                         assert not wi['node']['epicName']
                         assert wi['node']['budget'] == 3.0
+                    if wi['node']['key'] == str(fixture.epic.key):
+                        assert wi['node']['effort'] == 7
+                        assert wi['node']['authorCount'] == 2
+                    else:
+                        assert wi['node']['effort'] == 3.5
+                        assert wi['node']['authorCount'] == 1
+
                     if wi['node']['key'] == str(uuid.UUID(fixture.work_items[3]['key'])):
                         assert wi['node']['duration'] == 0.0
                     else:
@@ -495,4 +497,41 @@ class TestProjectEpicWorkItems:
                     assert wi['node']['startDate'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
                     assert wi['node']['endDate'] is None
                     assert int(wi['node']['elapsed']) == 10
+
+        class TestWithOneClosedDeliveryCycle:
+
+            @pytest.yield_fixture()
+            def setup(self, setup):
+                fixture = setup
+
+                api_helper = fixture.api_helper
+                api_helper.update_delivery_cycle(1, dict(end_date=datetime.utcnow()))
+
+                yield Fixture(
+                    parent=fixture
+                )
+
+            def it_returns_all_correct_data_points_for_implementation_cost(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key))
+
+                assert result['data']
+                all_work_items = result['data']['project']['workItems']['edges']
+                assert len(all_work_items) == 4
+                for wi in all_work_items:
+                    if wi['node']['key'] == str(fixture.epic.key):
+                        assert wi['node']['effort'] == 7
+                        assert wi['node']['authorCount'] == 2
+                        assert wi['node']['closed'] == False
+                    else:
+                        assert wi['node']['effort'] == 3.5
+                        assert wi['node']['authorCount'] == 1
+                    assert wi['node']['startDate'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
+                    assert int(wi['node']['elapsed']) == 10
+                    if wi['node']['key'] == str(uuid.UUID(fixture.work_items[1]['key'])):
+                        assert wi['node']['closed'] == True
+                        assert wi['node']['endDate'] is not None
+
 

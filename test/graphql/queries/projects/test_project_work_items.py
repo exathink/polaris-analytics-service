@@ -229,3 +229,132 @@ class TestProjectWorkItems:
         result = client.execute(query, variable_values=dict(project_key=project.key))
         assert 'data' in result
         assert len(result['data']['project']['workItems']['edges']) == 1
+
+
+class TestProjectEpicWorkItems:
+
+    @pytest.yield_fixture()
+    def setup(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 4)
+        ]
+
+        api_helper.import_work_items(work_items)
+        # Convert 1 work item to epic and 2 others as its children
+        api_helper.update_work_item_attributes(0, dict(is_epic=True, budget=3.0, name='Only Epic'))
+        with db.orm_session() as session:
+            epic = WorkItem.find_by_work_item_key(session, work_items[0]['key'])
+        api_helper.update_work_item_attributes(1, dict(parent_id=epic.id))
+        api_helper.update_work_item_attributes(2, dict(parent_id=epic.id))
+
+        # Add contributors
+        contributor_info = [
+            dict(key=uuid.uuid4(), name='joe@blow.com'),
+            dict(key=uuid.uuid4(), name='ida@jay.com')
+        ]
+        with db.create_session() as session:
+            for c_info in contributor_info:
+                contributor_id = session.connection.execute(
+                    contributors.insert(
+                        dict(
+                            key=c_info['key'],
+                            name=c_info['name']
+                        )
+                    )
+                ).inserted_primary_key[0]
+
+                contributor_alias_id = session.connection.execute(
+                    contributor_aliases.insert(
+                        dict(
+                            source_alias='joe@blow.com',
+                            key=c_info['key'],
+                            name=c_info['name'],
+                            contributor_id=contributor_id,
+                            source='vcs'
+                        )
+                    )
+                ).inserted_primary_key[0]
+                c_info['id'] = contributor_id
+                c_info['alias_id'] = contributor_alias_id
+
+        yield Fixture(
+            project=project,
+            work_items=work_items,
+            api_helper=api_helper,
+            contributors=contributor_info,
+            start_date=start_date,
+            epic=epic
+        )
+
+    class TestWithoutWorkItemCommits:
+
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            fixture = setup
+            query = """
+                query getProjectEpicWorkItems($project_key:String!) {
+                    project(key: $project_key) {
+                        workItems(
+                            interfaces: [EpicNodeRef, ImplementationCost, DevelopmentProgress],
+                            includeEpics: true,
+                            activeWithinDays: 90, 
+                            includeSubtasks: false
+                            ) {
+                            edges {
+                                node {
+                                  id
+                                  name
+                                  key
+                                  displayId
+                                  epicName
+                                  epicKey
+                                  budget
+                                  effort
+                                  authorCount
+                                  duration
+                                  closed
+                                  startDate
+                                  endDate
+                                  lastUpdate
+                                  elapsed
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+
+            yield Fixture(
+                parent=fixture,
+                query=query
+            )
+
+        def it_returns_correct_epic_node_refs(self, setup):
+            fixture = setup
+            client = Client(schema)
+            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key))
+
+            assert result['data']
+            all_work_items = result['data']['project']['workItems']['edges']
+            assert len(all_work_items) == 4
+            for wi in all_work_items:
+                if wi['node']['key'] == str(uuid.UUID(fixture.work_items[1]['key'])) or wi['node']['key'] == str(
+                        uuid.UUID(fixture.work_items[2]['key'])):
+                    assert wi['node']['epicKey'] == str(fixture.epic.key)
+                    assert wi['node']['epicName'] == str(fixture.epic.name)
+                else:
+                    assert not wi['node']['epicKey']
+                    assert not wi['node']['epicName']

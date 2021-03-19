@@ -343,7 +343,7 @@ class TestProjectEpicWorkItems:
                 query=query
             )
 
-        def it_returns_correct_epic_node_refs_and_budget(self, setup):
+        def it_returns_correct_epic_node_refs_budget_and_other_default_values(self, setup):
             fixture = setup
             client = Client(schema)
             result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key))
@@ -368,3 +368,131 @@ class TestProjectEpicWorkItems:
                 assert wi['node']['startDate'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
                 assert wi['node']['endDate'] is None
                 assert int(wi['node']['elapsed']) == 10
+
+    class TestWithWorkItemCommits:
+
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            # Add only work item delivery cycle contributors and update work item delivery cycles
+            fixture = setup
+
+            query = """
+                query getProjectEpicWorkItems($project_key:String!) {
+                    project(key: $project_key) {
+                        workItems(
+                            interfaces: [EpicNodeRef, ImplementationCost, DevelopmentProgress],
+                            includeEpics: true,
+                            activeWithinDays: 90, 
+                            includeSubtasks: false
+                            ) {
+                            edges {
+                                node {
+                                  id
+                                  name
+                                  key
+                                  displayId
+                                  epicName
+                                  epicKey
+                                  budget
+                                  effort
+                                  authorCount
+                                  duration
+                                  closed
+                                  startDate
+                                  endDate
+                                  lastUpdate
+                                  elapsed
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+
+            api_helper = fixture.api_helper
+            # Update work items for effort
+            api_helper.update_work_item(1, dict(effort=3.5))
+            api_helper.update_work_item(2, dict(effort=3.5))
+            api_helper.update_work_item(3, dict(effort=3.5))
+            # Update delivery cycle for latest_commit and earliest_commit
+            work_items = fixture.work_items
+            commit_1_date = datetime.utcnow() - timedelta(days=5)
+            commit_2_date = datetime.utcnow() - timedelta(days=6)
+            commit_3_date = datetime.utcnow() - timedelta(days=7)
+            commit_4_date = datetime.utcnow() - timedelta(days=8)
+            commit_5_date = datetime.utcnow() - timedelta(days=9)
+            api_helper.update_delivery_cycle(1, dict(latest_commit=commit_1_date, earliest_commit=commit_3_date,
+                                                     commit_count=2))
+            api_helper.update_delivery_cycle(2, dict(latest_commit=commit_2_date, earliest_commit=commit_4_date,
+                                                     commit_count=2))
+            api_helper.update_delivery_cycle(3, dict(latest_commit=commit_5_date, earliest_commit=commit_5_date,
+                                                     commit_count=1))
+
+            # Contributor 1 to work item 1
+            api_helper.update_delivery_cycle_contributors(
+                1,
+                dict(
+                    contributor_alias_id=fixture.contributors[0]['alias_id'],
+                    total_lines_as_author=20,
+                    total_lines_as_reviewer=20
+                )
+            )
+            # Contributor 2 to work item 2
+            api_helper.update_delivery_cycle_contributors(
+                2,
+                dict(
+                    contributor_alias_id=fixture.contributors[1]['alias_id'],
+                    total_lines_as_author=10,
+                    total_lines_as_reviewer=10
+                )
+            )
+            # Contributor 1 to work item 3
+            api_helper.update_delivery_cycle_contributors(
+                3,
+                dict(
+                    contributor_alias_id=fixture.contributors[0]['alias_id'],
+                    total_lines_as_author=10,
+                    total_lines_as_reviewer=10
+                )
+            )
+
+            yield Fixture(
+                parent=fixture,
+                query=query
+            )
+
+        class TestWithAllOpenDeliveryCycles:
+            def it_returns_all_correct_data_points_for_implementation_cost(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key))
+
+                assert result['data']
+                all_work_items = result['data']['project']['workItems']['edges']
+                assert len(all_work_items) == 4
+                for wi in all_work_items:
+                    if wi['node']['key'] == str(fixture.epic.key):
+                        assert wi['node']['effort'] == 7
+                        assert wi['node']['authorCount'] == 2
+                    else:
+                        assert wi['node']['effort'] == 3.5
+                        assert wi['node']['authorCount'] == 1
+                    if wi['node']['key'] == str(uuid.UUID(fixture.work_items[1]['key'])) or wi['node']['key'] == str(
+                            uuid.UUID(fixture.work_items[2]['key'])):
+                        assert wi['node']['epicKey'] == str(fixture.epic.key)
+                        assert wi['node']['epicName'] == str(fixture.epic.name)
+                        assert wi['node']['budget'] == 1.0
+                    else:
+                        assert not wi['node']['epicKey']
+                        assert not wi['node']['epicName']
+                        assert wi['node']['budget'] == 3.0
+                    if wi['node']['key'] == str(uuid.UUID(fixture.work_items[3]['key'])):
+                        assert wi['node']['duration'] == 0.0
+                    else:
+                        assert wi['node']['duration'] > 0
+                    assert wi['node']['closed'] == False
+                    assert wi['node']['startDate'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
+                    assert wi['node']['endDate'] is None
+                    assert int(wi['node']['elapsed']) == 10
+

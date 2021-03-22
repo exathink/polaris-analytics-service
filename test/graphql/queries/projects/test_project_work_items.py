@@ -601,6 +601,7 @@ class TestProjectEpicWorkItems:
                 assert len(all_work_items) == 3
                 for wi in all_work_items:
                     # for epic children
+                    assert not wi['node']['key'] == str(fixture.epic.key)
                     if wi['node']['key'] == str(uuid.UUID(fixture.work_items[1]['key'])) \
                             or wi['node']['key'] == str(
                         uuid.UUID(fixture.work_items[2]['key'])):
@@ -626,3 +627,26 @@ class TestProjectEpicWorkItems:
                         assert wi['node']['startDate'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
                         assert wi['node']['endDate'] is None
                         assert int(wi['node']['elapsed']) == 10
+
+        class TestWithSubtasks:
+
+            @pytest.yield_fixture()
+            def setup(self, setup):
+                fixture = setup
+                api_helper = fixture.api_helper
+                api_helper.update_work_item_attributes(3, dict(work_item_type='subtask'))
+                yield Fixture(
+                    parent=fixture
+                )
+
+            def it_does_not_return_subtask_when_include_subtasks_is_false(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key))
+
+                assert result['data']
+                all_work_items = result['data']['project']['workItems']['edges']
+                assert len(all_work_items) == 3
+                for wi in all_work_items:
+                    assert not wi['node']['key'] == str(uuid.UUID(fixture.work_items[3]['key']))

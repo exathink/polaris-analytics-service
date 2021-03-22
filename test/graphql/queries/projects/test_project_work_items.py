@@ -650,3 +650,45 @@ class TestProjectEpicWorkItems:
                 assert len(all_work_items) == 3
                 for wi in all_work_items:
                     assert not wi['node']['key'] == str(uuid.UUID(fixture.work_items[3]['key']))
+
+            def it_returns_subtask_when_include_subtasks_is_defaulted_or_true(self, setup):
+                fixture = setup
+
+                query = """
+                    query getProjectEpicWorkItems($project_key:String!) {
+                        project(key: $project_key) {
+                            workItems(
+                                interfaces: [EpicNodeRef, ImplementationCost, DevelopmentProgress],
+                                includeEpics: true,
+                                activeWithinDays: 90
+                                ) {
+                                edges {
+                                    node {
+                                      id
+                                      name
+                                      key
+                                      displayId
+                                      epicName
+                                      epicKey
+                                      budget
+                                      effort
+                                      authorCount
+                                      duration
+                                      closed
+                                      startDate
+                                      endDate
+                                      lastUpdate
+                                      elapsed
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+                client = Client(schema)
+                result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+
+                assert result['data']
+                all_work_items = result['data']['project']['workItems']['edges']
+                assert len(all_work_items) == 4
+                assert str(uuid.UUID(fixture.work_items[3]['key'])) in [wi['node']['key'] for wi in all_work_items]

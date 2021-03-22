@@ -474,7 +474,6 @@ class TestProjectEpicWorkItems:
                 for wi in all_work_items:
                     # For epic
                     if wi['node']['key'] == str(fixture.epic.key):
-
                         assert not wi['node']['epicKey']
                         assert not wi['node']['epicName']
                         assert wi['node']['budget'] == 3.0
@@ -548,45 +547,82 @@ class TestProjectEpicWorkItems:
                         assert wi['node']['closed'] == True
                         assert wi['node']['endDate'] is not None
 
-    class TestWithIncludeEpicsFalse:
+        class TestWithIncludeEpicsFalse:
 
-        @pytest.yield_fixture()
-        def setup(self, setup):
-            fixture = setup
-            query = """
-                query getProjectEpicWorkItems($project_key:String!) {
-                    project(key: $project_key) {
-                        workItems(
-                            interfaces: [EpicNodeRef, ImplementationCost, DevelopmentProgress],
-                            includeEpics: false,
-                            activeWithinDays: 90, 
-                            includeSubtasks: false
-                            ) {
-                            edges {
-                                node {
-                                  id
-                                  name
-                                  key
-                                  displayId
-                                  epicName
-                                  epicKey
-                                  budget
-                                  effort
-                                  authorCount
-                                  duration
-                                  closed
-                                  startDate
-                                  endDate
-                                  lastUpdate
-                                  elapsed
+            @pytest.yield_fixture()
+            def setup(self, setup):
+                fixture = setup
+                query = """
+                    query getProjectEpicWorkItems($project_key:String!) {
+                        project(key: $project_key) {
+                            workItems(
+                                interfaces: [EpicNodeRef, ImplementationCost, DevelopmentProgress],
+                                includeEpics: false,
+                                activeWithinDays: 90, 
+                                includeSubtasks: false
+                                ) {
+                                edges {
+                                    node {
+                                      id
+                                      name
+                                      key
+                                      displayId
+                                      epicName
+                                      epicKey
+                                      budget
+                                      effort
+                                      authorCount
+                                      duration
+                                      closed
+                                      startDate
+                                      endDate
+                                      lastUpdate
+                                      elapsed
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            """
+                """
 
-            yield Fixture(
-                parent=fixture,
-                query=query
-            )
+                yield Fixture(
+                    parent=fixture,
+                    noepics_query=query
+                )
+
+            def it_does_not_return_epic_but_others(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.noepics_query, variable_values=dict(project_key=fixture.project.key))
+
+                assert result['data']
+                all_work_items = result['data']['project']['workItems']['edges']
+                assert len(all_work_items) == 3
+                for wi in all_work_items:
+                    # for epic children
+                    if wi['node']['key'] == str(uuid.UUID(fixture.work_items[1]['key'])) \
+                            or wi['node']['key'] == str(
+                        uuid.UUID(fixture.work_items[2]['key'])):
+                        assert wi['node']['epicKey'] == str(fixture.epic.key)
+                        assert wi['node']['epicName'] == str(fixture.epic.name)
+                        assert wi['node']['budget'] == 1.0
+                        assert wi['node']['effort'] == 3.5
+                        assert wi['node']['authorCount'] == 1
+                        assert wi['node']['duration'] > 0
+                        assert wi['node']['closed'] == False
+                        assert wi['node']['startDate'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
+                        assert wi['node']['endDate'] is None
+                        assert int(wi['node']['elapsed']) == 10
+                    # the uncategorized
+                    if wi['node']['key'] == str(uuid.UUID(fixture.work_items[3]['key'])):
+                        assert not wi['node']['epicKey']
+                        assert not wi['node']['epicName']
+                        assert wi['node']['budget'] == 3.0
+                        assert wi['node']['effort'] == 3.5
+                        assert wi['node']['authorCount'] == 1
+                        assert wi['node']['duration'] == 0.0
+                        assert wi['node']['closed'] == False
+                        assert wi['node']['startDate'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
+                        assert wi['node']['endDate'] is None
+                        assert int(wi['node']['elapsed']) == 10

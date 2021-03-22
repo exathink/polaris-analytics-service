@@ -692,3 +692,69 @@ class TestProjectEpicWorkItems:
                 all_work_items = result['data']['project']['workItems']['edges']
                 assert len(all_work_items) == 4
                 assert str(uuid.UUID(fixture.work_items[3]['key'])) in [wi['node']['key'] for wi in all_work_items]
+
+        class TestActiveWithinDaysFilter:
+            @pytest.yield_fixture()
+            def setup(self, setup):
+                fixture = setup
+                api_helper = fixture.api_helper
+                # Closed 9 days ago
+                api_helper.update_delivery_cycle(1, dict(end_date=datetime.utcnow() - timedelta(days=9)))
+                yield Fixture(
+                    parent=fixture
+                )
+
+            def it_returns_work_items_with_open_delivery_cycles_in_last_active_within_days(self, setup):
+                fixture = setup
+
+                query = """
+                    query getProjectEpicWorkItems($project_key:String!) {
+                        project(key: $project_key) {
+                            workItems(
+                                interfaces: [EpicNodeRef, ImplementationCost, DevelopmentProgress],
+                                includeEpics: true,
+                                activeWithinDays: 8
+                                ) {
+                                edges {
+                                    node {
+                                      id
+                                      name
+                                      key
+                                      displayId
+                                      epicName
+                                      epicKey
+                                      budget
+                                      effort
+                                      authorCount
+                                      duration
+                                      closed
+                                      startDate
+                                      endDate
+                                      lastUpdate
+                                      elapsed
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+                client = Client(schema)
+                result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+
+                assert result['data']
+                all_work_items = result['data']['project']['workItems']['edges']
+                assert len(all_work_items) == 3
+                assert str(uuid.UUID(fixture.work_items[1]['key'])) not in [wi['node']['key'] for wi in all_work_items]
+                for wi in all_work_items:
+                    # Details for parent epic still are unaffected
+                    if wi['node']['key'] == str(fixture.epic.key):
+                        assert not wi['node']['epicKey']
+                        assert not wi['node']['epicName']
+                        assert wi['node']['budget'] == 3.0
+                        assert wi['node']['effort'] == 7
+                        assert wi['node']['authorCount'] == 2
+                        assert wi['node']['duration'] > 0
+                        assert wi['node']['closed'] == False
+                        assert wi['node']['startDate'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
+                        assert wi['node']['endDate'] is None
+                        assert int(wi['node']['elapsed']) == 10

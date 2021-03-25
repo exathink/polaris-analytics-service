@@ -30,6 +30,7 @@ from polaris.graphql.selectable import Selectable
 from ..interface_mixins import KeyIdResolverMixin
 from ..commit import CommitsConnectionMixin
 from ..pull_request import PullRequestsConnectionMixin, PullRequestNode
+from datetime import datetime
 
 
 class WorkItemEvent(
@@ -176,6 +177,10 @@ class WorkItemDeliveryCycles(
 
 class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
     work_item_delivery_cycles = WorkItemDeliveryCycle.ConnectionField(
+        before=graphene.Argument(
+            graphene.DateTime, required=False,
+            description='Show work_item_delivery_cycles whose end date is before this timestamp'
+        ),
         closed_within_days=graphene.Argument(
             graphene.Int,
             required=False,

@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import true, false, and_
-
+from sqlalchemy.dialects.postgresql import insert
 
 from polaris.analytics.db.enums import WorkItemsStateType
 
@@ -20,7 +20,8 @@ from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
     commits, work_items_commits as work_items_commits_table, \
     WorkItemsSource, WorkItem, WorkItemStateTransition, Commit, work_item_delivery_cycles, \
-    WorkItemDeliveryCycle, PullRequest, work_items_pull_requests, pull_requests, repositories_contributor_aliases
+    WorkItemDeliveryCycle, PullRequest, work_items_pull_requests, pull_requests, repositories_contributor_aliases, \
+    work_item_delivery_cycle_contributors
 from polaris.common import db
 from polaris.utils.collections import find, Fixture
 from polaris.common.enums import WorkTrackingIntegrationType
@@ -33,7 +34,6 @@ test_contributor_key = uuid.uuid4().hex
 test_repositories = ['alpha', 'beta', 'gamma', 'delta']
 test_projects = ['mercury', 'venus']
 test_contributor_name = 'Joe Blow'
-
 
 
 def graphql_date(date):
@@ -375,9 +375,6 @@ def create_work_item_commits(work_item_key, commit_keys):
                     )
                 else:
                     assert None, f"Failed to find commit with key {commit_key}"
-
-
-
         else:
             assert None, f"Failed to find work item with key {work_item_key}"
 
@@ -1068,6 +1065,7 @@ def api_work_items_import_fixture(org_repo_fixture):
     yield organization, project, work_items_source, work_items_common
 
     db.connection().execute("delete  from analytics.work_item_state_transitions")
+    db.connection().execute("delete  from analytics.work_item_delivery_cycle_contributors")
     db.connection().execute("delete  from analytics.work_item_delivery_cycle_durations")
     db.connection().execute("delete  from analytics.work_item_delivery_cycles")
     db.connection().execute("delete  from analytics.work_items")
@@ -1121,7 +1119,7 @@ class WorkItemImportApiHelper:
                 delivery_cycle_id = work_item.current_delivery_cycle_id
                 session.connection().execute(
                     work_item_delivery_cycles.update().where(
-                        work_item_delivery_cycles.c.delivery_cycle_id==delivery_cycle_id
+                        work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycle_id
                     ).values(
                         update_dict
                     )
@@ -1133,6 +1131,28 @@ class WorkItemImportApiHelper:
             if work_item:
                 for name, value in update_dict.items():
                     setattr(work_item, name, value)
+
+    def update_delivery_cycle_contributors(self, index, update_dict, join_this=None):
+        with db.orm_session(join_this) as session:
+            work_item = WorkItem.find_by_work_item_key(session, self.work_items[index]['key'])
+            if work_item:
+                delivery_cycle_id = work_item.current_delivery_cycle_id
+                # create entry in work_item_delivery_cycle_contributors
+                stmt = insert(work_item_delivery_cycle_contributors).values(
+                    delivery_cycle_id=delivery_cycle_id,
+                    **update_dict
+                )
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=[
+                        work_item_delivery_cycle_contributors.c.delivery_cycle_id,
+                        work_item_delivery_cycle_contributors.c.contributor_alias_id
+                    ],
+                    set_=dict(
+                        total_lines_as_author=stmt.excluded.total_lines_as_author,
+                        total_lines_as_reviewer=stmt.excluded.total_lines_as_reviewer
+                    )
+                )
+                session.connection().execute(stmt)
 
 
 @pytest.yield_fixture
@@ -1226,7 +1246,7 @@ class PullRequestImportApiHelper(WorkItemImportApiHelper):
         with db.orm_session(join_this) as session:
             session.connection().execute(
                 pull_requests.update().where(
-                    pull_requests.c.key==pull_request_key
+                    pull_requests.c.key == pull_request_key
                 ).values(
                     update_dict
                 )

@@ -133,7 +133,8 @@ def work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles)
 def work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs):
     before = None
     if 'before' in kwargs:
-        before = kwargs['before']
+        before_date = kwargs.get('before')
+        before = datetime(before_date.year, before_date.month, before_date.day, 23, 59, 59, 999999)
 
     if 'days' in kwargs and kwargs['days'] > 0:
         if before:
@@ -196,7 +197,8 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
 def work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions, **kwargs):
     before = None
     if 'before' in kwargs:
-        before = kwargs['before']
+        # Leaving this before as passed.
+        before = kwargs.get('before')
 
     if 'days' in kwargs and kwargs['days'] > 0:
         if before:
@@ -221,11 +223,16 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
 
 
 def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs):
+    if kwargs.get('before'):
+        before_date = kwargs.get('before')
+        before = datetime(before_date.year, before_date.month, before_date.day, 23, 59, 59, 999999)
+    else:
+        before = datetime.utcnow()
     if 'closed_within_days' in kwargs:
         select_stmt = select_stmt.where(
             date_column_is_in_measurement_window(
                 work_item_delivery_cycles.c.end_date,
-                measurement_date=kwargs.get('before') if kwargs.get('before') is not None else datetime.utcnow(),
+                measurement_date=before,
                 measurement_window=kwargs['closed_within_days']
             )
         )
@@ -233,6 +240,11 @@ def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kw
 
 
 def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
+    if kwargs.get('before'):
+        before_date = kwargs.get('before')
+        before = datetime(before_date.year, before_date.month, before_date.day, 23, 59, 59, 999999)
+    else:
+        before = datetime.utcnow()
     if 'active_within_days' in kwargs:
         child_work_items = work_items.alias()
         epics = select([
@@ -267,8 +279,7 @@ def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_
                         work_item_delivery_cycles.c.end_date == None,
                         date_column_is_in_measurement_window(
                             work_item_delivery_cycles.c.end_date,
-                            measurement_date=kwargs.get('before') if kwargs.get(
-                                'before') is not None else datetime.utcnow(),
+                            measurement_date=before,
                             measurement_window=kwargs['active_within_days']
                         )
                     )
@@ -281,8 +292,7 @@ def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_
                             epic_cycles.c.end_date == None,
                             date_column_is_in_measurement_window(
                                 epic_cycles.c.end_date,
-                                measurement_date=kwargs.get('before') if kwargs.get(
-                                'before') is not None else datetime.utcnow(),
+                                measurement_date=before,
                                 measurement_window=kwargs['active_within_days']
                             )
                         )

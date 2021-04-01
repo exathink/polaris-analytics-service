@@ -35,3 +35,11 @@ def date_column_is_in_measurement_window(date_column, measurement_date, measurem
     window_start = measurement_date - timedelta(days=measurement_window - 1)
 
     return date_column.between(window_start, window_end)
+
+
+def compare_with_before_date(date_column, before):
+    if before:
+        before_date = before.date() + timedelta(days=1)
+    else:
+        before_date = datetime.utcnow()
+    return date_column.lt(before_date)

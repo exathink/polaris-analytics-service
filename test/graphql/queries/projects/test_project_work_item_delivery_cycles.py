@@ -285,26 +285,27 @@ class TestProjectWorkItemDeliveryCycles:
                         workItemDeliveryCycles(
                             closedWithinDays: 10, 
                             defectsOnly: false, 
-                            specsOnly: true, 
+                            specsOnly: false, 
                             before: $before,
                             interfaces: [WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost]) 
                             {
                             edges { 
                                 node {
-                                    name
-                                    displayId
-                                    workItemKey
-                                    workItemType
-                                    isBug
-                                    state
-                                    startDate
-                                    endDate
-                                    leadTime
-                                    cycleTime
-                                    latency
-                                    effort
-                                    duration
-                                    authorCount
+                                  name
+                                  key
+                                  displayId
+                                  workItemKey
+                                  workItemType
+                                  isBug
+                                  state
+                                  startDate
+                                  endDate
+                                  leadTime
+                                  cycleTime
+                                  latency
+                                  effort
+                                  duration
+                                  authorCount
                                 }
                             }
                         }

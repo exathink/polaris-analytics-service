@@ -14,7 +14,7 @@ from sqlalchemy import and_, cast, Text, func, case, select, or_
 
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import work_items, work_item_delivery_cycles
-from polaris.analytics.service.graphql.utils import date_column_is_in_measurement_window
+from polaris.analytics.service.graphql.utils import date_column_is_in_measurement_window, get_before_date
 from polaris.utils.exceptions import ProcessingException
 
 
@@ -131,25 +131,16 @@ def work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles)
 
 
 def work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs):
-    before = None
-    if 'before' in kwargs:
-        before = kwargs.get('before').date() + timedelta(days=1)
-
+    before = get_before_date(**kwargs)
     if 'days' in kwargs and kwargs['days'] > 0:
-        if before:
-            window_start = before - timedelta(days=kwargs['days'])
-            return select_stmt.where(
-                and_(
-                    work_items.c.updated_at >= window_start,
-                    work_items.c.updated_at < before
-                )
+        window_start = before - timedelta(days=kwargs['days'])
+        return select_stmt.where(
+            and_(
+                work_items.c.updated_at >= window_start,
+                work_items.c.updated_at < before
             )
-        else:
-            window_start = datetime.utcnow() - timedelta(days=kwargs['days'])
-            return select_stmt.where(
-                work_items.c.updated_at >= window_start
-            )
-    elif before:
+        )
+    elif kwargs.get('before'):
         return select_stmt.where(
             work_items.c.updated_at < before
         )

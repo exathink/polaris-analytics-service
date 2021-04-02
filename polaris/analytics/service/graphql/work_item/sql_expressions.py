@@ -208,7 +208,7 @@ def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kw
         select_stmt = select_stmt.where(
             date_column_is_in_measurement_window(
                 work_item_delivery_cycles.c.end_date,
-                measurement_date=before,
+                measurement_date=kwargs.get('before') or datetime.utcnow(),
                 measurement_window=kwargs['closed_within_days']
             )
         )
@@ -251,7 +251,7 @@ def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_
                         work_item_delivery_cycles.c.end_date == None,
                         date_column_is_in_measurement_window(
                             work_item_delivery_cycles.c.end_date,
-                            measurement_date=before,
+                            measurement_date=kwargs.get('before') or datetime.utcnow(),
                             measurement_window=kwargs['active_within_days']
                         )
                     )
@@ -264,7 +264,7 @@ def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_
                             epic_cycles.c.end_date == None,
                             date_column_is_in_measurement_window(
                                 epic_cycles.c.end_date,
-                                measurement_date=before,
+                                measurement_date=kwargs.get('before') or datetime.utcnow(),
                                 measurement_window=kwargs['active_within_days']
                             )
                         )

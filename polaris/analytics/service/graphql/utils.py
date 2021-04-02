@@ -38,7 +38,9 @@ def date_column_is_in_measurement_window(date_column, measurement_date, measurem
 
 
 def get_before_date(**kwargs):
-    if kwargs.get('before'):
-        return kwargs.get('before').date() + timedelta(days=1)
+    before_date = kwargs.get('before')
+    if before_date:
+        if isinstance(before_date, datetime):
+            return before_date.date() + timedelta(days=1)
     else:
         return datetime.utcnow()

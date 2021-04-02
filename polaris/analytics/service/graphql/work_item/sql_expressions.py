@@ -185,25 +185,17 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
 
 
 def work_item_events_connection_apply_time_window_filters(select_stmt, work_item_state_transitions, **kwargs):
-    before = None
-    if 'before' in kwargs:
-        before = kwargs.get('before').date() + timedelta(days=1)
+    before = get_before_date(**kwargs)
 
     if 'days' in kwargs and kwargs['days'] > 0:
-        if before:
-            window_start = before - timedelta(days=kwargs['days'])
-            return select_stmt.where(
-                and_(
-                    work_item_state_transitions.c.created_at >= window_start,
-                    work_item_state_transitions.c.created_at < before
-                )
+        window_start = before - timedelta(days=kwargs['days'])
+        return select_stmt.where(
+            and_(
+                work_item_state_transitions.c.created_at >= window_start,
+                work_item_state_transitions.c.created_at < before
             )
-        else:
-            window_start = datetime.utcnow() - timedelta(days=kwargs['days'])
-            return select_stmt.where(
-                work_item_state_transitions.c.created_at >= window_start
-            )
-    elif before:
+        )
+    elif kwargs.get('before'):
         return select_stmt.where(
             work_item_state_transitions.c.created_at < before
         )

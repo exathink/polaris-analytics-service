@@ -178,7 +178,7 @@ class WorkItemDeliveryCycles(
 class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
     work_item_delivery_cycles = WorkItemDeliveryCycle.ConnectionField(
         before=graphene.Argument(
-            graphene.DateTime, required=False,
+            graphene.Date, required=False,
             description='Show work_item_delivery_cycles whose end date is before this timestamp'
         ),
         closed_within_days=graphene.Argument(

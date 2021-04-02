@@ -14,7 +14,7 @@ from enum import Enum
 
 
 class AggregateMetricsTrendsParameters(graphene.InputObjectType):
-    before = graphene.DateTime(
+    before = graphene.Date(
         required=False,
         description="The end datetime of the period for which the trends are measured. Defaults to "
                     "datetime.utcnow() + 1 day"

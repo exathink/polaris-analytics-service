@@ -42,5 +42,7 @@ def get_before_date(**kwargs):
     if before_date:
         if isinstance(before_date, datetime):
             return before_date.date() + timedelta(days=1)
+        else:
+            return before_date + timedelta(days=1)
     else:
         return datetime.utcnow()

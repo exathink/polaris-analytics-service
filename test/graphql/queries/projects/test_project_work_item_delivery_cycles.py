@@ -276,11 +276,11 @@ class TestProjectWorkItemDeliveryCycles:
             ]
         )
         before_date = datetime.utcnow() - timedelta(days=3)
-        before = before_date.strftime("%Y-%m-%dT00:00:00.000Z")
+        before = before_date.strftime("%Y-%m-%d")
 
         client = Client(schema)
         query = """
-                query getProjectWorkItemDeliveryCycles($project_key:String!, $before:DateTime) {
+                query getProjectWorkItemDeliveryCycles($project_key:String!, $before:Date) {
                     project(key: $project_key) {
                         workItemDeliveryCycles(
                             closedWithinDays: 10, 

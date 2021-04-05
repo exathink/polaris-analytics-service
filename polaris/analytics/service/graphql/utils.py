@@ -35,3 +35,14 @@ def date_column_is_in_measurement_window(date_column, measurement_date, measurem
     window_start = measurement_date - timedelta(days=measurement_window - 1)
 
     return date_column.between(window_start, window_end)
+
+
+def get_before_date(**kwargs):
+    before_date = kwargs.get('before')
+    if before_date:
+        if isinstance(before_date, datetime):
+            return before_date.date() + timedelta(days=1)
+        else:
+            return before_date + timedelta(days=1)
+    else:
+        return datetime.utcnow()

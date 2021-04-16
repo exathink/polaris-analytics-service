@@ -30,6 +30,8 @@ class WorkItemResolver:
                 return JiraWorkItemResolver
             elif integration_type in ['gitlab']:
                 return GitlabWorkItemResolver
+            elif integration_type in ['trello']:
+                return TrelloWorkItemResolver
             else:
                 raise ProcessingException(
                     f'WorkItemResolver: Could not find work item resolver for integration_type: {integration_type}')
@@ -100,5 +102,21 @@ class JiraWorkItemResolver(WorkItemResolver):
             resolved.extend(cls.matcher.findall(text_token))
         if branch_name is not None:
             resolved.extend(cls.matcher.findall(branch_name))
+
+        return resolved
+
+
+class TrelloWorkItemResolver(WorkItemResolver):
+    commit_message_matcher = re.compile('#(\d+)')
+    branch_or_display_id = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names or display ids
+
+    @classmethod
+    def resolve(cls, *text_tokens, display_id=None, branch_name=None):
+        resolved = []
+        for text_token in text_tokens:
+            resolved.extend(cls.commit_message_matcher.findall(text_token))
+
+        if branch_name is not None:
+            resolved.extend(cls.branch_or_display_id.findall(branch_name))
 
         return resolved

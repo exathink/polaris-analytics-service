@@ -151,7 +151,8 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             'updated_at',
                             'completed_at',
                             'source_id',
-                            'parent_key'
+                            'parent_key',
+                            'commit_identifiers'
                         ])
                     )
                     for work_item in work_item_summaries
@@ -189,7 +190,8 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                         'work_items_source_id',
                         'source_id',
                         'parent_id',
-                        'next_state_seq_no'
+                        'next_state_seq_no',
+                        'commit_identifiers'
                     ],
                     select(
                         [
@@ -214,7 +216,8 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                             # the seq_no 0 and 1 will be taken up by the initial states which
                             # we create below. Subsequent state changes will use
                             # the current value of the next_state_seq_no to set its sequence number.
-                            literal('2').label('next_state_sequence_no')
+                            literal('2').label('next_state_sequence_no'),
+                            work_items_temp.c.commit_identifiers
                         ]
                     ).where(
                         work_items_temp.c.work_item_id == None
@@ -866,7 +869,8 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                             'state_type',
                             'updated_at',
                             'completed_at',
-                            'parent_key'
+                            'parent_key',
+                            'commit_identifiers'
                         ]
                     )
                     for work_item in work_item_summaries
@@ -967,7 +971,8 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                     state=work_items_temp.c.state,
                     state_type=work_items_temp.c.state_type,
                     updated_at=work_items_temp.c.updated_at,
-                    parent_id=work_items_temp.c.parent_id
+                    parent_id=work_items_temp.c.parent_id,
+                    commit_identifiers=work_items_temp.c.commit_identifiers
                 ).where(
                     work_items_temp.c.key == work_items.c.key,
                 )

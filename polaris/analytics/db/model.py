@@ -743,6 +743,9 @@ class WorkItem(Base):
     effort = Column(Float, nullable=True)
     budget = Column(Float, nullable=True)
 
+    # Fields to be used to match commits
+    commit_identifiers = Column(JSONB, nullable=True, default=[], server_default='[]')
+
     # Work Items Source relationship
     work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'))
     work_items_source = relationship('WorkItemsSource', back_populates='work_items')

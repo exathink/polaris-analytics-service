@@ -107,16 +107,23 @@ class JiraWorkItemResolver(WorkItemResolver):
 
 
 class TrelloWorkItemResolver(WorkItemResolver):
-    commit_message_matcher = re.compile('#(\d+)')
-    branch_or_display_id = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names or display ids
+    id_matcher = re.compile('(\d+)')
+    short_link_matcher = re.compile('(?=[A-Za-z\d]+\d[A-Za-z\d]+)(?=[A-Za-z\d]+[A-Za-z][A-Za-z\d]+)[a-zA-Z\d]{8}')
+    url_matcher = re.compile('https://trello.com/c/(?=[A-Za-z\d]+\d[A-Za-z\d]+)(?=[A-Za-z\d]+[A-Za-z][A-Za-z\d]+)[a-zA-Z\d]{8}')
 
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):
         resolved = []
         for text_token in text_tokens:
-            resolved.extend(cls.commit_message_matcher.findall(text_token))
+            resolved.extend(cls.url_matcher.findall(text_token))
+            text_token = cls.url_matcher.sub(' ', text_token)
+            resolved.extend(cls.short_link_matcher.findall(text_token))
+            text_token = cls.short_link_matcher.sub(' ', text_token)
+            resolved.extend(cls.id_matcher.findall(text_token))
 
         if branch_name is not None:
-            resolved.extend(cls.branch_or_display_id.findall(branch_name))
+            resolved.extend(cls.short_link_matcher.findall(branch_name))
+            branch_name = cls.short_link_matcher.sub(' ', branch_name)
+            resolved.extend(cls.id_matcher.findall(branch_name))
 
         return resolved

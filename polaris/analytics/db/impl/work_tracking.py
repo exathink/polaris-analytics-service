@@ -13,8 +13,8 @@ from polaris.common import db
 from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
-from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_
-from sqlalchemy.dialects.postgresql import UUID, insert
+from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, cast
+from sqlalchemy.dialects.postgresql import UUID, insert, JSONB
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType
 
@@ -745,6 +745,19 @@ def update_commits_work_items(session, repository_key, commits_display_id):
             and_(
                 work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
                 work_items.c.display_id == cdi_temp.c.display_id
+            )
+        ).values(
+            work_item_key=work_items.c.key,
+            work_item_id=work_items.c.id,
+            delivery_cycle_id=work_items.c.current_delivery_cycle_id
+        )
+    )
+
+    session.connection().execute(
+        cdi_temp.update().where(
+            and_(
+                work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
+                work_items.c.commit_identifiers.comparator.contains(cast(cdi_temp.c.display_id, JSONB))
             )
         ).values(
             work_item_key=work_items.c.key,

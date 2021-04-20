@@ -109,7 +109,8 @@ class JiraWorkItemResolver(WorkItemResolver):
 class TrelloWorkItemResolver(WorkItemResolver):
     id_matcher = re.compile('(\d+)')
     short_link_matcher = re.compile('(?=[A-Za-z\d]+\d[A-Za-z\d]+)(?=[A-Za-z\d]+[A-Za-z][A-Za-z\d]+)[a-zA-Z\d]{8}')
-    url_matcher = re.compile('https://trello.com/c/(?=[A-Za-z\d]+\d[A-Za-z\d]+)(?=[A-Za-z\d]+[A-Za-z][A-Za-z\d]+)[a-zA-Z\d]{8}')
+    url_matcher = re.compile(
+        'https://trello.com/c/(?=[A-Za-z\d]+\d[A-Za-z\d]+)(?=[A-Za-z\d]+[A-Za-z][A-Za-z\d]+)[a-zA-Z\d]{8}')
 
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):

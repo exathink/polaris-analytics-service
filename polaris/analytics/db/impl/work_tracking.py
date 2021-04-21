@@ -757,7 +757,7 @@ def update_commits_work_items(session, repository_key, commits_display_id):
         cdi_temp.update().where(
             and_(
                 work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
-                work_items.c.commit_identifiers.comparator.contains(cast(cdi_temp.c.display_id, JSONB))
+                work_items.c.commit_identifiers.comparator.contains([str(cdi_temp.c.display_id)])
             )
         ).values(
             work_item_key=work_items.c.key,

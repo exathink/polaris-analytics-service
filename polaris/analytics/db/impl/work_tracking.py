@@ -7,6 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
+import json
 import logging
 from functools import reduce
 from polaris.common import db
@@ -14,7 +15,7 @@ from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
 from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, cast
-from sqlalchemy.dialects.postgresql import UUID, insert, JSONB
+from sqlalchemy.dialects.postgresql import UUID, insert, JSONB, array
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType
 
@@ -24,7 +25,8 @@ from polaris.analytics.db.model import \
     Commit, WorkItem, work_item_state_transitions, Project, work_items_sources, \
     work_item_delivery_cycles
 
-from .delivery_cycle_tracking import initialize_work_item_delivery_cycles, initialize_work_item_delivery_cycle_durations, \
+from .delivery_cycle_tracking import initialize_work_item_delivery_cycles, \
+    initialize_work_item_delivery_cycle_durations, \
     compute_work_item_delivery_cycles_cycle_time_and_latency, update_work_item_delivery_cycles
 
 logger = logging.getLogger('polaris.analytics.db.work_tracking')
@@ -332,7 +334,8 @@ def update_work_item_calculated_fields(work_items_source, work_item_summaries):
     return [
         dict(
             state_type=work_items_source.get_state_type(work_item['state']),
-            completed_at=work_item['updated_at'] if work_items_source.get_state_type(work_item['state']) == WorkItemsStateType.closed.value else None,
+            completed_at=work_item['updated_at'] if work_items_source.get_state_type(
+                work_item['state']) == WorkItemsStateType.closed.value else None,
             **work_item
         )
         for work_item in work_item_summaries
@@ -757,7 +760,7 @@ def update_commits_work_items(session, repository_key, commits_display_id):
         cdi_temp.update().where(
             and_(
                 work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
-                work_items.c.commit_identifiers.comparator.contains(cast([str(cdi_temp.c.display_id)], JSONB))
+                work_items.c.commit_identifiers.has_any(array([cdi_temp.c.display_id]))
             )
         ).values(
             work_item_key=work_items.c.key,
@@ -805,7 +808,8 @@ def resolve_work_items_for_commits(session, organization_key, repository_key, co
             for work_items_source in work_items_sources:
                 work_item_resolver = WorkItemResolver.get_resolver(work_items_source.integration_type)
                 for commit in commit_summaries:
-                    for display_id in work_item_resolver.resolve(commit['commit_message'], branch_name=commit['created_on_branch']):
+                    for display_id in work_item_resolver.resolve(commit['commit_message'],
+                                                                 branch_name=commit['created_on_branch']):
                         commits_display_ids.append(
                             dict(
                                 repository_id=repository.id,
@@ -1120,4 +1124,3 @@ def infer_projects_repositories_relationships(session, organization_key, work_it
             for relationship in new_relationships
         ]
     )
-

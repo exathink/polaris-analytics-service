@@ -444,6 +444,11 @@ def map_display_ids_to_commits(session, work_item_summaries, work_items_source):
     ).scalar()
 
     input_display_id_to_key_map = {work_item['display_id']: work_item['key'] for work_item in work_item_summaries}
+    for work_item in work_item_summaries:
+        if work_item.get('commit_identifiers') != None:
+            if work_item.get('commit_identifiers') != []:
+                for commit_identifier in work_item.get('commit_identifiers'):
+                    input_display_id_to_key_map.update({commit_identifier: work_item['key']})
     resolved = []
 
     fetched = 0

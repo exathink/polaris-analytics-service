@@ -444,6 +444,10 @@ def map_display_ids_to_commits(session, work_item_summaries, work_items_source):
     ).scalar()
 
     input_display_id_to_key_map = {work_item['display_id']: work_item['key'] for work_item in work_item_summaries}
+    input_display_id_to_key_map.update(
+        {work_item['display_id'].lower(): work_item['key'] for work_item in work_item_summaries})
+    input_display_id_to_key_map.update(
+        {work_item['display_id'].capitalize(): work_item['key'] for work_item in work_item_summaries})
     for work_item in work_item_summaries:
         if work_item.get('commit_identifiers') != None:
             if work_item.get('commit_identifiers') != []:
@@ -752,7 +756,7 @@ def update_commits_work_items(session, repository_key, commits_display_id):
         cdi_temp.update().where(
             and_(
                 work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
-                work_items.c.display_id == cdi_temp.c.display_id
+                work_items.c.display_id.ilike(str(cdi_temp.c.display_id))
             )
         ).values(
             work_item_key=work_items.c.key,

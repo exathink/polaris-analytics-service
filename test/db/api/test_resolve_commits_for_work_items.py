@@ -343,7 +343,7 @@ class TestSingleRepo:
                 author_date=get_date("2018-12-03"),
                 **dict_merge(
                     commits_common_fields(commits_fixture),
-                    dict(commit_date=get_date("2019-12-03"))
+                    dict(commit_date=get_date("2019-12-01"))
                 )
             )
         ])
@@ -352,7 +352,7 @@ class TestSingleRepo:
         assert result['success']
         assert len(result['resolved']) == 1
 
-        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 0
 
 
 class TestMultipleRepos:

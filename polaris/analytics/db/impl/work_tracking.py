@@ -368,7 +368,8 @@ def get_commits_query(work_items_source):
         ).where(
             and_(
                 organizations.c.key == bindparam('commit_mapping_scope_key'),
-                commits.c.author_date >= bindparam('earliest_created')
+                commits.c.author_date >= bindparam('earliest_created'),
+                commits.c.commit_date >= bindparam('earliest_created')
             )
         )
     elif mapping_scope == 'project':
@@ -386,7 +387,8 @@ def get_commits_query(work_items_source):
         ).where(
             and_(
                 projects.c.key == bindparam('commit_mapping_scope_key'),
-                commits.c.author_date >= bindparam('earliest_created')
+                commits.c.author_date >= bindparam('earliest_created'),
+                commits.c.commit_date >= bindparam('earliest_created')
             )
         )
     elif mapping_scope == 'repository':
@@ -399,7 +401,8 @@ def get_commits_query(work_items_source):
         ).where(
             and_(
                 repositories.c.key == bindparam('commit_mapping_scope_key'),
-                commits.c.author_date >= bindparam('earliest_created')
+                commits.c.author_date >= bindparam('earliest_created'),
+                commits.c.commit_date >= bindparam('earliest_created')
             )
         )
 

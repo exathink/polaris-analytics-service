@@ -14,8 +14,8 @@ from polaris.common import db
 from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
-from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, cast
-from sqlalchemy.dialects.postgresql import UUID, insert, JSONB, array
+from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, DateTime
+from sqlalchemy.dialects.postgresql import UUID, insert, array
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType
 
@@ -724,6 +724,7 @@ def update_commits_work_items(session, repository_key, commits_display_id):
             Column('repository_id', Integer),
             Column('source_commit_id', String),
             Column('commit_key', UUID(as_uuid=True)),
+            Column('commit_date', DateTime),
             Column('display_id', String),
             Column('commit_id', BigInteger),
             Column('work_item_id', BigInteger),
@@ -752,7 +753,8 @@ def update_commits_work_items(session, repository_key, commits_display_id):
         cdi_temp.update().where(
             and_(
                 work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
-                work_items.c.display_id == cdi_temp.c.display_id
+                work_items.c.display_id == cdi_temp.c.display_id,
+                work_items.c.created_at <= cdi_temp.c.commit_date
             )
         ).values(
             work_item_key=work_items.c.key,
@@ -765,7 +767,8 @@ def update_commits_work_items(session, repository_key, commits_display_id):
         cdi_temp.update().where(
             and_(
                 work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
-                work_items.c.commit_identifiers.has_any(array([cdi_temp.c.display_id]))
+                work_items.c.commit_identifiers.has_any(array([cdi_temp.c.display_id])),
+                work_items.c.created_at <= cdi_temp.c.commit_date
             )
         ).values(
             work_item_key=work_items.c.key,
@@ -820,6 +823,7 @@ def resolve_work_items_for_commits(session, organization_key, repository_key, co
                                 repository_id=repository.id,
                                 source_commit_id=commit['source_commit_id'],
                                 commit_key=commit['key'],
+                                commit_date=commit['commit_date'],
                                 work_items_source_id=work_items_source.id,
                                 work_items_source_key=work_items_source.key,
                                 display_id=display_id

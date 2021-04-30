@@ -7,7 +7,8 @@
 # confidential.
 
 # Author: Krishna Kumar
-import json
+
+import pytz
 import logging
 from functools import reduce
 from polaris.common import db
@@ -406,6 +407,7 @@ def get_commits_query(work_items_source):
 
 
 def resolve_display_id_commits(commits_batch, integration_type, input_display_id_to_key_map):
+    utc = pytz.UTC
     resolver = WorkItemResolver.get_resolver(integration_type)
     assert resolver, f"No work item resolver registered for integration type {integration_type}"
     resolved = []
@@ -414,7 +416,9 @@ def resolve_display_id_commits(commits_batch, integration_type, input_display_id
         if len(display_ids) > 0:
             for display_id in display_ids:
                 if display_id in input_display_id_to_key_map:
-                    if commit.commit_date >= input_display_id_to_key_map[display_id]['created_at']:
+                    work_item_date = input_display_id_to_key_map[display_id]['created_at'].replace(tzinfo=utc)
+                    commit_date = commit.commit_date.replace(tzinfo=utc)
+                    if commit_date >= work_item_date:
                         resolved.append(dict(
                             commit_id=commit.id,
                             commit_key=commit.key,
@@ -445,12 +449,15 @@ def map_display_ids_to_commits(session, work_item_summaries, work_items_source):
         )
     ).scalar()
 
-    input_display_id_to_key_map = {work_item['display_id']: {'key': work_item['key'], 'created_at': work_item['created_at']} for work_item in work_item_summaries}
+    input_display_id_to_key_map = {
+        work_item['display_id']: {'key': work_item['key'], 'created_at': work_item['created_at']} for work_item in
+        work_item_summaries}
     for work_item in work_item_summaries:
         if work_item.get('commit_identifiers') != None:
             if work_item.get('commit_identifiers') != []:
                 for commit_identifier in work_item.get('commit_identifiers'):
-                    input_display_id_to_key_map.update({commit_identifier: {'key': work_item['key'], 'created_at': work_item['created_at']}})
+                    input_display_id_to_key_map.update(
+                        {commit_identifier: {'key': work_item['key'], 'created_at': work_item['created_at']}})
     resolved = []
 
     fetched = 0

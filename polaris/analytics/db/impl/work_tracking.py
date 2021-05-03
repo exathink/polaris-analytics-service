@@ -404,20 +404,20 @@ def get_commits_query(work_items_source):
         )
 
 
-def resolve_display_id_commits(commits_batch, integration_type, commit_identifiers_to_key_map):
+def resolve_commit_identifiers_commits(commits_batch, integration_type, commit_identifiers_to_key_map):
     resolver = WorkItemResolver.get_resolver(integration_type)
     assert resolver, f"No work item resolver registered for integration type {integration_type}"
     resolved = []
     for commit in commits_batch:
-        display_ids = resolver.resolve(commit.commit_message, branch_name=commit.created_on_branch)
-        if len(display_ids) > 0:
-            for display_id in display_ids:
-                if display_id in commit_identifiers_to_key_map:
+        commit_identifiers = resolver.resolve(commit.commit_message, branch_name=commit.created_on_branch)
+        if len(commit_identifiers) > 0:
+            for commit_identifier in commit_identifiers:
+                if commit_identifier in commit_identifiers_to_key_map:
                     resolved.append(dict(
                         commit_id=commit.id,
                         commit_key=commit.key,
                         repository_key=commit.repository_key,
-                        work_item_key=commit_identifiers_to_key_map[display_id]
+                        work_item_key=commit_identifiers_to_key_map[commit_identifier]
                     ))
 
     return resolved
@@ -463,7 +463,7 @@ def map_commit_identifiers_to_commits(session, work_item_summaries, work_items_s
             )
         ).fetchall()
 
-        resolved.extend(resolve_display_id_commits(
+        resolved.extend(resolve_commit_identifiers_commits(
             commits_batch,
             work_items_source.integration_type,
             commit_identifiers_to_key_map,
@@ -716,15 +716,15 @@ def find_work_items_sources(session, organization_key, repository_key):
     return work_item_sources
 
 
-def update_commits_work_items(session, repository_key, commits_display_id):
+def update_commits_work_items(session, repository_key, commits_commit_identifiers):
     cdi_temp = db.create_temp_table(
-        'commits_display_ids_temp', [
+        'commits_commit_identifiers_temp', [
             Column('work_items_source_key', UUID(as_uuid=True)),
             Column('work_items_source_id', Integer),
             Column('repository_id', Integer),
             Column('source_commit_id', String),
             Column('commit_key', UUID(as_uuid=True)),
-            Column('display_id', String),
+            Column('commit_identifier', String),
             Column('commit_id', BigInteger),
             Column('work_item_id', BigInteger),
             Column('work_item_key', UUID(as_uuid=True)),
@@ -734,7 +734,7 @@ def update_commits_work_items(session, repository_key, commits_display_id):
     cdi_temp.create(session.connection(), checkfirst=True)
 
     session.connection().execute(
-        cdi_temp.insert().values(commits_display_id)
+        cdi_temp.insert().values(commits_commit_identifiers)
     )
 
     session.connection().execute(
@@ -752,7 +752,7 @@ def update_commits_work_items(session, repository_key, commits_display_id):
         cdi_temp.update().where(
             and_(
                 work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
-                work_items.c.display_id == cdi_temp.c.display_id
+                work_items.c.display_id == cdi_temp.c.commit_identifier
             )
         ).values(
             work_item_key=work_items.c.key,
@@ -765,7 +765,7 @@ def update_commits_work_items(session, repository_key, commits_display_id):
         cdi_temp.update().where(
             and_(
                 work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
-                work_items.c.commit_identifiers.has_any(array([cdi_temp.c.display_id]))
+                work_items.c.commit_identifiers.has_any(array([cdi_temp.c.commit_identifier]))
             )
         ).values(
             work_item_key=work_items.c.key,
@@ -809,24 +809,24 @@ def resolve_work_items_for_commits(session, organization_key, repository_key, co
     if repository is not None:
         work_items_sources = find_work_items_sources(session, organization_key, repository_key)
         if len(work_items_sources) > 0:
-            commits_display_ids = []
+            commits_commit_identifiers = []
             for work_items_source in work_items_sources:
                 work_item_resolver = WorkItemResolver.get_resolver(work_items_source.integration_type)
                 for commit in commit_summaries:
-                    for display_id in work_item_resolver.resolve(commit['commit_message'],
-                                                                 branch_name=commit['created_on_branch']):
-                        commits_display_ids.append(
+                    for commit_identifier in work_item_resolver.resolve(commit['commit_message'],
+                                                                        branch_name=commit['created_on_branch']):
+                        commits_commit_identifiers.append(
                             dict(
                                 repository_id=repository.id,
                                 source_commit_id=commit['source_commit_id'],
                                 commit_key=commit['key'],
                                 work_items_source_id=work_items_source.id,
                                 work_items_source_key=work_items_source.key,
-                                display_id=display_id
+                                commit_identifier=commit_identifier
                             )
                         )
 
-            resolved = update_commits_work_items(session, repository_key, commits_display_ids)
+            resolved = update_commits_work_items(session, repository_key, commits_commit_identifiers)
 
     return dict(
         resolved=resolved

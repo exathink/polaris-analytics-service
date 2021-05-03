@@ -423,7 +423,7 @@ def resolve_display_id_commits(commits_batch, integration_type, commit_identifie
     return resolved
 
 
-map_display_ids_to_commits_page_size = 1000
+map_commit_identifiers_to_commits_page_size = 1000
 
 
 def map_commit_identifiers_to_commits(session, work_item_summaries, work_items_source):

@@ -624,7 +624,7 @@ class TestTrelloWorkItemCommits:
                 key=new_key,
                 display_id='1000',
                 created_at=get_date("2018-12-02"),
-                commit_identifiers=['1000', 'https://trello.com/c/x28QspUQ', 'x28QspUQ'],
+                commit_identifiers=['1000', 'trello.com/c/x28QspUQ', 'x28QspUQ'],
                 **work_items_common
             )
         ]
@@ -645,7 +645,7 @@ class TestTrelloWorkItemCommits:
                 repository_id=test_repo.id,
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
-                commit_message="Another change. Fixes issue https://trello.com/c/x28QspUQ",
+                commit_message="Another change. Fixes issue trello.com/c/x28QspUQ",
                 author_date=get_date("2018-12-03"),
                 **commits_common_fields(commits_fixture)
             )

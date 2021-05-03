@@ -108,9 +108,13 @@ class JiraWorkItemResolver(WorkItemResolver):
 
 class TrelloWorkItemResolver(WorkItemResolver):
     id_matcher = re.compile('(?<![A-Za-z])(?![A-Za-z])\d+')
+    # The below regex matches an alphanumeric string with atleast 1 number, 1 small and 1 capital letter. \
+    # But the actual trello regex may not have a number, so this may need to be fixed \
+    # If we simply remove the number must match condition, this will match any 8 lettered word. \
+    # So, this may be fixed if we figure out the real pattern of Trello ids.
     short_link_matcher = re.compile('(?=[A-Za-z\d]+\d[A-Za-z\d]+)(?=[A-Za-z\d]+[A-Za-z][A-Za-z\d]+)[a-zA-Z\d]{8}')
     url_matcher = re.compile(
-        'https://trello.com/c/(?=[A-Za-z\d]+\d[A-Za-z\d]+)(?=[A-Za-z\d]+[A-Za-z][A-Za-z\d]+)[a-zA-Z\d]{8}')
+        'trello.com/c/(?=[A-Za-z\d]+\d[A-Za-z\d]+)(?=[A-Za-z\d]+[A-Za-z][A-Za-z\d]+)[a-zA-Z\d]{8}')
 
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):

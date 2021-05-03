@@ -226,4 +226,4 @@ class TestTrelloWorkItemResolution:
         resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='master')
 
         assert len(resolved) == 2
-        assert resolved == ['https://trello.com/c/D04wBsLS', '26']
+        assert resolved == ['trello.com/c/D04wBsLS', '26']

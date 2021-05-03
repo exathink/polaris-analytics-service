@@ -426,7 +426,7 @@ def resolve_display_id_commits(commits_batch, integration_type, commit_identifie
 map_display_ids_to_commits_page_size = 1000
 
 
-def map_display_ids_to_commits(session, work_item_summaries, work_items_source):
+def map_commit_identifiers_to_commits(session, work_item_summaries, work_items_source):
     commit_query = get_commits_query(work_items_source)
     earliest_created = reduce(
         lambda earliest, work_item: min(earliest, work_item['created_at']),
@@ -452,7 +452,7 @@ def map_display_ids_to_commits(session, work_item_summaries, work_items_source):
     resolved = []
 
     fetched = 0
-    batch_size = map_display_ids_to_commits_page_size
+    batch_size = map_commit_identifiers_to_commits_page_size
     offset = 0
     while fetched < total:
         commits_batch = session.connection().execute(
@@ -478,7 +478,7 @@ def resolve_commits_for_work_items(session, organization_key, work_items_source_
     if len(work_item_summaries) > 0:
         work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
         if work_items_source is not None:
-            resolved = map_display_ids_to_commits(session, work_item_summaries, work_items_source)
+            resolved = map_commit_identifiers_to_commits(session, work_item_summaries, work_items_source)
             if len(resolved) > 0:
                 wc_temp = db.create_temp_table('work_items_commits_temp', [
                     Column('commit_id', BigInteger),

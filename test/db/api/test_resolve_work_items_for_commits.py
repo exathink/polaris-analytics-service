@@ -20,6 +20,7 @@
 from polaris.analytics.db import api
 
 from test.fixtures.work_item_commit_resolution import *
+from polaris.utils.collections import dict_merge
 
 
 class TestRepoScope:
@@ -230,6 +231,96 @@ class TestOrgScope:
         assert len(result['resolved']) == 1
 
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
+
+    def it_returns_a_match_only_when_commit_is_created_after_work_item(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key.hex,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='github',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        test_commits = [
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4().hex,
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue #1000",
+                author_date=get_date("2018-12-03"),
+                **dict_merge(
+                    commits_common_fields(commits_fixture),
+                    dict(commit_date=get_date("2018-12-03"))
+                )
+            )
+        ]
+        create_test_commits(test_commits)
+
+        result = api.resolve_work_items_for_commits(test_organization_key, test_repo.key, test_commits)
+        assert result['success']
+        assert len(result['resolved']) == 1
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
+
+    def it_does_not_return_a_match_only_when_commit_is_created_before_work_item(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key.hex,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='github',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        test_commits = [
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4().hex,
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue #1000",
+                author_date=get_date("2018-12-01"),
+                **dict_merge(
+                    commits_common_fields(commits_fixture),
+                    dict(commit_date=get_date("2018-12-01"))
+                )
+            )
+        ]
+        create_test_commits(test_commits)
+
+        result = api.resolve_work_items_for_commits(test_organization_key, test_repo.key, test_commits)
+        assert result['success']
+        assert len(result['resolved']) == 0
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 0
 
 
 class TestProjectScope:

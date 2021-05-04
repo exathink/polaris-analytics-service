@@ -211,3 +211,35 @@ class TestTrelloWorkItemResolution:
 
         assert len(resolved) == 2
         assert resolved == ['trello.com/c/D04wBsLS', '26']
+
+    def it_resolves_a_commit_using_branch_name(self):
+        commit_message = "This fixes card. No other animals were harmed"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='234')
+
+        assert len(resolved) == 1
+        assert resolved[0] == '234'
+
+    def it_resolves_a_commit_using_branch_name_with_hashtag(self):
+        commit_message = "This fixes card. No other animals were harmed"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='#234')
+
+        assert len(resolved) == 1
+        assert resolved[0] == '234'
+
+    def it_resolves_a_commit_with_url_as_branch_name(self):
+        commit_message = "This fixes card. No other animals were harmed"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='trello.com/c/D04wBsLS')
+
+        assert len(resolved) == 1
+        assert resolved[0] == 'trello.com/c/D04wBsLS'
+
+    def it_resolves_a_commit_with_identifier_in_message_and_branch_name(self):
+        commit_message = "[story=#26 subject=trello_work_item_commit_matching story_url=https://trello.com/c/D04wBsLS]"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='trello.com/c/D04wBsLS')
+
+        assert len(resolved) == 3
+        assert resolved == ['trello.com/c/D04wBsLS', '26', 'trello.com/c/D04wBsLS']

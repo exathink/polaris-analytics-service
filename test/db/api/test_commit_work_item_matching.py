@@ -181,7 +181,7 @@ class TestJiraWorkItemResolution:
 class TestTrelloWorkItemResolution:
 
     def it_resolves_a_commit_with_a_single_work_item_id(self):
-        commit_message = "This fixes card 234. No other animals were harmed"
+        commit_message = "This fixes card #234. No other animals were harmed"
 
         resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='master')
 
@@ -196,24 +196,8 @@ class TestTrelloWorkItemResolution:
         assert len(resolved) == 1
         assert resolved[0] == '234'
 
-    def it_resolves_a_commit_with_a_single_alphanumeric_shortlink(self):
-        commit_message = "This fixes Card D04wBsLS. No other animals were harmed"
-
-        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='master')
-
-        assert len(resolved) == 1
-        assert resolved[0] == 'D04wBsLS'
-
-    def it_resolves_a_work_item_from_branch_name(self):
-        commit_message = "This fixes issue. No other animals were harmed"
-
-        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='D04wBsLS')
-
-        assert len(resolved) == 1
-        assert resolved[0] == 'D04wBsLS'
-
     def it_resolves_a_commit_with_multiple_work_item_ids(self):
-        commit_message = "This fixes card 10 and card #2000 No other animals were harmed"
+        commit_message = "This fixes card #10 and card #2000 No other animals were harmed"
 
         resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='master')
 
@@ -221,7 +205,7 @@ class TestTrelloWorkItemResolution:
         assert resolved == ['10', '2000']
 
     def it_resolves_a_commit_with_same_work_item_id_multiple_times(self):
-        commit_message = "[story=26 subject=trello_work_item_commit_matching story_url=https://trello.com/c/D04wBsLS]"
+        commit_message = "[story=#26 subject=trello_work_item_commit_matching story_url=https://trello.com/c/D04wBsLS]"
 
         resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='master')
 

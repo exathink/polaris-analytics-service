@@ -107,14 +107,9 @@ class JiraWorkItemResolver(WorkItemResolver):
 
 
 class TrelloWorkItemResolver(WorkItemResolver):
-    id_matcher = re.compile('(?<![A-Za-z])(?![A-Za-z])\d+')
-    # The below regex matches an alphanumeric string with atleast 1 number, 1 small and 1 capital letter. \
-    # But the actual trello regex may not have a number, so this may need to be fixed \
-    # If we simply remove the number must match condition, this will match any 8 lettered word. \
-    # So, this may be fixed if we figure out the real pattern of Trello ids.
-    short_link_matcher = re.compile('(?=[A-Za-z\d]+\d[A-Za-z\d]+)(?=[A-Za-z\d]+[A-Za-z][A-Za-z\d]+)[a-zA-Z\d]{8}')
-    url_matcher = re.compile(
-        'trello.com/c/(?=[A-Za-z\d]+\d[A-Za-z\d]+)(?=[A-Za-z\d]+[A-Za-z][A-Za-z\d]+)[a-zA-Z\d]{8}')
+    id_matcher = re.compile('#(\d+)')
+    branch_id_matcher = re.compile('^#?(\d+)$')
+    url_matcher = re.compile('trello.com/c/[a-zA-Z\d]+')
 
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):
@@ -122,13 +117,11 @@ class TrelloWorkItemResolver(WorkItemResolver):
         for text_token in text_tokens:
             resolved.extend(cls.url_matcher.findall(text_token))
             text_token = cls.url_matcher.sub(' ', text_token)
-            resolved.extend(cls.short_link_matcher.findall(text_token))
-            text_token = cls.short_link_matcher.sub(' ', text_token)
             resolved.extend(cls.id_matcher.findall(text_token))
 
         if branch_name is not None:
-            resolved.extend(cls.short_link_matcher.findall(branch_name))
-            branch_name = cls.short_link_matcher.sub(' ', branch_name)
-            resolved.extend(cls.id_matcher.findall(branch_name))
+            resolved.extend(cls.url_matcher.findall(branch_name))
+            branch_name = cls.url_matcher.sub(' ', branch_name)
+            resolved.extend(cls.branch_id_matcher.findall(branch_name))
 
         return resolved

@@ -14,6 +14,7 @@ from polaris.analytics.db.model import work_items as work_items_impl
 from test.fixtures.work_item_commit_resolution import *
 from polaris.utils.collections import dict_merge
 
+
 class TestSingleRepo:
 
     def it_returns_a_match_when_there_is_a_commit_matching_the_work_item(self, commits_fixture):
@@ -102,7 +103,6 @@ class TestSingleRepo:
             f"select count(*) from analytics.work_items_commits inner join analytics.work_items "
             f"on work_items_commits.work_item_id = work_items.id and work_items_commits.delivery_cycle_id = work_items.current_delivery_cycle_id"
         ).scalar() == 1
-
 
     def it_returns_a_match_when_the_commit_is_on_a_branch_matching_the_work_item(self, commits_fixture):
         organization, _, repositories, _ = commits_fixture
@@ -527,3 +527,387 @@ class TestPaging:
         assert result['success']
         assert len(result['resolved']) == 11
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 11
+
+
+class TestTrelloWorkItemCommits:
+
+    def it_returns_a_valid_match_when_display_id_matches(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                commit_identifiers=['1000', 'https://trello.com/c/x28QspUQ', 'x28QspUQ'],
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='trello',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4(),
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue #1000",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 1
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
+
+    def it_returns_a_valid_match_when_url_matches(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                commit_identifiers=['1000', 'trello.com/c/x28QspUQ', 'x28QspUQ'],
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='trello',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4(),
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue trello.com/c/x28QspUQ",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 1
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
+
+    def it_returns_display_id_match_when_commit_identifiers_is_empty_list(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                commit_identifiers=[],
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='trello',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4(),
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue #1000",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 1
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
+
+    def it_returns_no_match_when_commit_identifiers_is_empty_list_and_display_id_is_not_matched(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                commit_identifiers=[],
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='trello',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4(),
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue trello.com/c/x28QspUQ",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 0
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 0
+
+    def it_returns_display_id_match_when_commit_identifiers_is_null(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                commit_identifiers=None,
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='trello',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4(),
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue #1000",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 1
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
+
+    def it_returns_no_match_when_commit_identifiers_is_null_and_display_id_is_not_matched(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                commit_identifiers=None,
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='trello',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4(),
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue trello.com/c/x28QspUQ",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 0
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 0
+
+
+class TestJiraWorkItemCommits:
+
+    def it_returns_a_valid_match_when_display_id_matches(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='PX-11',
+                created_at=get_date("2018-12-02"),
+                commit_identifiers=['PX-11', 'Px-11', 'px-11'],
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='jira',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4(),
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue PX-11",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 1
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
+
+    def it_returns_a_valid_match_when_display_id_is_capitalized(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='PX-11',
+                created_at=get_date("2018-12-02"),
+                commit_identifiers=['PX-11', 'Px-11', 'px-11'],
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='jira',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4(),
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue Px-11",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 1
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1
+
+    def it_returns_a_valid_match_when_display_id_id_lowercased(self, commits_fixture):
+        organization, _, repositories, _ = commits_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='PX-11',
+                created_at=get_date("2018-12-02"),
+                commit_identifiers=['PX-11', 'Px-11', 'px-11'],
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='jira',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+
+        )
+        test_commit_key = '00001'
+        create_test_commits([
+            dict(
+                repository_id=test_repo.id,
+                key=uuid.uuid4(),
+                source_commit_id=test_commit_key,
+                commit_message="Another change. Fixes issue px-11",
+                author_date=get_date("2018-12-03"),
+                **commits_common_fields(commits_fixture)
+            )
+        ])
+
+        result = api.resolve_commits_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 1
+
+        assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 1

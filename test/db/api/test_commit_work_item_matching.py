@@ -10,7 +10,7 @@
 
 
 from polaris.analytics.db.impl.work_item_resolver import GithubWorkItemResolver, PivotalTrackerWorkItemResolver, \
-    JiraWorkItemResolver, GitlabWorkItemResolver
+    JiraWorkItemResolver, GitlabWorkItemResolver, TrelloWorkItemResolver
 
 
 class TestGithubCommitWorkItemResolution:
@@ -176,3 +176,70 @@ class TestJiraWorkItemResolution:
 
         assert len(resolved) == 2
         assert resolved == ['PO-152', 'PO-152']
+
+
+class TestTrelloWorkItemResolution:
+
+    def it_resolves_a_commit_with_a_single_work_item_id(self):
+        commit_message = "This fixes card #234. No other animals were harmed"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='master')
+
+        assert len(resolved) == 1
+        assert resolved[0] == '234'
+
+    def it_resolves_a_commit_with_different_pattern_work_item_id(self):
+        commit_message = "This fixes Card #234. No other animals were harmed"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='master')
+
+        assert len(resolved) == 1
+        assert resolved[0] == '234'
+
+    def it_resolves_a_commit_with_multiple_work_item_ids(self):
+        commit_message = "This fixes card #10 and card #2000 No other animals were harmed"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='master')
+
+        assert len(resolved) == 2
+        assert resolved == ['10', '2000']
+
+    def it_resolves_a_commit_with_same_work_item_id_multiple_times(self):
+        commit_message = "[story=#26 subject=trello_work_item_commit_matching story_url=https://trello.com/c/D04wBsLS]"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='master')
+
+        assert len(resolved) == 2
+        assert resolved == ['trello.com/c/D04wBsLS', '26']
+
+    def it_resolves_a_commit_using_branch_name(self):
+        commit_message = "This fixes card. No other animals were harmed"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='234')
+
+        assert len(resolved) == 1
+        assert resolved[0] == '234'
+
+    def it_resolves_a_commit_using_branch_name_with_hashtag(self):
+        commit_message = "This fixes card. No other animals were harmed"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='#234')
+
+        assert len(resolved) == 1
+        assert resolved[0] == '234'
+
+    def it_resolves_a_commit_with_url_as_branch_name(self):
+        commit_message = "This fixes card. No other animals were harmed"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='trello.com/c/D04wBsLS')
+
+        assert len(resolved) == 1
+        assert resolved[0] == 'trello.com/c/D04wBsLS'
+
+    def it_resolves_a_commit_with_identifier_in_message_and_branch_name(self):
+        commit_message = "[story=#26 subject=trello_work_item_commit_matching story_url=https://trello.com/c/D04wBsLS]"
+
+        resolved = TrelloWorkItemResolver.resolve(commit_message, branch_name='trello.com/c/D04wBsLS')
+
+        assert len(resolved) == 3
+        assert resolved == ['trello.com/c/D04wBsLS', '26', 'trello.com/c/D04wBsLS']

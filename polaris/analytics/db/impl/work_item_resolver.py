@@ -30,6 +30,8 @@ class WorkItemResolver:
                 return JiraWorkItemResolver
             elif integration_type in ['gitlab']:
                 return GitlabWorkItemResolver
+            elif integration_type in ['trello']:
+                return TrelloWorkItemResolver
             else:
                 raise ProcessingException(
                     f'WorkItemResolver: Could not find work item resolver for integration_type: {integration_type}')
@@ -100,5 +102,26 @@ class JiraWorkItemResolver(WorkItemResolver):
             resolved.extend(cls.matcher.findall(text_token))
         if branch_name is not None:
             resolved.extend(cls.matcher.findall(branch_name))
+
+        return resolved
+
+
+class TrelloWorkItemResolver(WorkItemResolver):
+    id_matcher = re.compile('#(\d+)')
+    branch_id_matcher = re.compile('^#?(\d+)$')
+    url_matcher = re.compile('trello.com/c/[a-zA-Z\d]+')
+
+    @classmethod
+    def resolve(cls, *text_tokens, display_id=None, branch_name=None):
+        resolved = []
+        for text_token in text_tokens:
+            resolved.extend(cls.url_matcher.findall(text_token))
+            text_token = cls.url_matcher.sub(' ', text_token)
+            resolved.extend(cls.id_matcher.findall(text_token))
+
+        if branch_name is not None:
+            resolved.extend(cls.url_matcher.findall(branch_name))
+            branch_name = cls.url_matcher.sub(' ', branch_name)
+            resolved.extend(cls.branch_id_matcher.findall(branch_name))
 
         return resolved

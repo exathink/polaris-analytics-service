@@ -305,7 +305,7 @@ class TestSingleRepo:
 
         assert db.connection().execute("select count(*) from analytics.work_items_commits").scalar() == 0
 
-    def it_only_matches_commits_that_have_commit_date_after_create_date_of_work_items(self, commits_fixture):
+    def it_only_matches_commits_that_have_commit_date_and_author_date_after_create_date_of_work_items(self, commits_fixture):
         organization, _, repositories, _ = commits_fixture
         test_repo = repositories['alpha']
         new_key = uuid.uuid4()
@@ -334,10 +334,10 @@ class TestSingleRepo:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-01"),
+                author_date=get_date("2018-12-03"),
                 **dict_merge(
                     commits_common_fields(commits_fixture),
-                    dict(commit_date=get_date("2018-12-03"))
+                    dict(commit_date=get_date("2018-12-04"))
                 )
             )
         ])

@@ -7,15 +7,16 @@
 # confidential.
 
 # Author: Krishna Kumar
-import json
 import logging
+
+import pytz
 from functools import reduce
 from polaris.common import db
 from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
-from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, cast
-from sqlalchemy.dialects.postgresql import UUID, insert, JSONB, array
+from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, DateTime
+from sqlalchemy.dialects.postgresql import UUID, insert, array
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType
 
@@ -352,6 +353,7 @@ def get_commits_query(work_items_source):
     output_cols = [
         commits.c.id,
         commits.c.key,
+        commits.c.commit_date,
         commits.c.commit_message,
         commits.c.created_on_branch,
         repositories.c.key.label('repository_key')
@@ -405,6 +407,7 @@ def get_commits_query(work_items_source):
 
 
 def resolve_commit_identifiers_commits(commits_batch, integration_type, commit_identifiers_to_key_map):
+    utc = pytz.UTC
     resolver = WorkItemResolver.get_resolver(integration_type)
     assert resolver, f"No work item resolver registered for integration type {integration_type}"
     resolved = []
@@ -413,12 +416,15 @@ def resolve_commit_identifiers_commits(commits_batch, integration_type, commit_i
         if len(commit_identifiers) > 0:
             for commit_identifier in commit_identifiers:
                 if commit_identifier in commit_identifiers_to_key_map:
-                    resolved.append(dict(
-                        commit_id=commit.id,
-                        commit_key=commit.key,
-                        repository_key=commit.repository_key,
-                        work_item_key=commit_identifiers_to_key_map[commit_identifier]
-                    ))
+                    work_item_date = commit_identifiers_to_key_map[commit_identifier]['created_at'].replace(tzinfo=utc)
+                    commit_date = commit.commit_date.replace(tzinfo=utc)
+                    if commit_date >= work_item_date:
+                        resolved.append(dict(
+                            commit_id=commit.id,
+                            commit_key=commit.key,
+                            repository_key=commit.repository_key,
+                            work_item_key=commit_identifiers_to_key_map[commit_identifier]['key']
+                        ))
 
     return resolved
 
@@ -443,12 +449,12 @@ def map_commit_identifiers_to_commits(session, work_item_summaries, work_items_s
         )
     ).scalar()
 
-    commit_identifiers_to_key_map = {work_item['display_id']: work_item['key'] for work_item in work_item_summaries}
+    commit_identifiers_to_key_map = {work_item['display_id']: {'key': work_item['key'], 'created_at': work_item['created_at']} for work_item in work_item_summaries}
     for work_item in work_item_summaries:
         if work_item.get('commit_identifiers') != None:
             if work_item.get('commit_identifiers') != []:
                 for commit_identifier in work_item.get('commit_identifiers'):
-                    commit_identifiers_to_key_map.update({commit_identifier: work_item['key']})
+                    commit_identifiers_to_key_map.update({commit_identifier: {'key': work_item['key'], 'created_at': work_item['created_at']}})
     resolved = []
 
     fetched = 0
@@ -724,6 +730,7 @@ def update_commits_work_items(session, repository_key, commits_commit_identifier
             Column('repository_id', Integer),
             Column('source_commit_id', String),
             Column('commit_key', UUID(as_uuid=True)),
+            Column('commit_date', DateTime),
             Column('commit_identifier', String),
             Column('commit_id', BigInteger),
             Column('work_item_id', BigInteger),
@@ -752,7 +759,8 @@ def update_commits_work_items(session, repository_key, commits_commit_identifier
         cdi_temp.update().where(
             and_(
                 work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
-                work_items.c.display_id == cdi_temp.c.commit_identifier
+                work_items.c.display_id == cdi_temp.c.commit_identifier,
+                work_items.c.created_at <= cdi_temp.c.commit_date
             )
         ).values(
             work_item_key=work_items.c.key,
@@ -765,7 +773,8 @@ def update_commits_work_items(session, repository_key, commits_commit_identifier
         cdi_temp.update().where(
             and_(
                 work_items.c.work_items_source_id == cdi_temp.c.work_items_source_id,
-                work_items.c.commit_identifiers.has_any(array([cdi_temp.c.commit_identifier]))
+                work_items.c.commit_identifiers.has_any(array([cdi_temp.c.commit_identifier])),
+                work_items.c.created_at <= cdi_temp.c.commit_date
             )
         ).values(
             work_item_key=work_items.c.key,
@@ -820,6 +829,7 @@ def resolve_work_items_for_commits(session, organization_key, repository_key, co
                                 repository_id=repository.id,
                                 source_commit_id=commit['source_commit_id'],
                                 commit_key=commit['key'],
+                                commit_date=commit['commit_date'],
                                 work_items_source_id=work_items_source.id,
                                 work_items_source_key=work_items_source.key,
                                 commit_identifier=commit_identifier

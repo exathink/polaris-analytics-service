@@ -89,6 +89,15 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
         organization_key = work_items_updated['organization_key']
         work_items_source_key = work_items_updated['work_items_source_key']
         updated_work_items = work_items_updated['updated_work_items']
+        # This is a temporary hack to resolve PO-633 in production
+        # for some reason there are messages coming in without the commit_identifiers
+        # might be a temporary versioning issue during last deployment.
+        # the idea is that temporarily fixing these up will allow those messages to be processed.
+        for work_item in updated_work_items:
+            if 'commit_identifiers' not in work_item:
+                logger.info(f"Empty commit_identifiers found for work item: {work_item['name']}")
+                work_item['commit_identifiers'] = []
+
         logger.info(f"Processing  {message.message_type}: "
                     f" Organization: {organization_key}")
 

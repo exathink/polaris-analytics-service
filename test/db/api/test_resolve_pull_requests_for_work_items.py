@@ -544,7 +544,7 @@ class TestMultipleRepos:
 
 
 class TestPaging:
-    work_items_impl.map_display_ids_to_pull_requests_page_size = 5
+    work_items_impl.map_commit_identifiers_to_pull_requests_page_size = 5
 
     def it_returns_a_valid_map_when_there_are_more_pull_requests_than_the_page_size(self, pull_requests_fixture):
         organization, _, repositories = pull_requests_fixture
@@ -581,8 +581,8 @@ class TestPaging:
             ),
             items_data=new_work_items
         )
-        default_page_size = work_items_impl.map_display_ids_to_pull_requests_page_size
-        work_items_impl.map_display_ids_to_pull_requests_page_size = 5
+        default_page_size = work_items_impl.map_commit_identifiers_to_pull_requests_page_size
+        work_items_impl.map_commit_identifiers_to_pull_requests_page_size = 5
         create_test_pull_requests([
             dict(
                 repository_id=test_repo.id,
@@ -597,7 +597,7 @@ class TestPaging:
         ])
 
         result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
-        work_items_impl.map_display_ids_to_pull_requests_page_size = default_page_size
+        work_items_impl.map_commit_identifiers_to_pull_requests_page_size = default_page_size
         assert result['success']
         assert len(result['resolved']) == 11
         assert db.connection().execute("select count(*) from analytics.work_items_pull_requests").scalar() == 11

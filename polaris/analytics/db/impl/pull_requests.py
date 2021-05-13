@@ -7,7 +7,9 @@
 # confidential.
 
 # Author: Pragya Goyal
+
 import logging
+
 from functools import reduce
 from polaris.common import db
 from polaris.analytics.db.model import organizations, pull_requests, repositories, projects, projects_repositories, \
@@ -16,7 +18,7 @@ from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.utils.collections import dict_select
 from polaris.utils.exceptions import ProcessingException
 from sqlalchemy import Integer, select, Column, bindparam, String, BigInteger, and_, func
-from sqlalchemy.dialects.postgresql import UUID, insert
+from sqlalchemy.dialects.postgresql import UUID, insert, array
 
 logger = logging.getLogger('polaris.analytics.db.impl.pull_requests')
 
@@ -259,29 +261,31 @@ def get_pull_requests_query(work_items_source):
         )
 
 
-def resolve_display_id_pull_requests(pull_requests_batch, integration_type, input_display_id_to_key_map):
+def resolve_pull_request_identifiers_pull_requests(pull_requests_batch, integration_type,
+                                                   pull_request_identifiers_to_key_map):
     resolver = WorkItemResolver.get_resolver(integration_type)
     assert resolver, f"No work item resolver registered for integration type {integration_type}"
     resolved = []
     for pr in pull_requests_batch:
-        display_ids = resolver.resolve(pr.title, pr.description, display_id=pr.display_id, branch_name=pr.source_branch)
-        if len(display_ids) > 0:
-            for display_id in display_ids:
-                if display_id in input_display_id_to_key_map:
+        pull_request_identifiers = resolver.resolve(pr.title, pr.description, display_id=pr.display_id,
+                                                    branch_name=pr.source_branch)
+        if len(pull_request_identifiers) > 0:
+            for display_id in pull_request_identifiers:
+                if display_id in pull_request_identifiers_to_key_map:
                     resolved.append(dict(
                         pull_request_id=pr.id,
                         pull_request_key=pr.key,
                         repository_key=pr.repository_key,
-                        work_item_key=input_display_id_to_key_map[display_id]
+                        work_item_key=pull_request_identifiers_to_key_map[display_id]
                     ))
 
     return resolved
 
 
-map_display_ids_to_pull_requests_page_size = 1000
+map_pull_request_identifiers_to_pull_requests_page_size = 1000
 
 
-def map_display_ids_to_pull_requests(session, work_item_summaries, work_items_source):
+def map_pull_request_identifiers_to_pull_requests(session, work_item_summaries, work_items_source):
     # get pull requests query for given work_item_source/repository
     # skipping pagination in first go, as PRs will be much lesser than commits
     pull_request_query = get_pull_requests_query(work_items_source)
@@ -300,11 +304,19 @@ def map_display_ids_to_pull_requests(session, work_item_summaries, work_items_so
         )
     ).scalar()
 
-    input_display_id_to_key_map = {work_item['display_id']: work_item['key'] for work_item in work_item_summaries}
+    pull_request_identifiers_to_key_map = {
+        work_item['display_id']: {'key': work_item['key'], 'created_at': work_item['created_at']} for work_item in
+        work_item_summaries}
+    for work_item in work_item_summaries:
+        if work_item.get('commit_identifiers') != None:
+            if work_item.get('commit_identifiers') != []:
+                for commit_identifier in work_item.get('commit_identifiers'):
+                    pull_request_identifiers_to_key_map.update(
+                        {commit_identifier: {'key': work_item['key'], 'created_at': work_item['created_at']}})
     resolved = []
 
     fetched = 0
-    batch_size = map_display_ids_to_pull_requests_page_size
+    batch_size = map_pull_request_identifiers_to_pull_requests_page_size
     offset = 0
     while fetched < total:
         pull_requests_batch = session.connection().execute(
@@ -316,10 +328,10 @@ def map_display_ids_to_pull_requests(session, work_item_summaries, work_items_so
         ).fetchall()
 
         resolved.extend(
-            resolve_display_id_pull_requests(
+            resolve_pull_request_identifiers_pull_requests(
                 pull_requests_batch,
                 work_items_source.integration_type,
-                input_display_id_to_key_map
+                pull_request_identifiers_to_key_map
             )
         )
         offset = offset + batch_size
@@ -332,7 +344,7 @@ def resolve_pull_requests_for_work_items(session, organization_key, work_items_s
     if len(work_item_summaries) > 0:
         work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
         if work_items_source is not None:
-            resolved = map_display_ids_to_pull_requests(session, work_item_summaries, work_items_source)
+            resolved = map_pull_request_identifiers_to_pull_requests(session, work_item_summaries, work_items_source)
             if len(resolved) > 0:
                 wp_temp = db.create_temp_table('work_items_pull_requests_temp', [
                     Column('pull_request_id', Integer),
@@ -421,14 +433,15 @@ def find_work_items_sources(session, organization_key, repository_key):
     return work_item_sources
 
 
-def update_pull_requests_work_items(session, repository_key, pull_requests_display_id):
+def update_pull_requests_work_items(session, repository_key, pull_requests_pull_request_identifiers):
     pdi_temp = db.create_temp_table(
-        'pull_requests_display_id_temp', [
+        'pull_requests_pull_request_identifiers_temp', [
             Column('work_items_source_key', UUID(as_uuid=True)),
             Column('work_items_source_id', Integer),
             Column('repository_id', Integer),
             Column('source_pull_request_id', String),
             Column('pull_request_key', UUID(as_uuid=True)),
+            Column('pull_request_identifier', String),
             Column('display_id', String),
             Column('pull_request_id', BigInteger),
             Column('work_item_id', BigInteger),
@@ -439,7 +452,7 @@ def update_pull_requests_work_items(session, repository_key, pull_requests_displ
     pdi_temp.create(session.connection(), checkfirst=True)
 
     session.connection().execute(
-        pdi_temp.insert().values(pull_requests_display_id)
+        pdi_temp.insert().values(pull_requests_pull_request_identifiers)
     )
 
     session.connection().execute(
@@ -458,6 +471,19 @@ def update_pull_requests_work_items(session, repository_key, pull_requests_displ
             and_(
                 work_items.c.work_items_source_id == pdi_temp.c.work_items_source_id,
                 work_items.c.display_id == pdi_temp.c.display_id
+            )
+        ).values(
+            work_item_key=work_items.c.key,
+            work_item_id=work_items.c.id,
+            delivery_cycle_id=work_items.c.current_delivery_cycle_id
+        )
+    )
+
+    session.connection().execute(
+        pdi_temp.update().where(
+            and_(
+                work_items.c.work_items_source_id == pdi_temp.c.work_items_source_id,
+                work_items.c.commit_identifiers.has_any(array([pdi_temp.c.pull_request_identifier]))
             )
         ).values(
             work_item_key=work_items.c.key,
@@ -501,25 +527,25 @@ def resolve_work_items_for_pull_requests(session, organization_key, repository_k
     if repository is not None:
         work_items_sources = find_work_items_sources(session, organization_key, repository_key)
         if len(work_items_sources) > 0:
-            prs_display_ids = []
+            prs_pull_request_identifiers = []
             for work_items_source in work_items_sources:
                 work_item_resolver = WorkItemResolver.get_resolver(work_items_source.integration_type)
                 for pr in pull_request_summaries:
-                    for display_id in work_item_resolver.resolve(pr['title'], pr['description'],
-                                                                 display_id=pr['display_id'],
-                                                                 branch_name=pr['source_branch']):
-                        prs_display_ids.append(
+                    for pull_request_identifier in work_item_resolver.resolve(pr['title'], pr['description'],
+                                                                              display_id=pr['display_id'],
+                                                                              branch_name=pr['source_branch']):
+                        prs_pull_request_identifiers.append(
                             dict(
                                 repository_id=repository.id,
                                 source_pull_request_id=pr['source_id'],
                                 pull_request_key=pr['key'],
                                 work_items_source_id=work_items_source.id,
                                 work_items_source_key=work_items_source.key,
-                                display_id=display_id
+                                pull_request_identifier=pull_request_identifier
                             )
                         )
 
-            resolved = update_pull_requests_work_items(session, repository_key, prs_display_ids)
+            resolved = update_pull_requests_work_items(session, repository_key, prs_pull_request_identifiers)
     return dict(
         resolved=resolved
     )

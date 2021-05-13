@@ -10,7 +10,7 @@
 
 from polaris.utils.collections import dict_to_object
 from test.fixtures.graphql import *
-
+from polaris.analytics.db.model import Contributor
 
 def import_commits(organization_key, repository_key, new_commits, new_contributors):
     # we need this rigmarole here because the api import method does not
@@ -34,6 +34,11 @@ def add_work_item_commits(work_items_commits):
             commit = Commit.find_by_commit_key(session, commit_key)
             work_item.commits.append(commit)
 
+def exclude_contributors_from_analysis(contributors):
+    with db.orm_session() as session:
+        for contributor_summmary in contributors:
+            contributor = Contributor.find_by_contributor_key(session, contributor_summmary['key'])
+            contributor.exclude_from_analysis()
 
 @pytest.yield_fixture
 def project_commits_work_items_fixture(org_repo_fixture):

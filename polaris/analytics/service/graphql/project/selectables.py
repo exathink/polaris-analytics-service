@@ -199,9 +199,14 @@ class ProjectCommitNodes(ConnectionResolver):
                 commits, work_items_commits.c.commit_id == commits.c.id
             ).join(
                 repositories, commits.c.repository_id == repositories.c.id
+            ).join(
+                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
-            projects.c.key == bindparam('key')
+            and_(
+                projects.c.key == bindparam('key'),
+                contributor_aliases.c.robot == False
+            )
         )
         project_commits = commits_connection_apply_filters(select_project_commits, commits, **kwargs)
 
@@ -214,13 +219,16 @@ class ProjectCommitNodes(ConnectionResolver):
                 repositories, projects_repositories.c.repository_id == repositories.c.id,
             ).join(
                 commits, commits.c.repository_id == repositories.c.id
+            ).join(
+                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
             ).outerjoin(
                 work_items_commits, work_items_commits.c.commit_id == commits.c.id
             )
         ).where(
             and_(
                 projects.c.key == bindparam('key'),
-                work_items_commits.c.work_item_id == None
+                work_items_commits.c.work_item_id == None,
+                contributor_aliases.c.robot == False
             )
         )
         untracked_commits = commits_connection_apply_filters(select_untracked_commits, commits, **kwargs)

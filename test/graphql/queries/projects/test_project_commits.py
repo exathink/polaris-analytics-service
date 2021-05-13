@@ -69,6 +69,7 @@ class TestProjectCommitsConnection:
                 days=days,
                 work_items_common=fixture.work_items_common,
                 project_commits=new_commits,
+                contributors=fixture.contributors,
             )
         )
 
@@ -263,7 +264,8 @@ class TestProjectCommitsConnection:
                     project=project,
                     project_work_items=project_work_items,
                     non_project_work_items=non_project_work_items,
-                    project_commits=fixture.project_commits
+                    project_commits=fixture.project_commits,
+                    contributors=fixture.contributors
                 )
             )
 
@@ -615,3 +617,45 @@ class TestProjectCommitsConnection:
             ]
 
             assert len(project_commits) == 1
+
+
+        class CaseWhenThereAreExcludedContributors:
+
+            @pytest.yield_fixture()
+            def setup_case(self, setup_case):
+                fixture = setup_case
+
+                contributors = fixture.parent_fixture.contributors
+
+                exclude_contributors_from_analysis(contributors)
+
+                yield fixture
+
+            def it_excludes_commits_for_contributors_excluded_from_analysis(self, setup_case):
+                fixture = setup_case
+
+                client = Client(schema)
+                query = """
+                    query getProjectCommits($key: String!) {
+                        project(key: $key){
+                            commits {
+                                edges {
+                                    node {
+                                        key
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+                result = client.execute(query, variable_values=dict(
+                    key=fixture.project.key
+                ))
+
+                assert result['data']
+                project_commits = [
+                    edge['node']
+                    for edge in result['data']['project']['commits']['edges']
+                ]
+                # we just excluded the only contributor in the setup so no commits should be returned
+                assert len(project_commits) == 0

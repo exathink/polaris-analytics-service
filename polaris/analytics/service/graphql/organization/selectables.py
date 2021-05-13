@@ -198,9 +198,14 @@ class OrganizationCommitNodes(ConnectionResolver):
                 repositories, repositories.c.organization_id == organizations.c.id
             ).join(
                 commits
+            ).join(
+                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
-            organizations.c.key == bindparam('key')
+            and_(
+                organizations.c.key == bindparam('key'),
+                contributor_aliases.c.robot == False
+            )
         )
         return commits_connection_apply_filters(select_stmt, commits, **kwargs)
 

@@ -470,6 +470,10 @@ class Contributor(Base):
     def find_by_contributor_key(cls, session, contributor_key):
         return session.query(cls).filter(cls.key == contributor_key).first()
 
+    def exclude_from_analysis(self):
+        for alias in self.aliases:
+            alias.robot = True
+
     def update(self, contributor_data):
         updatable_fields = ['name']
         for attribute, value in contributor_data.items():

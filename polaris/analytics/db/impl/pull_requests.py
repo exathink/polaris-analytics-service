@@ -270,13 +270,13 @@ def resolve_pull_request_identifiers_pull_requests(pull_requests_batch, integrat
         pull_request_identifiers = resolver.resolve(pr.title, pr.description, display_id=pr.display_id,
                                                     branch_name=pr.source_branch)
         if len(pull_request_identifiers) > 0:
-            for display_id in pull_request_identifiers:
-                if display_id in pull_request_identifiers_to_key_map:
+            for pull_request_identifier in pull_request_identifiers:
+                if pull_request_identifier in pull_request_identifiers_to_key_map:
                     resolved.append(dict(
                         pull_request_id=pr.id,
                         pull_request_key=pr.key,
                         repository_key=pr.repository_key,
-                        work_item_key=pull_request_identifiers_to_key_map[display_id]
+                        work_item_key=pull_request_identifiers_to_key_map[pull_request_identifier]['key']
                     ))
 
     return resolved
@@ -442,7 +442,6 @@ def update_pull_requests_work_items(session, repository_key, pull_requests_pull_
             Column('source_pull_request_id', String),
             Column('pull_request_key', UUID(as_uuid=True)),
             Column('pull_request_identifier', String),
-            Column('display_id', String),
             Column('pull_request_id', BigInteger),
             Column('work_item_id', BigInteger),
             Column('work_item_key', UUID(as_uuid=True)),
@@ -470,7 +469,7 @@ def update_pull_requests_work_items(session, repository_key, pull_requests_pull_
         pdi_temp.update().where(
             and_(
                 work_items.c.work_items_source_id == pdi_temp.c.work_items_source_id,
-                work_items.c.display_id == pdi_temp.c.display_id
+                work_items.c.display_id == pdi_temp.c.pull_request_identifier
             )
         ).values(
             work_item_key=work_items.c.key,

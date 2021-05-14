@@ -601,3 +601,56 @@ class TestPaging:
         assert result['success']
         assert len(result['resolved']) == 11
         assert db.connection().execute("select count(*) from analytics.work_items_pull_requests").scalar() == 11
+
+
+class TestTrelloWorkItemPullRequests:
+
+    def it_returns_a_match_when_pull_request_title_matches_the_work_item(self, pull_requests_fixture):
+        organization, _, repositories = pull_requests_fixture
+        test_repo = repositories['alpha']
+        new_key = uuid.uuid4()
+        new_work_items = [
+            dict(
+                key=new_key,
+                display_id='1000',
+                created_at=get_date("2018-12-02"),
+                commit_identifiers=['1000', 'https://trello.com/c/x28QspUQ', 'x28QspUQ'],
+                **work_items_common
+            )
+        ]
+        work_item_source = setup_work_items(
+            organization,
+            source_data=dict(
+                integration_type='trello',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=test_organization_key,
+                **work_items_source_common
+            ),
+            items_data=new_work_items
+        )
+        test_pr_source_id = '00001'
+        test_pr_key = uuid.uuid4()
+        create_test_pull_requests([
+            dict(
+                repository_id=test_repo.id,
+                key=test_pr_key,
+                source_id=test_pr_source_id,
+                source_repository_id=test_repo.id,
+                title="Another change. Fixes card #1000",
+                created_at=get_date("2018-12-03"),
+                **pull_requests_common_fields()
+            )
+        ])
+
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
+        assert result['success']
+        assert len(result['resolved']) == 1
+        assert result['resolved'][0]['pull_request_key'] == str(test_pr_key)
+        assert result['resolved'][0]['work_item_key'] == str(new_key)
+        assert result['resolved'][0]['work_items_source_key'] == str(work_item_source.key)
+        assert result['resolved'][0]['repository_key'] == str(test_repo.key)
+
+        # Check for delivery cycle id too
+        assert db.connection().execute(f"select count(*) from analytics.work_items_pull_requests "
+                                       f"join analytics.work_items on work_items.id=work_items_pull_requests.work_item_id ").scalar() == 1

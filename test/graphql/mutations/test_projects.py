@@ -521,42 +521,6 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
                                      where work_item_delivery_cycles.work_item_id='{work_item_id}' \
                                      and lead_time is null and delivery_cycle_id!={delivery_cycle_id}").scalar() == 1
 
-    def it_raises_an_error_if_an_existing_state_does_not_have_a_mapping_defined(self,
-                                                                                work_items_delivery_cycles_setup):
-        client = Client(schema)
-        project = work_items_delivery_cycles_setup
-        project_key = str(project.key)
-        work_items_source_key = project.work_items_sources[0].key
-        work_item_id = project.work_items_sources[0].work_items[0].id
-
-        response = client.execute("""
-                            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
-                                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
-                                        success
-                                        errorMessage
-                                    }
-                                }
-                        """, variable_values=dict(
-            updateProjectStateMapsInput=dict(
-                projectKey=project_key,
-                workItemsSourceStateMaps=[
-                    dict(
-                        workItemsSourceKey=work_items_source_key,
-                        stateMaps=[
-                            dict(state="created", stateType=WorkItemsStateType.open.value),
-                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                        ]
-                    )
-                ]
-            )
-        )
-                                  )
-        assert 'data' in response
-        result = response['data']['updateProjectStateMaps']
-        assert result
-        assert not result['success']
-        assert result['errorMessage'] == \
-               'Invalid Mapping: The following states did not have a mapping specified {\'done\'} '
 
     def it_updates_delivery_cycles_at_first_closed_state_transition_when_mapping_changes(self,
                                                                                          work_items_delivery_cycles_setup):

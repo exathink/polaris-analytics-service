@@ -53,7 +53,8 @@ class TestSingleRepo:
             )
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         assert result['success']
         assert len(result['resolved']) == 1
         assert result['resolved'][0]['pull_request_key'] == str(test_pr_key)
@@ -105,7 +106,8 @@ class TestSingleRepo:
             )
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         assert result['success']
         assert len(result['resolved']) == 1
         assert result['resolved'][0]['pull_request_key'] == str(test_pr_key)
@@ -154,7 +156,8 @@ class TestSingleRepo:
             )
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         assert result['success']
         assert len(result['resolved']) == 1
         assert result['resolved'][0]['pull_request_key'] == str(test_pr_key)
@@ -163,7 +166,6 @@ class TestSingleRepo:
         assert result['resolved'][0]['repository_key'] == str(test_repo.key)
 
         assert db.connection().execute("select count(*) from analytics.work_items_pull_requests").scalar() == 1
-
 
     def it_returns_a_match_when_the_pull_request_source_branch_matches_the_work_item(self, pull_requests_fixture):
         organization, _, repositories = pull_requests_fixture
@@ -204,7 +206,8 @@ class TestSingleRepo:
             )
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         assert result['success']
         assert len(result['resolved']) == 1
         assert result['resolved'][0]['pull_request_key'] == str(test_pr_key)
@@ -214,7 +217,8 @@ class TestSingleRepo:
 
         assert db.connection().execute("select count(*) from analytics.work_items_pull_requests").scalar() == 1
 
-    def it_returns_a_valid_map_when_there_are_multiple_matching_pull_requests_and_work_items(self, pull_requests_fixture):
+    def it_returns_a_valid_map_when_there_are_multiple_matching_pull_requests_and_work_items(self,
+                                                                                             pull_requests_fixture):
         organization, _, repositories = pull_requests_fixture
         test_repo = repositories['alpha']
         key_1000 = uuid.uuid4()
@@ -283,7 +287,8 @@ class TestSingleRepo:
             )
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         assert result['success']
         assert len(result['resolved']) == 2
 
@@ -325,13 +330,15 @@ class TestSingleRepo:
             )
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         assert result['success']
         assert len(result['resolved']) == 1
 
         assert db.connection().execute("select count(*) from analytics.work_items_pull_requests").scalar() == 1
 
-    def it_only_matches_pull_requests_that_have_create_date_after_create_date_of_work_items(self, pull_requests_fixture):
+    def it_only_matches_pull_requests_that_have_create_date_after_create_date_of_work_items(self,
+                                                                                            pull_requests_fixture):
         organization, _, repositories = pull_requests_fixture
         test_repo = repositories['alpha']
         new_key = uuid.uuid4()
@@ -366,7 +373,8 @@ class TestSingleRepo:
             )
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         assert result['success']
         assert len(result['resolved']) == 0
 
@@ -375,7 +383,8 @@ class TestSingleRepo:
 
 class TestMultipleRepos:
 
-    def it_returns_a_valid_map_when_there_is_a_pull_request_matching_the_work_item_at_org_scope(self, pull_requests_fixture):
+    def it_returns_a_valid_map_when_there_is_a_pull_request_matching_the_work_item_at_org_scope(self,
+                                                                                                pull_requests_fixture):
         organization, _, repositories = pull_requests_fixture
         alpha = repositories['alpha']
         beta = repositories['beta']
@@ -421,12 +430,14 @@ class TestMultipleRepos:
             )
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         assert result['success']
         assert len(result['resolved']) == 2
         assert db.connection().execute("select count(*) from analytics.work_items_pull_requests").scalar() == 2
 
-    def it_returns_a_valid_match_when_there_is_a_pull_request_matching_the_work_item_at_repo_scope(self, pull_requests_fixture):
+    def it_returns_a_valid_match_when_there_is_a_pull_request_matching_the_work_item_at_repo_scope(self,
+                                                                                                   pull_requests_fixture):
         organization, _, repositories = pull_requests_fixture
         # There are two repos with pull requests
         alpha = repositories['alpha']
@@ -479,7 +490,8 @@ class TestMultipleRepos:
             )
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         assert result['success']
 
         # only alpha pull requests should be matched.
@@ -490,7 +502,7 @@ class TestMultipleRepos:
         assert db.connection().execute("select count(*) from analytics.work_items_pull_requests").scalar() == 1
 
     def it_returns_a_valid_map_when_there_is_a_pull_request_matching_the_work_item_at_project_scope(self,
-                                                                                              pull_requests_fixture):
+                                                                                                    pull_requests_fixture):
         organization, projects, repositories = pull_requests_fixture
         mercury = projects['mercury']
         alpha = repositories['alpha']
@@ -537,7 +549,8 @@ class TestMultipleRepos:
             )
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         assert result['success']
         assert len(result['resolved']) == 2
         assert db.connection().execute("select count(*) from analytics.work_items_pull_requests").scalar() == 2
@@ -596,7 +609,8 @@ class TestPaging:
             for i in range(0, 11)
         ])
 
-        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key, new_work_items)
+        result = api.resolve_pull_requests_for_new_work_items(test_organization_key, work_item_source.key,
+                                                              new_work_items)
         work_items_impl.map_commit_identifiers_to_pull_requests_page_size = default_page_size
         assert result['success']
         assert len(result['resolved']) == 11

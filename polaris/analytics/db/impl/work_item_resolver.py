@@ -114,13 +114,16 @@ class TrelloWorkItemResolver(WorkItemResolver):
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):
         resolved = []
-        if display_id is not None:
-            text_tokens.append(display_id)
 
         for text_token in text_tokens:
             resolved.extend(cls.url_matcher.findall(text_token))
             text_token = cls.url_matcher.sub(' ', text_token)
             resolved.extend(cls.id_matcher.findall(text_token))
+
+        if display_id is not None:
+            resolved.extend(cls.url_matcher.findall(display_id))
+            text_token = cls.url_matcher.sub(' ', display_id)
+            resolved.extend(cls.id_matcher.findall(display_id))
 
         if branch_name is not None:
             resolved.extend(cls.url_matcher.findall(branch_name))

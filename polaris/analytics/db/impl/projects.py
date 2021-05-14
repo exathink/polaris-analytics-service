@@ -37,7 +37,8 @@ def update_work_items_computed_state_types(session, work_items_source_id):
         ).where(
             and_(
                 work_items.c.state == work_items_source_state_map.c.state,
-                work_items.c.work_items_source_id == work_items_source_id
+                work_items.c.work_items_source_id == work_items_source_id,
+                work_items_source_state_map.c.work_items_source_id == work_items_source_id,
             )
         )
     )

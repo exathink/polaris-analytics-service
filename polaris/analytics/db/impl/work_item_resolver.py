@@ -114,6 +114,7 @@ class TrelloWorkItemResolver(WorkItemResolver):
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):
         resolved = []
+
         for text_token in text_tokens:
             resolved.extend(cls.url_matcher.findall(text_token))
             text_token = cls.url_matcher.sub(' ', text_token)

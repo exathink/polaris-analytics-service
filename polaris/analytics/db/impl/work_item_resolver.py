@@ -122,8 +122,8 @@ class TrelloWorkItemResolver(WorkItemResolver):
 
         if display_id is not None:
             resolved.extend(cls.url_matcher.findall(display_id))
-            text_token = cls.url_matcher.sub(' ', display_id)
-            resolved.extend(cls.id_matcher.findall(display_id))
+            display_id = cls.url_matcher.sub(' ', display_id)
+            resolved.extend(cls.branch_id_matcher.findall(display_id))
 
         if branch_name is not None:
             resolved.extend(cls.url_matcher.findall(branch_name))

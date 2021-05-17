@@ -37,7 +37,8 @@ def update_work_items_computed_state_types(session, work_items_source_id):
         ).where(
             and_(
                 work_items.c.state == work_items_source_state_map.c.state,
-                work_items.c.work_items_source_id == work_items_source_id
+                work_items.c.work_items_source_id == work_items_source_id,
+                work_items_source_state_map.c.work_items_source_id == work_items_source_id,
             )
         )
     )
@@ -70,16 +71,6 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         current_unmapped_states = None
         existing_work_item_states = get_existing_work_item_states_from_transitions(session, work_items_source)
         if len(existing_work_item_states) > 0:
-            # validate that all existing states are mapped in the new mapping.
-            new_mapped_states = {
-                source_state_map.state
-                for source_state_map in state_mappings
-            }
-            unmapped_states = existing_work_item_states - new_mapped_states
-            if len(unmapped_states) > 0:
-                raise ProcessingException(
-                    f"Invalid Mapping: The following states did not have a mapping specified {unmapped_states} "
-                )
 
             current_unmapped_states = existing_work_item_states - {
                 source_state_map.state

@@ -342,6 +342,9 @@ class Project(Base):
             if flow_metrics_input.cycle_time_confidence_target:
                 flow_metrics_settings['cycle_time_confidence_target'] = flow_metrics_input.cycle_time_confidence_target
 
+            if flow_metrics_input.include_sub_tasks:
+                flow_metrics_settings['include_sub_tasks'] = flow_metrics_input.include_sub_tasks
+
     @staticmethod
     def update_analysis_periods(current, update_project_settings_input):
         if getattr(update_project_settings_input, 'analysis_periods', None) is not None:

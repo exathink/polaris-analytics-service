@@ -183,6 +183,10 @@ class FlowMetricsSettings:
                     "If the SLA is 7 days cycle time with 80% confidence, response_time_confidence is 0.8.",
 
     )
+    include_sub_tasks = graphene.Float(
+        required=False,
+        description="To include or exclude sub-tasks in the metrics calculations"
+    )
 
 
 class FlowMetricsSettingsImpl(FlowMetricsSettings, graphene.ObjectType):

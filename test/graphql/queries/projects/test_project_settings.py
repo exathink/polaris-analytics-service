@@ -19,6 +19,7 @@ from polaris.utils.collections import Fixture
 from test.fixtures.project_work_items import *
 from polaris.analytics.service.graphql.interfaces import FlowMetricsSettingsImpl
 
+
 class TestProjectSettings:
     class TestFlowMetricsSettings:
         @pytest.yield_fixture
@@ -35,6 +36,7 @@ class TestProjectSettings:
                                     responseTimeConfidenceTarget
                                     leadTimeConfidenceTarget
                                     cycleTimeConfidenceTarget
+                                    includeSubTasks
                                 }
                             }
                         }
@@ -69,6 +71,7 @@ class TestProjectSettings:
                 assert not flow_metrics['leadTimeTarget']
                 assert not flow_metrics['cycleTimeTarget']
                 assert not flow_metrics['responseTimeConfidenceTarget']
+                assert not flow_metrics['includeSubTasks']
 
         class WhenSettingsIsEmpty:
 
@@ -85,6 +88,7 @@ class TestProjectSettings:
                 assert not flow_metrics['leadTimeTarget']
                 assert not flow_metrics['cycleTimeTarget']
                 assert not flow_metrics['responseTimeConfidenceTarget']
+                assert not flow_metrics['includeSubTasks']
 
         class WhenSettingsIsNotEmpty:
             @pytest.yield_fixture
@@ -134,6 +138,9 @@ class TestProjectSettings:
 
                 assert flow_metrics_settings['cycleTimeConfidenceTarget'] \
                        == fixture.settings.flow_metrics_settings.cycle_time_confidence_target
+
+                assert flow_metrics_settings['includeSubTasks'] \
+                       == fixture.settings.flow_metrics_settings.include_sub_tasks
 
     class TestAnalysisPeriods:
         @pytest.yield_fixture

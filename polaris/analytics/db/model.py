@@ -317,6 +317,7 @@ class Project(Base):
         current = copy.deepcopy(self.settings) if self.settings is not None else dict()
         self.update_flow_metrics_settings(current, update_project_settings_input)
         self.update_analysis_periods(current, update_project_settings_input)
+        self.update_wip_inspector_settings(current, update_project_settings_input)
         self.settings = current
 
     @staticmethod
@@ -366,6 +367,19 @@ class Project(Base):
 
             if analysis_periods_input.trends_analysis_period:
                 analysis_periods['trends_analysis_period'] = analysis_periods_input.trends_analysis_period
+
+    @staticmethod
+    def update_wip_inspector_settings(current, update_project_settings_input):
+        if getattr(update_project_settings_input, 'wip_inspector_settings', None) is not None:
+            wip_inspector_input = update_project_settings_input.wip_inspector_settings
+
+            if 'wip_inspector_settings' not in current:
+                current['wip_inspector_settings'] = dict()
+
+            wip_inspector_settings = current['wip_inspector_settings']
+
+            if wip_inspector_input.get('include_sub_tasks') is not None:
+                wip_inspector_settings['include_sub_tasks'] = wip_inspector_input.include_sub_tasks
 
 
 projects = Project.__table__

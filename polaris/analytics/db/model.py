@@ -13,7 +13,8 @@ import copy
 from datetime import datetime
 from logging import getLogger
 
-from sqlalchemy import Table, Column, BigInteger, Integer, Float, Boolean, text, Text, String, UniqueConstraint, ForeignKey, \
+from sqlalchemy import Table, Column, BigInteger, Integer, Float, Boolean, text, Text, String, UniqueConstraint, \
+    ForeignKey, \
     Index, DateTime, and_
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import relationship, object_session
@@ -52,14 +53,16 @@ work_items_commits = Table(
     Column('commit_id', ForeignKey('commits.id'), primary_key=True, index=True),
     # Note: this is not a primary key since we only want a commit to be mapped
     # to a single delivery cycle for a given work item
-    Column('delivery_cycle_id', ForeignKey('work_item_delivery_cycles.delivery_cycle_id', ondelete="SET NULL"),  index=True, nullable=True)
+    Column('delivery_cycle_id', ForeignKey('work_item_delivery_cycles.delivery_cycle_id', ondelete="SET NULL"),
+           index=True, nullable=True)
 )
 
 work_items_pull_requests = Table(
     'work_items_pull_requests', Base.metadata,
     Column('work_item_id', ForeignKey('work_items.id'), primary_key=True, index=True),
     Column('pull_request_id', ForeignKey('pull_requests.id'), primary_key=True, index=True),
-    Column('delivery_cycle_id', ForeignKey('work_item_delivery_cycles.delivery_cycle_id', ondelete="SET NULL"),  index=True, nullable=True)
+    Column('delivery_cycle_id', ForeignKey('work_item_delivery_cycles.delivery_cycle_id', ondelete="SET NULL"),
+           index=True, nullable=True)
 )
 
 repositories_contributor_aliases = Table(
@@ -342,7 +345,7 @@ class Project(Base):
             if flow_metrics_input.cycle_time_confidence_target:
                 flow_metrics_settings['cycle_time_confidence_target'] = flow_metrics_input.cycle_time_confidence_target
 
-            if flow_metrics_input.include_sub_tasks:
+            if flow_metrics_input.get('include_sub_tasks') is not None:
                 flow_metrics_settings['include_sub_tasks'] = flow_metrics_input.include_sub_tasks
 
     @staticmethod
@@ -844,7 +847,6 @@ class WorkItemDeliveryCycle(Base):
     latest_commit = Column(DateTime, nullable=True)
     repository_count = Column(Integer, nullable=True)
     commit_count = Column(Integer, nullable=True)
-
 
     # This the effort associated with commits within the delivery cycle
     # we also have a "global" effort that applies to the work item and

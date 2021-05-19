@@ -185,7 +185,8 @@ class FlowMetricsSettings:
     )
     include_sub_tasks = graphene.Boolean(
         required=False,
-        description="To include or exclude sub-tasks in the metrics calculations"
+        description="To include or exclude sub-tasks in the metrics calculations",
+
     )
 
 

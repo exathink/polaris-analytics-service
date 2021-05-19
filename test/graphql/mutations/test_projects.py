@@ -1258,6 +1258,7 @@ class TestUpdateProjectSettings:
                     responseTimeConfidenceTarget=0.7,
                     leadTimeConfidenceTarget=0.8,
                     cycleTimeConfidenceTarget=0.9,
+                    includeSubTasks=False
                 )
             )
         ))
@@ -1269,7 +1270,8 @@ class TestUpdateProjectSettings:
                 lead_time_target=14,
                 response_time_confidence_target=0.7,
                 lead_time_confidence_target=0.8,
-                cycle_time_confidence_target=0.9
+                cycle_time_confidence_target=0.9,
+                include_sub_tasks=False
             )
 
     def it_modifies_only_the_flow_metrics_settings_that_were_passed(self, setup):
@@ -1287,6 +1289,7 @@ class TestUpdateProjectSettings:
                     responseTimeConfidenceTarget=0.7,
                     leadTimeConfidenceTarget=0.8,
                     cycleTimeConfidenceTarget=0.9,
+                    includeSubTasks=False
                 )
             )
         ))
@@ -1297,7 +1300,7 @@ class TestUpdateProjectSettings:
                 key=str(test_projects[0]['key']),
                 flowMetricsSettings=dict(
                     cycleTimeTarget=8,
-
+                    includeSubTasks=False
                 )
             )
         ))
@@ -1309,7 +1312,8 @@ class TestUpdateProjectSettings:
                 lead_time_target=14,
                 response_time_confidence_target=0.7,
                 lead_time_confidence_target=0.8,
-                cycle_time_confidence_target=0.9
+                cycle_time_confidence_target=0.9,
+                include_sub_tasks=False
             )
 
     def it_updates_the_analysis_periods(self, setup):
@@ -1371,6 +1375,58 @@ class TestUpdateProjectSettings:
                 wip_analysis_period=7,
                 flow_analysis_period=30,
                 trends_analysis_period=45
+            )
+
+    def it_updates_the_wip_inspector_settings(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                wipInspectorSettings=dict(
+                    includeSubTasks=False
+                )
+            )
+        ))
+        assert response['data']['updateProjectSettings']['success']
+        with db.orm_session() as session:
+            project = Project.find_by_project_key(session, test_projects[0]['key'])
+            assert project.settings['wip_inspector_settings'] == dict(
+                include_sub_tasks=False
+            )
+
+    def it_modifies_only_the_wip_inpector_settings_that_were_passed(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        # update once
+        client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                wipInspectorSettings=dict(
+                    includeSubTasks=True
+                )
+            )
+        ))
+
+        # update again
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                wipInspectorSettings=dict(
+                    includeSubTasks=False
+
+                )
+            )
+        ))
+        assert response['data']['updateProjectSettings']['success']
+        with db.orm_session() as session:
+            project = Project.find_by_project_key(session, test_projects[0]['key'])
+            assert project.settings['wip_inspector_settings'] == dict(
+                include_sub_tasks=False
             )
 
 

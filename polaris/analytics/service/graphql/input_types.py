@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 import graphene
 
-from .interfaces import FlowMetricsSettings, AnalysisPeriods
+from .interfaces import FlowMetricsSettings, AnalysisPeriods, WipInspectorSettings
 
 
 class AccountProfileInput(graphene.InputObjectType):
@@ -36,4 +36,8 @@ class FlowMetricsSettingsInput(FlowMetricsSettings, graphene.InputObjectType):
 
 
 class AnalysisPeriodsInput(AnalysisPeriods, graphene.InputObjectType):
+    pass
+
+
+class WipInspectorSettingsInput(WipInspectorSettings, graphene.InputObjectType):
     pass

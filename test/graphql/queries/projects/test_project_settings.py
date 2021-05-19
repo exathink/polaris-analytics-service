@@ -19,6 +19,7 @@ from polaris.utils.collections import Fixture
 from test.fixtures.project_work_items import *
 from polaris.analytics.service.graphql.interfaces import FlowMetricsSettingsImpl
 
+
 class TestProjectSettings:
     class TestFlowMetricsSettings:
         @pytest.yield_fixture
@@ -35,6 +36,7 @@ class TestProjectSettings:
                                     responseTimeConfidenceTarget
                                     leadTimeConfidenceTarget
                                     cycleTimeConfidenceTarget
+                                    includeSubTasks
                                 }
                             }
                         }
@@ -69,6 +71,7 @@ class TestProjectSettings:
                 assert not flow_metrics['leadTimeTarget']
                 assert not flow_metrics['cycleTimeTarget']
                 assert not flow_metrics['responseTimeConfidenceTarget']
+                assert not flow_metrics['includeSubTasks']
 
         class WhenSettingsIsEmpty:
 
@@ -85,6 +88,7 @@ class TestProjectSettings:
                 assert not flow_metrics['leadTimeTarget']
                 assert not flow_metrics['cycleTimeTarget']
                 assert not flow_metrics['responseTimeConfidenceTarget']
+                assert not flow_metrics['includeSubTasks']
 
         class WhenSettingsIsNotEmpty:
             @pytest.yield_fixture
@@ -96,7 +100,8 @@ class TestProjectSettings:
                         lead_time_target=14,
                         response_time_confidence_target=0.7,
                         lead_time_confidence_target=0.9,
-                        cycle_time_confidence_target=0.75
+                        cycle_time_confidence_target=0.75,
+                        include_sub_tasks=True
                     )
 
                 )
@@ -133,6 +138,9 @@ class TestProjectSettings:
 
                 assert flow_metrics_settings['cycleTimeConfidenceTarget'] \
                        == fixture.settings.flow_metrics_settings.cycle_time_confidence_target
+
+                assert flow_metrics_settings['includeSubTasks'] \
+                       == fixture.settings.flow_metrics_settings.include_sub_tasks
 
     class TestAnalysisPeriods:
         @pytest.yield_fixture
@@ -240,3 +248,96 @@ class TestProjectSettings:
 
                 assert analysis_periods['trendsAnalysisPeriod'] \
                        == fixture.settings.analysis_periods.trends_analysis_period
+
+    class TestWipInspectorSettings:
+        @pytest.yield_fixture
+        def setup(self, setup_projects):
+            project = test_projects[0]
+
+            query = """
+                    query getProjectSettings($project_key:String!) {
+                        project(key: $project_key) {
+                            settings {
+                                wipInspectorSettings {
+                                    includeSubTasks
+                                }
+                            }
+                        }
+                    }
+            """
+            yield Fixture(
+                project=project,
+                query=query
+            )
+
+        class WhenSettingsIsNull:
+            @pytest.yield_fixture
+            def setup(self, setup):
+                fixture = setup
+
+                with db.orm_session() as session:
+                    project = Project.find_by_project_key(session, fixture.project['key'])
+                    project.settings = None
+
+                yield fixture
+
+            def it_returns_a_valid_result(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                flow_metrics = project['settings']['wipInspectorSettings']
+                assert flow_metrics
+                assert flow_metrics['includeSubTasks'] is None
+
+        class WhenSettingsIsEmpty:
+
+            def it_returns_a_valid_result(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                wip_inspector = project['settings']['wipInspectorSettings']
+                assert wip_inspector
+                assert wip_inspector['includeSubTasks'] is None
+
+        class WhenSettingsIsNotEmpty:
+            @pytest.yield_fixture
+            def setup(self, setup):
+                fixture = setup
+                settings_fixture = Fixture(
+                    wip_inspector_settings=Fixture(
+                        include_sub_tasks=True
+                    )
+
+                )
+                with db.orm_session() as session:
+                    project = Project.find_by_project_key(session, fixture.project['key'])
+                    project.update_settings(
+                        settings_fixture
+                    )
+
+                yield Fixture(
+                    parent=fixture,
+                    settings=settings_fixture
+                )
+
+            def it_shows_wip_inspector_settings(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                wip_inspector_settings = project['settings']['wipInspectorSettings']
+                assert wip_inspector_settings
+
+                assert wip_inspector_settings['includeSubTasks'] \
+                       == fixture.settings.wip_inspector_settings.include_sub_tasks

@@ -213,9 +213,22 @@ class AnalysisPeriodsImpl(AnalysisPeriods, graphene.ObjectType):
     pass
 
 
+class WipInspectorSettings:
+    include_sub_tasks = graphene.Boolean(
+        required=False,
+        description="To include or exclude sub-tasks in the wip metrics calculations",
+
+    )
+
+
+class WipInspectorSettingsImpl(WipInspectorSettings, graphene.ObjectType):
+    pass
+
+
 class ProjectSettings(graphene.Interface):
     flow_metrics_settings = graphene.Field(FlowMetricsSettingsImpl, required=False)
     analysis_periods = graphene.Field(AnalysisPeriodsImpl, required=False)
+    wip_inspector_settings = graphene.Field(WipInspectorSettingsImpl, required=False)
 
 
 class ProjectSettingsImpl(graphene.ObjectType):
@@ -225,10 +238,12 @@ class ProjectSettingsImpl(graphene.ObjectType):
     def __init__(self, *args, **kwargs):
         self.flow_metrics_settings = {}
         self.analysis_periods = {}
+        self.wip_inspector_settings = {}
         super().__init__(*args, **kwargs)
 
         self.flow_metrics_settings = FlowMetricsSettingsImpl(**(self.flow_metrics_settings or {}))
         self.analysis_periods = AnalysisPeriodsImpl(**(self.analysis_periods or {}))
+        self.wip_inspector_settings = WipInspectorSettingsImpl(**(self.wip_inspector_settings or {}))
 
 
 class ProjectInfo(graphene.Interface):

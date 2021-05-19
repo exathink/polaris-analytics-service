@@ -96,7 +96,8 @@ class TestProjectSettings:
                         lead_time_target=14,
                         response_time_confidence_target=0.7,
                         lead_time_confidence_target=0.9,
-                        cycle_time_confidence_target=0.75
+                        cycle_time_confidence_target=0.75,
+                        include_sub_tasks=True
                     )
 
                 )

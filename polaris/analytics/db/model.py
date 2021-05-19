@@ -346,7 +346,7 @@ class Project(Base):
             if flow_metrics_input.cycle_time_confidence_target:
                 flow_metrics_settings['cycle_time_confidence_target'] = flow_metrics_input.cycle_time_confidence_target
 
-            if flow_metrics_input.get('include_sub_tasks') is not None:
+            if flow_metrics_input.include_sub_tasks is not None:
                 flow_metrics_settings['include_sub_tasks'] = flow_metrics_input.include_sub_tasks
 
     @staticmethod
@@ -378,7 +378,7 @@ class Project(Base):
 
             wip_inspector_settings = current['wip_inspector_settings']
 
-            if wip_inspector_input.get('include_sub_tasks') is not None:
+            if wip_inspector_input.include_sub_tasks is not None:
                 wip_inspector_settings['include_sub_tasks'] = wip_inspector_input.include_sub_tasks
 
 

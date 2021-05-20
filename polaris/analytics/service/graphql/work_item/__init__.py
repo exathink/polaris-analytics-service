@@ -209,7 +209,7 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
         ),
         include_sub_tasks=graphene.Boolean(
             required=False,
-            description='Include subtasks in the work items. Defaults to false',
+            description='Include delivery cycles for work items which are sub-tasks. Defaults to true',
             default_value=True
         )
     )
@@ -335,7 +335,7 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
         ),
         include_sub_tasks=graphene.Boolean(
             required=False,
-            description='Include subtasks in the work items. Defaults to false',
+            description='Include subtasks in the work items. Defaults to true',
             default_value=True
         )
     )

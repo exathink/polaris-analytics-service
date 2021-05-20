@@ -170,7 +170,7 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
         )
 
     # This is true by default, so we include subtasks unless it is explicitly excluded.
-    if kwargs.get('include_subtasks') == False:
+    if kwargs.get('include_sub_tasks') == False:
         select_stmt = select_stmt.where(
             work_items.c.work_item_type != 'subtask'
         )

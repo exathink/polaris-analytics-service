@@ -206,6 +206,11 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
             graphene.List(WorkItemsStateType),
             required=False,
             description="Include only delivery cycles for work items with the specified state types"
+        ),
+        include_sub_tasks=graphene.Boolean(
+            required=False,
+            description='Include subtasks in the work items. Defaults to false',
+            default_value=True
         )
     )
 
@@ -328,7 +333,7 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             description='Include epics in the work items. Defaults to false',
             default_value=False
         ),
-        include_subtasks=graphene.Boolean(
+        include_sub_tasks=graphene.Boolean(
             required=False,
             description='Include subtasks in the work items. Defaults to false',
             default_value=True

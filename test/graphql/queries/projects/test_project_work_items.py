@@ -312,7 +312,7 @@ class TestProjectEpicWorkItems:
                             interfaces: [EpicNodeRef, ImplementationCost, DevelopmentProgress],
                             includeEpics: true,
                             activeWithinDays: 90, 
-                            includeSubtasks: false
+                            includeSubTasks: false
                             ) {
                             edges {
                                 node {
@@ -383,7 +383,7 @@ class TestProjectEpicWorkItems:
                             interfaces: [EpicNodeRef, ImplementationCost, DevelopmentProgress],
                             includeEpics: true,
                             activeWithinDays: 90, 
-                            includeSubtasks: false
+                            includeSubTasks: false
                             ) {
                             edges {
                                 node {
@@ -559,7 +559,7 @@ class TestProjectEpicWorkItems:
                                 interfaces: [EpicNodeRef, ImplementationCost, DevelopmentProgress],
                                 includeEpics: false,
                                 activeWithinDays: 90, 
-                                includeSubtasks: false
+                                includeSubTasks: false
                                 ) {
                                 edges {
                                     node {

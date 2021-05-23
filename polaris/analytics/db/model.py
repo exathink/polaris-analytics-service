@@ -862,6 +862,11 @@ class WorkItemDeliveryCycle(Base):
     repository_count = Column(Integer, nullable=True)
     commit_count = Column(Integer, nullable=True)
 
+    # spec_cycle_time = Max(cycle_time, end_date, earliest_commit)
+    # This gives a blended cycle time for specs using both  work tracking
+    # and commit information. For non-specs this is the same as cycle time
+    spec_cycle_time = Column(Integer, nullable=True)
+
     # This the effort associated with commits within the delivery cycle
     # we also have a "global" effort that applies to the work item and
     # includes commits that appear across delivery cycles.

@@ -855,37 +855,37 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                 percentile_cycle_time=func.percentile_disc(
                     cycle_metrics_trends_args.cycle_time_target_percentile
                 ).within_group(
-                    delivery_cycles_relation.c.cycle_time
+                    delivery_cycles_relation.c.spec_cycle_time
                 ).label(
                     'percentile_cycle_time'
                 ),
                 min_lead_time=func.min(delivery_cycles_relation.c.lead_time).label('min_lead_time'),
                 avg_lead_time=func.avg(delivery_cycles_relation.c.lead_time).label('avg_lead_time'),
                 max_lead_time=func.max(delivery_cycles_relation.c.lead_time).label('max_lead_time'),
-                min_cycle_time=func.min(delivery_cycles_relation.c.cycle_time).label('min_cycle_time'),
-                avg_cycle_time=func.avg(delivery_cycles_relation.c.cycle_time).label('avg_cycle_time'),
+                min_cycle_time=func.min(delivery_cycles_relation.c.spec_cycle_time).label('min_cycle_time'),
+                avg_cycle_time=func.avg(delivery_cycles_relation.c.spec_cycle_time).label('avg_cycle_time'),
                 q1_cycle_time=func.percentile_disc(
                     0.25
                 ).within_group(
-                    delivery_cycles_relation.c.cycle_time
+                    delivery_cycles_relation.c.spec_cycle_time
                 ).label(
                     'q1_cycle_time'
                 ),
                 median_cycle_time=func.percentile_disc(
                     0.50
                 ).within_group(
-                    delivery_cycles_relation.c.cycle_time
+                    delivery_cycles_relation.c.spec_cycle_time
                 ).label(
                     'median_cycle_time'
                 ),
                 q3_cycle_time=func.percentile_disc(
                     0.75
                 ).within_group(
-                    delivery_cycles_relation.c.cycle_time
+                    delivery_cycles_relation.c.spec_cycle_time
                 ).label(
                     'q3_cycle_time'
                 ),
-                max_cycle_time=func.max(delivery_cycles_relation.c.cycle_time).label('max_cycle_time'),
+                max_cycle_time=func.max(delivery_cycles_relation.c.spec_cycle_time).label('max_cycle_time'),
 
             ),
             # Work item counts
@@ -905,7 +905,7 @@ class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
                                 # work correctly only for the closed items case, but this is
                                 # the only case where it makes sense to compute this metric anyway.
                                 delivery_cycles_relation.c.end_date != None,
-                                delivery_cycles_relation.c.cycle_time == None
+                                delivery_cycles_relation.c.spec_cycle_time == None
                             ), 1
                         )
                     ], else_=0)
@@ -1174,7 +1174,7 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
 
     @classmethod
     def get_delivery_cycle_relation_for_pipeline(cls, cycle_metrics_trends_args, measurement_date, project_nodes):
-        # This query provides a realation with a column interface similar to
+        # This query provides a relation with a column interface similar to
         # work_item_delivery_cycles, but with cycle time and lead time calculated dynamically
         # for work items in the current pipeline. Since cycle_time and lead_time are cached once
         # and for all only on the work items that are closed, we need to calculate these
@@ -1195,7 +1195,7 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)).label(
                 'lead_time'),
             func.max(work_item_delivery_cycle_durations.c.cumulative_time_in_state).label('backlog_time'),
-            # This is the cycle time = lead_time - backlog time.
+            # cycle time = lead_time - backlog time.
             (
                     func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)) -
                     # we are filtering out backlog work items items
@@ -1204,7 +1204,14 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
                     # can be multiple backlog states, so we could have a duration in each one,
                     # so taking the sum correctly gets you the current backlog duration.
                     func.sum(work_item_delivery_cycle_durations.c.cumulative_time_in_state)
-            ).label('cycle_time'),
+            ).label(
+                # using spec_cycle_time here purely to coerce the column name so that
+                # we can use the same logic from the base class. The coupling between
+                # this method and the base class method needs to be revisited since
+                # the logic for the closed and pipeline metrics have now diverged significantly
+                # that it may make sense to treat them separately.
+                'spec_cycle_time'
+            ),
             # Latency for in-progress items = measurement_date - latest_commit
             (
                 func.extract(

@@ -548,6 +548,128 @@ class TestUpdateWorkItemsLatency:
             work_item_id={work_items_ids[1]}").scalar()
 
 
+class TestUpdateWorkItemsCommitsSpecCycleTime:
+    def it_sets_spec_cycle_time_for_closed_work_items_with_null_cycle_time(self, work_items_commits_fixture):
+
+        organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
+
+        with db.orm_session() as session:
+            work_item = WorkItem.find_by_work_item_key(session, test_work_items[1]['key'])
+            # override the date setup in the fixture so that the test can be stable and makes
+            # sense locally.
+            for commit in work_item.commits:
+                commit.commit_date = earliest_commit_date
+
+            work_item.current_delivery_cycle.end_date = earliest_commit_date + timedelta(days=3)
+            work_item.current_delivery_cycle.cycle_time = None
+
+        work_items_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_items[1]['key'],
+                # This is a bit misleading since this method does not actually use the commit key. The work item
+                # commits have already been established in the fixture, so the commit key is not actually used in this
+                # api call, just the work item key. But we are passing this for api contractual reason.
+                commit_key=test_commits[4]['key']
+            )
+        ]
+        result = commands.update_work_items_commits_stats(organization.key, work_items_commits)
+        assert result['success']
+        assert result['updated'] == 1
+        assert db.connection().execute(
+            f"select spec_cycle_time from analytics.work_item_delivery_cycles where \
+            work_item_id={work_items_ids[1]}").scalar() == 3 * 24 * 3600
+
+    def it_sets_spec_cycle_time_to_cycle_time_for_closed_work_items_when_commit_cycle_time_is_smaller(self, work_items_commits_fixture):
+
+        organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
+
+        with db.orm_session() as session:
+            work_item = WorkItem.find_by_work_item_key(session, test_work_items[1]['key'])
+            # override the date setup in the fixture so that the test can be stable and makes
+            # sense locally.
+            for commit in work_item.commits:
+                commit.commit_date = earliest_commit_date
+
+            work_item.current_delivery_cycle.end_date = earliest_commit_date + timedelta(days=3)
+            work_item.current_delivery_cycle.cycle_time = 5*24*3600
+
+        work_items_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_items[1]['key'],
+                # This is a bit misleading since this method does not actually use the commit key. The work item
+                # commits have already been established in the fixture, so the commit key is not actually used in this
+                # api call, just the work item key. But we are passing this for api contractual reason.
+                commit_key=test_commits[4]['key']
+            )
+        ]
+        result = commands.update_work_items_commits_stats(organization.key, work_items_commits)
+        assert result['success']
+        assert result['updated'] == 1
+        assert db.connection().execute(
+            f"select spec_cycle_time from analytics.work_item_delivery_cycles where \
+            work_item_id={work_items_ids[1]}").scalar() == 5 * 24 * 3600
+
+    def it_sets_spec_cycle_time_to_commit_cycle_time_for_closed_work_items_when_commit_cycle_time_is_larger(self, work_items_commits_fixture):
+
+        organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
+
+        with db.orm_session() as session:
+            work_item = WorkItem.find_by_work_item_key(session, test_work_items[1]['key'])
+            # override the date setup in the fixture so that the test can be stable and makes
+            # sense locally.
+            for commit in work_item.commits:
+                commit.commit_date = earliest_commit_date
+
+            work_item.current_delivery_cycle.end_date = earliest_commit_date + timedelta(days=3)
+            work_item.current_delivery_cycle.cycle_time = 1*24*3600
+
+        work_items_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_items[1]['key'],
+                # This is a bit misleading since this method does not actually use the commit key. The work item
+                # commits have already been established in the fixture, so the commit key is not actually used in this
+                # api call, just the work item key. But we are passing this for api contractual reason.
+                commit_key=test_commits[4]['key']
+            )
+        ]
+        result = commands.update_work_items_commits_stats(organization.key, work_items_commits)
+        assert result['success']
+        assert result['updated'] == 1
+        assert db.connection().execute(
+            f"select spec_cycle_time from analytics.work_item_delivery_cycles where \
+            work_item_id={work_items_ids[1]}").scalar() == 3 * 24 * 3600
+
+    def it_does_not_set_spec_cycle_time_for_open_delivery_cycles(self, work_items_commits_fixture):
+
+        organization, work_items_ids, test_commits, test_work_items = work_items_commits_fixture
+
+        with db.orm_session() as session:
+            work_item = WorkItem.find_by_work_item_key(session, test_work_items[1]['key'])
+            # override the date setup in the fixture so that the test can be stable and makes
+            # sense locally.
+            for commit in work_item.commits:
+                commit.commit_date = earliest_commit_date
+
+        work_items_commits = [
+            dict(
+                organization_key=organization.key,
+                work_item_key=test_work_items[1]['key'],
+                # This is a bit misleading since this method does not actually use the commit key. The work item
+                # commits have already been established in the fixture, so the commit key is not actually used in this
+                # api call, just the work item key. But we are passing this for api contractual reason.
+                commit_key=test_commits[4]['key']
+            )
+        ]
+        result = commands.update_work_items_commits_stats(organization.key, work_items_commits)
+        assert result['success']
+        assert result['updated'] == 1
+        assert db.connection().execute(
+            f"select spec_cycle_time from analytics.work_item_delivery_cycles where \
+            work_item_id={work_items_ids[1]}").scalar() == None
+
 class TestWorkItemImplementationEffort:
 
     def it_works_for_single_work_item_and_commit(self, implementation_effort_fixture):

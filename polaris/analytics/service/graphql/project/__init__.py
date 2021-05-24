@@ -236,6 +236,12 @@ Implicit Interfaces: ArchivedStatus
                 description="When evaluating cycle metrics "
                             "include only specs"
             ),
+            include_sub_tasks=graphene.Argument(
+                graphene.Boolean,
+                required=False,
+                description="When evaluating cycle metrics include sub tasks",
+                default_value=True
+            ),
             cycle_metrics_trends_args=graphene.Argument(
                 CycleMetricsTrendsParameters,
                 required=False,

@@ -1193,7 +1193,6 @@ class TestWorkItemDeliveryCycles:
             'select count(delivery_cycle_id) from analytics.work_item_delivery_cycles where lead_time is NULL and cycle_time is NULL').scalar() == 5
 
     def it_does_not_set_spec_cycle_time_for_newly_imported_work_items(self, work_items_setup):
-
         # Like cycle time, spec cycle time cannot be calculated for work items imported in closed state
         # as there is no knowledge of transitions in open, wip or complete states
         # so it will be null only, even when lead time is not null. Also at the time a work item is imported,
@@ -1407,7 +1406,6 @@ class TestUpdateWorkItemsDeliveryCycles:
         assert expected_cycle_time == cycle_time
         assert cycle_time == spec_cycle_time
 
-
     def it_updates_latency_to_zero_for_work_items_without_commits(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_work_items_setup
         closed_date = datetime.utcnow()
@@ -1444,15 +1442,19 @@ class TestUpdateWorkItemsDeliveryCycles:
             f"select latency from analytics.work_item_delivery_cycles join analytics.work_items "
             f"on work_item_delivery_cycles.delivery_cycle_id = work_items.current_delivery_cycle_id "
             f"where work_items.key='{work_items_list[0]['key']}'"
-        ).scalar() == 3*24*3600
+        ).scalar() == 3 * 24 * 3600
 
     def it_updates_spec_cycle_time_for_closed_work_items_with_commits(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_work_items_setup
 
-        closed_date = datetime.utcnow()
+        # Setting closed date same as approximately the time of transition to open state
+        closed_date = datetime.utcnow() - timedelta(days=5)
         # Update commits stats for the current delivery cycle.
         with db.orm_session() as session:
             work_item = model.WorkItem.find_by_work_item_key(session, work_items_list[0]['key'])
+            # Setting work item closed date to old date just to ensure commits
+            # are not newer than work item create date from source
+            work_item.created_at = closed_date - timedelta(days=6)
             dc = work_item.current_delivery_cycle
             dc.commit_count = 2
             dc.latest_commit = closed_date - timedelta(days=3)
@@ -1467,9 +1469,10 @@ class TestUpdateWorkItemsDeliveryCycles:
             f"select spec_cycle_time from analytics.work_item_delivery_cycles join analytics.work_items "
             f"on work_item_delivery_cycles.delivery_cycle_id = work_items.current_delivery_cycle_id "
             f"where work_items.key='{work_items_list[0]['key']}'"
-        ).scalar() == 5*24*3600
+        ).scalar() == 5 * 24 * 3600
 
-    def it_set_spec_cycle_time_to_cycle_time_for_closed_work_items_with_commits_when_commit_cycle_time_is_smaller(self, update_work_items_setup):
+    def it_set_spec_cycle_time_to_cycle_time_for_closed_work_items_with_commits_when_commit_cycle_time_is_smaller(self,
+                                                                                                                  update_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_work_items_setup
 
         closed_date = datetime.utcnow()
@@ -1486,15 +1489,13 @@ class TestUpdateWorkItemsDeliveryCycles:
 
         result = api.update_work_items(organization_key, work_items_source_key, work_items_list[0:])
         assert result['success']
-        cycle_time, spec_cycle_time =  db.connection().execute(
+        cycle_time, spec_cycle_time = db.connection().execute(
             f"select cycle_time, spec_cycle_time from analytics.work_item_delivery_cycles join analytics.work_items "
             f"on work_item_delivery_cycles.delivery_cycle_id = work_items.current_delivery_cycle_id "
             f"where work_items.key='{work_items_list[0]['key']}'"
         ).fetchone()
 
         assert cycle_time == spec_cycle_time
-
-
 
     def it_updates_cycle_time_and_spec_cycle_time_only_for_current_delivery_cycle(self, update_closed_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_closed_work_items_setup

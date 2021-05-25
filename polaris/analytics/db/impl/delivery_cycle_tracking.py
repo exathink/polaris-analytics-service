@@ -294,7 +294,12 @@ def compute_work_item_delivery_cycles_cycle_time_and_latency(session, work_items
             'epoch',
             func.min(work_item_delivery_cycles.c.end_date) -
             func.coalesce(func.min(work_item_delivery_cycles.c.latest_commit), func.min(work_item_delivery_cycles.c.end_date))
-        ).label('latency')
+        ).label('latency'),
+        func.extract(
+            'epoch',
+            func.min(work_item_delivery_cycles.c.end_date) -
+            func.min(work_item_delivery_cycles.c.earliest_commit)
+        ).label('commit_cycle_time')
     ]).select_from(
         work_items_temp.join(
             work_items, work_items_temp.c.key == work_items.c.key
@@ -319,6 +324,10 @@ def compute_work_item_delivery_cycles_cycle_time_and_latency(session, work_items
             work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_cycle_time_latency.c.current_delivery_cycle_id
         ).values(
             cycle_time=delivery_cycles_cycle_time_latency.c.cycle_time,
+            spec_cycle_time=func.greatest(
+                delivery_cycles_cycle_time_latency.c.cycle_time,
+                delivery_cycles_cycle_time_latency.c.commit_cycle_time
+            ),
             latency=delivery_cycles_cycle_time_latency.c.latency
         )
     ).rowcount
@@ -356,7 +365,7 @@ def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
     ).cte('delivery_cycles_commits_rows')
 
     # update relevant work items delivery cycles with relevant metrics
-    return session.connection().execute(
+    updated = session.connection().execute(
         work_item_delivery_cycles.update().where(
             work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_commits_rows.c.delivery_cycle_id
         ).values(
@@ -379,6 +388,40 @@ def compute_work_item_delivery_cycle_commit_stats(session, work_items_temp):
             ], else_=None)
         )
     ).rowcount
+
+    # update spec_cycle_time since commits stats were updated.
+    compute_work_item_delivery_cycle_spec_cycle_time(session, work_items_temp)
+
+    return updated
+
+
+def compute_work_item_delivery_cycle_spec_cycle_time(session, work_items_temp):
+    # spec_cycle_time = max(cycle_time, end_date - earliest_commit
+    # prep the rows containing the calculations
+    spec_cycle_time = select([
+        work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
+        func.greatest(
+            work_item_delivery_cycles.c.cycle_time,
+            func.extract('epoch', work_item_delivery_cycles.c.end_date - work_item_delivery_cycles.c.earliest_commit)
+        ).label(
+            'spec_cycle_time'
+        )
+    ]).select_from(
+        work_items_temp.join(
+            work_items, work_items.c.key == work_items_temp.c.work_item_key
+        ).join(
+            work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+        )
+    ).cte('spec_cycle_time')
+    # update the spec_cycle_time
+    session.connection().execute(
+        work_item_delivery_cycles.update().where(
+            work_item_delivery_cycles.c.delivery_cycle_id == spec_cycle_time.c.delivery_cycle_id
+        ).values(
+            spec_cycle_time=spec_cycle_time.c.spec_cycle_time
+        )
+    )
+
 
 
 def coding_day(commits):
@@ -1560,7 +1603,12 @@ def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id
                     )
                 ],
                 else_=None
-            )).label('cycle_time')
+            )).label('cycle_time'),
+        func.extract(
+            'epoch', work_item_delivery_cycles.c.end_date - work_item_delivery_cycles.c.earliest_commit
+        ).label(
+            'commit_cycle_time'
+        )
     ]).select_from(
         work_items.join(
             work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
@@ -1584,7 +1632,11 @@ def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id
         work_item_delivery_cycles.update().where(
             work_item_delivery_cycles.c.delivery_cycle_id == delivery_cycles_cycle_time.c.delivery_cycle_id
         ).values(
-            cycle_time=delivery_cycles_cycle_time.c.cycle_time
+            cycle_time=delivery_cycles_cycle_time.c.cycle_time,
+            spec_cycle_time=func.greatest(
+                delivery_cycles_cycle_time.c.cycle_time,
+                delivery_cycles_cycle_time.c.commit_cycle_time
+            )
         )
     ).rowcount
 

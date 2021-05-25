@@ -376,7 +376,7 @@ class WorkItemDeliveryCycleCycleMetrics(InterfaceResolver):
             work_item_delivery_cycle_nodes.c.id,
             (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
             func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
-            (func.min(work_item_delivery_cycles.c.cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
+            (func.min(work_item_delivery_cycles.c.spec_cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
             (func.min(work_item_delivery_cycles.c.latency) / (1.0 * 3600 * 24)).label('latency'),
 
         ]).select_from(

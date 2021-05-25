@@ -311,7 +311,7 @@ def work_items_cycle_metrics(**kwargs):
         work_items.c.id.label('work_item_id'),
         work_item_delivery_cycles.c.delivery_cycle_id.label('delivery_cycle_id'),
         (func.min(work_item_delivery_cycles.c.lead_time) / (1.0 * 3600 * 24)).label('lead_time'),
-        (func.min(work_item_delivery_cycles.c.cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
+        (func.min(work_item_delivery_cycles.c.spec_cycle_time) / (1.0 * 3600 * 24)).label('cycle_time'),
         func.min(work_item_delivery_cycles.c.commit_count).label('commit_count'),
         func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
     ]).select_from(

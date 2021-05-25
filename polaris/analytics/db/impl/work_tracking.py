@@ -250,7 +250,7 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
                 ).where(
                     work_items.c.id == work_item_parent_id_map.c.id
                 )
-            ).rowcount
+            )
 
             # add the created state to the state transitions
             # for the newly inserted entries.

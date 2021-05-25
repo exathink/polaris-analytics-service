@@ -289,9 +289,9 @@ class TestProjectSettings:
                 assert 'data' in result
                 project = result['data']['project']
                 assert project['settings']
-                flow_metrics = project['settings']['wipInspectorSettings']
-                assert flow_metrics
-                assert flow_metrics['includeSubTasks'] is None
+                wip_inspector = project['settings']['wipInspectorSettings']
+                assert wip_inspector
+                assert wip_inspector['includeSubTasks'] is True
 
         class WhenSettingsIsEmpty:
 
@@ -305,7 +305,7 @@ class TestProjectSettings:
                 assert project['settings']
                 wip_inspector = project['settings']['wipInspectorSettings']
                 assert wip_inspector
-                assert wip_inspector['includeSubTasks'] is None
+                assert wip_inspector['includeSubTasks'] is True
 
         class WhenSettingsIsNotEmpty:
             @pytest.yield_fixture

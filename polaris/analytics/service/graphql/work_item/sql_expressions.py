@@ -136,8 +136,8 @@ def work_items_connection_apply_time_window_filters(select_stmt, work_items, **k
         window_start = before - timedelta(days=kwargs['days'])
         return select_stmt.where(
             and_(
-                work_items.c.completed_at >= window_start,
-                work_items.c.completed_at < before
+                work_items.c.updated_at >= window_start,
+                work_items.c.updated_at < before
             )
         )
     elif kwargs.get('before'):

@@ -1530,3 +1530,70 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
         assert total_effort_by_state['complete'] == None
         assert total_effort_by_state['closed'] == 4
         assert total_effort_by_state['unmapped'] == None
+
+    def it_returns_correct_counts_in_case_of_multiple_delivery_cycles(self, setup):
+        fixture = setup
+        with db.orm_session() as session:
+            reopened_work_item = WorkItem.find_by_work_item_key(session, fixture.work_items[3]['key'])
+            new_delivery_cycle = WorkItemDeliveryCycle(
+                start_seq_no=0,
+                start_date=datetime.utcnow(),
+                work_item_id=reopened_work_item.id,
+                work_items_source_id=reopened_work_item.work_items_source_id
+            )
+            session.add(new_delivery_cycle)
+            session.flush()
+            reopened_work_item.current_delivery_cycle_id = new_delivery_cycle.delivery_cycle_id
+            reopened_work_item.state_type = 'backlog'
+            reopened_work_item.state = 'backlog'
+
+        client = Client(schema)
+        query = """
+                query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
+                    project(
+                        key: $project_key,
+                        interfaces: [WorkItemStateTypeAggregateMetrics], 
+                        specsOnly: false,
+                        closedWithinDays: 30
+                        allStatesAggregateMetricsArgs: {
+                          includeSubTasksInClosedState: true
+                          includeSubTasksInNonClosedState: true
+                        }
+                        ) 
+                        {
+                            workItemStateTypeCounts {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                            }
+                            totalEffortByStateType {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                        }
+                    }
+                }
+            """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_item_state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        total_effort_by_state = result['data']['project']['totalEffortByStateType']
+        assert work_item_state_type_counts['backlog'] == 4
+        assert work_item_state_type_counts['open'] == 3
+        assert work_item_state_type_counts['wip'] == 3
+        assert work_item_state_type_counts['complete'] == None
+        assert work_item_state_type_counts['closed'] == 3
+        assert work_item_state_type_counts['unmapped'] == None
+        assert total_effort_by_state['backlog'] == 0
+        assert total_effort_by_state['open'] == 0
+        assert total_effort_by_state['wip'] == 3
+        assert total_effort_by_state['complete'] == None
+        assert total_effort_by_state['closed'] == 6
+        assert total_effort_by_state['unmapped'] == None

@@ -14,6 +14,7 @@ from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
 from polaris.utils.collections import dict_merge
 
+
 # This tests the aggregate counts in the funnel view
 class TestProjectWorkItemStateTypeAggregateMetrics:
 
@@ -552,7 +553,6 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
             def setup(self, setup):
                 fixture = setup
 
-
                 query = """
                         query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!, $closed_within_days: Int!) {
                             project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics], closedWithinDays: $closed_within_days){
@@ -570,7 +570,7 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 yield Fixture(
                     parent=fixture,
                     query=query
-            )
+                )
 
             def it_includes_work_items_closed_in_the_closed_within_days_window(self, setup):
                 fixture = setup
@@ -728,7 +728,6 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
             def setup(self, setup):
                 fixture = setup
 
-
                 query = """
                         query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
                             project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics], specsOnly: true){
@@ -746,7 +745,7 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 yield Fixture(
                     parent=fixture,
                     query=query
-            )
+                )
 
             def it_respects_the_specs_only_parameter(self, setup):
                 fixture = setup
@@ -807,50 +806,51 @@ class TestProjectTotalEffortByStateType:
                 created_at=get_date("2018-12-02"),
                 updated_at=get_date("2018-12-03"),
                 **work_items_common
-                ),
-                dict(
-                    key=uuid.uuid4().hex,
-                    name='Issue 3',
-                    display_id='1002',
-                    state='upnext',
-                    created_at=get_date("2018-12-02"),
-                    updated_at=get_date("2018-12-03"),
-                    **work_items_common
-                ),
-                dict(
-                    key=uuid.uuid4().hex,
-                    name='Issue 4',
-                    display_id='1004',
-                    state='doing',
-                    created_at=get_date("2018-12-02"),
-                    updated_at=get_date("2018-12-03"),
-                    **work_items_common
-                ),
-                dict(
-                    key=uuid.uuid4().hex,
-                    name='Issue 5',
-                    display_id='1005',
-                    state='doing',
-                    created_at=get_date("2018-12-02"),
-                    updated_at=get_date("2018-12-03"),
-                    **work_items_common
-                ),
-                dict(
-                    key=uuid.uuid4().hex,
-                    name='Issue 6',
-                    display_id='1006',
-                    state='closed',
-                    created_at=get_date("2018-12-02"),
-                    updated_at=get_date("2018-12-03"),
-                    **work_items_common
-                ),
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 3',
+                display_id='1002',
+                state='upnext',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 4',
+                display_id='1004',
+                state='doing',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 5',
+                display_id='1005',
+                state='doing',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 6',
+                display_id='1006',
+                state='closed',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **work_items_common
+            ),
 
-            ]
+        ]
         api_helper.import_work_items(
             work_items
         )
 
-        api_helper.update_delivery_cycles([(3, dict(property='commit_count', value=2)), (5, dict(property='commit_count', value=1))])
+        api_helper.update_delivery_cycles(
+            [(3, dict(property='commit_count', value=2)), (5, dict(property='commit_count', value=1))])
         api_helper.update_delivery_cycles(
             [(3, dict(property='effort', value=1)), (5, dict(property='effort', value=2))])
 
@@ -956,6 +956,7 @@ class TestProjectWorkItemsFunnelView:
             work_items_common=work_items_common
 
         )
+
     def it_returns_work_items_in_all_state_types(self, setup):
         fixture = setup
         client = Client(schema)
@@ -1063,7 +1064,6 @@ class TestProjectWorkItemsFunnelView:
             ]
         )
 
-
         client = Client(schema)
         query = """
                     query getProjectWorkItemsFunnelView($project_key:String!) {
@@ -1087,10 +1087,8 @@ class TestProjectWorkItemsFunnelView:
         work_items = result['data']['project']['workItems']['edges']
         assert len(work_items) == 2
 
-
     def it_returns_multiple_closed_delivery_cycles_for_the_same_work_item(self, setup):
         fixture = setup
-
 
         fixture.api_helper.update_work_items(
             [
@@ -1304,7 +1302,6 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
         api_helper.update_delivery_cycle(7, dict(end_date=datetime.utcnow()))
         api_helper.update_delivery_cycle(11, dict(end_date=datetime.utcnow()))
 
-
         yield Fixture(
             project=project,
             work_items=work_items,
@@ -1313,7 +1310,7 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
 
         )
 
-    def it_returns_work_items_in_all_state_types(self, setup):
+    def it_returns_work_items_in_all_state_types_including_subtasks_for_both(self, setup):
         fixture = setup
         client = Client(schema)
         query = """
@@ -1323,6 +1320,10 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                         interfaces: [WorkItemStateTypeAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
+                        allStatesAggregateMetricsArgs: {
+                            includeSubTasksInClosedState: true
+                            includeSubTasksInNonClosedState: true
+                        }
                         ) 
                         {
                             workItemStateTypeCounts {
@@ -1354,4 +1355,145 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
         assert work_item_state_type_counts['wip'] == 3
         assert work_item_state_type_counts['complete'] == None
         assert work_item_state_type_counts['closed'] == 3
+        assert work_item_state_type_counts['unmapped'] == None
+
+    def it_returns_work_items_in_all_state_types_including_subtasks_only_in_non_closed_states(self, setup):
+        fixture = setup
+        client = Client(schema)
+        query = """
+                query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
+                    project(
+                        key: $project_key,
+                        interfaces: [WorkItemStateTypeAggregateMetrics], 
+                        specsOnly: false,
+                        closedWithinDays: 30
+                        allStatesAggregateMetricsArgs: {
+                          includeSubTasksInClosedState: false
+                          includeSubTasksInNonClosedState: true
+                        }
+                        ) 
+                        {
+                            workItemStateTypeCounts {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                            }
+                            totalEffortByStateType {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                        }
+                    }
+                }
+            """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_item_state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        total_effort_by_state = result['data']['project']['totalEffortByStateType']
+        assert work_item_state_type_counts['backlog'] == 3
+        assert work_item_state_type_counts['open'] == 3
+        assert work_item_state_type_counts['wip'] == 3
+        assert work_item_state_type_counts['complete'] == None
+        assert work_item_state_type_counts['closed'] == 2
+        assert work_item_state_type_counts['unmapped'] == None
+
+    def it_returns_work_items_in_all_state_types_including_subtasks_only_in_closed_states(self, setup):
+        fixture = setup
+        client = Client(schema)
+        query = """
+                query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
+                    project(
+                        key: $project_key,
+                        interfaces: [WorkItemStateTypeAggregateMetrics], 
+                        specsOnly: false,
+                        closedWithinDays: 30
+                        allStatesAggregateMetricsArgs: {
+                          includeSubTasksInClosedState: true
+                          includeSubTasksInNonClosedState: false
+                        }
+                        ) 
+                        {
+                            workItemStateTypeCounts {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                            }
+                            totalEffortByStateType {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                        }
+                    }
+                }
+            """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_item_state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        total_effort_by_state = result['data']['project']['totalEffortByStateType']
+        assert work_item_state_type_counts['backlog'] == 2
+        assert work_item_state_type_counts['open'] == 2
+        assert work_item_state_type_counts['wip'] == 2
+        assert work_item_state_type_counts['complete'] == None
+        assert work_item_state_type_counts['closed'] == 3
+        assert work_item_state_type_counts['unmapped'] == None
+
+    def it_returns_work_items_in_all_state_types_excluding_subtasks_for_both(self, setup):
+        fixture = setup
+        client = Client(schema)
+        query = """
+                query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
+                    project(
+                        key: $project_key,
+                        interfaces: [WorkItemStateTypeAggregateMetrics], 
+                        specsOnly: false,
+                        closedWithinDays: 30
+                        allStatesAggregateMetricsArgs: {
+                          includeSubTasksInClosedState: false
+                          includeSubTasksInNonClosedState: false
+                        }
+                        ) 
+                        {
+                            workItemStateTypeCounts {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                            }
+                            totalEffortByStateType {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                        }
+                    }
+                }
+            """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_item_state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        total_effort_by_state = result['data']['project']['totalEffortByStateType']
+        assert work_item_state_type_counts['backlog'] == 2
+        assert work_item_state_type_counts['open'] == 2
+        assert work_item_state_type_counts['wip'] == 2
+        assert work_item_state_type_counts['complete'] == None
+        assert work_item_state_type_counts['closed'] == 2
         assert work_item_state_type_counts['unmapped'] == None

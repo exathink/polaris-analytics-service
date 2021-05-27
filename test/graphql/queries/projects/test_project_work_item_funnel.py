@@ -1176,6 +1176,7 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 name='Issue 3',
                 display_id='1003',
                 state='doing',
+                effort=1,
                 created_at=get_date("2018-12-02"),
                 updated_at=get_date("2018-12-03"),
                 **dict_merge(
@@ -1188,6 +1189,7 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 name='Issue 4',
                 display_id='1004',
                 state='closed',
+                effort=2,
                 created_at=get_date("2018-12-02"),
                 updated_at=get_date("2018-12-03"),
                 **dict_merge(
@@ -1224,6 +1226,7 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 name='Bug 3',
                 display_id='1007',
                 state='doing',
+                effort=1,
                 created_at=get_date("2018-12-02"),
                 updated_at=get_date("2018-12-03"),
                 **dict_merge(
@@ -1236,6 +1239,7 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 name='Bug 4',
                 display_id='1008',
                 state='closed',
+                effort=2,
                 created_at=get_date("2018-12-02"),
                 updated_at=get_date("2018-12-03"),
                 **dict_merge(
@@ -1272,6 +1276,7 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 name='Subtask 3',
                 display_id='1011',
                 state='doing',
+                effort=1,
                 created_at=get_date("2018-12-02"),
                 updated_at=get_date("2018-12-03"),
                 **dict_merge(
@@ -1284,6 +1289,7 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 name='Suubtask 4',
                 display_id='1012',
                 state='closed',
+                effort=2,
                 created_at=get_date("2018-12-02"),
                 updated_at=get_date("2018-12-03"),
                 **dict_merge(
@@ -1298,9 +1304,12 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
             work_items
         )
 
-        api_helper.update_delivery_cycle(3, dict(end_date=datetime.utcnow()))
-        api_helper.update_delivery_cycle(7, dict(end_date=datetime.utcnow()))
-        api_helper.update_delivery_cycle(11, dict(end_date=datetime.utcnow()))
+        api_helper.update_delivery_cycle(3, dict(end_date=datetime.utcnow(), effort=2))
+        api_helper.update_delivery_cycle(7, dict(end_date=datetime.utcnow(), effort=2))
+        api_helper.update_delivery_cycle(11, dict(end_date=datetime.utcnow(), effort=2))
+        api_helper.update_delivery_cycle(2, dict(effort=1))
+        api_helper.update_delivery_cycle(6, dict(effort=1))
+        api_helper.update_delivery_cycle(10, dict(effort=1))
 
         yield Fixture(
             project=project,
@@ -1356,6 +1365,12 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
         assert work_item_state_type_counts['complete'] == None
         assert work_item_state_type_counts['closed'] == 3
         assert work_item_state_type_counts['unmapped'] == None
+        assert total_effort_by_state['backlog'] == 0
+        assert total_effort_by_state['open'] == 0
+        assert total_effort_by_state['wip'] == 3
+        assert total_effort_by_state['complete'] == None
+        assert total_effort_by_state['closed'] == 6
+        assert total_effort_by_state['unmapped'] == None
 
     def it_returns_work_items_in_all_state_types_including_subtasks_only_in_non_closed_states(self, setup):
         fixture = setup
@@ -1403,6 +1418,12 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
         assert work_item_state_type_counts['complete'] == None
         assert work_item_state_type_counts['closed'] == 2
         assert work_item_state_type_counts['unmapped'] == None
+        assert total_effort_by_state['backlog'] == 0
+        assert total_effort_by_state['open'] == 0
+        assert total_effort_by_state['wip'] == 3
+        assert total_effort_by_state['complete'] == None
+        assert total_effort_by_state['closed'] == 4
+        assert total_effort_by_state['unmapped'] == None
 
     def it_returns_work_items_in_all_state_types_including_subtasks_only_in_closed_states(self, setup):
         fixture = setup
@@ -1450,6 +1471,12 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
         assert work_item_state_type_counts['complete'] == None
         assert work_item_state_type_counts['closed'] == 3
         assert work_item_state_type_counts['unmapped'] == None
+        assert total_effort_by_state['backlog'] == 0
+        assert total_effort_by_state['open'] == 0
+        assert total_effort_by_state['wip'] == 2
+        assert total_effort_by_state['complete'] == None
+        assert total_effort_by_state['closed'] == 6
+        assert total_effort_by_state['unmapped'] == None
 
     def it_returns_work_items_in_all_state_types_excluding_subtasks_for_both(self, setup):
         fixture = setup
@@ -1497,3 +1524,9 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
         assert work_item_state_type_counts['complete'] == None
         assert work_item_state_type_counts['closed'] == 2
         assert work_item_state_type_counts['unmapped'] == None
+        assert total_effort_by_state['backlog'] == 0
+        assert total_effort_by_state['open'] == 0
+        assert total_effort_by_state['wip'] == 2
+        assert total_effort_by_state['complete'] == None
+        assert total_effort_by_state['closed'] == 4
+        assert total_effort_by_state['unmapped'] == None

@@ -85,9 +85,9 @@ def select_non_closed_work_items(project_nodes, select_columns, **kwargs):
         work_item_delivery_cycles.c.end_date == None
     )
     # Check for specific filters for non closed items
-    if kwargs.get('all_states_aggregate_metrics_args') is not None:
-        if kwargs.get('all_states_aggregate_metrics_args').get('include_sub_tasks_in_non_closed_state') is not None:
-            kwargs['include_sub_tasks'] = kwargs['all_states_aggregate_metrics_args']['include_sub_tasks_in_non_closed_state']
+    if kwargs.get('funnel_view_aggregate_metrics_args') is not None:
+        if kwargs.get('funnel_view_aggregate_metrics_args').get('include_sub_tasks_in_non_closed_state') is not None:
+            kwargs['include_sub_tasks'] = kwargs['funnel_view_aggregate_metrics_args']['include_sub_tasks_in_non_closed_state']
     # apply work item filters
     non_closed_work_items = work_items_connection_apply_filters(
         non_closed_work_items,
@@ -142,9 +142,9 @@ def select_closed_work_items(project_nodes, select_columns, **kwargs):
         work_item_delivery_cycles.c.end_date != None
     )
     # Check for specific filters for closed items
-    if kwargs.get('all_states_aggregate_metrics_args') is not None:
-        if kwargs.get('all_states_aggregate_metrics_args').get('include_sub_tasks_in_closed_state') is not None:
-            kwargs['include_sub_tasks'] = kwargs['all_states_aggregate_metrics_args']['include_sub_tasks_in_closed_state']
+    if kwargs.get('funnel_view_aggregate_metrics_args') is not None:
+        if kwargs.get('funnel_view_aggregate_metrics_args').get('include_sub_tasks_in_closed_state') is not None:
+            kwargs['include_sub_tasks'] = kwargs['funnel_view_aggregate_metrics_args']['include_sub_tasks_in_closed_state']
     # Apply the standard filters for work items and work items delivery cycles here.
     # For closed items we apply the delivery cycle filters so that we match
     # the values that are calculated for closed item flow metrics.

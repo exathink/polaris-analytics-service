@@ -38,7 +38,7 @@ from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
+    FunnelViewAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends, \
@@ -702,8 +702,8 @@ class ProjectPullRequestEventSpan(InterfaceResolver):
         ).group_by(project_nodes.c.id)
 
 
-class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
-    interface = WorkItemStateTypeAggregateMetrics
+class ProjectFunnelViewAggregateMetrics(InterfaceResolver):
+    interface = FunnelViewAggregateMetrics
 
     @classmethod
     def interface_selector(cls, project_nodes, **kwargs):

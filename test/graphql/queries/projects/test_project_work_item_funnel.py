@@ -16,7 +16,7 @@ from polaris.utils.collections import dict_merge
 
 
 # This tests the aggregate counts in the funnel view
-class TestProjectWorkItemStateTypeAggregateMetrics:
+class TestProjectFunnelViewAggregateMetrics:
 
     def it_returns_cumulative_counts_of_all_state_type_for_work_items_in_the_project(self,
                                                                                      api_work_items_import_fixture):
@@ -86,8 +86,8 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics]) {
+                    query getProjectFunnelViewAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [FunnelViewAggregateMetrics]) {
                             workItemStateTypeCounts {
                                 backlog
                                 open
@@ -139,8 +139,8 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
 
         client = Client(schema)
         query = """
-                            query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
-                                project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics]) {
+                            query getProjectFunnelViewAggregateMetrics($project_key:String!) {
+                                project(key: $project_key, interfaces: [FunnelViewAggregateMetrics]) {
                                     workItemStateTypeCounts {
                                         backlog
                                         unmapped
@@ -238,8 +238,8 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics], defectsOnly: true) {
+                    query getProjectFunnelViewAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [FunnelViewAggregateMetrics], defectsOnly: true) {
                             workItemStateTypeCounts {
                                 backlog
                                 open
@@ -353,8 +353,8 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics]) {
+                    query getProjectFunnelViewAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [FunnelViewAggregateMetrics]) {
                             workItemStateTypeCounts {
                                 backlog
                                 open
@@ -451,8 +451,8 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics], defectsOnly: true) {
+                    query getProjectFunnelViewAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [FunnelViewAggregateMetrics], defectsOnly: true) {
                             workItemStateTypeCounts {
                                 backlog
                                 open
@@ -554,8 +554,8 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 fixture = setup
 
                 query = """
-                        query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!, $closed_within_days: Int!) {
-                            project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics], closedWithinDays: $closed_within_days){
+                        query getProjectFunnelViewAggregateMetrics($project_key:String!, $closed_within_days: Int!) {
+                            project(key: $project_key, interfaces: [FunnelViewAggregateMetrics], closedWithinDays: $closed_within_days){
                                 workItemStateTypeCounts {
                                     backlog
                                     open
@@ -729,8 +729,8 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 fixture = setup
 
                 query = """
-                        query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
-                            project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics], specsOnly: true){
+                        query getProjectFunnelViewAggregateMetrics($project_key:String!) {
+                            project(key: $project_key, interfaces: [FunnelViewAggregateMetrics], specsOnly: true){
                                 workItemStateTypeCounts {
                                     backlog
                                     open
@@ -856,8 +856,8 @@ class TestProjectTotalEffortByStateType:
 
         client = Client(schema)
         query = """
-                    query getProjectWorkItemStateTypeAggregateMetrics($project_key:String!) {
-                        project(key: $project_key, interfaces: [WorkItemStateTypeAggregateMetrics]) {
+                    query getProjectFunnelViewAggregateMetrics($project_key:String!) {
+                        project(key: $project_key, interfaces: [FunnelViewAggregateMetrics]) {
                             totalEffortByStateType {
                                 backlog
                                 open
@@ -1139,7 +1139,7 @@ class TestProjectWorkItemsFunnelView:
         assert len([work_item for work_item in work_items if work_item['node']['name'] == 'Issue 5']) == 2
 
 
-class TestProjectWorkItemStateTypeAggregateMetrics:
+class TestProjectFunnelViewAggregateMetrics:
 
     @pytest.yield_fixture
     def setup(self, api_work_items_import_fixture):
@@ -1326,10 +1326,10 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
                     project(
                         key: $project_key,
-                        interfaces: [WorkItemStateTypeAggregateMetrics], 
+                        interfaces: [FunnelViewAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
-                        allStatesAggregateMetricsArgs: {
+                        funnelViewAggregateMetricsArgs: {
                             includeSubTasksInClosedState: true
                             includeSubTasksInNonClosedState: true
                         }
@@ -1379,10 +1379,10 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
                     project(
                         key: $project_key,
-                        interfaces: [WorkItemStateTypeAggregateMetrics], 
+                        interfaces: [FunnelViewAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
-                        allStatesAggregateMetricsArgs: {
+                        funnelViewAggregateMetricsArgs: {
                           includeSubTasksInClosedState: false
                           includeSubTasksInNonClosedState: true
                         }
@@ -1432,10 +1432,10 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
                     project(
                         key: $project_key,
-                        interfaces: [WorkItemStateTypeAggregateMetrics], 
+                        interfaces: [FunnelViewAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
-                        allStatesAggregateMetricsArgs: {
+                        funnelViewAggregateMetricsArgs: {
                           includeSubTasksInClosedState: true
                           includeSubTasksInNonClosedState: false
                         }
@@ -1485,10 +1485,10 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
                     project(
                         key: $project_key,
-                        interfaces: [WorkItemStateTypeAggregateMetrics], 
+                        interfaces: [FunnelViewAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
-                        allStatesAggregateMetricsArgs: {
+                        funnelViewAggregateMetricsArgs: {
                           includeSubTasksInClosedState: false
                           includeSubTasksInNonClosedState: false
                         }
@@ -1552,10 +1552,10 @@ class TestProjectWorkItemStateTypeAggregateMetrics:
                 query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
                     project(
                         key: $project_key,
-                        interfaces: [WorkItemStateTypeAggregateMetrics], 
+                        interfaces: [FunnelViewAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
-                        allStatesAggregateMetricsArgs: {
+                        funnelViewAggregateMetricsArgs: {
                           includeSubTasksInClosedState: true
                           includeSubTasksInNonClosedState: true
                         }

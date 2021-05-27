@@ -12,6 +12,7 @@ from graphene.test import Client
 
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
+from polaris.utils.collections import dict_merge
 
 # This tests the aggregate counts in the funnel view
 class TestProjectWorkItemStateTypeAggregateMetrics:
@@ -1138,3 +1139,219 @@ class TestProjectWorkItemsFunnelView:
         assert len(work_items) == 6
         # Issue 5 shows up twice since it was closed twice.
         assert len([work_item for work_item in work_items if work_item['node']['name'] == 'Issue 5']) == 2
+
+
+class TestProjectWorkItemStateTypeAggregateMetrics:
+
+    @pytest.yield_fixture
+    def setup(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 1',
+                display_id='1001',
+                state='backlog',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=False, work_item_type='issue')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 2',
+                display_id='1002',
+                state='upnext',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=False, work_item_type='issue')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 3',
+                display_id='1003',
+                state='doing',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=False, work_item_type='issue')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Issue 4',
+                display_id='1004',
+                state='closed',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=False, work_item_type='issue')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Bug 1',
+                display_id='1005',
+                state='backlog',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=True, work_item_type='bug')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Bug 2',
+                display_id='1006',
+                state='upnext',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=True, work_item_type='bug')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Bug 3',
+                display_id='1007',
+                state='doing',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=True, work_item_type='bug')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Bug 4',
+                display_id='1008',
+                state='closed',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=True, work_item_type='bug')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Subtask 1',
+                display_id='1009',
+                state='backlog',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=False, work_item_type='subtask')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Subtask 2',
+                display_id='1010',
+                state='upnext',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=False, work_item_type='subtask')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Subtask 3',
+                display_id='1011',
+                state='doing',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=False, work_item_type='subtask')
+                )
+            ),
+            dict(
+                key=uuid.uuid4().hex,
+                name='Suubtask 4',
+                display_id='1012',
+                state='closed',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                **dict_merge(
+                    work_items_common,
+                    dict(is_bug=False, work_item_type='subtask')
+                )
+            ),
+
+        ]
+
+        api_helper.import_work_items(
+            work_items
+        )
+
+        api_helper.update_delivery_cycle(3, dict(end_date=datetime.utcnow()))
+        api_helper.update_delivery_cycle(7, dict(end_date=datetime.utcnow()))
+        api_helper.update_delivery_cycle(11, dict(end_date=datetime.utcnow()))
+
+
+        yield Fixture(
+            project=project,
+            work_items=work_items,
+            api_helper=api_helper,
+            work_items_common=work_items_common
+
+        )
+
+    def it_returns_work_items_in_all_state_types(self, setup):
+        fixture = setup
+        client = Client(schema)
+        query = """
+                query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
+                    project(
+                        key: $project_key,
+                        interfaces: [WorkItemStateTypeAggregateMetrics], 
+                        specsOnly: false,
+                        closedWithinDays: 30
+                        ) 
+                        {
+                            workItemStateTypeCounts {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                            }
+                            totalEffortByStateType {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                        }
+                    }
+                }
+            """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_item_state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        total_effort_by_state = result['data']['project']['totalEffortByStateType']
+        assert work_item_state_type_counts['backlog'] == 3
+        assert work_item_state_type_counts['open'] == 3
+        assert work_item_state_type_counts['wip'] == 3
+        assert work_item_state_type_counts['complete'] == None
+        assert work_item_state_type_counts['closed'] == 3
+        assert work_item_state_type_counts['unmapped'] == None

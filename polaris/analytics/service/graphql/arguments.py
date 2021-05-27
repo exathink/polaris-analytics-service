@@ -239,7 +239,7 @@ class BacklogTrendsParameters(AggregateMetricsTrendsParameters, BacklogMeasureme
     pass
 
 
-class FunnelViewAggregateMetricsParameters(graphene.InputObjectType):
+class FunnelViewParameters(graphene.InputObjectType):
     include_sub_tasks_in_non_closed_state = graphene.Boolean(
         required=False,
         description='Include subtasks in metrics calculated over non closed items. Defaults to true',

@@ -1329,7 +1329,7 @@ class TestProjectFunnelViewAggregateMetrics:
                         interfaces: [FunnelViewAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
-                        funnelViewAggregateMetricsArgs: {
+                        funnelViewArgs: {
                             includeSubTasksInClosedState: true
                             includeSubTasksInNonClosedState: true
                         }
@@ -1382,7 +1382,7 @@ class TestProjectFunnelViewAggregateMetrics:
                         interfaces: [FunnelViewAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
-                        funnelViewAggregateMetricsArgs: {
+                        funnelViewArgs: {
                           includeSubTasksInClosedState: false
                           includeSubTasksInNonClosedState: true
                         }
@@ -1435,7 +1435,7 @@ class TestProjectFunnelViewAggregateMetrics:
                         interfaces: [FunnelViewAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
-                        funnelViewAggregateMetricsArgs: {
+                        funnelViewArgs: {
                           includeSubTasksInClosedState: true
                           includeSubTasksInNonClosedState: false
                         }
@@ -1488,7 +1488,7 @@ class TestProjectFunnelViewAggregateMetrics:
                         interfaces: [FunnelViewAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
-                        funnelViewAggregateMetricsArgs: {
+                        funnelViewArgs: {
                           includeSubTasksInClosedState: false
                           includeSubTasksInNonClosedState: false
                         }
@@ -1555,7 +1555,7 @@ class TestProjectFunnelViewAggregateMetrics:
                         interfaces: [FunnelViewAggregateMetrics], 
                         specsOnly: false,
                         closedWithinDays: 30
-                        funnelViewAggregateMetricsArgs: {
+                        funnelViewArgs: {
                           includeSubTasksInClosedState: true
                           includeSubTasksInNonClosedState: true
                         }

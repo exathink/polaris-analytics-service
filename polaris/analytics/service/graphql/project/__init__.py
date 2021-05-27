@@ -47,7 +47,7 @@ from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
     FlowMixTrendsParameters, CapacityTrendsParameters, PullRequestMetricsParameters, \
     PullRequestMetricsTrendsParameters, FlowRateTrendsParameters, BacklogTrendsParameters, \
-    FunnelViewAggregateMetricsParameters
+    FunnelViewParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -294,8 +294,8 @@ Implicit Interfaces: ArchivedStatus
                 description='Required when resolving BacklogTrends interface'
             ),
 
-            funnel_view_aggregate_metrics_args=graphene.Argument(
-                FunnelViewAggregateMetricsParameters,
+            funnel_view_args=graphene.Argument(
+                FunnelViewParameters,
                 required=False,
                 description="Required when calculating metrics over both closed and non closed items"
             ),

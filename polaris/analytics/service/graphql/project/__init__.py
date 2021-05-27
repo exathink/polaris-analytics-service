@@ -46,7 +46,8 @@ from ..pull_request import PullRequestsConnectionMixin
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
     FlowMixTrendsParameters, CapacityTrendsParameters, PullRequestMetricsParameters, \
-    PullRequestMetricsTrendsParameters, FlowRateTrendsParameters, BacklogTrendsParameters
+    PullRequestMetricsTrendsParameters, FlowRateTrendsParameters, BacklogTrendsParameters, \
+    AllStatesAggregateMetricsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -236,12 +237,7 @@ Implicit Interfaces: ArchivedStatus
                 description="When evaluating cycle metrics "
                             "include only specs"
             ),
-            include_sub_tasks=graphene.Argument(
-                graphene.Boolean,
-                required=False,
-                description="When evaluating cycle metrics include sub tasks",
-                default_value=True
-            ),
+
             cycle_metrics_trends_args=graphene.Argument(
                 CycleMetricsTrendsParameters,
                 required=False,
@@ -298,6 +294,12 @@ Implicit Interfaces: ArchivedStatus
                 description='Required when resolving BacklogTrends interface'
             ),
 
+            all_states_aggregate_metrics_args=graphene.Argument(
+                AllStatesAggregateMetricsParameters,
+                required=False,
+                description="Required when calculating metrics over both closed and non closed items"
+            ),
+
             **kwargs
         )
 
@@ -345,7 +347,7 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             CapacityTrendsParameters,
             required=False,
             description='Required when resolving CommitDaysTrends Interface'
-        ),
+        )
     )
 
     def resolve_projects(self, info, **kwargs):

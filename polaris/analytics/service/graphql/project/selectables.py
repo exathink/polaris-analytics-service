@@ -12,6 +12,7 @@ from polaris.common import db
 
 import abc
 from datetime import datetime, timedelta
+from polaris.common import db
 
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
     union_all, literal, Date, true, or_, desc
@@ -1252,7 +1253,7 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
                 # filter out the work items state durations that are in backlog state (could be multiple)
                 # This gives the data to calculate the time in backlog so that we can subtract this from
                 # lead time to get cycle time
-                work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
+                # work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
                 # add any other work item filters that the caller specifies.
                 *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args),
                 # add delivery cycle related filters that the caller specifies

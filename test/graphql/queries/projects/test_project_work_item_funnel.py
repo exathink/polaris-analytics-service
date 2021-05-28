@@ -1286,7 +1286,7 @@ class TestProjectFunnelViewAggregateMetrics:
             ),
             dict(
                 key=uuid.uuid4().hex,
-                name='Suubtask 4',
+                name='Subtask 4',
                 display_id='1012',
                 state='closed',
                 effort=2,
@@ -1597,3 +1597,60 @@ class TestProjectFunnelViewAggregateMetrics:
         assert total_effort_by_state['complete'] == None
         assert total_effort_by_state['closed'] == 6
         assert total_effort_by_state['unmapped'] == None
+
+    def it_returns_correct_counts_in_case_of_item_in_unmapped_state(self, setup):
+        fixture = setup
+        api_helper = fixture.api_helper
+        # Change an item from wip to an unmapped state
+        api_helper.update_work_item(2, dict(state='Ready For Prod', state_type=None))
+
+        client = Client(schema)
+        query = """
+                query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
+                    project(
+                        key: $project_key,
+                        interfaces: [FunnelViewAggregateMetrics], 
+                        specsOnly: false,
+                        closedWithinDays: 30
+                        funnelViewArgs: {
+                          includeSubTasksInClosedState: true
+                          includeSubTasksInNonClosedState: true
+                        }
+                        ) 
+                        {
+                            workItemStateTypeCounts {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                            }
+                            totalEffortByStateType {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                        }
+                    }
+                }
+            """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_item_state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        total_effort_by_state = result['data']['project']['totalEffortByStateType']
+        assert work_item_state_type_counts['backlog'] == 3
+        assert work_item_state_type_counts['open'] == 3
+        assert work_item_state_type_counts['wip'] == 2
+        assert work_item_state_type_counts['complete'] == None
+        assert work_item_state_type_counts['closed'] == 3
+        assert work_item_state_type_counts['unmapped'] == 1
+        assert total_effort_by_state['backlog'] == 0
+        assert total_effort_by_state['open'] == 0
+        assert total_effort_by_state['wip'] == 2
+        assert total_effort_by_state['complete'] == None
+        assert total_effort_by_state['closed'] == 6
+        assert total_effort_by_state['unmapped'] == 1

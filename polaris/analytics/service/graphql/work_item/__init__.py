@@ -32,6 +32,7 @@ from ..commit import CommitsConnectionMixin
 from ..pull_request import PullRequestsConnectionMixin, PullRequestNode
 from datetime import datetime
 
+from ..arguments import FunnelViewParameters
 
 class WorkItemEvent(
     # interface mixins
@@ -312,6 +313,12 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
                         "A work item may show up once in the top of the funnel and multiple times"
                         "in the bottom of the funnel if it has many delivery cycles. Funnel view can be combined"
                         "with specs_only, defects_only and closed_within_days params to limit the selection further."
+        ),
+        funnel_view_args=graphene.Argument(
+            FunnelViewParameters,
+            required=False,
+            description="If funnel view is true specify arguments for how the funnel view should handled"
+                        "closed and non-closed states"
         ),
         specs_only=graphene.Argument(
             graphene.Boolean,

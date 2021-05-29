@@ -12,6 +12,7 @@ from polaris.common import db
 
 import abc
 from datetime import datetime, timedelta
+from polaris.common import db
 
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
     union_all, literal, Date, true, or_, desc
@@ -38,7 +39,7 @@ from ..interfaces import \
     CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
-    WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
+    FunnelViewAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends, \
@@ -702,8 +703,8 @@ class ProjectPullRequestEventSpan(InterfaceResolver):
         ).group_by(project_nodes.c.id)
 
 
-class ProjectWorkItemStateTypeAggregateMetrics(InterfaceResolver):
-    interface = WorkItemStateTypeAggregateMetrics
+class ProjectFunnelViewAggregateMetrics(InterfaceResolver):
+    interface = FunnelViewAggregateMetrics
 
     @classmethod
     def interface_selector(cls, project_nodes, **kwargs):
@@ -1194,16 +1195,22 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             # work item
             func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)).label(
                 'lead_time'),
-            func.max(work_item_delivery_cycle_durations.c.cumulative_time_in_state).label('backlog_time'),
+
             # cycle time = lead_time - backlog time.
             (
                     func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)) -
-                    # we are filtering out backlog work items items
-                    # so the only items we can see here will have non null backlog time.
-                    # also the only durations we are looking are the backlog durations, there
-                    # can be multiple backlog states, so we could have a duration in each one,
+                    # This is calculated backlog time
+                    # there can be multiple backlog states, so we could have a duration in each one,
                     # so taking the sum correctly gets you the current backlog duration.
-                    func.sum(work_item_delivery_cycle_durations.c.cumulative_time_in_state)
+                    func.sum(
+                        case(
+                            [
+                                (work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
+                                 work_item_delivery_cycle_durations.c.cumulative_time_in_state)
+                            ],
+                            else_=0
+                        )
+                    )
             ).label(
                 # using spec_cycle_time here purely to coerce the column name so that
                 # we can use the same logic from the base class. The coupling between
@@ -1252,7 +1259,7 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
                 # filter out the work items state durations that are in backlog state (could be multiple)
                 # This gives the data to calculate the time in backlog so that we can subtract this from
                 # lead time to get cycle time
-                work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
+                # work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
                 # add any other work item filters that the caller specifies.
                 *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args),
                 # add delivery cycle related filters that the caller specifies

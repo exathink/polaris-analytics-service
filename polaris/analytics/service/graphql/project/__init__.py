@@ -14,7 +14,7 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
 from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
-    OrganizationRef, ArchivedStatus, WorkItemEventSpan, WorkItemStateTypeAggregateMetrics, AggregateCycleMetrics, \
+    OrganizationRef, ArchivedStatus, WorkItemEventSpan, FunnelViewAggregateMetrics, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
     PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, BacklogTrends
@@ -46,7 +46,8 @@ from ..pull_request import PullRequestsConnectionMixin
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
     FlowMixTrendsParameters, CapacityTrendsParameters, PullRequestMetricsParameters, \
-    PullRequestMetricsTrendsParameters, FlowRateTrendsParameters, BacklogTrendsParameters
+    PullRequestMetricsTrendsParameters, FlowRateTrendsParameters, BacklogTrendsParameters, \
+    FunnelViewParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -71,7 +72,7 @@ from .selectables import ProjectNode, \
     ProjectWorkItemNodes, \
     ProjectWorkItemEventNodes, \
     ProjectWorkItemCommitNodes, \
-    ProjectWorkItemStateTypeAggregateMetrics, \
+    ProjectFunnelViewAggregateMetrics, \
     ProjectCycleMetrics, \
     ProjectWorkItemDeliveryCycleNodes, \
     ProjectTraceabilityTrends, \
@@ -144,7 +145,7 @@ Implicit Interfaces: ArchivedStatus
             OrganizationRef,
             WorkItemEventSpan,
             PullRequestEventSpan,
-            WorkItemStateTypeAggregateMetrics,
+            FunnelViewAggregateMetrics,
             AggregateCycleMetrics,
             CycleMetricsTrends,
             PipelineCycleMetrics,
@@ -166,7 +167,7 @@ Implicit Interfaces: ArchivedStatus
             'OrganizationRef': ProjectsOrganizationRef,
             'WorkItemEventSpan': ProjectWorkItemEventSpan,
             'PullRequestEventSpan': ProjectPullRequestEventSpan,
-            'WorkItemStateTypeAggregateMetrics': ProjectWorkItemStateTypeAggregateMetrics,
+            'FunnelViewAggregateMetrics': ProjectFunnelViewAggregateMetrics,
             'AggregateCycleMetrics': ProjectCycleMetrics,
             'CycleMetricsTrends': ProjectCycleMetricsTrends,
             'PipelineCycleMetrics': ProjectPipelineCycleMetrics,
@@ -236,12 +237,7 @@ Implicit Interfaces: ArchivedStatus
                 description="When evaluating cycle metrics "
                             "include only specs"
             ),
-            include_sub_tasks=graphene.Argument(
-                graphene.Boolean,
-                required=False,
-                description="When evaluating cycle metrics include sub tasks",
-                default_value=True
-            ),
+
             cycle_metrics_trends_args=graphene.Argument(
                 CycleMetricsTrendsParameters,
                 required=False,
@@ -298,6 +294,12 @@ Implicit Interfaces: ArchivedStatus
                 description='Required when resolving BacklogTrends interface'
             ),
 
+            funnel_view_args=graphene.Argument(
+                FunnelViewParameters,
+                required=False,
+                description="Required when calculating metrics over both closed and non closed items"
+            ),
+
             **kwargs
         )
 
@@ -345,7 +347,7 @@ class ProjectsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             CapacityTrendsParameters,
             required=False,
             description='Required when resolving CommitDaysTrends Interface'
-        ),
+        )
     )
 
     def resolve_projects(self, info, **kwargs):

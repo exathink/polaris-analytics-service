@@ -1195,16 +1195,22 @@ class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
             # work item
             func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)).label(
                 'lead_time'),
-            func.max(work_item_delivery_cycle_durations.c.cumulative_time_in_state).label('backlog_time'),
+
             # cycle time = lead_time - backlog time.
             (
                     func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)) -
-                    # we are filtering out backlog work items items
-                    # so the only items we can see here will have non null backlog time.
-                    # also the only durations we are looking are the backlog durations, there
-                    # can be multiple backlog states, so we could have a duration in each one,
+                    # This is calculated backlog time
+                    # there can be multiple backlog states, so we could have a duration in each one,
                     # so taking the sum correctly gets you the current backlog duration.
-                    func.sum(work_item_delivery_cycle_durations.c.cumulative_time_in_state)
+                    func.sum(
+                        case(
+                            [
+                                (work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
+                                 work_item_delivery_cycle_durations.c.cumulative_time_in_state)
+                            ],
+                            else_=0
+                        )
+                    )
             ).label(
                 # using spec_cycle_time here purely to coerce the column name so that
                 # we can use the same logic from the base class. The coupling between

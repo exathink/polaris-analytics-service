@@ -504,7 +504,7 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                 'delivery_cycle_info',
                 func.json_build_object(
                     'closed',
-                    func.min(work_item_delivery_cycles.c.end_date),
+                    func.bool_and(work_item_delivery_cycles.c.end_date != None),
                     'start_date',
                     func.min(work_item_delivery_cycles.c.start_date),
                     'end_date',

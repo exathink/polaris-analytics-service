@@ -108,6 +108,13 @@ class ContributorCount(graphene.Interface):
     contributor_count = graphene.Int(required=False, default_value=0)
 
 
+class CycleMetrics(graphene.Interface):
+    lead_time = graphene.Float(required=False)
+    cycle_time = graphene.Float(required=False)
+    duration = graphene.Float(required=False)
+    latency = graphene.Float(required=False)
+
+
 class ContributorAliasInfo(graphene.Interface):
     key = graphene.String(required=True)
     name = graphene.String(required=True)
@@ -307,6 +314,12 @@ class ImplementationCost(graphene.Interface):
                                 description="The number of distinct authors who committed to the work item")
 
 
+class DeliveryCycleInfo(graphene.Interface):
+    closed = graphene.Boolean(required=False)
+    start_date = graphene.DateTime(required=False)
+    end_date = graphene.DateTime(required=False)
+
+
 class WorkItemStateTransitionImpl(graphene.ObjectType):
     class Meta:
         interfaces = (WorkItemStateTransition,)
@@ -336,12 +349,14 @@ class WorkItemDaysInState(graphene.ObjectType):
 
 class WorkItemStateDetail(graphene.ObjectType):
     class Meta:
-        interfaces = (CommitSummary, ImplementationCost)
+        interfaces = (CommitSummary, ImplementationCost, DeliveryCycleInfo, CycleMetrics)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.latest_commit = parse_json_timestamp(self.latest_commit)
         self.earliest_commit = parse_json_timestamp(self.earliest_commit)
+        self.start_date = parse_json_timestamp(self.start_date)
+        self.end_date = parse_json_timestamp(self.end_date)
 
     current_state_transition = graphene.Field(WorkItemStateTransitionImpl, required=False)
     current_delivery_cycle_durations = graphene.List(WorkItemDaysInState, required=False)
@@ -432,22 +447,12 @@ class WorkItemStateMappings(graphene.Interface):
     work_item_state_mappings = graphene.Field(graphene.List(StateMapping))
 
 
-class DeliveryCycleInfo(graphene.Interface):
-    closed = graphene.Boolean(required=False)
-    start_date = graphene.DateTime(required=False)
-    end_date = graphene.DateTime(required=False)
-
-
 class DevelopmentProgress(DeliveryCycleInfo):
     last_update = graphene.DateTime(required=False)
     elapsed = graphene.Float(required=False)
 
 
-class CycleMetrics(graphene.Interface):
-    lead_time = graphene.Float(required=False)
-    cycle_time = graphene.Float(required=False)
-    duration = graphene.Float(required=False)
-    latency = graphene.Float(required=False)
+
 
 
 class DeliveryCycleSpan(graphene.Interface):

@@ -411,3 +411,58 @@ class TestProjectWorkItemDeliveryCycles:
         assert 'data' in result
         delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
         assert len(delivery_cycles) == 2
+
+    def it_returns_cycle_metrics_for_all_delivery_cycles_closed_before_passed_date_and_updated_after(self, setup):
+        fixture = setup
+
+        fixture.api_helper.update_work_items(
+            [
+                # close # 3
+                (3, 'closed', datetime.utcnow() - timedelta(days=3))
+            ]
+        )
+        fixture.api_helper.update_work_item_attributes(
+            3, dict(updated_at=datetime.utcnow())
+        )
+        before_date = datetime.utcnow() - timedelta(days=3)
+        before = before_date.strftime("%Y-%m-%d")
+
+        client = Client(schema)
+        query = """
+                query getProjectWorkItemDeliveryCycles($project_key:String!, $before:Date) {
+                    project(key: $project_key) {
+                        workItemDeliveryCycles(
+                            closedWithinDays: 10, 
+                            defectsOnly: false, 
+                            specsOnly: false, 
+                            before: $before,
+                            interfaces: [WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost]) 
+                            {
+                            edges { 
+                                node {
+                                  name
+                                  key
+                                  displayId
+                                  workItemKey
+                                  workItemType
+                                  isBug
+                                  state
+                                  startDate
+                                  endDate
+                                  leadTime
+                                  cycleTime
+                                  latency
+                                  effort
+                                  duration
+                                  authorCount
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key, before=before))
+        assert 'data' in result
+        delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
+        assert len(delivery_cycles) == 1

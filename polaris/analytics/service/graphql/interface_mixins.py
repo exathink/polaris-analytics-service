@@ -96,7 +96,9 @@ class WorkItemStateDetailsResolverMixin(KeyIdResolverMixin):
                     if 'state' in record
                 ],
                 **self.work_item_state_details['commit_summary'],
-                **self.work_item_state_details['implementation_cost']
+                **self.work_item_state_details['implementation_cost'],
+                **self.work_item_state_details['delivery_cycle_info'],
+                **self.work_item_state_details['cycle_metrics']
             )
 
 

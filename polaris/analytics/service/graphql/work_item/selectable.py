@@ -500,8 +500,23 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                                 func.min(work_item_delivery_cycles.c.earliest_commit)
                             ) / (24 * 3600 * 1.0)
                     ).label('duration')
-
-                )
+                ),
+                'delivery_cycle_info',
+                func.json_build_object(
+                    'closed',
+                    func.bool_and(work_item_delivery_cycles.c.end_date != None),
+                    'start_date',
+                    func.min(work_item_delivery_cycles.c.start_date),
+                    'end_date',
+                    func.min(work_item_delivery_cycles.c.end_date)
+                ),
+                'cycle_metrics',
+                func.json_build_object(
+                    'lead_time',
+                    func.min(work_item_delivery_cycles.c.lead_time)/(24 * 3600 * 1.0),
+                    'cycle_time',
+                    func.min(work_item_delivery_cycles.c.spec_cycle_time)/(24 * 3600 * 1.0)
+                ),
             ).label('work_item_state_details')
 
         ]).select_from(

@@ -374,6 +374,181 @@ class TestWorkItemInstance:
                        ('unmapped_state', None, None)
                    }
 
+        def it_returns_current_delivery_cycle_delivery_info_for_open_delivery_cycles(self, api_work_items_import_fixture):
+            organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+            api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+            work_item_key = uuid.uuid4().hex
+            start_date = datetime.utcnow() - timedelta(days=10)
+            api_helper.import_work_items([
+                dict(
+                    key=work_item_key,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **work_items_common
+                )
+            ]
+            )
+
+            api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+            api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+            api_helper.update_work_items([(0, 'done', start_date + timedelta(days=4))])
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces:[WorkItemStateDetails]){
+                            ... on WorkItemStateDetails {
+                                workItemStateDetails {
+                                    startDate
+                                    endDate
+                                    closed
+                                }
+                            }
+                        }
+                    } 
+                """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            work_item_state_details = result['data']['workItem']['workItemStateDetails']
+            assert graphql_date(work_item_state_details['startDate']) == start_date
+            assert work_item_state_details['endDate'] is None
+            assert work_item_state_details['closed'] == False
+
+
+        def it_returns_current_delivery_cycle_delivery_info_for_closed_delivery_cycles(self, api_work_items_import_fixture):
+            organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+            api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+            work_item_key = uuid.uuid4().hex
+            start_date = datetime.utcnow() - timedelta(days=10)
+            api_helper.import_work_items([
+                dict(
+                    key=work_item_key,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **work_items_common
+                )
+            ]
+            )
+
+            api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+            api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+            api_helper.update_work_items([(0, 'done', start_date + timedelta(days=4))])
+            api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=5))])
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces:[WorkItemStateDetails]){
+                            ... on WorkItemStateDetails {
+                                workItemStateDetails {
+                                    startDate
+                                    endDate
+                                    closed
+                                }
+                            }
+                        }
+                    } 
+                """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            work_item_state_details = result['data']['workItem']['workItemStateDetails']
+            assert graphql_date(work_item_state_details['startDate']) == start_date
+            assert graphql_date(work_item_state_details['endDate']) == start_date + timedelta(days=5)
+            assert work_item_state_details['closed'] == True
+
+        def it_returns_current_delivery_cycle_cycle_metrics_for_open_delivery_cycles(self, api_work_items_import_fixture):
+            organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+            api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+            work_item_key = uuid.uuid4().hex
+            start_date = datetime.utcnow() - timedelta(days=10)
+            api_helper.import_work_items([
+                dict(
+                    key=work_item_key,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **work_items_common
+                )
+            ]
+            )
+
+            api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+            api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+            api_helper.update_work_items([(0, 'done', start_date + timedelta(days=4))])
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces:[WorkItemStateDetails]){
+                            ... on WorkItemStateDetails {
+                                workItemStateDetails {
+                                    leadTime
+                                    cycleTime
+                                }
+                            }
+                        }
+                    } 
+                """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            work_item_state_details = result['data']['workItem']['workItemStateDetails']
+            assert work_item_state_details['leadTime'] is None
+            assert work_item_state_details['cycleTime'] is None
+
+        def it_returns_current_delivery_cycle_cycle_metrics_for_closed_delivery_cycles(self, api_work_items_import_fixture):
+            organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+            api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+            work_item_key = uuid.uuid4().hex
+            start_date = datetime.utcnow() - timedelta(days=10)
+            api_helper.import_work_items([
+                dict(
+                    key=work_item_key,
+                    name='Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **work_items_common
+                )
+            ]
+            )
+
+            api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+            api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+            api_helper.update_work_items([(0, 'done', start_date + timedelta(days=4))])
+            api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=5))])
+
+            client = Client(schema)
+            query = """
+                    query getWorkItem($key:String!) {
+                        workItem(key: $key, interfaces:[WorkItemStateDetails]){
+                            ... on WorkItemStateDetails {
+                                workItemStateDetails {
+                                    leadTime
+                                    cycleTime
+                                }
+                            }
+                        }
+                    } 
+                """
+            result = client.execute(query, variable_values=dict(key=work_item_key))
+            assert 'data' in result
+            work_item_state_details = result['data']['workItem']['workItemStateDetails']
+            assert 0 <= work_item_state_details['leadTime'] - 5 <= 1
+            assert 0 <= work_item_state_details['cycleTime'] - 4 <= 1
+
         def it_returns_current_delivery_cycle_commit_summary(self, api_work_items_import_fixture):
             organization, project, work_items_source, work_items_common = api_work_items_import_fixture
             api_helper = WorkItemImportApiHelper(organization, work_items_source)

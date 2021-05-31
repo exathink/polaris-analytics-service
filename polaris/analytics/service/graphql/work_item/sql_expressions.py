@@ -203,7 +203,6 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
 
 
 def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs):
-    before = get_before_date(**kwargs)
     if 'closed_within_days' in kwargs:
         select_stmt = select_stmt.where(
             date_column_is_in_measurement_window(
@@ -216,7 +215,6 @@ def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kw
 
 
 def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
-    before = get_before_date(**kwargs)
     if 'active_within_days' in kwargs:
         child_work_items = work_items.alias()
         epics = select([

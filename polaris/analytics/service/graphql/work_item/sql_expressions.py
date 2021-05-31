@@ -208,7 +208,7 @@ def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kw
         select_stmt = select_stmt.where(
             date_column_is_in_measurement_window(
                 work_item_delivery_cycles.c.end_date,
-                measurement_date=kwargs.get('before') or datetime.utcnow(),
+                measurement_date=kwargs.get('closed_before') or datetime.utcnow(),
                 measurement_window=kwargs['closed_within_days']
             )
         )

@@ -286,7 +286,7 @@ class TestProjectWorkItemDeliveryCycles:
                             closedWithinDays: 10, 
                             defectsOnly: false, 
                             specsOnly: false, 
-                            before: $before,
+                            closedBefore: $before,
                             interfaces: [WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost]) 
                             {
                             edges { 
@@ -435,7 +435,7 @@ class TestProjectWorkItemDeliveryCycles:
                             closedWithinDays: 10, 
                             defectsOnly: false, 
                             specsOnly: false, 
-                            before: $before,
+                            closedBefore: $before,
                             interfaces: [WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost]) 
                             {
                             edges { 

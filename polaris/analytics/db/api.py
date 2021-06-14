@@ -144,6 +144,18 @@ def update_work_items(organization_key, work_item_source_key, work_item_summarie
         return db.failure_message('Update new_work_items failed', e)
 
 
+def move_work_item(organization_key, source_work_item_source_key, target_work_item_source_key, moved_work_item):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.move_work_item(session, source_work_item_source_key, target_work_item_source_key, moved_work_item)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("move_work_item failed", exc)
+    except Exception as e:
+        return db.failure_message('move_work_item failed', e)
+
+
 def update_contributor(contributor_key, updated_info):
     try:
         with db.orm_session() as session:

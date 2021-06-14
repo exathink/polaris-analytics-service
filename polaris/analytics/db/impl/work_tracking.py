@@ -1139,3 +1139,19 @@ def infer_projects_repositories_relationships(session, organization_key, work_it
             for relationship in new_relationships
         ]
     )
+
+
+def move_work_item(session, source_work_items_source_key, target_work_items_source_key, work_item_data):
+    source_work_items_source = WorkItemsSource.find_by_work_items_source_key(session, source_work_items_source_key)
+    target_work_items_source = WorkItemsSource.find_by_work_items_source_key(session, target_work_items_source_key)
+    work_item = WorkItem.find_by_work_item_key(
+        session,
+        work_item_key=work_item_data.get('key')
+    )
+    move_result = dict()
+    if work_item:
+        # TODO: Check for state change to also update state_type
+        work_item_data['work_items_source_id'] = target_work_items_source.id
+        move_result['is_moved'] = work_item.update(work_item_data)
+
+    return move_result

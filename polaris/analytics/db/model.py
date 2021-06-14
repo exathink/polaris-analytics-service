@@ -810,6 +810,14 @@ class WorkItem(Base):
             url=self.url
         )
 
+    def update(self, work_item_data):
+        updated = False
+        for attribute in ['name', 'description', 'is_bug', 'work_item_type', 'is_epic', 'tags', 'url', 'state',
+                          'display_id', 'parent_id', 'work_items_source_id', 'commit_identifiers', 'updated_at']:
+            if getattr(self, attribute) != work_item_data.get(attribute):
+                setattr(self, attribute, work_item_data.get(attribute))
+                updated = True
+        return updated
 
 work_items = WorkItem.__table__
 Index('ix_analytics_work_items_work_items_source_id_display_id',

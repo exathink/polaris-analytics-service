@@ -10,7 +10,7 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, cast, Text, func, case, select, or_
+from sqlalchemy import and_, cast, Text, func, case, select, or_, literal
 
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import work_items, work_item_delivery_cycles
@@ -148,6 +148,68 @@ def work_items_connection_apply_time_window_filters(select_stmt, work_items, **k
         return select_stmt
 
 
+def apply_active_only_filter(select_stmt, work_items, **kwargs):
+    if 'active_only' in kwargs:
+        if 'include_epics' in kwargs:
+            child_work_items = work_items.alias()
+            epics = select([
+                work_items.c.id,
+                child_work_items.c.id.label('child_id')
+            ]).select_from(
+                work_items.join(
+                    child_work_items, child_work_items.c.parent_id == work_items.c.id
+                )
+            ).alias()
+
+            epic_states = select([
+                epics.c.id,
+                (case([
+                    (func.sum(case([
+                        (or_(
+                            work_items.c.state_type == WorkItemsStateType.open.value,
+                            work_items.c.state_type == WorkItemsStateType.wip.value,
+                            work_items.c.state_type == WorkItemsStateType.complete.value
+                        ), 1)
+                    ], else_=0)) > 0, literal('active'))
+                ], else_=literal('inactive'))).label('epic_state')
+            ]).select_from(
+                epics.join(
+                    work_items, work_items.c.id == epics.c.child_id
+                )
+            ).group_by(
+                epics.c.id
+            ).cte()
+
+            select_stmt = select_stmt.where(
+                or_(
+                    and_(
+                        work_items.c.is_epic == False,
+                        work_items.c.state_type.in_([
+                            WorkItemsStateType.open.value,
+                            WorkItemsStateType.wip.value,
+                            WorkItemsStateType.complete.value
+                        ])
+                    ),
+                    and_(
+                        work_items.c.is_epic == True,
+                        and_(
+                            epic_states.c.id == work_items.c.id,
+                            epic_states.c.epic_state == 'active'
+                        )
+                    )
+                )
+            ).distinct()
+        else:
+            select_stmt = select_stmt.where(
+                work_items.c.state_type.in_([
+                    WorkItemsStateType.open.value,
+                    WorkItemsStateType.wip.value,
+                    WorkItemsStateType.complete.value
+                ])
+            )
+        return select_stmt
+
+
 def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
     select_stmt = work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
 
@@ -161,13 +223,7 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
         select_stmt = select_stmt.where(work_items.c.work_item_type.in_(kwargs.get('work_item_types')))
 
     if 'active_only' in kwargs:
-        select_stmt = select_stmt.where(
-            work_items.c.state_type.in_([
-                WorkItemsStateType.open.value,
-                WorkItemsStateType.wip.value,
-                WorkItemsStateType.complete.value
-            ])
-        )
+        select_stmt = apply_active_only_filter(select_stmt, work_items, **kwargs)
 
     # This is true by default, so we include subtasks unless it is explicitly excluded.
     if kwargs.get('include_sub_tasks') == False:

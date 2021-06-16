@@ -100,6 +100,7 @@ def select_non_closed_work_items(project_nodes, select_columns, **kwargs):
     # that's why we are explicitly only including the specs_only _filter.
     non_closed_work_items = apply_specs_only_filter(
         non_closed_work_items,
+        work_items,
         work_item_delivery_cycles,
         **kwargs
     )

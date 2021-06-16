@@ -150,7 +150,7 @@ def work_items_connection_apply_time_window_filters(select_stmt, work_items, **k
 
 def apply_active_only_filter(select_stmt, work_items, **kwargs):
     if 'active_only' in kwargs:
-        if 'include_epics' in kwargs:
+        if kwargs.get('include_epics'):
             child_work_items = work_items.alias()
             epics = select([
                 work_items.c.id,
@@ -260,7 +260,7 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
 
 def apply_closed_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
     if 'closed_within_days' in kwargs:
-        if 'include_epics' in kwargs:
+        if kwargs.get('include_epics'):
             child_work_items = work_items.alias()
             epics = select([
                 work_items.c.id,
@@ -390,11 +390,51 @@ def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_
     return select_stmt
 
 
-def apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs):
+def apply_specs_only_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
     if kwargs.get('specs_only'):
-        select_stmt = select_stmt.where(
-            work_item_delivery_cycles.c.commit_count > 0
-        )
+        if kwargs.get('include_epics'):
+            child_work_items = work_items.alias()
+            epics = select([
+                work_items.c.id,
+                child_work_items.c.id.label('child_id')
+            ]).select_from(
+                work_items.join(
+                    child_work_items, child_work_items.c.parent_id == work_items.c.id
+                )
+            ).alias()
+
+            epic_specs = select([
+                epics.c.id,
+                (case([
+                    (func.sum(case([
+                        (work_item_delivery_cycles.c.commit_count > 0, 1)
+                    ], else_=0)) > 0, True)
+                ], else_=False)).label('is_spec')
+            ]).select_from(
+                epics.join(
+                    work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == epics.c.child_id
+                )
+            ).group_by(
+                epics.c.id
+            ).cte()
+
+            select_stmt = select_stmt.where(
+                or_(
+                    and_(
+                        work_items.c.is_epic == False,
+                        work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                        work_item_delivery_cycles.c.commit_count > 0
+                    ),
+                    and_(
+                        work_items.c.is_epic == True,
+                        epic_specs.c.is_spec == True
+                    )
+                )
+            ).distinct()
+        else:
+            select_stmt = select_stmt.where(
+                work_item_delivery_cycles.c.commit_count > 0
+            )
     return select_stmt
 
 
@@ -409,7 +449,7 @@ def apply_defects_only_filter(select_stmt, work_items, **kwargs):
 def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
     select_stmt = apply_closed_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs)
     select_stmt = apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs)
-    select_stmt = apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs)
+    select_stmt = apply_specs_only_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs)
 
     return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
 

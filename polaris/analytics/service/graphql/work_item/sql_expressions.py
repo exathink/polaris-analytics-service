@@ -165,11 +165,11 @@ def apply_active_only_filter(select_stmt, work_items, **kwargs):
                 epics.c.id,
                 (case([
                     (func.sum(case([
-                        (or_(
-                            work_items.c.state_type == WorkItemsStateType.open.value,
-                            work_items.c.state_type == WorkItemsStateType.wip.value,
-                            work_items.c.state_type == WorkItemsStateType.complete.value
-                        ), 1)
+                        (work_items.c.state_type.in_([
+                            WorkItemsStateType.open.value,
+                            WorkItemsStateType.wip.value,
+                            WorkItemsStateType.complete.value
+                        ]), 1)
                     ], else_=0)) > 0, literal('active'))
                 ], else_=literal('inactive'))).label('epic_state')
             ]).select_from(

@@ -49,7 +49,9 @@ def commit_info_columns(repositories, commits, apply_distinct=False):
 
 
 def apply_time_window_filters(select_stmt, commits_relation, **kwargs):
-    before = get_before_date(**kwargs)
+    before = datetime.utcnow()
+    if 'before' in kwargs:
+        before = kwargs.get('before')
 
     if 'days' in kwargs and kwargs['days'] > 0:
         commit_window_start = before - timedelta(days=kwargs['days'])

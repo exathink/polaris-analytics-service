@@ -136,6 +136,7 @@ class TestProjectCommitsConnection:
 
             assert len(project_commits) == 1
 
+
         def it_respects_the_before_parameter(self, setup):
             fixture = setup
 
@@ -160,6 +161,77 @@ class TestProjectCommitsConnection:
                 # use days 1 less than the window from the fixture
                 # so we can include the earliest commit in the window
                 before=graphql_date_string(fixture.latest_commit - timedelta(days=fixture.days - 1))
+            ))
+
+            assert result['data']
+            project_commits = [
+                edge['node']
+                for edge in result['data']['project']['commits']['edges']
+            ]
+
+            assert len(project_commits) == 1
+
+        def _it_respects_the_before_parameter_when_the_before_parameter_is_the_latest_commit(self, setup):
+            # This test is needed to ensure the most common use case: we pass the before date == latest_commit in
+            # most cases.
+
+            fixture = setup
+
+            client = Client(schema)
+            query = """
+                query getProjectCommits($key: String!, $before: DateTime!) {
+                    project(key: $key){
+                        commits (before: $before) {
+                            edges {
+                                node {
+                                    key
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+            result = client.execute(query, variable_values=dict(
+                key=fixture.project.key,
+                # use a before date earlier than the latest commmit to eliminate the
+                # the latest commit.
+                # use days 1 less than the window from the fixture
+                # so we can include the earliest commit in the window
+                before=graphql_date_string(fixture.latest_commit)
+            ))
+
+            assert result['data']
+            project_commits = [
+                edge['node']
+                for edge in result['data']['project']['commits']['edges']
+            ]
+
+            assert len(project_commits) == 2
+
+        def _it_respects_the_before__and_days_parameter_when_the_before_parameter_is_the_latest_commit(self, setup):
+            # This test is needed to ensure the most common use case: we pass the before date == latest_commit in
+            # most cases and days=1 in the default view of the commit navigator
+
+            fixture = setup
+
+            client = Client(schema)
+            query = """
+                query getProjectCommits($key: String!, $before: DateTime!, $days: Int!) {
+                    project(key: $key){
+                        commits (before: $before, days: $days) {
+                            edges {
+                                node {
+                                    key
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+            result = client.execute(query, variable_values=dict(
+                key=fixture.project.key,
+                before=graphql_date_string(fixture.latest_commit),
+                days=1
             ))
 
             assert result['data']

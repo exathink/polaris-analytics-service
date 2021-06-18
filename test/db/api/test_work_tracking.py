@@ -1729,6 +1729,7 @@ class TestMoveWorkItem:
                 target_work_items_source
             )
         yield Fixture(
+            organization_key=organization_key,
             source_work_items_source=source_work_items_source,
             target_work_items_source=target_work_items_source,
             work_items=work_items
@@ -1736,3 +1737,31 @@ class TestMoveWorkItem:
 
     def it_updates_work_items_source_id_and_display_id(self, setup):
         fixture = setup
+        work_item = fixture.work_items[0]
+        work_item['display_id'] = 'MOVED-1'
+        result = api.move_work_item(fixture.organization_key, fixture.source_work_items_source.key, fixture.target_work_items_source.key, work_item)
+        assert result
+        assert db.connection().execute(
+            f"select count(id) from analytics.work_items where key='{work_item['key']}' and "
+            f"work_items_source_id={fixture.source_work_items_source.id}").scalar() == 0
+
+        assert db.connection().execute(f"select count(id) from analytics.work_items "
+                                       f"where key='{work_item['key']}' and display_id='MOVED-1' "
+                                       f"and work_items_source_id={fixture.target_work_items_source.id}").scalar() == 1
+
+    def it_updates_work_items_source_id_display_id_and_state(self, setup):
+        fixture = setup
+        work_item = fixture.work_items[0]
+        work_item['display_id'] = 'MOVED-1'
+        work_item['state'] = 'created'
+        result = api.move_work_item(fixture.organization_key, fixture.source_work_items_source.key, fixture.target_work_items_source.key, work_item)
+        assert result
+        assert db.connection().execute(
+            f"select count(id) from analytics.work_items where key='{work_item['key']}' and "
+            f"work_items_source_id={fixture.source_work_items_source.id}").scalar() == 0
+
+        assert db.connection().execute(f"select count(id) from analytics.work_items "
+                                       f"where key='{work_item['key']}' and display_id='MOVED-1' "
+                                       f"and work_items_source_id={fixture.target_work_items_source.id} and state='created' "
+                                       f"and state_type='{WorkItemsStateType.backlog.value}'").scalar() == 1
+

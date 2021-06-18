@@ -2320,7 +2320,7 @@ class ProjectFlowRateTrends(InterfaceResolver):
             )
         )
 
-        flow_rate_trends = apply_specs_only_filter(flow_rate_trends, work_item_delivery_cycles,
+        flow_rate_trends = apply_specs_only_filter(flow_rate_trends, work_items, work_item_delivery_cycles,
                                                    **flow_rate_trends_args)
         flow_rate_trends = apply_defects_only_filter(flow_rate_trends, work_items, **flow_rate_trends_args)
 
@@ -2412,7 +2412,7 @@ class ProjectBacklogTrends(InterfaceResolver):
         )
 
         daily_backlog_counts = apply_defects_only_filter(daily_backlog_counts, work_items, **backlog_trends_args)
-        daily_backlog_counts = apply_specs_only_filter(daily_backlog_counts, work_item_delivery_cycles, **backlog_trends_args)
+        daily_backlog_counts = apply_specs_only_filter(daily_backlog_counts, work_items, work_item_delivery_cycles, **backlog_trends_args)
 
         daily_backlog_counts = daily_backlog_counts.group_by(
             project_nodes.c.id,

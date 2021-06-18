@@ -10,7 +10,7 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, cast, Text, func, case, select, or_
+from sqlalchemy import and_, cast, Text, func, case, select, or_, literal
 
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import work_items, work_item_delivery_cycles
@@ -148,6 +148,68 @@ def work_items_connection_apply_time_window_filters(select_stmt, work_items, **k
         return select_stmt
 
 
+def apply_active_only_filter(select_stmt, work_items, **kwargs):
+    if 'active_only' in kwargs:
+        if kwargs.get('include_epics'):
+            child_work_items = work_items.alias()
+            epics = select([
+                work_items.c.id,
+                child_work_items.c.id.label('child_id')
+            ]).select_from(
+                work_items.join(
+                    child_work_items, child_work_items.c.parent_id == work_items.c.id
+                )
+            ).alias()
+
+            epic_states = select([
+                epics.c.id,
+                (case([
+                    (func.sum(case([
+                        (work_items.c.state_type.in_([
+                            WorkItemsStateType.open.value,
+                            WorkItemsStateType.wip.value,
+                            WorkItemsStateType.complete.value
+                        ]), 1)
+                    ], else_=0)) > 0, literal('active'))
+                ], else_=literal('inactive'))).label('epic_state')
+            ]).select_from(
+                epics.join(
+                    work_items, work_items.c.id == epics.c.child_id
+                )
+            ).group_by(
+                epics.c.id
+            ).cte()
+
+            select_stmt = select_stmt.where(
+                or_(
+                    and_(
+                        work_items.c.is_epic == False,
+                        work_items.c.state_type.in_([
+                            WorkItemsStateType.open.value,
+                            WorkItemsStateType.wip.value,
+                            WorkItemsStateType.complete.value
+                        ])
+                    ),
+                    and_(
+                        work_items.c.is_epic == True,
+                        and_(
+                            epic_states.c.id == work_items.c.id,
+                            epic_states.c.epic_state == 'active'
+                        )
+                    )
+                )
+            ).distinct()
+        else:
+            select_stmt = select_stmt.where(
+                work_items.c.state_type.in_([
+                    WorkItemsStateType.open.value,
+                    WorkItemsStateType.wip.value,
+                    WorkItemsStateType.complete.value
+                ])
+            )
+        return select_stmt
+
+
 def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
     select_stmt = work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
 
@@ -161,13 +223,7 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
         select_stmt = select_stmt.where(work_items.c.work_item_type.in_(kwargs.get('work_item_types')))
 
     if 'active_only' in kwargs:
-        select_stmt = select_stmt.where(
-            work_items.c.state_type.in_([
-                WorkItemsStateType.open.value,
-                WorkItemsStateType.wip.value,
-                WorkItemsStateType.complete.value
-            ])
-        )
+        select_stmt = apply_active_only_filter(select_stmt, work_items, **kwargs)
 
     # This is true by default, so we include subtasks unless it is explicitly excluded.
     if kwargs.get('include_sub_tasks') == False:
@@ -202,15 +258,76 @@ def work_item_events_connection_apply_time_window_filters(select_stmt, work_item
         return select_stmt
 
 
-def apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs):
+def apply_closed_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
     if 'closed_within_days' in kwargs:
-        select_stmt = select_stmt.where(
-            date_column_is_in_measurement_window(
-                work_item_delivery_cycles.c.end_date,
-                measurement_date=kwargs.get('closed_before') or datetime.utcnow(),
-                measurement_window=kwargs['closed_within_days']
+        if kwargs.get('include_epics'):
+            child_work_items = work_items.alias()
+            epics = select([
+                work_items.c.id,
+                child_work_items.c.id.label('child_id')
+            ]).select_from(
+                work_items.join(
+                    child_work_items, child_work_items.c.parent_id == work_items.c.id
+                )
+            ).alias()
+
+            epic_cycles = select([
+                epics.c.id,
+                (case([
+                    (func.sum(case([
+                        (date_column_is_in_measurement_window(
+                            work_item_delivery_cycles.c.end_date,
+                            measurement_date=kwargs.get('closed_before') or datetime.utcnow(),
+                            measurement_window=kwargs['closed_within_days']
+                        ), 1)
+                    ], else_=0)) > 0, ((kwargs.get('closed_before') or datetime.utcnow()) - timedelta(days=1)))
+                ], else_=func.max(work_item_delivery_cycles.c.end_date))).label('end_date')
+            ]).select_from(
+                epics.join(
+                    work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == epics.c.child_id
+                )
+            ).group_by(
+                epics.c.id
+            ).cte()
+
+            select_stmt = select_stmt.where(
+                or_(
+                    and_(
+                        work_items.c.is_epic == False,
+                        and_(
+                            work_item_delivery_cycles.c.end_date != None,
+                            date_column_is_in_measurement_window(
+                                work_item_delivery_cycles.c.end_date,
+                                measurement_date=kwargs.get('closed_before') or datetime.utcnow(),
+                                measurement_window=kwargs['closed_within_days']
+                            )
+                        )
+                    ),
+                    and_(
+                        work_items.c.is_epic == True,
+                        and_(
+                            epic_cycles.c.id == work_items.c.id,
+                            and_(
+                                epic_cycles.c.end_date != None,
+                                date_column_is_in_measurement_window(
+                                    epic_cycles.c.end_date,
+                                    measurement_date=kwargs.get('closed_before') or datetime.utcnow(),
+                                    measurement_window=kwargs['closed_within_days']
+                                )
+                            )
+                        )
+                    )
+                )
+            ).distinct()
+
+        else:
+            select_stmt = select_stmt.where(
+                date_column_is_in_measurement_window(
+                    work_item_delivery_cycles.c.end_date,
+                    measurement_date=kwargs.get('closed_before') or datetime.utcnow(),
+                    measurement_window=kwargs['closed_within_days']
+                )
             )
-        )
     return select_stmt
 
 
@@ -273,11 +390,51 @@ def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_
     return select_stmt
 
 
-def apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs):
+def apply_specs_only_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
     if kwargs.get('specs_only'):
-        select_stmt = select_stmt.where(
-            work_item_delivery_cycles.c.commit_count > 0
-        )
+        if kwargs.get('include_epics'):
+            child_work_items = work_items.alias()
+            epics = select([
+                work_items.c.id,
+                child_work_items.c.id.label('child_id')
+            ]).select_from(
+                work_items.join(
+                    child_work_items, child_work_items.c.parent_id == work_items.c.id
+                )
+            ).alias()
+
+            epic_specs = select([
+                epics.c.id,
+                (case([
+                    (func.sum(case([
+                        (work_item_delivery_cycles.c.commit_count > 0, 1)
+                    ], else_=0)) > 0, True)
+                ], else_=False)).label('is_spec')
+            ]).select_from(
+                epics.join(
+                    work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == epics.c.child_id
+                )
+            ).group_by(
+                epics.c.id
+            ).cte()
+
+            select_stmt = select_stmt.where(
+                or_(
+                    and_(
+                        work_items.c.is_epic == False,
+                        work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                        work_item_delivery_cycles.c.commit_count > 0
+                    ),
+                    and_(
+                        work_items.c.is_epic == True,
+                        epic_specs.c.is_spec == True
+                    )
+                )
+            ).distinct()
+        else:
+            select_stmt = select_stmt.where(
+                work_item_delivery_cycles.c.commit_count > 0
+            )
     return select_stmt
 
 
@@ -290,9 +447,9 @@ def apply_defects_only_filter(select_stmt, work_items, **kwargs):
 
 
 def work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
-    select_stmt = apply_closed_within_days_filter(select_stmt, work_item_delivery_cycles, **kwargs)
+    select_stmt = apply_closed_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs)
     select_stmt = apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs)
-    select_stmt = apply_specs_only_filter(select_stmt, work_item_delivery_cycles, **kwargs)
+    select_stmt = apply_specs_only_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs)
 
     return work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
 

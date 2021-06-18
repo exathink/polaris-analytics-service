@@ -14,7 +14,7 @@ from test.fixtures.work_items import *
 from polaris.analytics.db import api, model
 from polaris.common import db
 from polaris.common.enums import WorkTrackingIntegrationType
-from polaris.utils.collections import dict_merge
+from polaris.utils.collections import dict_merge, Fixture
 
 
 class TestRegisterWorkItemsSource:
@@ -1699,3 +1699,40 @@ class TestWorkItemDeliveryCycleDurations:
             "select cumulative_time_in_state from analytics.work_item_delivery_cycle_durations where state='wip'").fetchall()[
             0][0]
         assert updated_cumulative_time_in_wip > cumulative_time_in_wip
+
+
+class TestMoveWorkItem:
+
+    @pytest.yield_fixture()
+    def setup(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        # create another work items source
+        with db.orm_session() as session:
+            source_work_items_source = WorkItemsSource.find_by_work_items_source_key(
+                session, work_items_source_key=work_items_source_key
+            )
+            target_work_items_source = WorkItemsSource(
+                organization_id=source_work_items_source.organization_id,
+                organization_key=organization_key,
+                **dict_merge(work_item_source_common(), dict(key=uuid.uuid4().hex, source_id=str(uuid.uuid4())))
+            )
+            state_map_entries = [
+                dict(state='created', state_type=WorkItemsStateType.backlog.value),
+                dict(state='open', state_type=WorkItemsStateType.open.value),
+                dict(state='wip', state_type=WorkItemsStateType.wip.value),
+                dict(state='complete', state_type=WorkItemsStateType.complete.value),
+                dict(state='closed', state_type=WorkItemsStateType.closed.value),
+                dict(state='done', state_type=WorkItemsStateType.closed.value)
+            ]
+            target_work_items_source.init_state_map(state_map_entries)
+            session.add(
+                target_work_items_source
+            )
+        yield Fixture(
+            source_work_items_source=source_work_items_source,
+            target_work_items_source=target_work_items_source,
+            work_items=work_items
+        )
+
+    def it_updates_work_items_source_id_and_display_id(self, setup):
+        fixture = setup

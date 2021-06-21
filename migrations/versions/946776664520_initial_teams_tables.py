@@ -49,7 +49,8 @@ def upgrade():
 
     # add current team assignment to contributors
     op.add_column('contributors', sa.Column('current_team_assignment_id', sa.Integer(), nullable=True), schema='analytics')
-
+    op.create_index(op.f('ix_analytics_contributors_current_team_assignment_id'), 'contributors', ['current_team_assignment_id'], unique=False,
+                    schema='analytics')
 
 
 def downgrade():

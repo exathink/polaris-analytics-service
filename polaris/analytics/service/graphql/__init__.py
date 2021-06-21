@@ -33,6 +33,8 @@ from .work_item import WorkItem
 from .work_items_source import WorkItemsSource
 from .pull_request import PullRequest
 from .feature_flag import FeatureFlag
+from .team import Team
+
 from .summarizers import *
 
 
@@ -51,6 +53,7 @@ class Query(graphene.ObjectType):
     work_items_source = WorkItemsSource.Field()
     pull_request = PullRequest.Field()
     feature_flag = FeatureFlag.Field()
+    team = Team.Field()
 
     all_accounts = Account.ConnectionField()
     all_feature_flags = FeatureFlag.ConnectionField(active_only=graphene.Boolean(required=False))
@@ -87,6 +90,9 @@ class Query(graphene.ObjectType):
 
     def resolve_feature_flag(self, info, **kwargs):
         return FeatureFlag.resolve_field(self, info, **kwargs)
+
+    def resolve_team(self, info, key,  **kwargs):
+        return Team.resolve_field(self, info, key, **kwargs)
 
     def resolve_public(self, info, **kwargs):
         return Public.resolve_field(info, **kwargs)

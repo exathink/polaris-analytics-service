@@ -49,16 +49,15 @@ def upgrade():
 
     # add current team assignment to contributors
     op.add_column('contributors', sa.Column('current_team_assignment_id', sa.Integer(), nullable=True), schema='analytics')
-    op.create_index(op.f('ix_analytics_contributors_current_team_assignment_id'), 'contributors', ['current_team_assignment_id'], unique=False, schema='analytics')
-    op.create_foreign_key(None, 'contributors', 'contributors_teams', ['current_team_assignment_id'], ['id'], source_schema='analytics', referent_schema='analytics')
+
 
 
 def downgrade():
-    op.drop_constraint(None, 'contributors', schema='analytics', type_='foreignkey')
     op.drop_index(op.f('ix_analytics_contributors_current_team_assignment_id'), table_name='contributors', schema='analytics')
     op.drop_column('contributors', 'current_team_assignment_id', schema='analytics')
     op.drop_index(op.f('ix_analytics_teams_organization_id'), table_name='teams', schema='analytics')
-    op.drop_table('teams', schema='analytics')
     op.drop_index(op.f('ix_analytics_contributors_teams_team_id'), table_name='contributors_teams', schema='analytics')
     op.drop_index(op.f('ix_analytics_contributors_teams_contributor_id'), table_name='contributors_teams', schema='analytics')
     op.drop_table('contributors_teams', schema='analytics')
+
+    op.drop_table('teams', schema='analytics')

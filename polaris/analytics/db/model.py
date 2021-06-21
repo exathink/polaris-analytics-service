@@ -488,7 +488,7 @@ class Contributor(Base):
     aliases = relationship('ContributorAlias', back_populates='contributor')
     organizations = relationship('Organization', secondary=organizations_contributors, back_populates='contributors')
 
-    current_team_assignment_id = Column(Integer, ForeignKey('contributors_teams.id'), index=True)
+    current_team_assignment_id = Column(Integer, nullable=True, index=True)
 
 
     @classmethod
@@ -541,6 +541,8 @@ class Team(Base):
     # parent
     organization_id = Column(Integer, ForeignKey('organizations.id'), index=True, nullable=False)
     organization = relationship('Organization', back_populates='teams')
+
+teams = Team.__table__
 
 
 class ContributorTeam(Base):

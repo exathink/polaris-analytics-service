@@ -182,6 +182,8 @@ class Organization(Base):
     repositories = relationship('Repository')
     work_items_sources = relationship('WorkItemsSource')
     members = relationship("OrganizationMember", back_populates="organization")
+    teams = relationship('Team', back_populates="organization")
+
 
     @classmethod
     def create(cls, name, key=None, profile=None):
@@ -486,6 +488,9 @@ class Contributor(Base):
     aliases = relationship('ContributorAlias', back_populates='contributor')
     organizations = relationship('Organization', secondary=organizations_contributors, back_populates='contributors')
 
+    current_team_assignment_id = Column(Integer, ForeignKey('contributors_teams.id'), index=True)
+
+
     @classmethod
     def find_by_contributor_key(cls, session, contributor_key):
         return session.query(cls).filter(cls.key == contributor_key).first()
@@ -523,6 +528,37 @@ class ContributorAlias(Base):
 
 
 contributor_aliases = ContributorAlias.__table__
+
+
+class Team(Base):
+    __tablename__ = 'teams'
+
+    id = Column(BigInteger, primary_key=True)
+    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
+
+    name = Column(String, nullable=False)
+
+    # parent
+    organization_id = Column(Integer, ForeignKey('organizations.id'), index=True, nullable=False)
+    organization = relationship('Organization', back_populates='teams')
+
+
+class ContributorTeam(Base):
+    __tablename__ = 'contributors_teams'
+
+    id = Column(Integer, primary_key=True)
+    contributor_id = Column(Integer, ForeignKey('contributors.id'), nullable=False, index=True)
+    team_id = Column(Integer, ForeignKey('teams.id'), nullable=False, index=True)
+
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=True)
+
+    # A number between 0 and 1 indicating percentage of capacity allocated to the team.
+    capacity = Column(Float, default=1.0, server_default='1.0')
+
+
+
+
 
 
 class Commit(Base):

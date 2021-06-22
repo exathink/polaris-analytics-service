@@ -44,7 +44,7 @@ class Teams(
 
 
 class TeamsConnectionMixin(ConnectionResolverMixin):
-    users = Team.ConnectionField()
+    teams = Team.ConnectionField()
 
     def resolve_teams(self, info, **kwargs):
         return Team.resolve_connection(

@@ -37,3 +37,37 @@ class TestTeamNode:
         client = Client(schema)
         result = client.execute(query, variable_values=dict(key=fixture.team_a['key']))
         assert result['data']
+        assert result['data']['team']['key'] == str(fixture.team_a['key'])
+
+
+class TestOrganizationTeams:
+
+    @pytest.yield_fixture
+    def setup(self, setup_teams):
+        fixture = setup_teams
+
+        yield fixture
+
+    def it_resolves_teams_for_an_organization(self, setup):
+        fixture = setup
+
+        query = """
+                        query getOrganizationTeams($key: String!) {
+                            organization(key: $key){
+                                teams {
+                                    count
+                                    edges {
+                                        node {
+                                            id
+                                            name
+                                            key
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        """
+        client = Client(schema)
+        result = client.execute(query, variable_values=dict(key=fixture.organization.key))
+        assert result['data']
+        assert result['data']['organization']['teams']['count'] == 2

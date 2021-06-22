@@ -9,16 +9,17 @@
 # Author: Krishna Kumar
 
 
-
 import graphene
-from sqlalchemy import select, bindparam, func
-from polaris.analytics.db.model import teams
-from polaris.graphql.interfaces import KeyIdNode, NamedNode
+from sqlalchemy import select, bindparam, func, distinct
+from polaris.analytics.db.model import teams, contributors_teams
+from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.base_classes import InterfaceResolver
 
+from ..interfaces import ContributorCount
 
 
 class TeamNode:
-    interfaces = (NamedNode, )
+    interfaces = (NamedNode,)
 
     @staticmethod
     def selectable(**kwargs):
@@ -31,3 +32,22 @@ class TeamNode:
         )
 
 
+# Interface resolvers
+
+class TeamContributorCount(InterfaceResolver):
+    interface = ContributorCount
+
+    @staticmethod
+    def interface_selector(team_nodes, **kwargs):
+        return select([
+            team_nodes.c.id,
+            func.count(distinct(contributors_teams.c.contributor_id)).label('contributor_count')
+        ]).select_from(
+            team_nodes.outerjoin(
+                contributors_teams, team_nodes.c.id == contributors_teams.c.team_id
+            )
+        ).where(
+            contributors_teams.c.end_date == None
+        ).group_by(
+            team_nodes.c.id
+        )

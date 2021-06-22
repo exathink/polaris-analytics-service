@@ -12,9 +12,9 @@ import graphene
 
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import UserInfo, ScopedRole
+from ..interfaces import ContributorCount
 from ..interface_mixins import NamedNodeResolverMixin
-from .selectable import TeamNode
+from .selectable import TeamNode, TeamContributorCount
 
 
 class Team(
@@ -22,8 +22,12 @@ class Team(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, )
+        interfaces = (NamedNode, ContributorCount)
         named_node_resolver = TeamNode
+
+        interface_resolvers = {
+            'ContributorCount': TeamContributorCount
+        }
 
         connection_class = lambda: Teams
 

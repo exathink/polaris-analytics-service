@@ -133,3 +133,32 @@ class TestContributorTeams:
         result = client.execute(query, variable_values=dict(key=fixture.joe.key))
         assert result['data']
         assert result['data']['contributor']['teamName'] == fixture.team_a['name']
+
+    def it_resolves_contributor_count_for_teams(self, setup):
+        fixture = setup
+        query = """
+                query getTeamContributorCount($key: String!) {
+                    organization(key: $key){
+                        teams(interfaces : [ContributorCount]) {
+                            edges {
+                                node {
+                                    id
+                                    name
+                                    key
+                                    contributorCount
+                                }
+                            }
+                        }
+                    }
+                }
+                   """
+        client = Client(schema)
+        result = client.execute(query, variable_values=dict(key=fixture.organization.key))
+        assert result['data']
+        assert {
+            (edge['node']['name'], edge['node']['contributorCount'])
+                for edge in result['data']['organization']['teams']['edges']
+        } == {
+            ('Team Alpha', 1),
+            ('Team Beta', 2)
+        }

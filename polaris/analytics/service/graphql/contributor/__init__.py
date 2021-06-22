@@ -15,9 +15,9 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from .selectables import \
     ContributorNodes, ContributorCommitNodes, ContributorRepositoriesActivitySummary,\
     ContributorsCommitSummary, ContributorsRepositoryCount, ContributorRecentlyActiveRepositories, \
-    ContributorCumulativeCommitCount, ContributorContributorAliases
+    ContributorCumulativeCommitCount, ContributorContributorAliases, ContributorTeamNodeRef
 
-from ..interfaces import CommitSummary, RepositoryCount, ContributorAliasesInfo
+from ..interfaces import CommitSummary, RepositoryCount, ContributorAliasesInfo, TeamNodeRef
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, ContributorAliasesInfoResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
@@ -54,12 +54,13 @@ class Contributor(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, RepositoryCount, ContributorAliasesInfo)
+        interfaces = (NamedNode, CommitSummary, RepositoryCount, ContributorAliasesInfo, TeamNodeRef,)
         named_node_resolver = ContributorNodes
         interface_resolvers = {
             'CommitSummary': ContributorsCommitSummary,
             'RepositoryCount': ContributorsRepositoryCount,
-            'ContributorAliasesInfo': ContributorContributorAliases
+            'ContributorAliasesInfo': ContributorContributorAliases,
+            'TeamNodeRef': ContributorTeamNodeRef
         }
         selectable_field_resolvers = {
             'repositories_activity_summary': ContributorRepositoriesActivitySummary,

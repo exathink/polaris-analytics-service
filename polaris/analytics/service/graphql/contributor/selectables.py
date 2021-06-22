@@ -27,10 +27,10 @@ from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
 
 from polaris.analytics.db.model import repositories, repositories_contributor_aliases, contributors, \
-    contributor_aliases, commits
+    contributor_aliases, commits, teams, contributors_teams
 
 from ..interfaces import CommitSummary, RepositoryCount, CommitInfo, CommitCount, CumulativeCommitCount, \
-    ContributorAliasesInfo
+    ContributorAliasesInfo, TeamNodeRef
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 
 
@@ -202,6 +202,25 @@ class ContributorContributorAliases(InterfaceResolver):
         else:
             return ContributorContributorAliases.contributor_level_of_detail(contributor_nodes, **kwargs)
 
+
+class ContributorTeamNodeRef(InterfaceResolver):
+    interface = TeamNodeRef
+
+    @staticmethod
+    def interface_selector(contributor_nodes, **kwargs):
+        return select([
+            contributors.c.id,
+            teams.c.name.label('team_name'),
+            teams.c.key.label('team_key')
+        ]).select_from(
+            contributor_nodes.join(
+                contributors, contributor_nodes.c.id == contributors.c.id
+            ).outerjoin(
+                contributors_teams, contributors.c.current_team_assignment_id == contributors_teams.c.id
+            ).outerjoin(
+                teams, contributors_teams.c.team_id == teams.c.id
+            )
+        )
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Connection Resolvers

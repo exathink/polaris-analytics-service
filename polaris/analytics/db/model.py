@@ -478,6 +478,47 @@ repositories = Repository.__table__
 UniqueConstraint(repositories.c.organization_id, repositories.c.name)
 
 
+class Team(Base):
+    __tablename__ = 'teams'
+
+    id = Column(BigInteger, primary_key=True)
+    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
+
+    name = Column(String, nullable=False)
+
+    # parent
+    organization_id = Column(Integer, ForeignKey('organizations.id'), index=True, nullable=False)
+    organization = relationship('Organization', back_populates='teams')
+
+    @classmethod
+    def find_by_key(cls, session, key):
+        return session.query(cls).filter(cls.key == key).first()
+
+
+teams = Team.__table__
+
+
+class ContributorTeam(Base):
+    __tablename__ = 'contributors_teams'
+
+    id = Column(Integer, primary_key=True)
+    contributor_id = Column(Integer, ForeignKey('contributors.id'), nullable=False, index=True)
+    team_id = Column(Integer, ForeignKey('teams.id'), nullable=False, index=True)
+
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=True)
+
+    # A number between 0 and 1 indicating percentage of capacity allocated to the team.
+    capacity = Column(Float, default=1.0, server_default='1.0')
+
+    @classmethod
+    def find_by_id(cls, session, contributor_team_assignment_id):
+        return session.query(cls).filter(cls.id == contributor_team_assignment_id).first()
+
+
+contributors_teams = ContributorTeam.__table__
+
+
 class Contributor(Base):
     __tablename__ = 'contributors'
 
@@ -505,6 +546,22 @@ class Contributor(Base):
             if attribute in updatable_fields:
                 setattr(self, attribute, value)
 
+    def assign_to_team(self, session, team_key):
+        team = Team.find_by_key(session, team_key)
+        contributor_team = ContributorTeam.find_by_id(session, self.current_team_assignment_id)
+        if contributor_team is not None:
+            contributor_team.end_date = datetime.utcnow()
+
+        new_assignment = ContributorTeam(
+            team_id=team.id,
+            contributor_id=self.id,
+            start_date=datetime.utcnow(),
+        )
+        session.add(new_assignment)
+        session.flush()
+        self.current_team_assignment_id = new_assignment.id
+
+
 
 contributors = Contributor.__table__
 
@@ -528,36 +585,6 @@ class ContributorAlias(Base):
 
 
 contributor_aliases = ContributorAlias.__table__
-
-
-class Team(Base):
-    __tablename__ = 'teams'
-
-    id = Column(BigInteger, primary_key=True)
-    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
-
-    name = Column(String, nullable=False)
-
-    # parent
-    organization_id = Column(Integer, ForeignKey('organizations.id'), index=True, nullable=False)
-    organization = relationship('Organization', back_populates='teams')
-
-teams = Team.__table__
-
-
-class ContributorTeam(Base):
-    __tablename__ = 'contributors_teams'
-
-    id = Column(Integer, primary_key=True)
-    contributor_id = Column(Integer, ForeignKey('contributors.id'), nullable=False, index=True)
-    team_id = Column(Integer, ForeignKey('teams.id'), nullable=False, index=True)
-
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=True)
-
-    # A number between 0 and 1 indicating percentage of capacity allocated to the team.
-    capacity = Column(Float, default=1.0, server_default='1.0')
-
 
 
 

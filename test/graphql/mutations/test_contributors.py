@@ -10,6 +10,7 @@
 
 
 from test.fixtures.contributors import *
+from test.fixtures.teams import *
 
 from graphene.test import Client
 from unittest.mock import patch
@@ -137,3 +138,170 @@ class TestUpdateContributorForContributorAlias:
         assert 'errors' not in result
         assert not result['data']['updateContributor']['updateStatus']['success']
         assert result['data']['updateContributor']['updateStatus']['exception'] == f"Could not find contributor alias with key {test_contributor_key}"
+
+
+class TestUpdateContributorTeamAssignments:
+
+    @pytest.yield_fixture
+    def setup(self, setup_team_assignments):
+        yield setup_team_assignments
+
+
+    def it_updates_team_assignments(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+        query = """
+                mutation updateAssignments($input: UpdateContributorTeamAssignmentsInput! ){
+                    updateContributorTeamAssignments(
+                        updateContributorTeamAssignmentsInput: $input
+                    ){
+                        updateCount
+                        success
+                        errorMessage
+                        
+                    }
+                    
+                }
+                """
+
+        result = client.execute(query, variable_values=dict(
+            input=dict(
+                organizationKey=fixture.organization.key,
+                contributorTeamAssignments=[
+                    dict(
+                        contributorKey=str(fixture.joe.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                    dict(
+                        contributorKey=str(fixture.alice.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                    dict(
+                        contributorKey=str(fixture.arjun.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                ]
+            )
+        ))
+        assert 'errors' not in result
+        assert result['data']['updateContributorTeamAssignments']['success']
+
+    def it_assigns_the_new_team_correctly(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+        query = """
+                mutation updateAssignments($input: UpdateContributorTeamAssignmentsInput! ){
+                    updateContributorTeamAssignments(
+                        updateContributorTeamAssignmentsInput: $input
+                    ){
+                        updateCount
+                        success
+                        errorMessage
+
+                    }
+
+                }
+                """
+
+        result = client.execute(query, variable_values=dict(
+            input=dict(
+                organizationKey=fixture.organization.key,
+                contributorTeamAssignments=[
+                    dict(
+                        contributorKey=str(fixture.joe.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                    dict(
+                        contributorKey=str(fixture.alice.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                    dict(
+                        contributorKey=str(fixture.arjun.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                ]
+            )
+        ))
+        assert db.connection().execute(
+            "select count(distinct team_id) from analytics.contributors_teams where end_date is null").scalar() == 1
+
+
+    def it_sets_the_end_date_on_the_old_assignments(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+        query = """
+                mutation updateAssignments($input: UpdateContributorTeamAssignmentsInput! ){
+                    updateContributorTeamAssignments(
+                        updateContributorTeamAssignmentsInput: $input
+                    ){
+                        updateCount
+                        success
+                        errorMessage
+
+                    }
+
+                }
+                """
+
+        result = client.execute(query, variable_values=dict(
+            input=dict(
+                organizationKey=fixture.organization.key,
+                contributorTeamAssignments=[
+                    dict(
+                        contributorKey=str(fixture.joe.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                    dict(
+                        contributorKey=str(fixture.alice.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                    dict(
+                        contributorKey=str(fixture.arjun.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                ]
+            )
+        ))
+        assert db.connection().execute("select count(id) from analytics.contributors_teams where end_date is not null").scalar() == 3
+
+    def it_sets_the_default_capacity_on_all_assignments(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+        query = """
+                mutation updateAssignments($input: UpdateContributorTeamAssignmentsInput! ){
+                    updateContributorTeamAssignments(
+                        updateContributorTeamAssignmentsInput: $input
+                    ){
+                        updateCount
+                        success
+                        errorMessage
+
+                    }
+
+                }
+                """
+
+        result = client.execute(query, variable_values=dict(
+            input=dict(
+                organizationKey=fixture.organization.key,
+                contributorTeamAssignments=[
+                    dict(
+                        contributorKey=str(fixture.joe.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                    dict(
+                        contributorKey=str(fixture.alice.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                    dict(
+                        contributorKey=str(fixture.arjun.key),
+                        newTeamKey=str(fixture.team_c['key'])
+                    ),
+                ]
+            )
+        ))
+        assert db.connection().execute("select count(id) from analytics.contributors_teams where capacity=1").scalar() == 6

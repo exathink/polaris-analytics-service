@@ -32,12 +32,13 @@ from .selectable_fields import \
 
 from ..selectable_field_mixins import CumulativeCommitCountResolverMixin
 
-from .mutations import UpdateContributor
+from .mutations import UpdateContributor, UpdateContributorTeamAssignments
 
 
 # Mutations
 class ContributorMutationsMixin:
     update_contributor = UpdateContributor.Field()
+    update_contributor_team_assignments = UpdateContributorTeamAssignments.Field()
 
 
 class Contributor(

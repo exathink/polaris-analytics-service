@@ -255,6 +255,10 @@ class Organization(Base):
 
         return not existing
 
+    def find_team(self, team_key):
+        return find(self.teams, lambda team: str(team.key) == team_key)
+
+
 
 organizations = Organization.__table__
 
@@ -546,7 +550,7 @@ class Contributor(Base):
             if attribute in updatable_fields:
                 setattr(self, attribute, value)
 
-    def assign_to_team(self, session, team_key):
+    def assign_to_team(self, session, team_key, capacity=1.0):
         team = Team.find_by_key(session, team_key)
         contributor_team = ContributorTeam.find_by_id(session, self.current_team_assignment_id)
         if contributor_team is not None:
@@ -556,6 +560,7 @@ class Contributor(Base):
             team_id=team.id,
             contributor_id=self.id,
             start_date=datetime.utcnow(),
+            capacity=capacity
         )
         session.add(new_assignment)
         session.flush()

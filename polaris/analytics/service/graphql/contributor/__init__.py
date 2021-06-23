@@ -15,9 +15,9 @@ from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from .selectables import \
     ContributorNodes, ContributorCommitNodes, ContributorRepositoriesActivitySummary,\
     ContributorsCommitSummary, ContributorsRepositoryCount, ContributorRecentlyActiveRepositories, \
-    ContributorCumulativeCommitCount, ContributorContributorAliases
+    ContributorCumulativeCommitCount, ContributorContributorAliases, ContributorTeamNodeRef
 
-from ..interfaces import CommitSummary, RepositoryCount, ContributorAliasesInfo
+from ..interfaces import CommitSummary, RepositoryCount, ContributorAliasesInfo, TeamNodeRef
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, ContributorAliasesInfoResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
@@ -32,12 +32,13 @@ from .selectable_fields import \
 
 from ..selectable_field_mixins import CumulativeCommitCountResolverMixin
 
-from .mutations import UpdateContributor
+from .mutations import UpdateContributor, UpdateContributorTeamAssignments
 
 
 # Mutations
 class ContributorMutationsMixin:
     update_contributor = UpdateContributor.Field()
+    update_contributor_team_assignments = UpdateContributorTeamAssignments.Field()
 
 
 class Contributor(
@@ -54,12 +55,13 @@ class Contributor(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, RepositoryCount, ContributorAliasesInfo)
+        interfaces = (NamedNode, CommitSummary, RepositoryCount, ContributorAliasesInfo, TeamNodeRef,)
         named_node_resolver = ContributorNodes
         interface_resolvers = {
             'CommitSummary': ContributorsCommitSummary,
             'RepositoryCount': ContributorsRepositoryCount,
-            'ContributorAliasesInfo': ContributorContributorAliases
+            'ContributorAliasesInfo': ContributorContributorAliases,
+            'TeamNodeRef': ContributorTeamNodeRef
         }
         selectable_field_resolvers = {
             'repositories_activity_summary': ContributorRepositoriesActivitySummary,

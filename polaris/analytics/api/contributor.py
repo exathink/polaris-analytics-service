@@ -13,3 +13,7 @@ from polaris.analytics.db import api as db_api
 
 def update_contributor(contributor_key, updated_info):
     return db_api.update_contributor(contributor_key, updated_info)
+
+
+def update_contributor_team_assignments(organization_key, contributor_team_assignments):
+    return db_api.update_contributor_team_assignments(organization_key, contributor_team_assignments)

@@ -8,7 +8,7 @@
 
 # Author: Krishna Kumar
 
-from polaris.analytics.db.model import Contributor, ContributorAlias
+from polaris.analytics.db.model import Contributor, ContributorAlias, Organization, ContributorTeam, Team
 from polaris.analytics.db.model import contributor_aliases, commits, repositories_contributor_aliases
 from polaris.utils.exceptions import ProcessingException
 
@@ -137,3 +137,25 @@ def update_contributor(session, contributor_key, updated_info):
         )
     else:
         raise ProcessingException(f"Contributor with key: {contributor_key} was not found")
+
+
+def update_contributor_team_assignments(session, organization_key, contributor_team_assignments):
+    organization = Organization.find_by_organization_key(session, organization_key)
+    if organization is not None:
+
+        for assignment in contributor_team_assignments:
+            contributor = Contributor.find_by_contributor_key(session, assignment.get('contributor_key'))
+            if contributor is not None:
+                target_team = organization.find_team(assignment.get('new_team_key'))
+                if target_team is not None:
+                    contributor.assign_to_team(session, target_team.key, assignment.get('capacity', 1.0))
+                else:
+                    raise ProcessingException(f"Target team was not found in current organization for contributor {assignment.get('contributor_key')}")
+            else:
+                raise ProcessingException(f"Could not find contributor with key {assignment.get('contributor_key')}")
+
+        return dict(
+            update_count=len(contributor_team_assignments)
+        )
+    else:
+        raise ProcessingException(f'No organization found for key: {organization_key}')

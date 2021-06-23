@@ -78,6 +78,11 @@ class EpicNodeRef(graphene.Interface):
     epic_key = graphene.String(required=False)
 
 
+class TeamNodeRef(graphene.Interface):
+    team_name = graphene.String(required=False)
+    team_key = graphene.String(required=False)
+
+
 class WorkItemsSummaries(graphene.Interface):
     work_items_summaries = graphene.Field(graphene.List(WorkItemsSummary, required=False))
 

@@ -22,7 +22,7 @@ from polaris.analytics.db.model import \
     repositories, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases, \
     work_items_sources, work_items, work_item_state_transitions, work_items_commits, \
-    work_items_source_state_map
+    work_items_source_state_map, teams
  
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
     ProjectCount, RepositoryCount, WorkItemsSourceCount,  \
@@ -182,6 +182,24 @@ class OrganizationContributorNodes(ConnectionResolver):
             and_(
                 organizations.c.key == bindparam('key'),
                 repositories_contributor_aliases.c.robot == False
+            )
+        ).distinct()
+
+
+class OrganizationTeamNodes(ConnectionResolver):
+    interface = NamedNode
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        return select([
+            teams.c.id,
+            teams.c.key,
+            teams.c.name,
+        ]).select_from(
+            teams.join(organizations, teams.c.organization_id == organizations.c.id)
+        ).where(
+            and_(
+                organizations.c.key == bindparam('key')
             )
         ).distinct()
 

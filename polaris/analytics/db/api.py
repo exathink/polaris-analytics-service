@@ -172,6 +172,21 @@ def update_contributor(contributor_key, updated_info):
         return db.failure_message('Update contributor for contributor aliases failed', e)
 
 
+def update_contributor_team_assignments(organization_key, contributor_team_assignments):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.update_contributor_team_assignments(
+                    session,
+                    organization_key,
+                    contributor_team_assignments
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Update contributor team assignments failed", exc)
+    except Exception as e:
+        return db.failure_message('Update contributor team assignments failed', e)
+
 def import_project(organization_key, project_summary):
     try:
         with db.orm_session() as session:

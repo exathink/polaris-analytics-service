@@ -612,12 +612,14 @@ class Commit(Base):
     commit_date = Column(DateTime, index=True, nullable=False)
     commit_date_tz_offset = Column(Integer, default=0)
     committer_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
+    committer_team_id = Column(Integer, ForeignKey('teams.id'), nullable=True, index=True)
 
     author_contributor_name = Column(String, nullable=True)
     author_contributor_key = Column(UUID(as_uuid=True), nullable=True)
     author_date = Column(DateTime, nullable=True)
     author_date_tz_offset = Column(Integer, default=0)
     author_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
+    author_team_id = Column(Integer, ForeignKey('teams.id'), nullable=True, index=True)
 
     is_orphan = Column(Boolean, default=False)
     created_at = Column(DateTime, nullable=True)
@@ -637,6 +639,9 @@ class Commit(Base):
     repository = relationship('Repository', back_populates='commits')
     committer_alias = relationship('ContributorAlias', foreign_keys=[committer_contributor_alias_id])
     author_alias = relationship('ContributorAlias', foreign_keys=[author_contributor_alias_id])
+
+    author_team = relationship('Team', foreign_keys=[author_team_id])
+    committer_team = relationship('Team', foreign_keys=[committer_team_id])
 
     work_items = relationship('WorkItem',
                               secondary=work_items_commits,

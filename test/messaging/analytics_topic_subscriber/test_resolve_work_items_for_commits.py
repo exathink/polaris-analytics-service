@@ -9,8 +9,8 @@
 # Author: Krishna Kumar
 from unittest.mock import patch
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
-from polaris.messaging.messages import CommitsCreated
 from polaris.analytics.messaging import ResolveWorkItemsForCommits
+from polaris.messaging.messages import WorkItemsCommitsResolved
 from polaris.messaging.test_utils import mock_channel, fake_send, assert_is_valid_message, mock_publisher
 from polaris.messaging.topics import AnalyticsTopic
 
@@ -56,12 +56,12 @@ def commits_work_items_fixture(commits_fixture):
     yield test_repo, test_commits
 
 
-class TestCommitsCreated:
+class TestResolveWorkItemsForCommits:
 
     def it_publishes_responses_correctly(self, commits_work_items_fixture):
         repository, test_commits = commits_work_items_fixture
         message = fake_send(
-            CommitsCreated(
+            ResolveWorkItemsForCommits(
                 send=dict(
                     organization_key=test_organization_key,
                     repository_key=repository.key,
@@ -73,5 +73,5 @@ class TestCommitsCreated:
         publisher = mock_publisher()
 
         AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, ResolveWorkItemsForCommits)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsCommitsResolved)
 

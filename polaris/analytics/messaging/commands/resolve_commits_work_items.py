@@ -15,8 +15,8 @@ from polaris.messaging.messages import Command
 from polaris.messaging.types import CommitSummary
 
 
-class ResolveCommitsWorkItems(Command):
-    message_type = 'commands.resolve_commits_work_items'
+class ResolveWorkItemsForCommits(Command):
+    message_type = 'commands.resolve_work_items_for_commits'
 
     organization_key = fields.String(required=True)
     repository_key = fields.String(required=True)

@@ -19,7 +19,7 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits, \
     ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
     PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems, \
-    ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests
+    ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests, ResolveWorkItemsForCommits
 
 from polaris.messaging.utils import raise_on_failure
 
@@ -55,7 +55,8 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 PullRequestsCreated,
                 PullRequestsUpdated,
                 ResolveWorkItemsForPullRequests,
-                ResolvePullRequestsForWorkItems
+                ResolvePullRequestsForWorkItems,
+                ResolveWorkItemsForCommits
             ],
             publisher=publisher,
             exclusive=False
@@ -65,17 +66,11 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         logger.info(f"Dispatching {message.message_type}")
         # Messages
         if CommitsCreated.message_type == message.message_type:
-            result = self.process_resolve_work_items_for_commits(channel, message)
-            if result is not None and len(result['resolved']) > 0:
-                response = WorkItemsCommitsResolved(
-                    send=dict(
-                        organization_key=message['organization_key'],
-                        work_items_commits=result['resolved']
-                    ),
-                    in_response_to=message
-                )
-                self.publish(AnalyticsTopic, response)
-                return response
+            resolve_work_items_for_commits_command = ResolveWorkItemsForCommits(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, resolve_work_items_for_commits_command)
 
         elif WorkItemsCreated.message_type == message.message_type:
             resolve_commits_for_work_items_command = ResolveCommitsForWorkItems(
@@ -206,6 +201,19 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         # Commands
         elif ResolveCommitsForWorkItems.message_type == message.message_type:
             result = self.process_resolve_commits_for_work_items(channel, message)
+            if result is not None and len(result['resolved']) > 0:
+                response = WorkItemsCommitsResolved(
+                    send=dict(
+                        organization_key=message['organization_key'],
+                        work_items_commits=result['resolved']
+                    ),
+                    in_response_to=message
+                )
+                self.publish(AnalyticsTopic, response)
+                return response
+
+        elif ResolveWorkItemsForCommits.message_type == message.message_type:
+            result = self.process_resolve_work_items_for_commits(channel, message)
             if result is not None and len(result['resolved']) > 0:
                 response = WorkItemsCommitsResolved(
                     send=dict(

@@ -1702,66 +1702,94 @@ class TestWorkItemDeliveryCycleDurations:
 
 
 class TestMoveWorkItem:
+    class TestWhenTargetExists:
 
-    @pytest.yield_fixture()
-    def setup(self, update_work_items_setup):
-        organization_key, work_items_source_key, work_items = update_work_items_setup
-        # create another work items source
-        with db.orm_session() as session:
-            source_work_items_source = WorkItemsSource.find_by_work_items_source_key(
-                session, work_items_source_key=work_items_source_key
-            )
-            target_work_items_source = WorkItemsSource(
-                organization_id=source_work_items_source.organization_id,
+        @pytest.yield_fixture()
+        def setup(self, update_work_items_setup):
+            organization_key, work_items_source_key, work_items = update_work_items_setup
+            # create another work items source
+            with db.orm_session() as session:
+                source_work_items_source = WorkItemsSource.find_by_work_items_source_key(
+                    session, work_items_source_key=work_items_source_key
+                )
+                target_work_items_source = WorkItemsSource(
+                    organization_id=source_work_items_source.organization_id,
+                    organization_key=organization_key,
+                    **dict_merge(work_item_source_common(), dict(key=uuid.uuid4().hex, source_id=str(uuid.uuid4())))
+                )
+                state_map_entries = [
+                    dict(state='created', state_type=WorkItemsStateType.backlog.value),
+                    dict(state='open', state_type=WorkItemsStateType.open.value),
+                    dict(state='wip', state_type=WorkItemsStateType.wip.value),
+                    dict(state='complete', state_type=WorkItemsStateType.complete.value),
+                    dict(state='closed', state_type=WorkItemsStateType.closed.value),
+                    dict(state='done', state_type=WorkItemsStateType.closed.value)
+                ]
+                target_work_items_source.init_state_map(state_map_entries)
+                session.add(
+                    target_work_items_source
+                )
+            yield Fixture(
                 organization_key=organization_key,
-                **dict_merge(work_item_source_common(), dict(key=uuid.uuid4().hex, source_id=str(uuid.uuid4())))
+                source_work_items_source=source_work_items_source,
+                target_work_items_source=target_work_items_source,
+                work_items=work_items
             )
-            state_map_entries = [
-                dict(state='created', state_type=WorkItemsStateType.backlog.value),
-                dict(state='open', state_type=WorkItemsStateType.open.value),
-                dict(state='wip', state_type=WorkItemsStateType.wip.value),
-                dict(state='complete', state_type=WorkItemsStateType.complete.value),
-                dict(state='closed', state_type=WorkItemsStateType.closed.value),
-                dict(state='done', state_type=WorkItemsStateType.closed.value)
-            ]
-            target_work_items_source.init_state_map(state_map_entries)
-            session.add(
-                target_work_items_source
+
+        def it_updates_work_items_source_id_and_display_id(self, setup):
+            fixture = setup
+            work_item = fixture.work_items[0]
+            work_item['display_id'] = 'MOVED-1'
+            result = api.move_work_item(fixture.organization_key, fixture.source_work_items_source.key,
+                                        fixture.target_work_items_source.key, work_item)
+            assert result
+            assert db.connection().execute(
+                f"select count(id) from analytics.work_items where key='{work_item['key']}' and "
+                f"work_items_source_id={fixture.source_work_items_source.id}").scalar() == 0
+
+            assert db.connection().execute(f"select count(id) from analytics.work_items "
+                                           f"where key='{work_item['key']}' and display_id='MOVED-1' "
+                                           f"and work_items_source_id={fixture.target_work_items_source.id}").scalar() == 1
+
+        def it_updates_work_items_source_id_display_id_and_state(self, setup):
+            fixture = setup
+            work_item = fixture.work_items[0]
+            work_item['display_id'] = 'MOVED-1'
+            work_item['state'] = 'created'
+            result = api.move_work_item(fixture.organization_key, fixture.source_work_items_source.key,
+                                        fixture.target_work_items_source.key, work_item)
+            assert result
+            assert db.connection().execute(
+                f"select count(id) from analytics.work_items where key='{work_item['key']}' and "
+                f"work_items_source_id={fixture.source_work_items_source.id}").scalar() == 0
+
+            assert db.connection().execute(f"select count(id) from analytics.work_items "
+                                           f"where key='{work_item['key']}' and display_id='MOVED-1' "
+                                           f"and work_items_source_id={fixture.target_work_items_source.id} and state='created' "
+                                           f"and state_type='{WorkItemsStateType.backlog.value}'").scalar() == 1
+
+    class TestWhenTargetDoesNotExist:
+
+        @pytest.yield_fixture()
+        def setup(self, update_work_items_setup):
+            organization_key, work_items_source_key, work_items = update_work_items_setup
+            with db.orm_session() as session:
+                source_work_items_source = WorkItemsSource.find_by_work_items_source_key(
+                    session, work_items_source_key=work_items_source_key
+                )
+            yield Fixture(
+                organization_key=organization_key,
+                source_work_items_source=source_work_items_source,
+                work_items=work_items
             )
-        yield Fixture(
-            organization_key=organization_key,
-            source_work_items_source=source_work_items_source,
-            target_work_items_source=target_work_items_source,
-            work_items=work_items
-        )
 
-    def it_updates_work_items_source_id_and_display_id(self, setup):
-        fixture = setup
-        work_item = fixture.work_items[0]
-        work_item['display_id'] = 'MOVED-1'
-        result = api.move_work_item(fixture.organization_key, fixture.source_work_items_source.key, fixture.target_work_items_source.key, work_item)
-        assert result
-        assert db.connection().execute(
-            f"select count(id) from analytics.work_items where key='{work_item['key']}' and "
-            f"work_items_source_id={fixture.source_work_items_source.id}").scalar() == 0
-
-        assert db.connection().execute(f"select count(id) from analytics.work_items "
-                                       f"where key='{work_item['key']}' and display_id='MOVED-1' "
-                                       f"and work_items_source_id={fixture.target_work_items_source.id}").scalar() == 1
-
-    def it_updates_work_items_source_id_display_id_and_state(self, setup):
-        fixture = setup
-        work_item = fixture.work_items[0]
-        work_item['display_id'] = 'MOVED-1'
-        work_item['state'] = 'created'
-        result = api.move_work_item(fixture.organization_key, fixture.source_work_items_source.key, fixture.target_work_items_source.key, work_item)
-        assert result
-        assert db.connection().execute(
-            f"select count(id) from analytics.work_items where key='{work_item['key']}' and "
-            f"work_items_source_id={fixture.source_work_items_source.id}").scalar() == 0
-
-        assert db.connection().execute(f"select count(id) from analytics.work_items "
-                                       f"where key='{work_item['key']}' and display_id='MOVED-1' "
-                                       f"and work_items_source_id={fixture.target_work_items_source.id} and state='created' "
-                                       f"and state_type='{WorkItemsStateType.backlog.value}'").scalar() == 1
-
+        def it_sets_is_moved_as_true(self, setup):
+            fixture = setup
+            work_item = fixture.work_items[0]
+            work_item['is_moved'] = True
+            result = api.move_work_item(fixture.organization_key, fixture.source_work_items_source.key,
+                                        None, work_item)
+            assert result
+            assert db.connection().execute(
+                f"select count(id) from analytics.work_items where key='{work_item['key']}' and "
+                f"work_items_source_id={fixture.source_work_items_source.id} and is_moved=TRUE ").scalar() == 1

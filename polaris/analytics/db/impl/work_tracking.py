@@ -1153,11 +1153,12 @@ def move_work_item(session, source_work_items_source_key, target_work_items_sour
         if target_work_items_source_key:
             target_work_items_source = WorkItemsSource.find_by_work_items_source_key(session,
                                                                                      target_work_items_source_key)
-            # Update work_items_source_id and display_id and then call update_work_items
-            work_item.work_items_source_id = target_work_items_source.id
-            work_item.display_id = work_item_data.get('display_id')
-            session.flush()
-            return update_work_items(session, target_work_items_source_key, [work_item_data])
+            if target_work_items_source:
+                # Update work_items_source_id and display_id and then call update_work_items
+                work_item.work_items_source_id = target_work_items_source.id
+                work_item.display_id = work_item_data.get('display_id')
+                session.flush()
+                return update_work_items(session, target_work_items_source_key, [work_item_data])
         else:
             work_item.is_moved = work_item_data.get('is_moved')
             return dict(update_count=1)

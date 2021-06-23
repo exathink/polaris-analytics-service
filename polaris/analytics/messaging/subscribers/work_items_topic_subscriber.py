@@ -116,10 +116,10 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
         organization_key = work_item_moved['organization_key']
         source_work_items_source_key = work_item_moved['source_work_items_source_key']
         target_work_items_source_key = work_item_moved['target_work_items_source_key']
-        moved_work_item = work_item_moved['moved_work_item']
+        work_item_data = work_item_moved['moved_work_item']
         return raise_on_failure(
             message,
-            api.move_work_item(organization_key, source_work_items_source_key, target_work_items_source_key, moved_work_item)
+            api.move_work_item(organization_key, source_work_items_source_key, target_work_items_source_key, work_item_data)
         )
 
 

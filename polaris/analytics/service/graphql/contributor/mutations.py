@@ -58,3 +58,36 @@ class UpdateContributor(graphene.Mutation):
             )
         else:
             raise ProcessingException(result.get('exception'))
+
+
+class ContributorTeamAssignment(graphene.InputObjectType):
+    contributor_key = graphene.String(required=True)
+    new_team_key = graphene.String(required=True)
+    capacity = graphene.Float(required=False)
+
+
+class UpdateContributorTeamAssignmentsInput(graphene.InputObjectType):
+    organization_key = graphene.String(required=True)
+    contributor_team_assignments = graphene.List(ContributorTeamAssignment)
+
+
+class UpdateContributorTeamAssignments(graphene.Mutation):
+    class Arguments:
+        update_contributor_team_assignments_input = UpdateContributorTeamAssignmentsInput(required=True)
+
+    success = graphene.Boolean()
+    error_message = graphene.String()
+    update_count = graphene.Int()
+
+    def mutate(self, info, update_contributor_team_assignments_input):
+        logger.info('Update ContributorForContributorAlias called')
+        result = api.update_contributor_team_assignments(
+            organization_key=update_contributor_team_assignments_input.get('organization_key'),
+            contributor_team_assignments=update_contributor_team_assignments_input.get('contributor_team_assignments')
+        )
+        return UpdateContributorTeamAssignments(
+            success=result.get('success'),
+            error_message = result.get('exception'),
+            update_count=result.get('update_count')
+
+        )

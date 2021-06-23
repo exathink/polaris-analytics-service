@@ -22,7 +22,7 @@ from .selectables import \
     OrganizationContributorNodes, OrganizationRecentlyActiveProjectsNodes, \
     OrganizationRecentlyActiveContributorNodes, OrganizationWeeklyContributorCount, \
     OrganizationCommitNodes, OrganizationWorkItemNodes, OrganizationWorkItemEventNodes, OrganizationWorkItemCommitNodes,\
-    OrganizationWorkItemEventSpan
+    OrganizationWorkItemEventSpan, OrganizationTeamNodes
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
 
@@ -35,6 +35,7 @@ from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributor
 from ..selectable_field_mixins import WeeklyContributorCountsResolverMixin
 from ..commit import CommitsConnectionMixin
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin
+from ..team import TeamsConnectionMixin
 
 
 class Organization(
@@ -52,6 +53,7 @@ class Organization(
     WorkItemsConnectionMixin,
     WorkItemEventsConnectionMixin,
     WorkItemCommitsConnectionMixin,
+    TeamsConnectionMixin,
     # field mixins
     WeeklyContributorCountsResolverMixin,
     #
@@ -78,7 +80,10 @@ class Organization(
             'work_item_commits': OrganizationWorkItemCommitNodes,
             'recently_active_projects': OrganizationRecentlyActiveProjectsNodes,
             'recently_active_repositories': OrganizationRecentlyActiveRepositoriesNodes,
-            'recently_active_contributors': OrganizationRecentlyActiveContributorNodes
+            'recently_active_contributors': OrganizationRecentlyActiveContributorNodes,
+            'teams': OrganizationTeamNodes,
+
+
         }
         selectable_field_resolvers = {
             'weekly_contributor_counts': OrganizationWeeklyContributorCount

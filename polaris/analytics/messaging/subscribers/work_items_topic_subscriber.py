@@ -11,7 +11,7 @@ import logging
 
 from polaris.analytics.db import api
 from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated, \
-    WorkItemsStatesChanged, ProjectImported
+    WorkItemsStatesChanged, ProjectImported, WorkItemMoved
 from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic, AnalyticsTopic
 from polaris.messaging.utils import raise_on_failure
 
@@ -27,6 +27,7 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                 #Events
                 WorkItemsCreated,
                 WorkItemsUpdated,
+                WorkItemMoved,
                 ProjectImported
             ],
             publisher=publisher,
@@ -58,6 +59,9 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                     self.publish(AnalyticsTopic, work_items_states_changed, channel=channel)
 
                 return work_items_updated
+
+        elif WorkItemMoved.message_type == message.message_type:
+            return self.process_work_item_moved(message)
 
         elif ProjectImported.message_type == message.message_type:
             logger.info('Received ProjectImported Message')
@@ -105,6 +109,19 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
             message,
             api.update_work_items(organization_key, work_items_source_key, updated_work_items)
         )
+
+    @staticmethod
+    def process_work_item_moved(message):
+        work_item_moved = message.dict
+        organization_key = work_item_moved['organization_key']
+        source_work_items_source_key = work_item_moved['source_work_items_source_key']
+        target_work_items_source_key = work_item_moved['target_work_items_source_key']
+        work_item_data = work_item_moved['moved_work_item']
+        return raise_on_failure(
+            message,
+            api.move_work_item(organization_key, source_work_items_source_key, target_work_items_source_key, work_item_data)
+        )
+
 
     @staticmethod
     def process_project_imported(message):

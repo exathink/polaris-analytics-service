@@ -466,3 +466,47 @@ class TestProjectWorkItemDeliveryCycles:
         assert 'data' in result
         delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
         assert len(delivery_cycles) == 1
+
+    def it_does_not_include_work_items_moved_from_source(self, setup):
+        fixture = setup
+        fixture.api_helper.update_work_item_attributes(4, dict(is_moved_from_current_source=True))
+        fixture.api_helper.update_delivery_cycle(4, dict(end_date=datetime.utcnow() - timedelta(days=2)))
+        fixture.api_helper.update_delivery_cycle(5, dict(end_date=datetime.utcnow() - timedelta(days=3)))
+
+        client = Client(schema)
+        query = """
+                    query getProjectWorkItemDeliveryCycles($project_key:String!) {
+                    project(key: $project_key) {
+                        workItemDeliveryCycles(
+                            closedWithinDays: 10, 
+                            specsOnly: false, 
+                            interfaces: [WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost]) 
+                            {
+                            edges { 
+                                node {
+                                  name
+                                  key
+                                  displayId
+                                  workItemKey
+                                  workItemType
+                                  isBug
+                                  state
+                                  startDate
+                                  endDate
+                                  leadTime
+                                  cycleTime
+                                  latency
+                                  effort
+                                  duration
+                                  authorCount
+                                }
+                            }
+                        }
+                    }
+                }
+                """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
+        assert len(delivery_cycles) == 1

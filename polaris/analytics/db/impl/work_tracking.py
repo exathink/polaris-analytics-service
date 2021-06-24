@@ -449,12 +449,15 @@ def map_commit_identifiers_to_commits(session, work_item_summaries, work_items_s
         )
     ).scalar()
 
-    commit_identifiers_to_key_map = {work_item['display_id']: {'key': work_item['key'], 'created_at': work_item['created_at']} for work_item in work_item_summaries}
+    commit_identifiers_to_key_map = {
+        work_item['display_id']: {'key': work_item['key'], 'created_at': work_item['created_at']} for work_item in
+        work_item_summaries}
     for work_item in work_item_summaries:
         if work_item.get('commit_identifiers') != None:
             if work_item.get('commit_identifiers') != []:
                 for commit_identifier in work_item.get('commit_identifiers'):
-                    commit_identifiers_to_key_map.update({commit_identifier: {'key': work_item['key'], 'created_at': work_item['created_at']}})
+                    commit_identifiers_to_key_map.update(
+                        {commit_identifier: {'key': work_item['key'], 'created_at': work_item['created_at']}})
     resolved = []
 
     fetched = 0
@@ -1139,3 +1142,25 @@ def infer_projects_repositories_relationships(session, organization_key, work_it
             for relationship in new_relationships
         ]
     )
+
+
+def move_work_item(session, source_work_items_source_key, target_work_items_source_key, work_item_data):
+    work_item = WorkItem.find_by_work_item_key(
+        session,
+        work_item_key=work_item_data.get('key')
+    )
+    if work_item:
+        if target_work_items_source_key:
+            target_work_items_source = WorkItemsSource.find_by_work_items_source_key(session,
+                                                                                     target_work_items_source_key)
+            if target_work_items_source:
+                # Update work_items_source_id and display_id and then call update_work_items
+                work_item.work_items_source_id = target_work_items_source.id
+                work_item.display_id = work_item_data.get('display_id')
+                session.flush()
+                return update_work_items(session, target_work_items_source_key, [work_item_data])
+            else:
+                work_item.is_moved_from_current_source = True
+        else:
+            work_item.is_moved_from_current_source = True
+        return dict(update_count=1)

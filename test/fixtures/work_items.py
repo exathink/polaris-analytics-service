@@ -78,13 +78,13 @@ def work_items_setup(setup_repo_org):
             **work_item_source_common()
         )
         state_map_entries = [
-                dict(state='created', state_type=WorkItemsStateType.backlog.value),
-                dict(state='open', state_type=WorkItemsStateType.open.value),
-                dict(state='wip', state_type=WorkItemsStateType.wip.value),
-                dict(state='complete', state_type=WorkItemsStateType.complete.value),
-                dict(state='closed', state_type=WorkItemsStateType.closed.value),
-                dict(state='done', state_type=WorkItemsStateType.closed.value)
-            ]
+            dict(state='created', state_type=WorkItemsStateType.backlog.value),
+            dict(state='open', state_type=WorkItemsStateType.open.value),
+            dict(state='wip', state_type=WorkItemsStateType.wip.value),
+            dict(state='complete', state_type=WorkItemsStateType.complete.value),
+            dict(state='closed', state_type=WorkItemsStateType.closed.value),
+            dict(state='done', state_type=WorkItemsStateType.closed.value)
+        ]
         work_items_source.init_state_map(state_map_entries)
         session.add(
             work_items_source
@@ -154,12 +154,6 @@ def update_work_items_setup(work_items_setup):
             work_item.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in work_item.delivery_cycles])
 
     yield organization_key, work_items_source_key, work_items_list
-
-
-
-
-
-
 
 
 @pytest.yield_fixture()

@@ -225,6 +225,9 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
     if 'active_only' in kwargs:
         select_stmt = apply_active_only_filter(select_stmt, work_items, **kwargs)
 
+    if 'suppress_moved_items' not in kwargs or kwargs.get('suppress_moved_items') == True:
+        select_stmt = select_stmt.where(work_items.c.is_moved_from_current_source != True)
+
     # This is true by default, so we include subtasks unless it is explicitly excluded.
     if kwargs.get('include_sub_tasks') == False:
         select_stmt = select_stmt.where(

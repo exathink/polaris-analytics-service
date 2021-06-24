@@ -1787,9 +1787,10 @@ class TestMoveWorkItem:
             fixture = setup
             work_item = fixture.work_items[0]
             work_item['is_moved'] = True
+            work_item['is_moved_from_current_source'] = True
             result = api.move_work_item(fixture.organization_key, fixture.source_work_items_source.key,
                                         None, work_item)
             assert result
             assert db.connection().execute(
                 f"select count(id) from analytics.work_items where key='{work_item['key']}' and "
-                f"work_items_source_id={fixture.source_work_items_source.id} and is_moved=TRUE ").scalar() == 1
+                f"work_items_source_id={fixture.source_work_items_source.id} and is_moved_from_current_source=TRUE ").scalar() == 1

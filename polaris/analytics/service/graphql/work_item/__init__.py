@@ -344,7 +344,12 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             required=False,
             description='Include subtasks in the work items. Defaults to true',
             default_value=True
-        )
+        ),
+        suppress_moved_items=graphene.Boolean(
+            required=False,
+            description='Exclude items which have been moved from current source',
+            default_value=True
+        ),
     )
 
     def resolve_work_items(self, info, **kwargs):

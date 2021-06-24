@@ -1159,6 +1159,8 @@ def move_work_item(session, source_work_items_source_key, target_work_items_sour
                 work_item.display_id = work_item_data.get('display_id')
                 session.flush()
                 return update_work_items(session, target_work_items_source_key, [work_item_data])
+            else:
+                work_item.is_moved_from_current_source = True
         else:
             work_item.is_moved_from_current_source = True
-            return dict(update_count=1)
+        return dict(update_count=1)

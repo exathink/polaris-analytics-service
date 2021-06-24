@@ -8,7 +8,6 @@ Create Date: 2021-06-22 11:12:16.548365
 from alembic import op
 import sqlalchemy as sa
 
-
 # revision identifiers, used by Alembic.
 revision = 'cdf625602461'
 down_revision = '946776664520'
@@ -17,8 +16,10 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('work_items', sa.Column('is_moved', sa.Boolean(), server_default='FALSE', nullable=True), schema='analytics')
+    op.add_column('work_items',
+                  sa.Column('is_moved_from_current_source', sa.Boolean(), server_default='FALSE', nullable=True),
+                  schema='analytics')
 
 
 def downgrade():
-    op.drop_column('work_items', 'is_moved', schema='analytics')
+    op.drop_column('work_items', 'is_moved_from_current_source', schema='analytics')

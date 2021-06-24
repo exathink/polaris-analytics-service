@@ -53,6 +53,7 @@ setup(
         'polaris.analytics.service.graphql.pull_request',
         'polaris.analytics.service.graphql.work_items_source',
         'polaris.analytics.service.graphql.feature_flag',
+	'polaris.analytics.service.graphql.team',
         'polaris.analytics.service.graphql.summarizers',
 
     ],

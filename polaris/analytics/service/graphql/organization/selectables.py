@@ -25,8 +25,8 @@ from polaris.analytics.db.model import \
     work_items_source_state_map, teams
  
 from ..interfaces import CommitSummary, CommitCount, ContributorCount, \
-    ProjectCount, RepositoryCount, WorkItemsSourceCount,  \
-    WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef,\
+    ProjectCount, RepositoryCount, WorkItemsSourceCount, \
+    WeeklyContributorCount, CommitInfo, WorkItemInfo, WorkItemsSourceRef, \
     WorkItemStateTransition, WorkItemCommitInfo, WorkItemEventSpan, ArchivedStatus
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
@@ -36,6 +36,8 @@ from ..work_item.sql_expressions import \
     work_item_commit_info_columns, \
     work_items_connection_apply_filters, \
     work_item_events_connection_apply_time_window_filters
+
+from ..contributor.sql_expressions import contributors_connection_apply_filters
 
 
 class OrganizationNode(NamedNodeResolver):
@@ -165,25 +167,55 @@ class OrganizationContributorNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
-        return select([
+        select_stmt = select([
             contributors.c.id,
             contributors.c.key,
-            contributors.c.name,
-            repositories_contributor_aliases.c.repository_id
+            contributors.c.name
         ]).select_from(
             contributors.join(
-                repositories_contributor_aliases.join(
-                    repositories.join(
-                        organizations
-                    )
-                )
+                # use denormalized relationship
+                repositories_contributor_aliases, contributors.c.id == repositories_contributor_aliases.c.contributor_id
+            ).join(
+                repositories
+            ).join(
+                organizations
             )
         ).where(
             and_(
                 organizations.c.key == bindparam('key'),
-                repositories_contributor_aliases.c.robot == False
+                repositories_contributor_aliases.c.robot == False,
             )
         ).distinct()
+        filtered_contributors = contributors_connection_apply_filters(select_stmt, **kwargs).alias()
+        repository_contributors_nodes = select([
+            filtered_contributors.c.id,
+            filtered_contributors.c.key,
+            filtered_contributors.c.name,
+            repositories_contributor_aliases.c.repository_id
+        ]).select_from(
+            filtered_contributors.join(
+                repositories_contributor_aliases,
+                filtered_contributors.c.id == repositories_contributor_aliases.c.contributor_id
+            ).join(
+                repositories
+            ).join(
+                organizations
+            )
+        ).where(
+            and_(
+                organizations.c.key == bindparam('key'),
+                repositories_contributor_aliases.c.robot == False,
+            )
+        ).distinct()
+        return repository_contributors_nodes
+
+    @staticmethod
+    def apply_distinct_columns(**kwargs):
+        return ['key', 'name']
+
+    @staticmethod
+    def sort_order(organization_contributor_nodes, **kwargs):
+        return [organization_contributor_nodes.c.key.desc(), organization_contributor_nodes.c.name.desc()]
 
 
 class OrganizationTeamNodes(ConnectionResolver):

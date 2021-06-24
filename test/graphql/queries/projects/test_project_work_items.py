@@ -230,6 +230,86 @@ class TestProjectWorkItems:
         assert 'data' in result
         assert len(result['data']['project']['workItems']['edges']) == 1
 
+    def it_does_not_return_the_work_items_moved_from_source(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+        api_helper.import_work_items(work_items)
+        api_helper.update_work_item_attributes(0, dict(is_moved_from_current_source=True))
+
+        client = Client(schema)
+        query = """
+                query getProjectDefects($project_key:String!) {
+                    project(key: $project_key) {
+                        workItems {
+                            edges {
+                                node {
+                                  id
+                                  name
+                                  key
+                                }
+                            }
+                        }
+                    }
+                }
+                        """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        assert len(result['data']['project']['workItems']['edges']) == 2
+
+    def it_returns_the_work_items_moved_from_source_when_filter_is_false(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+        api_helper.import_work_items(work_items)
+        api_helper.update_work_item_attributes(0, dict(is_moved_from_current_source=True))
+
+        client = Client(schema)
+        query = """
+                query getProjectDefects($project_key:String!) {
+                    project(key: $project_key) {
+                        workItems(suppressMovedItems: false) {
+                            edges {
+                                node {
+                                  id
+                                  name
+                                  key
+                                }
+                            }
+                        }
+                    }
+                }
+                        """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert 'data' in result
+        assert len(result['data']['project']['workItems']['edges']) == 3
+
 
 class TestProjectEpicWorkItems:
 

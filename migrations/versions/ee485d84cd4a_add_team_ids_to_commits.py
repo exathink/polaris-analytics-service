@@ -1,7 +1,7 @@
 """add_team_ids_to_commits
 
 Revision ID: ee485d84cd4a
-Revises: 946776664520
+Revises: cdf625602461
 Create Date: 2021-06-23 21:10:18.168039
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'ee485d84cd4a'
-down_revision = '946776664520'
+down_revision = 'cdf625602461'
 branch_labels = None
 depends_on = None
 

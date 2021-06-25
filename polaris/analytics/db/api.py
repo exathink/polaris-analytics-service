@@ -327,3 +327,19 @@ def update_project_settings(update_project_settings_input):
         return db.process_exception("Failed to update project settings", exc)
     except Exception as e:
         return db.failure_message(f'Failed to update project settings due to: {e}', e)
+
+
+def create_team(organization_key, name):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.create_team(
+                    session,
+                    organization_key,
+                    name
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Create Team failed", exc)
+    except Exception as e:
+        return db.failure_message('Create Team failed', e)

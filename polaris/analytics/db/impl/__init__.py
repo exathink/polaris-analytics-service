@@ -7,3 +7,4 @@ from .repositories import *
 from .projects import *
 from .feature_flags import *
 from .pull_requests import *
+from .teams import *

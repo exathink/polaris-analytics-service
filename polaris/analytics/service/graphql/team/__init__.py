@@ -33,7 +33,7 @@ class Team(
 
     @classmethod
     def Field(cls, **kwargs):
-        return super().Field(**kwargs)
+        return super().Field(key_is_required=False, **kwargs)
 
     @classmethod
     def resolve_field(cls, parent, info, team_key, **kwargs):

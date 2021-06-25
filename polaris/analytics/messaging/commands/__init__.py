@@ -24,7 +24,6 @@ __exported__ = [
     ResolveCommitsForWorkItems,
     ResolvePullRequestsForWorkItems,
     ResolveWorkItemsForPullRequests,
-    ResolveTeamsForCommits
 ]
 
 register_messages(__exported__)

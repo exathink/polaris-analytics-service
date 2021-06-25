@@ -199,6 +199,30 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
             )
         )
     )
+    
+    # resolve author team
+    author_team_info = select([
+        contributors.c.key.label('author_contributor_key'),
+        teams.c.id.label('author_team_id'),
+        teams.c.key.label('author_team_key')
+    ]).select_from(
+        commits_temp.join(
+            contributors, commits_temp.c.author_contributor_key == contributors.c.key
+        ).join(
+            contributors_teams, contributors.c.current_team_assignment_id == contributors_teams.c.id
+        ).join(
+            teams, contributors_teams.c.team_id == teams.c.id
+        )
+    ).cte('author_team_info')
+
+    session.connection.execute(
+        commits_temp.update().values(
+            author_team_id=author_team_info.c.author_team_id,
+            author_team_key=author_team_info.c.author_team_key,
+        ).where(
+            commits_temp.c.author_contributor_key == author_team_info.c.author_contributor_key,
+        )
+    )
 
     # mark existing_commits
     session.connection.execute(

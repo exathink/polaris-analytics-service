@@ -1,5 +1,6 @@
 from polaris.messaging.message_factory import register_messages
 from .resolve_commits_work_items import ResolveWorkItemsForCommits
+from .resolve_teams_for_commits import ResolveTeamsForCommits
 from .on_work_items_commits_resolved import UpdateCommitsWorkItemsSummaries, InferProjectsRepositoriesRelationships, \
     UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, ComputeContributorMetricsForWorkItems, PopulateWorkItemSourceFileChangesForWorkItems
 from .on_commit_details_created import RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits, \
@@ -23,7 +24,8 @@ __exported__ = [
     PopulateWorkItemSourceFileChangesForWorkItems,
     ResolveCommitsForWorkItems,
     ResolvePullRequestsForWorkItems,
-    ResolveWorkItemsForPullRequests
+    ResolveWorkItemsForPullRequests,
+    ResolveTeamsForCommits
 ]
 
 register_messages(__exported__)

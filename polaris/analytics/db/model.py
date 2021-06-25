@@ -613,6 +613,7 @@ class Commit(Base):
     commit_date_tz_offset = Column(Integer, default=0)
     committer_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
     committer_team_id = Column(Integer, ForeignKey('teams.id'), nullable=True, index=True)
+    committer_team_key = Column(UUID(as_uuid=True),  nullable=True, index=True)
 
     author_contributor_name = Column(String, nullable=True)
     author_contributor_key = Column(UUID(as_uuid=True), nullable=True)
@@ -620,6 +621,7 @@ class Commit(Base):
     author_date_tz_offset = Column(Integer, default=0)
     author_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
     author_team_id = Column(Integer, ForeignKey('teams.id'), nullable=True, index=True)
+    author_team_key = Column(UUID(as_uuid=True), nullable=True, index=True)
 
     is_orphan = Column(Boolean, default=False)
     created_at = Column(DateTime, nullable=True)

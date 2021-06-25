@@ -106,18 +106,6 @@ def resolve_work_items_for_commits(organization_key, repository_key, commit_summ
         return db.failure_message('Resolve work items for commits', e)
 
 
-def resolve_teams_for_commits(organization_key, repository_key, commit_summaries):
-    try:
-        with db.orm_session() as session:
-            return success(
-                impl.resolve_teams_for_commits(session, organization_key, repository_key, commit_summaries)
-            )
-    except SQLAlchemyError as exc:
-        return db.process_exception("Resolve teams for commits", exc)
-    except Exception as e:
-        return db.failure_message('Resolve teams for commits', e)
-
-
 def resolve_pull_requests_for_new_work_items(organization_key, work_item_source_key, work_item_summaries):
     try:
         with db.orm_session() as session:

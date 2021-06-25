@@ -20,7 +20,7 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
     PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems, \
     ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests, \
-    ResolveWorkItemsForCommits, ResolveTeamsForCommits
+    ResolveWorkItemsForCommits
 
 from polaris.messaging.utils import raise_on_failure
 
@@ -57,8 +57,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 PullRequestsUpdated,
                 ResolveWorkItemsForPullRequests,
                 ResolvePullRequestsForWorkItems,
-                ResolveWorkItemsForCommits,
-                ResolveTeamsForCommits
+                ResolveWorkItemsForCommits
             ],
             publisher=publisher,
             exclusive=False
@@ -74,11 +73,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
             self.publish(AnalyticsTopic, resolve_work_items_for_commits_command)
 
-            resolve_teams_for_commits_command = ResolveTeamsForCommits(
-                send=message.dict,
-                in_response_to=message
-            )
-            self.publish(AnalyticsTopic, resolve_teams_for_commits_command)
+
 
         elif WorkItemsCreated.message_type == message.message_type:
             resolve_commits_for_work_items_command = ResolveCommitsForWorkItems(
@@ -233,8 +228,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 self.publish(AnalyticsTopic, response)
                 return response
 
-        elif ResolveTeamsForCommits.message_type == message.message_type:
-            return self.process_resolve_teams_for_commits(channel, message)
 
         elif ResolvePullRequestsForWorkItems.message_type == message.message_type:
             return self.process_resolve_pull_requests_for_work_items(channel, message)
@@ -403,23 +396,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 )
             )
 
-    @staticmethod
-    def process_resolve_teams_for_commits(channel, message):
-        organization_key = message['organization_key']
-        repository_key = message['repository_key']
-        commit_summaries = message['new_commits']
-        logger.info(f'Processing resolve_teams_for_commits for organization {organization_key}')
-
-        if len(commit_summaries) > 0:
-            return raise_on_failure(
-                message,
-                api.resolve_teams_for_commits(
-                    organization_key=organization_key,
-                    repository_key=repository_key,
-                    commit_summaries=commit_summaries
-
-                )
-            )
 
     @staticmethod
     def process_update_commits_work_items_summaries(channel, message):

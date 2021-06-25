@@ -34,6 +34,7 @@ from .work_items_source import WorkItemsSource
 from .pull_request import PullRequest
 from .feature_flag import FeatureFlag
 from .team import Team
+from .team.mutations import TeamMutationsMixin
 
 from .summarizers import *
 
@@ -111,7 +112,8 @@ class Mutations(
     ViewerMutationsMixin,
     UseMutationsMixin,
     ProjectMutationsMixin,
-    FeatureFlagMutationsMixin
+    FeatureFlagMutationsMixin,
+    TeamMutationsMixin
 ):
     pass
 

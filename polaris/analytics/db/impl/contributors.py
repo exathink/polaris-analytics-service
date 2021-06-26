@@ -142,20 +142,30 @@ def update_contributor(session, contributor_key, updated_info):
 def update_contributor_team_assignments(session, organization_key, contributor_team_assignments):
     organization = Organization.find_by_organization_key(session, organization_key)
     if organization is not None:
-
+        updated_contributor_teams_assignments = []
         for assignment in contributor_team_assignments:
             contributor = Contributor.find_by_contributor_key(session, assignment.get('contributor_key'))
             if contributor is not None:
+                initial_assignment = False
                 target_team = organization.find_team(assignment.get('new_team_key'))
                 if target_team is not None:
+                    if len(contributor.teams) == 0:
+                        initial_assignment = True
                     contributor.assign_to_team(session, target_team.key, assignment.get('capacity', 1.0))
+                    updated_contributor_teams_assignments.append(
+                        dict(
+                            **assignment,
+                            initial_assignment=initial_assignment
+                        )
+                    )
                 else:
                     raise ProcessingException(f"Target team was not found in current organization for contributor {assignment.get('contributor_key')}")
             else:
                 raise ProcessingException(f"Could not find contributor with key {assignment.get('contributor_key')}")
 
         return dict(
-            update_count=len(contributor_team_assignments)
+            update_count=len(contributor_team_assignments),
+            updated_assignments=updated_contributor_teams_assignments
         )
     else:
         raise ProcessingException(f'No organization found for key: {organization_key}')

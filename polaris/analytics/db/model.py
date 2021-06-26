@@ -482,26 +482,6 @@ repositories = Repository.__table__
 UniqueConstraint(repositories.c.organization_id, repositories.c.name)
 
 
-class Team(Base):
-    __tablename__ = 'teams'
-
-    id = Column(BigInteger, primary_key=True)
-    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
-
-    name = Column(String, nullable=False)
-
-    # parent
-    organization_id = Column(Integer, ForeignKey('organizations.id'), index=True, nullable=False)
-    organization = relationship('Organization', back_populates='teams')
-
-    @classmethod
-    def find_by_key(cls, session, key):
-        return session.query(cls).filter(cls.key == key).first()
-
-
-teams = Team.__table__
-
-
 class ContributorTeam(Base):
     __tablename__ = 'contributors_teams'
 
@@ -523,6 +503,32 @@ class ContributorTeam(Base):
 contributors_teams = ContributorTeam.__table__
 
 
+class Team(Base):
+    __tablename__ = 'teams'
+
+    id = Column(BigInteger, primary_key=True)
+    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
+
+    name = Column(String, nullable=False)
+
+    # parent
+    organization_id = Column(Integer, ForeignKey('organizations.id'), index=True, nullable=False)
+    organization = relationship('Organization', back_populates='teams')
+
+    # this gives all the current contributors that have ever been assigned to the team
+    all_contributors = relationship("Contributor", secondary=contributors_teams, back_populates='teams')
+
+    @classmethod
+    def find_by_key(cls, session, key):
+        return session.query(cls).filter(cls.key == key).first()
+
+
+teams = Team.__table__
+
+
+
+
+
 class Contributor(Base):
     __tablename__ = 'contributors'
 
@@ -534,7 +540,7 @@ class Contributor(Base):
     organizations = relationship('Organization', secondary=organizations_contributors, back_populates='contributors')
 
     current_team_assignment_id = Column(Integer, nullable=True, index=True)
-
+    teams = relationship('Team', secondary=contributors_teams, back_populates='all_contributors')
 
     @classmethod
     def find_by_contributor_key(cls, session, contributor_key):

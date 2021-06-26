@@ -15,10 +15,12 @@ from polaris.messaging.messages import Message
 class ContributorTeamAssignment(Schema):
     contributor_key = fields.String(required=True)
     new_team_key = fields.String(required=True)
+    initial_assignment = fields.Boolean(required=True)
     capacity = fields.Float(required=False)
 
 
-class ResolveWorkItemsForCommits(Message):
+
+class ContributorTeamAssignmentsChanged(Message):
     message_type = 'contributors.team_assignment_changed'
 
     organization_key = fields.String(required=True)

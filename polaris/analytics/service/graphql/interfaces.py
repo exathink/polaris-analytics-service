@@ -73,6 +73,13 @@ class WorkItemCommitInfo(CommitInfo):
     work_item_key = graphene.String(required=True)
 
 
+class CommitTeamNodeRefs(graphene.Interface):
+    author_team_name = graphene.String(required=False)
+    author_team_key = graphene.String(required=False)
+    committer_team_name = graphene.String(required=False)
+    committer_team_key = graphene.String(required=False)
+
+
 class EpicNodeRef(graphene.Interface):
     epic_name = graphene.String(required=False)
     epic_key = graphene.String(required=False)

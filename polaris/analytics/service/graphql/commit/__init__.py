@@ -16,10 +16,10 @@ from polaris.graphql.connection_utils import CountableConnection
 from polaris.graphql.utils import create_tuple, init_tuple
 
 from ..interfaces import CommitInfo, CommitChangeStats, FileTypesSummary, \
-    WorkItemsSummaries
+    WorkItemsSummaries, CommitTeamNodeRefs
 from ..interface_mixins import KeyIdResolverMixin, WorkItemsSummariesResolverMixin
 
-from .selectables import CommitNode, CommitFileTypesSummary, CommitsWorkItemsSummaries
+from .selectables import CommitNode, CommitFileTypesSummary, CommitsWorkItemsSummaries, CommitsCommitTeamNodeRefs
 
 
 class CommitInfoResolverMixin(KeyIdResolverMixin):
@@ -47,10 +47,11 @@ class Commit(
     Selectable
 ):
     class Meta:
-        interfaces = (CommitInfo, WorkItemsSummaries)
+        interfaces = (CommitInfo, WorkItemsSummaries, CommitTeamNodeRefs)
         named_node_resolver = CommitNode
         interface_resolvers = {
-            'WorkItemsSummaries': CommitsWorkItemsSummaries
+            'WorkItemsSummaries': CommitsWorkItemsSummaries,
+            'CommitTeamNodeRefs': CommitsCommitTeamNodeRefs
         }
         connection_class = lambda: Commits
 

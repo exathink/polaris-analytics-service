@@ -8,9 +8,9 @@
 
 # Author: Krishna Kumar
 
-from ..interfaces import CommitInfo, FileTypesSummary, WorkItemsSummaries
-from sqlalchemy import select, func, bindparam, and_, case
-from polaris.analytics.db.model import commits, repositories, work_items_commits, work_items
+from ..interfaces import CommitInfo, FileTypesSummary, WorkItemsSummaries, CommitTeamNodeRefs
+from sqlalchemy import select, func, bindparam, and_, case, or_
+from polaris.analytics.db.model import commits, repositories, work_items_commits, work_items, teams
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver
 from .sql_expressions import commit_info_columns
 
@@ -47,6 +47,40 @@ class CommitFileTypesSummary:
         )
 
 
+class CommitsCommitTeamNodeRefs:
+    interface = CommitTeamNodeRefs
+
+    @staticmethod
+    def interface_selector(commit_nodes, **kwargs):
+        author_teams = teams.alias()
+        committer_teams = teams.alias()
+        return select([
+            commit_nodes.c.id,
+            commits.c.author_team_key,
+            author_teams.c.name.label('author_team_name'),
+            commits.c.committer_team_key,
+            committer_teams.c.name.label('committer_team_name')
+        ]).select_from(
+            commit_nodes.join(
+                commits, commit_nodes.c.id == commits.c.id
+            ).join(
+                repositories, commits.c.repository_id == repositories.c.id
+            ).outerjoin(
+                author_teams,
+                and_(
+                    commits.c.author_team_id == author_teams.c.id,
+                    author_teams.c.organization_id == repositories.c.organization_id
+                )
+            ).outerjoin(
+                committer_teams,
+                and_(
+                    commits.c.committer_team_id == committer_teams.c.id,
+                    committer_teams.c.organization_id == repositories.c.organization_id
+                )
+            )
+        )
+
+
 class CommitsWorkItemsSummaries(InterfaceResolver):
     interface = WorkItemsSummaries
 
@@ -79,3 +113,4 @@ class CommitsWorkItemsSummaries(InterfaceResolver):
         ).group_by(
             commit_nodes.c.id
         )
+

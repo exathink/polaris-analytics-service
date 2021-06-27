@@ -39,6 +39,7 @@ def cleanup(setup_schema):
     db.connection().execute("delete from analytics.accounts_organizations")
     db.connection().execute("delete from analytics.organizations")
 
+
 @pytest.yield_fixture()
 def setup_org(cleanup):
     with db.orm_session() as session:

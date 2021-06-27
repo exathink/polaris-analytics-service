@@ -9,10 +9,11 @@
 # Author: Krishna Kumar
 
 from test.fixtures.contributors import *
+from test.fixtures.teams import *
 
 from polaris.analytics.db.api import update_contributor
 from polaris.analytics.db.model import ContributorAlias
-
+from polaris.analytics.db.commands import assign_contributor_commits_to_teams
 
 class TestUpdateContributorForContributorAliases:
 
@@ -185,3 +186,122 @@ class TestUpdateContributorForContributorAliases:
             f"inner join analytics.contributors on repositories_contributor_aliases.contributor_id = contributors.id "
             f"where contributors.key='{joe_contributor_key}'"
         ).scalar() == 1
+
+
+class TestAssignContributorCommitsToTeams:
+
+    class TestInitialAssignment:
+
+        @pytest.yield_fixture()
+        def setup(self, setup_commits_for_contributor_updates, setup_teams):
+
+
+            yield Fixture(
+                organization_key=rails_organization_key,
+                team_a=setup_teams.team_a,
+                team_b=setup_teams.team_b,
+                joe=joe_contributor_key,
+                bill=billy_contributor_key
+            )
+
+        def it_returns_the_right_response(self, setup):
+            fixture = setup
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        contributor_key=joe_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            assert db.connection().execute(
+                "select count(id) from analytics.commits where author_team_key is not null"
+            ).scalar() == 1
+
+        def it_assigns_author_team_key_to_authors_who_have_teams_assigned(self, setup):
+            fixture = setup
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        contributor_key=joe_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            assert db.connection().execute(
+                "select count(id) from analytics.commits where author_team_key is not null"
+            ).scalar() == 1
+
+        def it_does_not_assign_contributor_team_key_if_thecontributor_is_not_a_committer(self, setup):
+            fixture = setup
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        contributor_key=joe_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            assert db.connection().execute(
+                "select committer_team_key from analytics.commits where author_team_key is not null"
+            ).scalar() is None
+
+
+        def it_assigns_committer_team_key_to_committers_who_have_teams_assigned(self, setup):
+            fixture = setup
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        contributor_key=billy_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            assert db.connection().execute(
+                "select count(id) from analytics.commits where committer_team_key is not null"
+            ).scalar() == 2
+
+        def it_does_not_assign_author_team_key_if_the_contributor_is_not_an_author(self, setup):
+            fixture = setup
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        contributor_key=billy_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            assert db.connection().execute(
+                "select author_team_key from analytics.commits where committer_team_key is not null"
+            ).scalar() is None
+

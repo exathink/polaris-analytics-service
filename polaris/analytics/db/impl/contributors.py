@@ -8,7 +8,8 @@
 
 # Author: Krishna Kumar
 
-from polaris.analytics.db.model import Contributor, ContributorAlias, Organization, ContributorTeam, Team
+from sqlalchemy import and_
+from polaris.analytics.db.model import Contributor, ContributorAlias, Organization, teams
 from polaris.analytics.db.model import contributor_aliases, commits, repositories_contributor_aliases
 from polaris.utils.exceptions import ProcessingException
 
@@ -169,3 +170,39 @@ def update_contributor_team_assignments(session, organization_key, contributor_t
         )
     else:
         raise ProcessingException(f'No organization found for key: {organization_key}')
+
+
+def assign_contributor_commits_to_teams(session, organization_key, contributor_team_assignments):
+    assignment_count = 0
+    for assignment in contributor_team_assignments:
+        if assignment.get('initial_assignment'):
+            contributor_key = assignment.get('contributor_key')
+            team_key = assignment.get('new_team_key')
+            session.connection().execute(
+                commits.update().where(
+                    and_(
+                        commits.c.author_contributor_key == contributor_key,
+                        teams.c.key == team_key
+                    )
+                ).values(
+                    author_team_key=team_key,
+                    author_team_id=teams.c.id
+                )
+            )
+
+            session.connection().execute(
+                commits.update().where(
+                    and_(
+                        commits.c.committer_contributor_key == contributor_key,
+                        teams.c.key == team_key
+                    )
+                ).values(
+                    committer_team_key=team_key,
+                    committer_team_id=teams.c.id
+                )
+            )
+            assignment_count = assignment_count + 1
+
+    return dict(
+        update_count=assignment_count
+    )

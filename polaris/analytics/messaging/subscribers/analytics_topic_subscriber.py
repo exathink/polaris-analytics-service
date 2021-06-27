@@ -22,6 +22,9 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests, \
     ResolveWorkItemsForCommits
 
+
+from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChanged
+
 from polaris.messaging.utils import raise_on_failure
 
 from polaris.analytics.db import api, commands
@@ -57,7 +60,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 PullRequestsUpdated,
                 ResolveWorkItemsForPullRequests,
                 ResolvePullRequestsForWorkItems,
-                ResolveWorkItemsForCommits
+                ResolveWorkItemsForCommits,
+                # Internal messages
+                ContributorTeamAssignmentsChanged
             ],
             publisher=publisher,
             exclusive=False
@@ -277,6 +282,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         elif PopulateWorkItemSourceFileChangesForCommits.message_type == message.message_type:
             return self.process_populate_work_item_source_file_changes_for_commits(channel, message)
 
+        elif ContributorTeamAssignmentsChanged.message_type == message.message_type:
+            return self.process_contributor_team_assignments_changed(channel, message)
+
     @staticmethod
     def process_register_source_file_versions(channel, message):
         organization_key = message['organization_key']
@@ -485,5 +493,20 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 commands.resolve_work_items_sources_for_repositories(
                     organization_key,
                     repositories
+                )
+            )
+
+    @staticmethod
+    def process_contributor_team_assignments_changed(channel, message):
+        organization_key = message['organization_key']
+        assignments = message['contributor_team_assignments']
+
+        logger.info(f"Process resolve contributor team assignments changed for {organization_key}")
+        if len(assignments) > 0:
+            return raise_on_failure(
+                message,
+                commands.assign_contributor_commits_to_teams(
+                    organization_key,
+                    assignments
                 )
             )

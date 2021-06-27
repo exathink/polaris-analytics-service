@@ -90,7 +90,5 @@ def setup_team_assignments(setup_teams):
 def cleanup_teams():
     yield
 
-    db.connection().execute("delete from analytics.contributors_teams")
-    db.connection().execute("delete from analytics.contributors")
-    db.connection().execute("delete from analytics.teams")
+
 

@@ -12,7 +12,7 @@
 from polaris.common import db
 from polaris.utils.collections import dict_select, dict_summarize_totals
 from polaris.analytics.db.model import commits, contributors, contributor_aliases, Repository, repositories, \
-    repositories_contributor_aliases
+    repositories_contributor_aliases, contributors_teams, teams
 
 from sqlalchemy import Column, String, select, Integer, and_, bindparam, func, distinct, or_, case
 
@@ -97,11 +97,15 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
             Column('committer_contributor_alias_id', Integer, nullable=True),
             Column('committer_contributor_name', String, nullable=True),
             Column('committer_contributor_key', UUID, nullable=True),
+            Column('committer_team_id', Integer, nullable=True),
+            Column('committer_team_key', UUID, nullable=True),
 
             Column('author_alias_key', UUID, nullable=False),
             Column('author_contributor_alias_id', Integer, nullable=True),
             Column('author_contributor_name', String, nullable=True),
             Column('author_contributor_key', UUID, nullable=True),
+            Column('author_team_id', Integer, nullable=True),
+            Column('author_team_key', UUID, nullable=True),
 
         ]
     )
@@ -155,6 +159,31 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
         )
     )
 
+    # resolve committer_team
+
+    committer_team_info = select([
+        contributors.c.key.label('committer_contributor_key'),
+        teams.c.id.label('committer_team_id'),
+        teams.c.key.label('committer_team_key')
+    ]).select_from(
+        commits_temp.join(
+            contributors, commits_temp.c.committer_contributor_key == contributors.c.key
+        ).join(
+            contributors_teams, contributors.c.current_team_assignment_id == contributors_teams.c.id
+        ).join(
+            teams, contributors_teams.c.team_id == teams.c.id
+        )
+    ).cte('committer_team_info')
+
+    session.connection.execute(
+        commits_temp.update().values(
+            committer_team_id=committer_team_info.c.committer_team_id,
+            committer_team_key=committer_team_info.c.committer_team_key,
+        ).where(
+                commits_temp.c.committer_contributor_key == committer_team_info.c.committer_contributor_key,
+        )
+    )
+
     # resolve author_keys
     session.connection.execute(
         commits_temp.update().values(
@@ -168,6 +197,30 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
                 contributor_aliases.c.key == commits_temp.c.author_alias_key,
                 contributors.c.id == contributor_aliases.c.contributor_id
             )
+        )
+    )
+    
+    # resolve author team
+    author_team_info = select([
+        contributors.c.key.label('author_contributor_key'),
+        teams.c.id.label('author_team_id'),
+        teams.c.key.label('author_team_key')
+    ]).select_from(
+        commits_temp.join(
+            contributors, commits_temp.c.author_contributor_key == contributors.c.key
+        ).join(
+            contributors_teams, contributors.c.current_team_assignment_id == contributors_teams.c.id
+        ).join(
+            teams, contributors_teams.c.team_id == teams.c.id
+        )
+    ).cte('author_team_info')
+
+    session.connection.execute(
+        commits_temp.update().values(
+            author_team_id=author_team_info.c.author_team_id,
+            author_team_key=author_team_info.c.author_team_key,
+        ).where(
+            commits_temp.c.author_contributor_key == author_team_info.c.author_contributor_key,
         )
     )
 
@@ -204,6 +257,7 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
     # update contributor_alias_stats
 
     update_repositories_contributor_aliases(session, repository, commits_temp)
+
 
     new_commits = session.connection.execute(
         select(commit_columns).where(

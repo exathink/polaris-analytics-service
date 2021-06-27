@@ -8,14 +8,16 @@
 
 # Author: Krishna Kumar
 
+import uuid
 from test.fixtures.commit_history import *
 from test.fixtures.commit_details import *
 
 from polaris.analytics.db import api, model
-from polaris.utils.collections import find
+from polaris.utils.collections import find, Fixture
 
 
 def init_contributors(contributor_aliases):
+    contributors = []
     with db.orm_session() as session:
         for ca in contributor_aliases:
             contributor = model.Contributor(
@@ -31,7 +33,9 @@ def init_contributors(contributor_aliases):
                 )
             )
             session.add(contributor)
+            contributors.append(contributor)
 
+    return contributors
 
 class TestCommitImport:
 
@@ -272,6 +276,102 @@ class TestCommitImport:
         assert db.connection().execute("select count(id) from analytics.commits").scalar() == 9
         assert db.connection().execute("select count(id) from analytics.contributors").scalar() == 2
         assert db.connection().execute("select count(id) from analytics.contributor_aliases").scalar() == 2
+
+
+class TestCommitTeamAssignment:
+
+    @pytest.yield_fixture()
+    def setup(self, setup_repo_org):
+        contributors = init_contributors([
+            dict(
+                name='Joe Blow',
+                key=joe_contributor_key,
+                source_alias='joe@blow.com',
+                source='vcs'
+            ),
+            dict(
+                name='Billy Bob',
+                key=billy_contributor_key,
+                source_alias='billy@bob.com',
+                source='vcs'
+            )])
+
+        with db.orm_session() as session:
+            session.add_all(contributors)
+            team_key = uuid.uuid4()
+            team = model.Team(
+                key=team_key,
+                name="Team Alpha"
+            )
+            organization = model.Organization.find_by_organization_key(session, rails_organization_key)
+            organization.teams.append(team)
+            for contributor in contributors:
+                contributor.assign_to_team(session, team.key)
+
+        yield Fixture(
+            team_key=team_key
+        )
+
+    def it_resolves_the_team_for_existing_contributors(self, setup):
+
+        fixture = setup
+
+        result = api.import_new_commits(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            new_commits=[
+                dict(
+                    source_commit_id='XXXX',
+                    key=uuid.uuid4().hex,
+                    **commit_common_fields
+                )
+            ],
+            new_contributors=[]
+        )
+
+        assert result['success']
+        row = db.connection().execute("select committer_team_key, committer_team_id, author_team_key, author_team_id from analytics.commits where source_commit_id='XXXX'").fetchone()
+        assert row.committer_team_key == fixture.team_key
+        assert row.committer_team_id is not None
+        assert row.author_team_key == fixture.team_key
+        assert row.author_team_id is not None
+
+
+    def it_does_not_resolve_teams_with_new_committer_and_author(self, setup):
+        new_contributor_key = uuid.uuid4().hex
+        result = api.import_new_commits(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            new_commits=[
+                dict(
+                    source_commit_id='YYYY',
+                    key=uuid.uuid4().hex,
+                    commit_date=datetime.utcnow(),
+                    commit_date_tz_offset=0,
+                    committer_alias_key=new_contributor_key,
+                    author_date=datetime.utcnow(),
+                    author_date_tz_offset=0,
+                    author_alias_key=new_contributor_key,
+                    created_at=datetime.utcnow(),
+                    commit_message='a change'
+                )
+            ],
+            new_contributors=[
+                dict(
+                    name='Joe Blow2',
+                    key=new_contributor_key,
+                    alias='jo3e@blow.com',
+                )
+            ]
+        )
+
+        assert result['success']
+        row = db.connection().execute(
+            "select committer_team_key, committer_team_id, author_team_key, author_team_id from analytics.commits where source_commit_id='YYYY'").fetchone()
+        assert row.committer_team_key is None
+        assert row.committer_team_id is None
+        assert row.author_team_key is None
+        assert row.author_team_id is None
 
 
 class TestImportCommitDetails:

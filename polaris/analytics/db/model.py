@@ -482,26 +482,6 @@ repositories = Repository.__table__
 UniqueConstraint(repositories.c.organization_id, repositories.c.name)
 
 
-class Team(Base):
-    __tablename__ = 'teams'
-
-    id = Column(BigInteger, primary_key=True)
-    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
-
-    name = Column(String, nullable=False)
-
-    # parent
-    organization_id = Column(Integer, ForeignKey('organizations.id'), index=True, nullable=False)
-    organization = relationship('Organization', back_populates='teams')
-
-    @classmethod
-    def find_by_key(cls, session, key):
-        return session.query(cls).filter(cls.key == key).first()
-
-
-teams = Team.__table__
-
-
 class ContributorTeam(Base):
     __tablename__ = 'contributors_teams'
 
@@ -523,6 +503,32 @@ class ContributorTeam(Base):
 contributors_teams = ContributorTeam.__table__
 
 
+class Team(Base):
+    __tablename__ = 'teams'
+
+    id = Column(BigInteger, primary_key=True)
+    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
+
+    name = Column(String, nullable=False)
+
+    # parent
+    organization_id = Column(Integer, ForeignKey('organizations.id'), index=True, nullable=False)
+    organization = relationship('Organization', back_populates='teams')
+
+    # this gives all the current contributors that have ever been assigned to the team
+    all_contributors = relationship("Contributor", secondary=contributors_teams, back_populates='teams')
+
+    @classmethod
+    def find_by_key(cls, session, key):
+        return session.query(cls).filter(cls.key == key).first()
+
+
+teams = Team.__table__
+
+
+
+
+
 class Contributor(Base):
     __tablename__ = 'contributors'
 
@@ -534,7 +540,7 @@ class Contributor(Base):
     organizations = relationship('Organization', secondary=organizations_contributors, back_populates='contributors')
 
     current_team_assignment_id = Column(Integer, nullable=True, index=True)
-
+    teams = relationship('Team', secondary=contributors_teams, back_populates='all_contributors')
 
     @classmethod
     def find_by_contributor_key(cls, session, contributor_key):
@@ -612,12 +618,16 @@ class Commit(Base):
     commit_date = Column(DateTime, index=True, nullable=False)
     commit_date_tz_offset = Column(Integer, default=0)
     committer_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
+    committer_team_id = Column(Integer, ForeignKey('teams.id'), nullable=True, index=True)
+    committer_team_key = Column(UUID(as_uuid=True),  nullable=True, index=True)
 
     author_contributor_name = Column(String, nullable=True)
     author_contributor_key = Column(UUID(as_uuid=True), nullable=True)
     author_date = Column(DateTime, nullable=True)
     author_date_tz_offset = Column(Integer, default=0)
     author_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
+    author_team_id = Column(Integer, ForeignKey('teams.id'), nullable=True, index=True)
+    author_team_key = Column(UUID(as_uuid=True), nullable=True, index=True)
 
     is_orphan = Column(Boolean, default=False)
     created_at = Column(DateTime, nullable=True)
@@ -637,6 +647,9 @@ class Commit(Base):
     repository = relationship('Repository', back_populates='commits')
     committer_alias = relationship('ContributorAlias', foreign_keys=[committer_contributor_alias_id])
     author_alias = relationship('ContributorAlias', foreign_keys=[author_contributor_alias_id])
+
+    author_team = relationship('Team', foreign_keys=[author_team_id])
+    committer_team = relationship('Team', foreign_keys=[committer_team_id])
 
     work_items = relationship('WorkItem',
                               secondary=work_items_commits,

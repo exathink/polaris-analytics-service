@@ -9,5 +9,21 @@
 # Author: Pragya Goyal
 
 
-def work_items_source_state_map_created(work_items_source_state_map, channel=None):
-    pass
+from polaris.messaging.topics import AnalyticsTopic
+from polaris.messaging.utils import publish
+from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChanged
+
+
+def contributor_team_assignments_changed(organization_key, contributor_team_assignments, channel=None):
+    message = ContributorTeamAssignmentsChanged(
+        send=dict(
+            organization_key=organization_key,
+            contributor_team_assignments=contributor_team_assignments
+        )
+    )
+    publish(
+        AnalyticsTopic,
+        message,
+        channel=channel
+    )
+    return message

@@ -33,6 +33,7 @@ setup(
         'polaris.analytics.cli',
         'polaris.analytics.messaging',
         'polaris.analytics.messaging.commands',
+        'polaris.analytics.messaging.messages',
         'polaris.analytics.messaging.subscribers',
         'polaris.analytics.service',
         'polaris.analytics.db',
@@ -53,7 +54,7 @@ setup(
         'polaris.analytics.service.graphql.pull_request',
         'polaris.analytics.service.graphql.work_items_source',
         'polaris.analytics.service.graphql.feature_flag',
-	'polaris.analytics.service.graphql.team',
+	    'polaris.analytics.service.graphql.team',
         'polaris.analytics.service.graphql.summarizers',
 
     ],

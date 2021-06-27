@@ -19,7 +19,11 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     RegisterSourceFileVersions, ComputeImplementationComplexityMetricsForCommits, \
     ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
     PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems, \
-    ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests
+    ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests, \
+    ResolveWorkItemsForCommits
+
+
+from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChanged
 
 from polaris.messaging.utils import raise_on_failure
 
@@ -55,7 +59,10 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 PullRequestsCreated,
                 PullRequestsUpdated,
                 ResolveWorkItemsForPullRequests,
-                ResolvePullRequestsForWorkItems
+                ResolvePullRequestsForWorkItems,
+                ResolveWorkItemsForCommits,
+                # Internal messages
+                ContributorTeamAssignmentsChanged
             ],
             publisher=publisher,
             exclusive=False
@@ -65,17 +72,13 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         logger.info(f"Dispatching {message.message_type}")
         # Messages
         if CommitsCreated.message_type == message.message_type:
-            result = self.process_resolve_work_items_for_commits(channel, message)
-            if result is not None and len(result['resolved']) > 0:
-                response = WorkItemsCommitsResolved(
-                    send=dict(
-                        organization_key=message['organization_key'],
-                        work_items_commits=result['resolved']
-                    ),
-                    in_response_to=message
-                )
-                self.publish(AnalyticsTopic, response)
-                return response
+            resolve_work_items_for_commits_command = ResolveWorkItemsForCommits(
+                send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, resolve_work_items_for_commits_command)
+
+
 
         elif WorkItemsCreated.message_type == message.message_type:
             resolve_commits_for_work_items_command = ResolveCommitsForWorkItems(
@@ -217,6 +220,20 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 self.publish(AnalyticsTopic, response)
                 return response
 
+        elif ResolveWorkItemsForCommits.message_type == message.message_type:
+            result = self.process_resolve_work_items_for_commits(channel, message)
+            if result is not None and len(result['resolved']) > 0:
+                response = WorkItemsCommitsResolved(
+                    send=dict(
+                        organization_key=message['organization_key'],
+                        work_items_commits=result['resolved']
+                    ),
+                    in_response_to=message
+                )
+                self.publish(AnalyticsTopic, response)
+                return response
+
+
         elif ResolvePullRequestsForWorkItems.message_type == message.message_type:
             return self.process_resolve_pull_requests_for_work_items(channel, message)
 
@@ -264,6 +281,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             return self.process_resolve_work_items_sources_for_repositories(channel, message)
         elif PopulateWorkItemSourceFileChangesForCommits.message_type == message.message_type:
             return self.process_populate_work_item_source_file_changes_for_commits(channel, message)
+
+        elif ContributorTeamAssignmentsChanged.message_type == message.message_type:
+            return self.process_contributor_team_assignments_changed(channel, message)
 
     @staticmethod
     def process_register_source_file_versions(channel, message):
@@ -384,6 +404,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 )
             )
 
+
     @staticmethod
     def process_update_commits_work_items_summaries(channel, message):
         organization_key = message['organization_key']
@@ -472,5 +493,20 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 commands.resolve_work_items_sources_for_repositories(
                     organization_key,
                     repositories
+                )
+            )
+
+    @staticmethod
+    def process_contributor_team_assignments_changed(channel, message):
+        organization_key = message['organization_key']
+        assignments = message['contributor_team_assignments']
+
+        logger.info(f"Process resolve contributor team assignments changed for {organization_key}")
+        if len(assignments) > 0:
+            return raise_on_failure(
+                message,
+                commands.assign_contributor_commits_to_teams(
+                    organization_key,
+                    assignments
                 )
             )

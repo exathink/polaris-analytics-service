@@ -145,3 +145,19 @@ def populate_work_items_source_file_changes_for_work_items(organization_key, wor
         return db.process_exception("Populate work items source file changes for work items failed", exc)
     except Exception as e:
         return db.failure_message('Populate work items source file changes for work items failed', e)
+
+
+def assign_contributor_commits_to_teams(organization_key, contributor_team_assignments):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.assign_contributor_commits_to_teams(
+                    session,
+                    organization_key,
+                    contributor_team_assignments
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Assign contributor commits to teams failed", exc)
+    except Exception as e:
+        return db.failure_message('Assign contributor commits to teams failed', e)

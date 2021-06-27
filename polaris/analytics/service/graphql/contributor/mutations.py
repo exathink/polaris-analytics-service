@@ -12,7 +12,7 @@ import graphene
 import logging
 from polaris.analytics import api
 from polaris.utils.exceptions import ProcessingException
-
+from polaris.analytics import publish
 logger = logging.getLogger('polaris.analytics.graphql')
 
 
@@ -85,9 +85,14 @@ class UpdateContributorTeamAssignments(graphene.Mutation):
             organization_key=update_contributor_team_assignments_input.get('organization_key'),
             contributor_team_assignments=update_contributor_team_assignments_input.get('contributor_team_assignments')
         )
+        if result.get('success'):
+            publish.contributor_team_assignments_changed(
+                update_contributor_team_assignments_input.get('organization_key'),
+                result['updated_assignments']
+            )
+
         return UpdateContributorTeamAssignments(
             success=result.get('success'),
-            error_message = result.get('exception'),
+            error_message=result.get('exception'),
             update_count=result.get('update_count')
-
         )

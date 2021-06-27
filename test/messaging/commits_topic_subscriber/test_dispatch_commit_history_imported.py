@@ -12,7 +12,6 @@
 from test.fixtures.commit_history import *
 from unittest.mock import patch
 from polaris.messaging.messages import CommitHistoryImported, CommitsCreated
-from polaris.analytics.messaging.commands import ResolveCommitsWorkItems
 
 from polaris.messaging.test_utils import mock_channel, fake_send, assert_is_valid_message
 from polaris.analytics.messaging.subscribers import CommitsTopicSubscriber

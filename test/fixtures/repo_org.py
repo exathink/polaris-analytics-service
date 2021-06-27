@@ -28,14 +28,17 @@ def cleanup(setup_schema):
     db.connection().execute("delete from analytics.work_items_sources")
     db.connection().execute("delete from analytics.commits")
     db.connection().execute("delete from analytics.source_files")
+    db.connection().execute("delete from analytics.contributors_teams")
     db.connection().execute("delete from analytics.contributor_aliases")
     db.connection().execute("delete from analytics.contributors")
+    db.connection().execute("delete from analytics.teams")
     db.connection().execute("delete from analytics.pull_requests")
     db.connection().execute("delete from analytics.projects_repositories")
     db.connection().execute("delete from analytics.repositories")
     db.connection().execute("delete from analytics.projects")
     db.connection().execute("delete from analytics.accounts_organizations")
     db.connection().execute("delete from analytics.organizations")
+
 
 @pytest.yield_fixture()
 def setup_org(cleanup):

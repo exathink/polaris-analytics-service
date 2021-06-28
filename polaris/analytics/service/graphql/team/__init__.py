@@ -14,11 +14,14 @@ from polaris.graphql.selectable import Selectable, CountableConnection, Connecti
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import ContributorCount
 from ..interface_mixins import NamedNodeResolverMixin
-from .selectable import TeamNode, TeamContributorCount
+from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes
+
+from ..work_item import WorkItemDeliveryCyclesConnectionMixin
 
 
 class Team(
     NamedNodeResolverMixin,
+    WorkItemDeliveryCyclesConnectionMixin,
     Selectable
 ):
     class Meta:
@@ -29,6 +32,9 @@ class Team(
             'ContributorCount': TeamContributorCount
         }
 
+        connection_node_resolvers = {
+            'work_item_delivery_cycles': TeamWorkItemDeliveryCycleNodes
+        }
         connection_class = lambda: Teams
 
     @classmethod

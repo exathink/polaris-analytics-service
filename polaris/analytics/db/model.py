@@ -78,6 +78,11 @@ repositories_contributor_aliases = Table(
     Index('ix_repositories_contributor_aliasesrepositoryidcontributorid', 'repository_id', 'contributor_id')
 )
 
+work_items_teams = Table(
+    'work_items_teams', Base.metadata,
+    Column('work_item_id', ForeignKey('work_items.id'), primary_key=True, index=True),
+    Column('team_id', ForeignKey('teams.id'), primary_key=True, index=True)
+)
 
 class Account(Base):
     __tablename__ = 'accounts'
@@ -518,6 +523,9 @@ class Team(Base):
     # this gives all the current contributors that have ever been assigned to the team
     all_contributors = relationship("Contributor", secondary=contributors_teams, back_populates='teams')
 
+    # work items relationship
+    work_items = relationship("WorkItem", secondary=work_items_teams, back_populates='teams')
+
     @classmethod
     def find_by_key(cls, session, key):
         return session.query(cls).filter(cls.key == key).first()
@@ -871,7 +879,11 @@ class WorkItem(Base):
     # Work Items Source File Relationship
     source_file_changes = relationship('WorkItemSourceFileChange', cascade='all, delete-orphan')
 
+    # Work Items Pull Request Relationship
     pull_requests = relationship('PullRequest', secondary=work_items_pull_requests, back_populates='work_items')
+
+    #work items teams relationship
+    teams = relationship('Team', secondary=work_items_teams, back_populates='work_items')
 
     @classmethod
     def find_by_work_item_key(cls, session, work_item_key):

@@ -107,6 +107,11 @@ def org_repo_fixture(setup_schema):
 
     db.connection().execute("delete from analytics.source_files")
     db.connection().execute("delete from analytics.projects_repositories")
+    db.connection().execute("delete from analytics.work_items_commits")
+    db.connection().execute("delete from analytics.work_items_teams")
+    db.connection().execute("delete from analytics.work_items")
+
+    db.connection().execute("delete from analytics.work_items_sources")
     db.connection().execute("delete from analytics.commits")
     db.connection().execute("delete from analytics.repositories")
     db.connection().execute("delete from analytics.projects")

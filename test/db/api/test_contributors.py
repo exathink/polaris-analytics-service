@@ -10,9 +10,11 @@
 
 from test.fixtures.contributors import *
 from test.fixtures.teams import *
+from test.fixtures.graphql import get_date
 
+from datetime import datetime, timedelta
 from polaris.analytics.db.api import update_contributor
-from polaris.analytics.db.model import ContributorAlias
+from polaris.analytics.db.model import ContributorAlias, WorkItem, WorkItemsSource, Repository, Organization, Team
 from polaris.analytics.db.commands import assign_contributor_commits_to_teams
 
 class TestUpdateContributorForContributorAliases:
@@ -190,19 +192,18 @@ class TestUpdateContributorForContributorAliases:
 
 class TestAssignContributorCommitsToTeams:
 
+    @pytest.yield_fixture()
+    def setup(self, setup_commits_for_contributor_updates, setup_teams):
+        yield Fixture(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            team_a=setup_teams.team_a,
+            team_b=setup_teams.team_b,
+            joe=joe_contributor_key,
+            bill=billy_contributor_key
+        )
+
     class TestInitialAssignment:
-
-        @pytest.yield_fixture()
-        def setup(self, setup_commits_for_contributor_updates, setup_teams):
-
-
-            yield Fixture(
-                organization_key=rails_organization_key,
-                team_a=setup_teams.team_a,
-                team_b=setup_teams.team_b,
-                joe=joe_contributor_key,
-                bill=billy_contributor_key
-            )
 
         def it_returns_the_right_response(self, setup):
             fixture = setup
@@ -305,3 +306,122 @@ class TestAssignContributorCommitsToTeams:
                 "select author_team_key from analytics.commits where committer_team_key is not null"
             ).scalar() is None
 
+    class TestWorkItemTeamAssignments:
+
+        def work_item_source_common(self):
+            return dict(
+                key=uuid.uuid4().hex,
+                name='Rails Project',
+                integration_type='github',
+                work_items_source_type='repository_issues',
+                commit_mapping_scope='organization',
+                commit_mapping_scope_key=rails_organization_key,
+                source_id=str(uuid.uuid4())
+            )
+
+        def work_items_common(self):
+            return dict(
+                work_item_type='issue',
+                is_bug=True,
+                is_epic=False,
+                url='http://foo.com',
+                tags=['ares2'],
+                description='An issue here',
+                created_at=datetime.utcnow() - timedelta(days=7),
+                updated_at=datetime.utcnow() - timedelta(days=6),
+                state='open',
+                source_id=str(uuid.uuid4()),
+                parent_id=None
+            )
+
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            fixture = setup
+            with db.orm_session() as session:
+                organization = Organization.find_by_organization_key(session, rails_organization_key)
+                work_item_source = WorkItemsSource(
+                    organization_key=rails_organization_key,
+                    **self.work_item_source_common()
+                )
+                organization.work_items_sources.append(work_item_source)
+                new_work_items = [
+                    WorkItem(
+                        key=uuid.uuid4().hex,
+                        name='Issue 1',
+                        display_id='1000',
+
+                        **self.work_items_common()
+                    ),
+                    WorkItem(
+                        key=uuid.uuid4().hex,
+                        name='Issue 2',
+                        display_id='2000',
+
+                        **self.work_items_common()
+                    ),
+                    WorkItem(
+                        key=uuid.uuid4().hex,
+                        name='Issue 3',
+                        display_id='2000',
+
+                        **self.work_items_common()
+                    ),
+                ]
+                work_item_source.work_items.extend(
+                    new_work_items
+                )
+                repo = Repository.find_by_repository_key(session, rails_repository_key)
+
+
+                new_work_items[0].commits.append(repo.commits[0])
+                new_work_items[1].commits.append(repo.commits[1])
+
+
+
+            yield fixture
+
+        def it_assigns_the_work_items_for_a_commit_to_the_team_based_on_author(self, setup):
+            fixture = setup
+
+            # Joe is author on commit 0 only and that is associated with one work item
+            # so when we associate joe with a team, we expect the team to have one work item
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        contributor_key=joe_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            with db.orm_session() as session:
+                team = Team.find_by_key(session, fixture.team_a['key'])
+                assert len(team.work_items) == 1
+
+        def it_assigns_the_work_items_for_a_commit_to_the_team_based_on_committer(self, setup):
+            fixture = setup
+
+            # Billy is committer on both commits only and each is associated with one work item
+            # so when we associate joe with a team, we expect the team to have two work items
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        contributor_key=billy_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            with db.orm_session() as session:
+                team = Team.find_by_key(session, fixture.team_a['key'])
+                assert len(team.work_items) == 2

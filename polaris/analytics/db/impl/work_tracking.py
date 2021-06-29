@@ -15,7 +15,8 @@ from polaris.common import db
 from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
 
-from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, DateTime
+from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, DateTime, \
+    union
 from sqlalchemy.dialects.postgresql import UUID, insert, array
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType
@@ -24,7 +25,7 @@ from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
     Commit, WorkItem, work_item_state_transitions, Project, work_items_sources, \
-    work_item_delivery_cycles
+    work_item_delivery_cycles, teams, work_items_teams
 
 from .delivery_cycle_tracking import initialize_work_item_delivery_cycles, \
     initialize_work_item_delivery_cycle_durations, \
@@ -1164,3 +1165,75 @@ def move_work_item(session, source_work_items_source_key, target_work_items_sour
         else:
             work_item.is_moved_from_current_source = True
         return dict(update_count=1)
+
+
+def resolve_teams_for_work_items(session, organization_key, work_items_commits):
+    if len(work_items_commits) > 0:
+        wc_temp = db.create_temp_table(
+            'work_items_commits_temp',
+            [
+                Column('work_item_key', UUID(as_uuid=True)),
+                Column('commit_key', UUID(as_uuid=True))
+            ]
+        )
+        wc_temp.create(session.connection(), checkfirst=True)
+
+        # insert tuples in form (work_item_key, commit_summary*) into the temp table.
+        # the same commit might appear more than once in this table.
+        session.connection().execute(
+            wc_temp.insert([
+                dict(
+                    work_item_key=work_item['work_item_key'],
+                    commit_key=work_item['commit_key']
+                )
+                for work_item in work_items_commits
+            ])
+        )
+
+        author_commits = commits.alias()
+        committer_commits = commits.alias()
+
+        work_items_author_teams = select([
+            teams.c.id.label('team_id'),
+            work_items.c.id.label('work_item_id'),
+        ]).select_from(
+            wc_temp.join(
+                author_commits, wc_temp.c.commit_key == author_commits.c.key
+            ).join(
+                work_items, wc_temp.c.work_item_key == work_items.c.key
+            ).join(
+                teams, author_commits.c.author_team_id == teams.c.id
+            )
+        )
+        work_items_committer_teams = select([
+            teams.c.id.label('team_id'),
+            work_items.c.id.label('work_item_id'),
+        ]).select_from(
+            wc_temp.join(
+                committer_commits, wc_temp.c.commit_key == committer_commits.c.key
+            ).join(
+                work_items, wc_temp.c.work_item_key == work_items.c.key
+            ).join(
+                teams, committer_commits.c.committer_team_id == teams.c.id
+            )
+        )
+
+
+        updated = session.connection().execute(
+            insert(work_items_teams).from_select(
+                [
+                    'team_id',
+                    'work_item_id'
+                ],
+                union(
+                    work_items_author_teams,
+                    work_items_committer_teams
+                )
+            ).on_conflict_do_nothing(
+                index_elements=['team_id', 'work_item_id']
+            )
+        ).rowcount
+
+        return dict(
+            updated=updated
+        )

@@ -20,7 +20,7 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
     PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems, \
     ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests, \
-    ResolveWorkItemsForCommits
+    ResolveWorkItemsForCommits, ResolveTeamsForWorkItems
 
 
 from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChanged
@@ -61,6 +61,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 ResolveWorkItemsForPullRequests,
                 ResolvePullRequestsForWorkItems,
                 ResolveWorkItemsForCommits,
+                ResolveTeamsForWorkItems,
                 # Internal messages
                 ContributorTeamAssignmentsChanged
             ],
@@ -159,6 +160,11 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
             self.publish(AnalyticsTopic, infer_projects_repositories_relationships)
 
+            resolve_teams_for_work_items_command = ResolveTeamsForWorkItems(
+                send=message.dict
+            )
+            self.publish(AnalyticsTopic, resolve_teams_for_work_items_command)
+
             # Publish a sub command to compute following stats for each delivery cycle:
             # 1. Work items commits span
             # 2. Work items commits repository count
@@ -191,7 +197,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             self.publish(AnalyticsTopic, populate_work_item_source_file_changes_for_work_items_command)
 
             return update_commit_work_items_summaries_command, infer_projects_repositories_relationships, \
-                update_work_items_commits_stats_command, compute_implementation_complexity_metrics_for_work_items_command, \
+                resolve_teams_for_work_items_command, update_work_items_commits_stats_command, compute_implementation_complexity_metrics_for_work_items_command, \
                 compute_contributor_metrics_for_work_items_command, populate_work_item_source_file_changes_for_work_items_command
 
         elif RepositoriesImported.message_type == message.message_type:
@@ -263,6 +269,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
         elif PopulateWorkItemSourceFileChangesForWorkItems.message_type == message.message_type:
             return self.process_populate_work_item_source_file_changes_for_work_items(channel, message)
+
+        elif ResolveTeamsForWorkItems.message_type == message.message_type:
+            return self.process_resolve_teams_for_work_items(channel, message)
 
         elif InferProjectsRepositoriesRelationships.message_type == message.message_type:
             result = self.process_infer_projects_repositories_relationships(channel, message)
@@ -508,5 +517,20 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 commands.assign_contributor_commits_to_teams(
                     organization_key,
                     assignments
+                )
+            )
+
+    @staticmethod
+    def process_resolve_teams_for_work_items(channel, message):
+        organization_key = message['organization_key']
+        work_items_commits = message['work_items_commits']
+
+        logger.info(f"Process resolve teams for work items for {organization_key}")
+        if len(work_items_commits) > 0:
+            return raise_on_failure(
+                message,
+                commands.resolve_teams_for_work_items(
+                    organization_key,
+                    work_items_commits
                 )
             )

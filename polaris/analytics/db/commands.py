@@ -161,3 +161,19 @@ def assign_contributor_commits_to_teams(organization_key, contributor_team_assig
         return db.process_exception("Assign contributor commits to teams failed", exc)
     except Exception as e:
         return db.failure_message('Assign contributor commits to teams failed', e)
+
+
+def resolve_teams_for_work_items(organization_key, work_items_commits):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.resolve_teams_for_work_items(
+                    session,
+                    organization_key,
+                    work_items_commits
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Resolve teams  for work items failed", exc)
+    except Exception as e:
+        return db.failure_message('Resolve teams for work items failed', e)

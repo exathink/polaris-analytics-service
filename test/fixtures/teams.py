@@ -22,6 +22,7 @@ def setup_teams(org_repo_fixture, cleanup_teams):
     organization, projects, repositories = org_repo_fixture
 
     with db.orm_session() as session:
+        session.expire_on_commit = False
         team_a = dict(
             key=uuid.uuid4(),
             name='Team Alpha'

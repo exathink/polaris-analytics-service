@@ -8,11 +8,12 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import and_
-from polaris.analytics.db.model import Contributor, ContributorAlias, Organization, teams
-from polaris.analytics.db.model import contributor_aliases, commits, repositories_contributor_aliases
+from sqlalchemy import and_, or_, distinct, select, bindparam
+from polaris.analytics.db.model import Contributor, ContributorAlias, Organization, Team, teams
+from polaris.analytics.db.model import contributor_aliases, commits, repositories_contributor_aliases, \
+    work_items, work_items_commits, work_items_teams
 from polaris.utils.exceptions import ProcessingException
-
+from sqlalchemy.dialects.postgresql import insert
 
 def unlink_contributor_alias_from_contributor(session, contributor, contributor_alias_key):
     contributor_alias = ContributorAlias.find_by_contributor_alias_key(session, contributor_alias_key)
@@ -178,31 +179,76 @@ def assign_contributor_commits_to_teams(session, organization_key, contributor_t
         if assignment.get('initial_assignment'):
             contributor_key = assignment.get('contributor_key')
             team_key = assignment.get('new_team_key')
-            session.connection().execute(
-                commits.update().where(
-                    and_(
-                        commits.c.author_contributor_key == contributor_key,
-                        teams.c.key == team_key
+            team = Team.find_by_key(session, team_key)
+            if team is not None:
+                session.connection().execute(
+                    commits.update().where(
+                        and_(
+                            commits.c.author_contributor_key == contributor_key,
+                            teams.c.key == team_key
+                        )
+                    ).values(
+                        author_team_key=team_key,
+                        author_team_id=teams.c.id
                     )
-                ).values(
-                    author_team_key=team_key,
-                    author_team_id=teams.c.id
                 )
-            )
 
-            session.connection().execute(
-                commits.update().where(
-                    and_(
-                        commits.c.committer_contributor_key == contributor_key,
-                        teams.c.key == team_key
+                session.connection().execute(
+                    commits.update().where(
+                        and_(
+                            commits.c.committer_contributor_key == contributor_key,
+                            teams.c.key == team_key
+                        )
+                    ).values(
+                        committer_team_key=team_key,
+                        committer_team_id=teams.c.id
                     )
-                ).values(
-                    committer_team_key=team_key,
-                    committer_team_id=teams.c.id
                 )
-            )
-            assignment_count = assignment_count + 1
+
+                # assign work items to teams based on the commits just associated
+                assign_work_items_to_team(session, contributor_key, team_key)
+
+                #
+                assignment_count = assignment_count + 1
+
+            else:
+                raise ProcessingException(f'Could not find team with key {team_key} in organization {organization_key}')
 
     return dict(
         update_count=assignment_count
+    )
+
+
+def assign_work_items_to_team(session, contributor_key, team_key):
+    # This assigns work items to teams by taking all
+    # commits associated with  the given contributor as author or committer and
+    # assigning all the work items associated with those commits to the team
+    # specified. This is safe to use only when the team is initially assigned to the contributor
+    team = Team.find_by_key(session, team_key)
+
+    to_upsert = select([
+        bindparam('team_id').label('team_id'),
+        work_items_commits.c.work_item_id.label('work_item_id')
+    ]).distinct().select_from(
+        commits.join(
+            work_items_commits, work_items_commits.c.commit_id == commits.c.id
+        )
+    ).where(
+        or_(
+            commits.c.author_team_key == team_key,
+            commits.c.committer_team_key == team_key
+        )
+    )
+
+    upsert = insert(work_items_teams).from_select(
+        [
+            to_upsert.c.team_id,
+            to_upsert.c.work_item_id
+        ],
+        to_upsert
+    )
+    session.connection().execute(
+        upsert.on_conflict_do_nothing(
+            index_elements=['team_id', 'work_item_id'],
+        ), dict(team_id=team.id)
     )

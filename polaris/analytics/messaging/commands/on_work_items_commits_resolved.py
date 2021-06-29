@@ -34,3 +34,7 @@ class ComputeContributorMetricsForWorkItems(WorkItemsCommitsResolved):
 class PopulateWorkItemSourceFileChangesForWorkItems(WorkItemsCommitsResolved):
     message_type = 'analytics.populate_work_item_source_file_changes_for_work_items'
 
+
+class ResolveTeamsForWorkItems(WorkItemsCommitsResolved):
+    message_type = 'analytics.resolve_teams_for_work_items'
+

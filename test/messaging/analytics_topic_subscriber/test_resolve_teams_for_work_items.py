@@ -9,14 +9,10 @@
 # Author: Krishna Kumar
 
 from unittest.mock import patch
-
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
 from polaris.messaging.messages import WorkItemsCommitsResolved
 from polaris.messaging.topics import AnalyticsTopic
-from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, InferProjectsRepositoriesRelationships, \
-    UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, \
-    ComputeContributorMetricsForWorkItems, PopulateWorkItemSourceFileChangesForWorkItems, \
-    ResolveTeamsForWorkItems
+from polaris.analytics.messaging.commands import ResolveTeamsForWorkItems
 from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
 
 from test.fixtures.work_item_commit_resolution import *
@@ -61,11 +57,11 @@ def work_items_commits_fixture(commits_fixture):
     yield new_key, test_commit_key, work_item_source.key, test_repo.key
 
 
-class TestWorkItemsCommitsResolved:
+class TestUpdateCommitsWorkItemsSummaries:
 
     def it_returns_a_valid_response(self, work_items_commits_fixture):
         work_item_key, commit_key, work_items_source_key, repository_key = work_items_commits_fixture
-        message = fake_send(WorkItemsCommitsResolved(
+        message = fake_send(ResolveTeamsForWorkItems(
             send=dict(
                 organization_key=test_organization_key,
                 work_items_commits=[
@@ -81,12 +77,6 @@ class TestWorkItemsCommitsResolved:
         publisher = mock_publisher()
         channel = mock_channel()
         result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
-        assert len(result) == 7
-        publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateCommitsWorkItemsSummaries, call=0)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, InferProjectsRepositoriesRelationships, call=1)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, ResolveTeamsForWorkItems, call=2)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, UpdateWorkItemsCommitsStats, call=3)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, ComputeImplementationComplexityMetricsForWorkItems, call=4)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, ComputeContributorMetricsForWorkItems, call=5)
-        publisher.assert_topic_called_with_message(AnalyticsTopic, PopulateWorkItemSourceFileChangesForWorkItems, call=6)
+        assert result['success']
+
 

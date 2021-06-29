@@ -1169,71 +1169,90 @@ def move_work_item(session, source_work_items_source_key, target_work_items_sour
 
 def resolve_teams_for_work_items(session, organization_key, work_items_commits):
     if len(work_items_commits) > 0:
-        wc_temp = db.create_temp_table(
-            'work_items_commits_temp',
-            [
-                Column('work_item_key', UUID(as_uuid=True)),
-                Column('commit_key', UUID(as_uuid=True))
-            ]
-        )
-        wc_temp.create(session.connection(), checkfirst=True)
-
-        # insert tuples in form (work_item_key, commit_summary*) into the temp table.
-        # the same commit might appear more than once in this table.
-        session.connection().execute(
-            wc_temp.insert([
-                dict(
-                    work_item_key=work_item['work_item_key'],
-                    commit_key=work_item['commit_key']
-                )
-                for work_item in work_items_commits
-            ])
-        )
-
-        author_commits = commits.alias()
-        committer_commits = commits.alias()
-
-        work_items_author_teams = select([
-            teams.c.id.label('team_id'),
-            work_items.c.id.label('work_item_id'),
-        ]).select_from(
-            wc_temp.join(
-                author_commits, wc_temp.c.commit_key == author_commits.c.key
-            ).join(
-                work_items, wc_temp.c.work_item_key == work_items.c.key
-            ).join(
-                teams, author_commits.c.author_team_id == teams.c.id
-            )
-        )
-        work_items_committer_teams = select([
-            teams.c.id.label('team_id'),
-            work_items.c.id.label('work_item_id'),
-        ]).select_from(
-            wc_temp.join(
-                committer_commits, wc_temp.c.commit_key == committer_commits.c.key
-            ).join(
-                work_items, wc_temp.c.work_item_key == work_items.c.key
-            ).join(
-                teams, committer_commits.c.committer_team_id == teams.c.id
-            )
-        )
-
-
-        updated = session.connection().execute(
-            insert(work_items_teams).from_select(
+        organization = Organization.find_by_organization_key(session, organization_key)
+        if organization is not None:
+            wc_temp = db.create_temp_table(
+                'work_items_commits_temp',
                 [
-                    'team_id',
-                    'work_item_id'
-                ],
-                union(
-                    work_items_author_teams,
-                    work_items_committer_teams
-                )
-            ).on_conflict_do_nothing(
-                index_elements=['team_id', 'work_item_id']
+                    Column('work_item_key', UUID(as_uuid=True)),
+                    Column('commit_key', UUID(as_uuid=True))
+                ]
             )
-        ).rowcount
+            wc_temp.create(session.connection(), checkfirst=True)
 
-        return dict(
-            updated=updated
-        )
+            # insert tuples in form (work_item_key, commit_summary*) into the temp table.
+            # the same commit might appear more than once in this table.
+            session.connection().execute(
+                wc_temp.insert([
+                    dict(
+                        work_item_key=work_item['work_item_key'],
+                        commit_key=work_item['commit_key']
+                    )
+                    for work_item in work_items_commits
+                ])
+            )
+
+            author_commits = commits.alias()
+            committer_commits = commits.alias()
+
+            work_items_author_teams = select([
+                teams.c.id.label('team_id'),
+                work_items.c.id.label('work_item_id'),
+            ]).select_from(
+                wc_temp.join(
+                    author_commits, wc_temp.c.commit_key == author_commits.c.key
+                ).join(
+                    work_items, wc_temp.c.work_item_key == work_items.c.key
+                ).join(
+                    work_items_sources, work_items.c.work_items_source_id == work_items_sources.c.id
+                ).join(
+                    teams, author_commits.c.author_team_id == teams.c.id
+                )
+            ).where(
+                and_(
+                    work_items_sources.c.organization_id == organization.id,
+                    teams.c.organization_id == organization.id
+                )
+            )
+
+            work_items_committer_teams = select([
+                teams.c.id.label('team_id'),
+                work_items.c.id.label('work_item_id'),
+            ]).select_from(
+                wc_temp.join(
+                    committer_commits, wc_temp.c.commit_key == committer_commits.c.key
+                ).join(
+                    work_items, wc_temp.c.work_item_key == work_items.c.key
+                ).join(
+                    work_items_sources, work_items.c.work_items_source_id == work_items_sources.c.id
+                ).join(
+                    teams, committer_commits.c.committer_team_id == teams.c.id
+                )
+            ).where(
+                and_(
+                    work_items_sources.c.organization_id == organization.id,
+                    teams.c.organization_id == organization.id
+                )
+            )
+
+
+            updated = session.connection().execute(
+                insert(work_items_teams).from_select(
+                    [
+                        'team_id',
+                        'work_item_id'
+                    ],
+                    union(
+                        work_items_author_teams,
+                        work_items_committer_teams
+                    )
+                ).on_conflict_do_nothing(
+                    index_elements=['team_id', 'work_item_id']
+                )
+            ).rowcount
+
+            return dict(
+                updated=updated
+            )
+        else:
+            raise ProcessingException(f"Could not find organization with key {organization_key}")

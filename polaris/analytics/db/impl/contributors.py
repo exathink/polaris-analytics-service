@@ -11,7 +11,7 @@
 from sqlalchemy import and_, or_, distinct, select, bindparam
 from polaris.analytics.db.model import Contributor, ContributorAlias, Organization, Team, teams
 from polaris.analytics.db.model import contributor_aliases, commits, repositories_contributor_aliases, \
-    work_items, work_items_commits, work_items_teams
+    work_items, work_items_commits, work_items_teams, repositories
 from polaris.utils.exceptions import ProcessingException
 from sqlalchemy.dialects.postgresql import insert
 
@@ -206,7 +206,7 @@ def assign_contributor_commits_to_teams(session, organization_key, contributor_t
                 )
 
                 # assign work items to teams based on the commits just associated
-                assign_work_items_to_team(session, contributor_key, team_key)
+                assign_work_items_to_team(session, organization_key, team_key)
 
                 #
                 assignment_count = assignment_count + 1
@@ -219,25 +219,35 @@ def assign_contributor_commits_to_teams(session, organization_key, contributor_t
     )
 
 
-def assign_work_items_to_team(session, contributor_key, team_key):
+def assign_work_items_to_team(session, organization_key, team_key):
     # This assigns work items to teams by taking all
     # commits associated with  the given contributor as author or committer and
     # assigning all the work items associated with those commits to the team
     # specified. This is safe to use only when the team is initially assigned to the contributor
     team = Team.find_by_key(session, team_key)
 
+    # We need to qualify this by organization and repository because otherwise,
+    # if a commit contributor commits across organizations, those work items will be associated with the
+    # the current team. We want to limit matching to commits only in repos in the current org.
+    organization = Organization.find_by_organization_key(session, organization_key)
     to_upsert = select([
         bindparam('team_id').label('team_id'),
         work_items_commits.c.work_item_id.label('work_item_id')
     ]).distinct().select_from(
-        commits.join(
+        repositories.join(
+            commits, commits.c.repository_id == repositories.c.id
+        ).join(
             work_items_commits, work_items_commits.c.commit_id == commits.c.id
         )
     ).where(
-        or_(
-            commits.c.author_team_key == team_key,
-            commits.c.committer_team_key == team_key
+        and_(
+            repositories.c.organization_id == organization.id,
+            or_(
+                commits.c.author_team_key == team_key,
+                commits.c.committer_team_key == team_key
+            )
         )
+
     )
 
     upsert = insert(work_items_teams).from_select(

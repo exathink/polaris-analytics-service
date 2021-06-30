@@ -8,16 +8,12 @@
 
 # Author: Krishna Kumar
 
-from polaris.common import db
-
-import abc
 from datetime import datetime, timedelta
-from polaris.common import db
 
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
     union_all, literal, Date, true, or_, desc
 
-from polaris.analytics.db.enums import JiraWorkItemType, WorkItemTypesToIncludeInCycleMetrics, FlowTypes, \
+from polaris.analytics.db.enums import WorkItemTypesToIncludeInCycleMetrics, FlowTypes, \
     WorkItemTypesToFlowTypes
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
@@ -32,7 +28,7 @@ from polaris.graphql.utils import nulls_to_zero
 from polaris.utils.collections import dict_merge
 from polaris.utils.datetime_utils import time_window
 from polaris.utils.exceptions import ProcessingException
-from .sql_expressions import get_timeline_dates_for_trending, select_funnel_work_items, get_measurement_period
+from .sql_expressions import select_funnel_work_items
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
@@ -49,8 +45,8 @@ from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
-    work_item_info_group_expr_columns, apply_specs_only_filter, apply_defects_only_filter
-from ..utils import date_column_is_in_measurement_window
+    work_item_info_group_expr_columns, apply_specs_only_filter, apply_defects_only_filter, CycleMetricsTrendsBase
+from ..utils import date_column_is_in_measurement_window, get_measurement_period, get_timeline_dates_for_trending
 
 
 class ProjectNode(NamedNodeResolver):
@@ -839,220 +835,7 @@ class ProjectCycleMetrics(InterfaceResolver):
         )
 
 
-class ProjectCycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
-
-    @classmethod
-    def get_metrics_map(cls, cycle_metrics_trends_args, delivery_cycles_relation=work_item_delivery_cycles):
-        return dict(
-            # Cycle metrics
-            cycle_metrics=dict(
-                percentile_lead_time=func.percentile_disc(
-                    cycle_metrics_trends_args.lead_time_target_percentile
-                ).within_group(
-                    delivery_cycles_relation.c.lead_time
-                ).label(
-                    'percentile_lead_time'
-                ),
-                percentile_cycle_time=func.percentile_disc(
-                    cycle_metrics_trends_args.cycle_time_target_percentile
-                ).within_group(
-                    delivery_cycles_relation.c.spec_cycle_time
-                ).label(
-                    'percentile_cycle_time'
-                ),
-                min_lead_time=func.min(delivery_cycles_relation.c.lead_time).label('min_lead_time'),
-                avg_lead_time=func.avg(delivery_cycles_relation.c.lead_time).label('avg_lead_time'),
-                max_lead_time=func.max(delivery_cycles_relation.c.lead_time).label('max_lead_time'),
-                min_cycle_time=func.min(delivery_cycles_relation.c.spec_cycle_time).label('min_cycle_time'),
-                avg_cycle_time=func.avg(delivery_cycles_relation.c.spec_cycle_time).label('avg_cycle_time'),
-                q1_cycle_time=func.percentile_disc(
-                    0.25
-                ).within_group(
-                    delivery_cycles_relation.c.spec_cycle_time
-                ).label(
-                    'q1_cycle_time'
-                ),
-                median_cycle_time=func.percentile_disc(
-                    0.50
-                ).within_group(
-                    delivery_cycles_relation.c.spec_cycle_time
-                ).label(
-                    'median_cycle_time'
-                ),
-                q3_cycle_time=func.percentile_disc(
-                    0.75
-                ).within_group(
-                    delivery_cycles_relation.c.spec_cycle_time
-                ).label(
-                    'q3_cycle_time'
-                ),
-                max_cycle_time=func.max(delivery_cycles_relation.c.spec_cycle_time).label('max_cycle_time'),
-
-            ),
-            # Work item counts
-            work_item_counts=dict(
-                work_items_in_scope=func.count(
-                    delivery_cycles_relation.c.delivery_cycle_id
-                ).label('work_items_in_scope'),
-
-                work_items_with_null_cycle_time=func.sum(
-                    case([
-                        (
-                            and_(
-                                # we need this and clause here, because we are
-                                # counting a value that is None, but since this
-                                # is invoked typically in a outerjoin, we need to
-                                # qualify it with some non-null value. This implementation
-                                # work correctly only for the closed items case, but this is
-                                # the only case where it makes sense to compute this metric anyway.
-                                delivery_cycles_relation.c.end_date != None,
-                                delivery_cycles_relation.c.spec_cycle_time == None
-                            ), 1
-                        )
-                    ], else_=0)
-                ).label('work_items_with_null_cycle_time'),
-
-                work_items_with_commits=func.sum(
-                    case([
-                        (
-                            delivery_cycles_relation.c.commit_count > 0, 1
-                        )
-                    ], else_=0)
-                ).label('work_items_with_commits'),
-                cadence=func.count(cast(delivery_cycles_relation.c.end_date, Date).distinct()).label('cadence')
-            ),
-            # Implementation Complexity Metrics
-            implementation_complexity=dict(
-                total_effort=func.sum(delivery_cycles_relation.c.effort).label('total_effort'),
-                min_effort=func.min(delivery_cycles_relation.c.effort).label('min_effort'),
-                avg_effort=func.avg(delivery_cycles_relation.c.effort).label('avg_effort'),
-                max_effort=func.max(delivery_cycles_relation.c.effort).label('max_effort'),
-                percentile_effort=func.percentile_disc(
-                    cycle_metrics_trends_args.latency_target_percentile
-                ).within_group(
-                    delivery_cycles_relation.c.effort
-                ).label(
-                    'percentile_effort'
-                ),
-                # latency
-                min_latency=func.min(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('min_latency'),
-                avg_latency=func.avg(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('avg_latency'),
-                max_latency=func.max(delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)).label('max_latency'),
-                percentile_latency=func.percentile_disc(
-                    cycle_metrics_trends_args.latency_target_percentile
-                ).within_group(
-                    delivery_cycles_relation.c.latency / (1.0 * 3600 * 24)
-                ).label(
-                    'percentile_latency'
-                ),
-                min_duration=(
-                        func.min(
-                            func.extract(
-                                'epoch',
-                                delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
-                            )
-                        ) / (1.0 * 3600 * 24)
-                ).label('min_duration'),
-                avg_duration=(
-                        func.avg(
-                            func.extract(
-                                'epoch',
-                                delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
-                            )
-                        ) / (1.0 * 3600 * 24)
-                ).label('avg_duration'),
-                max_duration=(
-                        func.max(
-                            func.extract(
-                                'epoch',
-                                delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
-                            )
-                        ) / (1.0 * 3600 * 24)
-                ).label('max_duration'),
-                percentile_duration=(
-                        func.percentile_disc(
-                            cycle_metrics_trends_args.duration_target_percentile
-                        ).within_group(
-                            func.extract(
-                                'epoch',
-                                delivery_cycles_relation.c.latest_commit - delivery_cycles_relation.c.earliest_commit
-                            )
-                        ) / (1.0 * 3600 * 24)
-                ).label('percentile_duration'),
-
-            )
-
-        )
-
-    @classmethod
-    def get_metrics_columns(cls, cycle_metrics_trends_args, metrics_map, metric_type):
-        metric_type_map = metrics_map[metric_type]
-        return [
-            metric_type_map[metric]
-            for metric in cycle_metrics_trends_args.metrics if metric in metric_type_map
-        ]
-
-    @classmethod
-    def get_cycle_metrics_json_object_columns(cls, cycle_metrics_trends_args, metrics_map, cycle_metrics_query):
-        columns = []
-        for metric in cycle_metrics_trends_args.metrics:
-            if metric in metrics_map['cycle_metrics']:
-                columns.extend([metric, (cycle_metrics_query.c[metric] / (1.0 * 24 * 3600)).label(metric)])
-        return columns
-
-    @staticmethod
-    def get_work_item_count_metrics_json_object_columns(cycle_metrics_trends_args, metrics_map, cycle_metrics_query):
-        columns = []
-        for metric in cycle_metrics_trends_args.metrics:
-            if metric in metrics_map['work_item_counts']:
-                columns.extend([metric, cycle_metrics_query.c[metric]])
-        return columns
-
-    @staticmethod
-    def get_implementation_complexity_metrics_json_object_columns(cycle_metrics_trends_args, metrics_map,
-                                                                  cycle_metrics_query):
-        columns = []
-        for metric in cycle_metrics_trends_args.metrics:
-            if metric in metrics_map['implementation_complexity']:
-                columns.extend([metric, cycle_metrics_query.c[metric]])
-        return columns
-
-    @staticmethod
-    def get_work_item_filter_clauses(cycle_metrics_trends_args):
-
-        columns = []
-        excluded_types = []
-
-        if not cycle_metrics_trends_args.include_sub_tasks:
-            # include subtasks is true by default, so this needs to be explicity overriden
-            # if it is not to be added.
-            excluded_types.append(JiraWorkItemType.sub_task.value)
-
-        columns.append(
-            work_items.c.work_item_type.notin_(excluded_types)
-        )
-
-        if not cycle_metrics_trends_args.include_epics:
-            # include_epics is false by default so this will normally be added
-            columns.append(work_items.c.is_epic == False)
-
-        if cycle_metrics_trends_args.defects_only:
-            columns.append(
-                work_items.c.is_bug == True
-            )
-        return columns
-
-    @staticmethod
-    def get_work_item_delivery_cycle_filter_clauses(cycle_metrics_trends_args):
-
-        columns = []
-        if cycle_metrics_trends_args.specs_only:
-            columns.append(work_item_delivery_cycles.c.commit_count > 0)
-
-        return columns
-
-
-class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
+class ProjectCycleMetricsTrends(CycleMetricsTrendsBase):
     interface = CycleMetricsTrends
 
     @staticmethod
@@ -1170,7 +953,7 @@ class ProjectCycleMetricsTrends(ProjectCycleMetricsTrendsBase):
         )
 
 
-class ProjectPipelineCycleMetrics(ProjectCycleMetricsTrendsBase):
+class ProjectPipelineCycleMetrics(CycleMetricsTrendsBase):
     interface = PipelineCycleMetrics
 
     @classmethod

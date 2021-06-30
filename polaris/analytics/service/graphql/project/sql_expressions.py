@@ -8,59 +8,10 @@
 
 # Author: Krishna Kumar
 
-from datetime import datetime, timedelta
-from sqlalchemy import select, cast, func, Date, literal, union_all, and_
+from sqlalchemy import select, func, literal, union_all, and_
 
-
-from polaris.utils.exceptions import ProcessingException
 from polaris.analytics.db.model import work_items, work_items_sources, work_item_delivery_cycles, work_item_state_transitions
 from ..work_item.sql_expressions import apply_specs_only_filter, work_items_connection_apply_filters, work_item_delivery_cycles_connection_apply_filters
-
-
-def get_measurement_period(trends_args, arg_name=None, interface_name=None):
-    if trends_args is None:
-        raise ProcessingException(
-            f"'{arg_name}' is a required arg to resolve the "
-            f"{interface_name} interface"
-        )
-
-    # The end date of the measurement period.
-    measurement_period_end_date = trends_args.before or datetime.utcnow()
-
-    # This parameter specified the window of time for which we are reporting
-    # the trends - so for example, average cycle time over the past 15 days
-    # => days = 15. We will take a set of measurements over the
-    # the 15 day period and report metrics for each measurement date.
-    days = trends_args.days
-    if days is None:
-        raise ProcessingException(
-            f"The argument 'days' must be specified when resolving the interface {interface_name}"
-        )
-
-    # the start date of the measurement period
-    measurement_period_start_date = measurement_period_end_date - timedelta(
-        days=days
-    )
-
-    return measurement_period_start_date, measurement_period_end_date
-
-
-def get_timeline_dates_for_trending(trends_args, arg_name=None, interface_name=None):
-    measurement_period_start_date, measurement_period_end_date = get_measurement_period(
-        trends_args, arg_name, interface_name
-    )
-    # First we generate a series of dates between the period start and end dates
-    # at the granularity of the sampling frequency parameter.
-    return select([
-        cast(
-            func.generate_series(
-                measurement_period_end_date,
-                measurement_period_start_date,
-                timedelta(days=-1 * trends_args.sampling_frequency)
-            ),
-            Date
-        ).label('measurement_date')
-    ]).alias()
 
 
 def select_non_closed_work_items(project_nodes, select_columns, **kwargs):

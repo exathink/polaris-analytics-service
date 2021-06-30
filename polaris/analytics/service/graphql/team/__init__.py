@@ -12,24 +12,29 @@ import graphene
 
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import ContributorCount
-from ..interface_mixins import NamedNodeResolverMixin
-from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes
-
+from ..interfaces import ContributorCount, PipelineCycleMetrics, CycleMetricsTrends
+from ..interface_mixins import NamedNodeResolverMixin, CycleMetricsTrendsResolverMixin, PipelineCycleMetricsResolverMixin
+from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes, TeamCycleMetricsTrends, TeamPipelineCycleMetrics
+from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters
 from ..work_item import WorkItemDeliveryCyclesConnectionMixin
 
 
 class Team(
     NamedNodeResolverMixin,
     WorkItemDeliveryCyclesConnectionMixin,
+    CycleMetricsTrendsResolverMixin,
+    PipelineCycleMetricsResolverMixin,
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, ContributorCount)
+        interfaces = (NamedNode, ContributorCount, CycleMetricsTrends, PipelineCycleMetrics)
         named_node_resolver = TeamNode
 
         interface_resolvers = {
-            'ContributorCount': TeamContributorCount
+            'ContributorCount': TeamContributorCount,
+            'PipelineCycleMetrics': TeamPipelineCycleMetrics,
+            'CycleMetricsTrends': TeamCycleMetricsTrends
+
         }
 
         connection_node_resolvers = {
@@ -39,7 +44,26 @@ class Team(
 
     @classmethod
     def Field(cls, **kwargs):
-        return super().Field(key_is_required=False, **kwargs)
+        return super().Field(
+            key_is_required=False,
+            contributor_count_days=graphene.Argument(
+                graphene.Int,
+                required=False,
+                description="When evaluating contributor count "
+                            "return only contributors that have committed code to the project in this many days"
+            ),
+            cycle_metrics_trends_args=graphene.Argument(
+                CycleMetricsTrendsParameters,
+                required=False,
+                description='Required when resolving CycleMetricsTrends interface'
+            ),
+            pipeline_cycle_metrics_args=graphene.Argument(
+                CycleMetricsParameters,
+                required=False,
+                description='Required when resolving PipelineCycleMetrics interface'
+            ),
+            **kwargs
+        )
 
     @classmethod
     def resolve_field(cls, parent, info, team_key, **kwargs):
@@ -54,7 +78,24 @@ class Teams(
 
 
 class TeamsConnectionMixin(ConnectionResolverMixin):
-    teams = Team.ConnectionField()
+    teams = Team.ConnectionField(
+        contributor_count_days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="When evaluating contributor count "
+                        "return only contributors that have committed code to the project in this many days"
+        ),
+        cycle_metrics_trends_args=graphene.Argument(
+            CycleMetricsTrendsParameters,
+            required=False,
+            description='Required when resolving CycleMetricsTrends interface'
+        ),
+        pipeline_cycle_metrics_args=graphene.Argument(
+            CycleMetricsParameters,
+            required=False,
+            description='Required when resolving PipelineCycleMetrics interface'
+        ),
+    )
 
     def resolve_teams(self, info, **kwargs):
         return Team.resolve_connection(

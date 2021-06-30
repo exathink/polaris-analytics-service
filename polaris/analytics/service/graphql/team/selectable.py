@@ -10,15 +10,23 @@
 
 
 import graphene
-from sqlalchemy import select, bindparam, func, distinct
+from datetime import datetime
+from sqlalchemy import select, bindparam, func, distinct, true, and_, case, cast, Date
 from polaris.analytics.db.model import teams, contributors_teams, \
-    work_item_delivery_cycles, work_items, work_items_teams
+    work_item_delivery_cycles, work_items, work_items_teams, work_items_sources, work_items_source_state_map, work_item_delivery_cycle_durations
+
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 
-from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo
-from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
+from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics
 
+from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, \
+    work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase
+
+from ..utils import date_column_is_in_measurement_window, get_timeline_dates_for_trending
+from polaris.analytics.db.enums import WorkItemsStateType
+
+from polaris.utils.exceptions import ProcessingException
 
 class TeamNode:
     interfaces = (NamedNode,)
@@ -87,4 +95,294 @@ class TeamContributorCount(InterfaceResolver):
             contributors_teams.c.end_date == None
         ).group_by(
             team_nodes.c.id
+        )
+
+
+# Team Cycle Metrics Trends
+
+class TeamCycleMetricsTrends(CycleMetricsTrendsBase):
+    interface = CycleMetricsTrends
+
+    @staticmethod
+    def interface_selector(team_nodes, **kwargs):
+        cycle_metrics_trends_args = kwargs.get('cycle_metrics_trends_args')
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            cycle_metrics_trends_args,
+            arg_name='cycle_metrics_trends',
+            interface_name='CycleMetricTrends'
+        )
+        measurement_window = cycle_metrics_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating TeamCycleMetricsTrends"
+            )
+
+        metrics_map = TeamCycleMetricsTrends.get_metrics_map(
+            cycle_metrics_trends_args,
+            delivery_cycles_relation=work_item_delivery_cycles
+        )
+        # Now for each of these dates, we are going to be aggregating the measurements for work items
+        # within the measurement window for that date. We will be using a *lateral* join for doing the full aggregation
+        # so note the lateral clause at the end instead of the usual alias.
+        cycle_metrics = select([
+            team_nodes.c.id.label('team_id'),
+
+            # These are standard attributes returned for the the AggregateCycleMetricsInterface
+
+            func.max(work_item_delivery_cycles.c.end_date).label('latest_closed_date'),
+            func.min(work_item_delivery_cycles.c.end_date).label('earliest_closed_date'),
+            *[
+                # This interpolates columns that calculate the specific cycle
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *TeamCycleMetricsTrends.get_metrics_columns(
+                    cycle_metrics_trends_args, metrics_map, 'cycle_metrics'
+                ),
+
+                # This interpolates columns that calculate the specific work item count related
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *TeamCycleMetricsTrends.get_metrics_columns(
+                    cycle_metrics_trends_args, metrics_map, 'work_item_counts'
+                ),
+
+                # This interpolates columns that calculate the specific implementation_complexity
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *TeamCycleMetricsTrends.get_metrics_columns(
+                    cycle_metrics_trends_args, metrics_map, 'implementation_complexity'
+                )
+            ]
+
+        ]).select_from(
+            team_nodes.join(
+                work_items_teams, work_items_teams.c.team_id == team_nodes.c.id
+            ).join(
+                work_items,
+                and_(
+                    work_items_teams.c.work_item_id == work_items.c.id,
+                    *TeamCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args)
+                )
+            ).outerjoin(
+                # outer join here because we want to report timelines dates even
+                # when there are no work items closed in that period.
+                work_item_delivery_cycles,
+                and_(
+                    work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                    # The logic here is as follows:
+                    # It measurement date is d, then we will include evey delivery
+                    # cycle that closed on the date d which is why the end date is d + 1,
+                    # and window-1 days prior. So if window = 1 we will only include the
+                    # delivery cycles that closed on the measurement_date.
+                    date_column_is_in_measurement_window(
+                        work_item_delivery_cycles.c.end_date,
+                        measurement_date=timeline_dates.c.measurement_date,
+                        measurement_window=measurement_window
+                    ),
+                    *TeamCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
+                        cycle_metrics_trends_args
+                    )
+                )
+            )
+        ).group_by(
+            team_nodes.c.id
+        ).lateral()
+
+        return select([
+            cycle_metrics.c.team_id.label('id'),
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', timeline_dates.c.measurement_date,
+                    'measurement_window', measurement_window,
+                    'earliest_closed_date', cycle_metrics.c.earliest_closed_date,
+                    'latest_closed_date', cycle_metrics.c.latest_closed_date,
+                    'lead_time_target_percentile', cycle_metrics_trends_args.lead_time_target_percentile,
+                    'cycle_time_target_percentile', cycle_metrics_trends_args.cycle_time_target_percentile,
+                    *[
+                        *TeamCycleMetricsTrends.get_cycle_metrics_json_object_columns(
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
+                        ),
+                        *TeamCycleMetricsTrends.get_work_item_count_metrics_json_object_columns(
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
+                        ),
+                        *TeamCycleMetricsTrends.get_implementation_complexity_metrics_json_object_columns(
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
+                        )
+                    ],
+                )
+
+            ).label('cycle_metrics_trends')
+        ]).select_from(
+            timeline_dates.join(cycle_metrics, true())
+        ).group_by(
+            cycle_metrics.c.team_id
+        )
+
+
+class TeamPipelineCycleMetrics(CycleMetricsTrendsBase):
+    interface = PipelineCycleMetrics
+
+    @classmethod
+    def get_delivery_cycle_relation_for_pipeline(cls, cycle_metrics_trends_args, measurement_date, team_nodes):
+        # This query provides a relation with a column interface similar to
+        # work_item_delivery_cycles, but with cycle time and lead time calculated dynamically
+        # for work items in the current pipeline. Since cycle_time and lead_time are cached once
+        # and for all only on the work items that are closed, we need to calculate these
+        # dynamically here. Modulo this, much of the cycle time trending logic is similar across
+        # open and closed items, so this lets us share all that logic across both cases.
+        return select([
+            team_nodes.c.id,
+            work_items.c.id.label('work_item_id'),
+            # we need these columns to satisfy the delivery_cycle_relation contract for computing metrics
+            func.min(work_item_delivery_cycles.c.delivery_cycle_id).label('delivery_cycle_id'),
+            func.min(work_item_delivery_cycles.c.end_date).label('end_date'),
+            func.min(work_item_delivery_cycles.c.commit_count).label('commit_count'),
+            func.min(work_item_delivery_cycles.c.effort).label('effort'),
+            func.min(work_item_delivery_cycles.c.earliest_commit).label('earliest_commit'),
+            func.max(work_item_delivery_cycles.c.latest_commit).label('latest_commit'),
+            # the time from the start of the delivery cycle to the measurement date is the elapsed lead time for this
+            # work item
+            func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)).label(
+                'lead_time'),
+
+            # cycle time = lead_time - backlog time.
+            (
+                    func.extract('epoch', measurement_date - func.min(work_item_delivery_cycles.c.start_date)) -
+                    # This is calculated backlog time
+                    # there can be multiple backlog states, so we could have a duration in each one,
+                    # so taking the sum correctly gets you the current backlog duration.
+                    func.sum(
+                        case(
+                            [
+                                (work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
+                                 work_item_delivery_cycle_durations.c.cumulative_time_in_state)
+                            ],
+                            else_=0
+                        )
+                    )
+            ).label(
+                # using spec_cycle_time here purely to coerce the column name so that
+                # we can use the same logic from the base class. The coupling between
+                # this method and the base class method needs to be revisited since
+                # the logic for the closed and pipeline metrics have now diverged significantly
+                # that it may make sense to treat them separately.
+                'spec_cycle_time'
+            ),
+            # Latency for in-progress items = measurement_date - latest_commit
+            (
+                func.extract(
+                    'epoch',
+                    measurement_date - func.coalesce(
+                        func.min(work_item_delivery_cycles.c.latest_commit),
+                        # if latest_commit is null, then its is not a spec - so latency is 0
+                        measurement_date
+                    )
+                )
+            ).label('latency')
+
+        ]).select_from(
+            # get current delivery cycles for all the work items in the pipeline
+            team_nodes.join(
+                work_items_teams, work_items_teams.c.team_id == team_nodes.c.id
+            ).join(
+                work_items,
+                work_items_teams.c.work_item_id == work_items.c.id
+            ).join(
+                work_items_source_state_map,
+                work_items_source_state_map.c.work_items_source_id == work_items.c.work_items_source_id
+            ).join(
+                work_item_delivery_cycles,
+                work_item_delivery_cycles.c.delivery_cycle_id == work_items.c.current_delivery_cycle_id
+            ).join(
+                # along with the durations of all states (could be multiple)
+                work_item_delivery_cycle_durations,
+                and_(
+                    work_item_delivery_cycle_durations.c.delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id,
+                    work_item_delivery_cycle_durations.c.state == work_items_source_state_map.c.state
+                )
+            )
+        ).where(
+            and_(
+                # we include work items that are not in backlog or closed: this the filter for active items only
+                work_items.c.state_type.notin_([WorkItemsStateType.backlog.value, WorkItemsStateType.closed.value]),
+                # filter out the work items state durations that are in backlog state (could be multiple)
+                # This gives the data to calculate the time in backlog so that we can subtract this from
+                # lead time to get cycle time
+                # work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
+                # add any other work item filters that the caller specifies.
+                *TeamCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args),
+                # add delivery cycle related filters that the caller specifies
+                *TeamCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
+                    cycle_metrics_trends_args
+                )
+            )
+        ).group_by(
+            team_nodes.c.id,
+            work_items.c.id,
+        ).alias()
+
+    @classmethod
+    def interface_selector(cls, team_nodes, **kwargs):
+        cycle_metrics_trends_args = kwargs.get('pipeline_cycle_metrics_args')
+
+        measurement_date = datetime.utcnow()
+
+        cycle_times = cls.get_delivery_cycle_relation_for_pipeline(
+            cycle_metrics_trends_args, measurement_date, team_nodes)
+
+        metrics_map = TeamCycleMetricsTrends.get_metrics_map(
+            cycle_metrics_trends_args,
+            delivery_cycles_relation=cycle_times
+        )
+
+        # Calculate the cycle metrics
+        cycle_metrics = select([
+            team_nodes.c.id.label('team_id'),
+            *[
+                # This interpolates columns that calculate the specific cycle
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *cls.get_metrics_columns(cycle_metrics_trends_args, metrics_map, 'cycle_metrics'),
+
+                # This interpolates columns that calculate the specific work item count
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *cls.get_metrics_columns(cycle_metrics_trends_args, metrics_map, 'work_item_counts'),
+
+                # This interpolates columns that calculate the specific implementation complexity
+                # metrics that need to be returned based on the metrics specified in the cycle_metrics_trends_args
+                *cls.get_metrics_columns(cycle_metrics_trends_args, metrics_map, 'implementation_complexity'),
+            ]
+
+        ]).select_from(
+            team_nodes.outerjoin(
+                cycle_times, team_nodes.c.id == cycle_times.c.id
+            )
+        ).group_by(
+            team_nodes.c.id
+        ).alias()
+
+        # Serialize metrics into json columns for returning.
+        return select([
+            cycle_metrics.c.team_id.label('id'),
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(measurement_date, Date),
+                    'lead_time_target_percentile', cycle_metrics_trends_args.lead_time_target_percentile,
+                    'cycle_time_target_percentile', cycle_metrics_trends_args.cycle_time_target_percentile,
+                    *[
+                        *TeamCycleMetricsTrends.get_cycle_metrics_json_object_columns(
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
+                        ),
+                        *TeamCycleMetricsTrends.get_work_item_count_metrics_json_object_columns(
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
+                        ),
+                        *TeamCycleMetricsTrends.get_implementation_complexity_metrics_json_object_columns(
+                            cycle_metrics_trends_args, metrics_map, cycle_metrics
+                        )
+                    ],
+                )
+
+            ).label('pipeline_cycle_metrics')
+        ]).select_from(
+            cycle_metrics
+        ).group_by(
+            cycle_metrics.c.team_id
         )

@@ -10,19 +10,21 @@
 
 import graphene
 
-from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin, WorkItemStateDetailsResolverMixin
+from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin, \
+    WorkItemStateDetailsResolverMixin, TeamNodeRefsResolverMixin
 from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, \
     WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics, \
     WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, \
-    DevelopmentProgress
+    DevelopmentProgress, TeamNodeRefs
 
 from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemNode, WorkItemEventNodes, WorkItemCommitNodes, WorkItemEventNode, WorkItemCommitNode, \
     WorkItemsCommitSummary, WorkItemDeliveryCycleNode, WorkItemDeliveryCycleNodes, WorkItemDeliveryCycleCycleMetrics, \
     WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef, WorkItemsImplementationCost, \
     WorkItemsParentNodeRef, WorkItemsEpicNodeRef, WorkItemPullRequestNodes, WorkItemPullRequestNode, \
-    WorkItemDeliveryCyclesImplementationCost, WorkItemDeliveryCyclesEpicNodeRef, WorkItemsDevelopmentProgress
+    WorkItemDeliveryCyclesImplementationCost, WorkItemDeliveryCyclesEpicNodeRef, WorkItemsDevelopmentProgress, \
+    WorkItemDeliveryCyclesTeamNodeRefs
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -145,16 +147,18 @@ class WorkItemCommitsConnectionMixin(ConnectionResolverMixin):
 class WorkItemDeliveryCycle(
     # interface mixins
     NamedNodeResolverMixin,
+    TeamNodeRefsResolverMixin,
 
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost, EpicNodeRef)
+        interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost, EpicNodeRef, TeamNodeRefs)
         named_node_resolver = WorkItemDeliveryCycleNode
         interface_resolvers = {
             'CycleMetrics': WorkItemDeliveryCycleCycleMetrics,
             'ImplementationCost': WorkItemDeliveryCyclesImplementationCost,
             'EpicNodeRef': WorkItemDeliveryCyclesEpicNodeRef,
+            'TeamNodeRefs': WorkItemDeliveryCyclesTeamNodeRefs,
         }
         connection_class = lambda: WorkItemDeliveryCycles
 

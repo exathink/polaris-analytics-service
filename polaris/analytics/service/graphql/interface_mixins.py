@@ -14,7 +14,7 @@ from datetime import datetime
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
     WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
     ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl, \
-    ContributorAliasInfoImpl, FlowRateMeasurementImpl, BacklogMeasurementImpl
+    ContributorAliasInfoImpl, FlowRateMeasurementImpl, BacklogMeasurementImpl, TeamNodeRefImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -45,6 +45,16 @@ class WorkItemsSummariesResolverMixin(KeyIdResolverMixin):
 
     def resolve_work_items_summaries(self, info, **kwargs):
         return [WorkItemsSummary(**summary) for summary in self.work_items_summaries if summary is not None]
+
+
+class TeamNodeRefsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.team_node_refs = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_team_node_refs(self, info, **kwargs):
+        return [TeamNodeRefImpl(**ref) for ref in (self.team_node_refs or []) if ref is not None and ref.get('team_name') is not None]
 
 
 class FlowMixTrendsResolverMixin(KeyIdResolverMixin):

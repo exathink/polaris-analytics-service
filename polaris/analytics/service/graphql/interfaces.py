@@ -90,6 +90,15 @@ class TeamNodeRef(graphene.Interface):
     team_key = graphene.String(required=False)
 
 
+class TeamNodeRefImpl(graphene.ObjectType):
+    class Meta:
+        interfaces = (TeamNodeRef, )
+
+
+class TeamNodeRefs(graphene.Interface):
+    team_node_refs = graphene.Field(graphene.List(TeamNodeRefImpl, required=False))
+
+
 class WorkItemsSummaries(graphene.Interface):
     work_items_summaries = graphene.Field(graphene.List(WorkItemsSummary, required=False))
 

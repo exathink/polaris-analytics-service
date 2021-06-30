@@ -18,14 +18,15 @@ from polaris.analytics.db.model import \
     work_items_sources, work_item_delivery_cycles, work_items_source_state_map, \
     work_item_delivery_cycle_durations, projects, \
     work_item_delivery_cycle_contributors, contributor_aliases, contributors, \
-    pull_requests, work_items_pull_requests
+    pull_requests, work_items_pull_requests, work_items_teams, teams
 
 from polaris.analytics.service.graphql.interfaces import \
     NamedNode, WorkItemInfo, WorkItemCommitInfo, \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics, \
     WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, \
     PullRequestInfo, \
-    DevelopmentProgress
+    DevelopmentProgress, \
+    TeamNodeRefs
 
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
@@ -451,6 +452,28 @@ class WorkItemDeliveryCyclesEpicNodeRef(InterfaceResolver):
         )
 
 
+class WorkItemDeliveryCyclesTeamNodeRefs(InterfaceResolver):
+    interface = TeamNodeRefs
+
+    @staticmethod
+    def interface_selector(work_item_delivery_cycle_nodes, **kwargs):
+        return select([
+            work_item_delivery_cycle_nodes.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'team_name', teams.c.name,
+                    'team_key', teams.c.key
+                )
+            ).label('team_node_refs')
+        ]).select_from(
+            work_item_delivery_cycle_nodes.outerjoin(
+                work_items_teams, work_item_delivery_cycle_nodes.c.work_item_id == work_items_teams.c.work_item_id
+            ).outerjoin(
+                teams, work_items_teams.c.team_id == teams.c.id
+            )
+        ).group_by(
+            work_item_delivery_cycle_nodes.c.id
+        )
 # -----------------------------
 # Work Item Interface Resolvers
 # -----------------------------

@@ -11,17 +11,22 @@
 
 import graphene
 from datetime import datetime
-from sqlalchemy import select, bindparam, func, distinct, true, and_, case, cast, Date
+from sqlalchemy import select, bindparam, func, distinct, true, and_, case, cast, Date, or_, union_all
 from polaris.analytics.db.model import teams, contributors_teams, \
-    work_item_delivery_cycles, work_items, work_items_teams, work_items_sources, work_items_source_state_map, work_item_delivery_cycle_durations
+    work_item_delivery_cycles, work_items, work_items_teams, \
+    work_items_source_state_map, work_item_delivery_cycle_durations, \
+    work_items_commits, commits, repositories, contributor_aliases
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 
-from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, CycleMetricsTrends, PipelineCycleMetrics
+from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, CycleMetricsTrends, \
+    PipelineCycleMetrics, CommitInfo
 
 from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, \
     work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase
+
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 
 from ..utils import date_column_is_in_measurement_window, get_timeline_dates_for_trending
 from polaris.analytics.db.enums import WorkItemsStateType
@@ -76,6 +81,43 @@ class TeamWorkItemDeliveryCycleNodes(ConnectionResolver):
     def sort_order(team_work_item_delivery_cycle_nodes, **kwargs):
         return [team_work_item_delivery_cycle_nodes.c.end_date.desc().nullsfirst()]
 
+
+class TeamCommitNodes(ConnectionResolver):
+    interface = CommitInfo
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        select_team_commits = select([
+            *commit_info_columns(repositories, commits, apply_distinct=True),
+        ]).select_from(
+            teams.join(
+                commits, or_(
+                    commits.c.author_team_id == teams.c.id,
+                    commits.c.committer_team_id == teams.c.id
+                )
+            ).join(
+                repositories, commits.c.repository_id == repositories.c.id
+            ).join(
+                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+            ).outerjoin(
+                work_items_commits, work_items_commits.c.commit_id == commits.c.id
+            )
+        ).where(
+            and_(
+                teams.c.key == bindparam('key'),
+                contributor_aliases.c.robot == False,
+                # This filters out specs if nopspecs is given
+                work_items_commits.c.commit_id == None if kwargs.get('nospecs_only') else true()
+            )
+        )
+        team_commits = commits_connection_apply_filters(select_team_commits, commits, **kwargs)
+
+        return team_commits
+
+
+    @staticmethod
+    def sort_order(team_commit_nodes, **kwargs):
+        return [team_commit_nodes.c.commit_date.desc()]
 
 # Interface resolvers
 

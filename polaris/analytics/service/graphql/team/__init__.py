@@ -14,16 +14,18 @@ from polaris.graphql.selectable import Selectable, CountableConnection, Connecti
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import ContributorCount, PipelineCycleMetrics, CycleMetricsTrends
 from ..interface_mixins import NamedNodeResolverMixin, CycleMetricsTrendsResolverMixin, PipelineCycleMetricsResolverMixin
-from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes, TeamCycleMetricsTrends, TeamPipelineCycleMetrics
+from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes, \
+    TeamCycleMetricsTrends, TeamPipelineCycleMetrics, TeamCommitNodes
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters
 from ..work_item import WorkItemDeliveryCyclesConnectionMixin
-
+from ..commit import CommitsConnectionMixin
 
 class Team(
     NamedNodeResolverMixin,
     WorkItemDeliveryCyclesConnectionMixin,
     CycleMetricsTrendsResolverMixin,
     PipelineCycleMetricsResolverMixin,
+    CommitsConnectionMixin,
     Selectable
 ):
     class Meta:
@@ -38,7 +40,8 @@ class Team(
         }
 
         connection_node_resolvers = {
-            'work_item_delivery_cycles': TeamWorkItemDeliveryCycleNodes
+            'work_item_delivery_cycles': TeamWorkItemDeliveryCycleNodes,
+            'commits': TeamCommitNodes
         }
         connection_class = lambda: Teams
 

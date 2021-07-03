@@ -16,10 +16,14 @@ from ..interfaces import ContributorCount, PipelineCycleMetrics, CycleMetricsTre
 from ..interface_mixins import NamedNodeResolverMixin, CycleMetricsTrendsResolverMixin, \
     PipelineCycleMetricsResolverMixin
 from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes, \
-    TeamCycleMetricsTrends, TeamPipelineCycleMetrics, TeamCommitNodes, TeamWorkItemNodes
+    TeamCycleMetricsTrends, TeamPipelineCycleMetrics, TeamCommitNodes, TeamWorkItemNodes, \
+    TeamPullRequestNodes
+
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters
 from ..work_item import WorkItemDeliveryCyclesConnectionMixin, WorkItemsConnectionMixin
 from ..commit import CommitsConnectionMixin
+from ..pull_request import PullRequestsConnectionMixin
+
 
 class Team(
     NamedNodeResolverMixin,
@@ -28,6 +32,7 @@ class Team(
     CycleMetricsTrendsResolverMixin,
     PipelineCycleMetricsResolverMixin,
     CommitsConnectionMixin,
+    PullRequestsConnectionMixin,
     Selectable
 ):
     class Meta:
@@ -44,7 +49,8 @@ class Team(
         connection_node_resolvers = {
             'work_item_delivery_cycles': TeamWorkItemDeliveryCycleNodes,
             'work_items': TeamWorkItemNodes,
-            'commits': TeamCommitNodes
+            'commits': TeamCommitNodes,
+            'pull_requests': TeamPullRequestNodes
         }
         connection_class = lambda: Teams
 

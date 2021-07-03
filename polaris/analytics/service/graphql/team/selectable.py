@@ -10,18 +10,19 @@
 
 
 import graphene
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import select, bindparam, func, distinct, true, and_, case, cast, Date, or_, union_all
 from polaris.analytics.db.model import teams, contributors_teams, \
     work_item_delivery_cycles, work_items, work_items_teams, \
     work_items_source_state_map, work_item_delivery_cycle_durations, \
-    work_items_commits, commits, repositories, contributor_aliases, work_items_sources
+    work_items_commits, commits, repositories, contributor_aliases, work_items_sources, pull_requests, \
+    work_items_pull_requests
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 
 from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, CycleMetricsTrends, \
-    PipelineCycleMetrics, CommitInfo, WorkItemsSourceRef
+    PipelineCycleMetrics, CommitInfo, WorkItemsSourceRef, PullRequestInfo
 
 from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, \
     work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase, work_items_connection_apply_filters
@@ -29,9 +30,13 @@ from ..work_item.sql_expressions import work_item_info_columns, work_item_delive
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 
 from ..utils import date_column_is_in_measurement_window, get_timeline_dates_for_trending
+
+from ..pull_request.sql_expressions import pull_request_info_columns
+
 from polaris.analytics.db.enums import WorkItemsStateType
 
 from polaris.utils.exceptions import ProcessingException
+
 
 class TeamNode:
     interfaces = (NamedNode,)
@@ -162,10 +167,57 @@ class TeamCommitNodes(ConnectionResolver):
 
         return team_commits
 
-
     @staticmethod
     def sort_order(team_commit_nodes, **kwargs):
         return [team_commit_nodes.c.commit_date.desc()]
+
+
+class TeamPullRequestNodes(ConnectionResolver):
+    interfaces = (NamedNode, PullRequestInfo)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        select_pull_requests = select([
+            *pull_request_info_columns(pull_requests)
+        ]).distinct().select_from(
+            teams.join(
+                commits,
+                or_(
+                    commits.c.author_team_id == teams.c.id,
+                    commits.c.committer_team_id == teams.c.id
+                )
+            ).join(
+                repositories,
+                and_(
+                    commits.c.repository_id == repositories.c.id,
+                    repositories.c.organization_id == teams.c.organization_id
+                )
+            ).join(
+                pull_requests, pull_requests.c.repository_id == repositories.c.id
+            )
+        ).where(
+            teams.c.key == bindparam('key')
+        )
+
+        if kwargs.get('active_only'):
+            select_pull_requests = select_pull_requests.where(pull_requests.c.state == 'open')
+
+        if 'closed_within_days' in kwargs:
+            window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
+
+            select_pull_requests = select_pull_requests.where(
+                and_(
+                    pull_requests.c.state != 'open',
+                    pull_requests.c.end_date >= window_start
+                )
+            )
+
+        return select_pull_requests
+
+    @staticmethod
+    def sort_order(pull_request_nodes, **kwargs):
+        return [pull_request_nodes.c.created_at.desc().nullsfirst()]
+
 
 # Interface resolvers
 

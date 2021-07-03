@@ -13,16 +13,18 @@ import graphene
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import ContributorCount, PipelineCycleMetrics, CycleMetricsTrends
-from ..interface_mixins import NamedNodeResolverMixin, CycleMetricsTrendsResolverMixin, PipelineCycleMetricsResolverMixin
+from ..interface_mixins import NamedNodeResolverMixin, CycleMetricsTrendsResolverMixin, \
+    PipelineCycleMetricsResolverMixin
 from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes, \
-    TeamCycleMetricsTrends, TeamPipelineCycleMetrics, TeamCommitNodes
+    TeamCycleMetricsTrends, TeamPipelineCycleMetrics, TeamCommitNodes, TeamWorkItemNodes
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters
-from ..work_item import WorkItemDeliveryCyclesConnectionMixin
+from ..work_item import WorkItemDeliveryCyclesConnectionMixin, WorkItemsConnectionMixin
 from ..commit import CommitsConnectionMixin
 
 class Team(
     NamedNodeResolverMixin,
     WorkItemDeliveryCyclesConnectionMixin,
+    WorkItemsConnectionMixin,
     CycleMetricsTrendsResolverMixin,
     PipelineCycleMetricsResolverMixin,
     CommitsConnectionMixin,
@@ -41,6 +43,7 @@ class Team(
 
         connection_node_resolvers = {
             'work_item_delivery_cycles': TeamWorkItemDeliveryCycleNodes,
+            'work_items': TeamWorkItemNodes,
             'commits': TeamCommitNodes
         }
         connection_class = lambda: Teams

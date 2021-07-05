@@ -21,10 +21,10 @@ logger = logging.getLogger('polaris.analytics.work_items_topic_subscriber')
 class WorkItemsTopicSubscriber(TopicSubscriber):
     def __init__(self, channel, publisher=None):
         super().__init__(
-            topic = WorkItemsTopic(channel, create=True),
+            topic=WorkItemsTopic(channel, create=True),
             subscriber_queue='work_items_analytics',
             message_classes=[
-                #Events
+                # Events
                 WorkItemsCreated,
                 WorkItemsUpdated,
                 WorkItemMoved,
@@ -45,7 +45,30 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
         elif WorkItemsUpdated.message_type == message.message_type:
             resolved = self.process_work_items_updated(message)
             if resolved:
-                work_items_updated = WorkItemsUpdated(send=message.dict, in_response_to=message)
+                new_work_items = resolved.get("new_work_items")
+                if new_work_items and len(new_work_items) > 0:
+                    work_items = message.dict
+                    all_work_items = work_items['updated_work_items']
+                    new_work_items = []
+                    updated_work_items = []
+                    for work_item in all_work_items:
+                        if work_item['key'] in new_work_items:
+                            new_work_items.append(work_item)
+                        else:
+                            updated_work_items.append(work_item)
+                    work_items_created = WorkItemsCreated(send=dict(
+                        organization_key=all_work_items['organization_key'],
+                        work_items_source_key=all_work_items['work_items_source_key'],
+                        new_work_items=new_work_items
+                    ), in_response_to=message)
+                    self.publish(WorkItemsTopic, work_items_created, channel=channel)
+                    work_items_updated = WorkItemsUpdated(send=dict(
+                        organization_key=all_work_items['organization_key'],
+                        work_items_source_key=all_work_items['work_items_source_key'],
+                        updated_work_items=updated_work_items
+                    ), in_response_to=message)
+                else:
+                    work_items_updated = WorkItemsUpdated(send=message.dict, in_response_to=message)
                 self.publish(AnalyticsTopic, work_items_updated, channel=channel)
 
                 if 'state_changes' in resolved and len(resolved['state_changes']) > 0:
@@ -53,7 +76,7 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                         send=dict(
                             organization_key=message['organization_key'],
                             work_items_source_key=message['work_items_source_key'],
-                            state_changes = resolved['state_changes']
+                            state_changes=resolved['state_changes']
                         )
                     )
                     self.publish(AnalyticsTopic, work_items_states_changed, channel=channel)
@@ -119,9 +142,9 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
         work_item_data = work_item_moved['moved_work_item']
         return raise_on_failure(
             message,
-            api.move_work_item(organization_key, source_work_items_source_key, target_work_items_source_key, work_item_data)
+            api.move_work_item(organization_key, source_work_items_source_key, target_work_items_source_key,
+                               work_item_data)
         )
-
 
     @staticmethod
     def process_project_imported(message):

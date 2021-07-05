@@ -24,7 +24,7 @@ from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef, WorkItemsImplementationCost, \
     WorkItemsParentNodeRef, WorkItemsEpicNodeRef, WorkItemPullRequestNodes, WorkItemPullRequestNode, \
     WorkItemDeliveryCyclesImplementationCost, WorkItemDeliveryCyclesEpicNodeRef, WorkItemsDevelopmentProgress, \
-    WorkItemDeliveryCyclesTeamNodeRefs
+    WorkItemDeliveryCyclesTeamNodeRefs, WorkItemTeamNodeRefs
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -232,6 +232,7 @@ class WorkItem(
     # interface resolver mixins
     NamedNodeResolverMixin,
     WorkItemStateDetailsResolverMixin,
+    TeamNodeRefsResolverMixin,
 
     # Connection Mixins
     WorkItemEventsConnectionMixin,
@@ -244,7 +245,8 @@ class WorkItem(
     class Meta:
         interfaces = (
             NamedNode, WorkItemInfo, WorkItemsSourceRef, WorkItemEventSpan, ProjectRef, CommitSummary,
-            WorkItemStateDetails, ImplementationCost, ParentNodeRef, EpicNodeRef, DevelopmentProgress
+            WorkItemStateDetails, ImplementationCost, ParentNodeRef, EpicNodeRef, DevelopmentProgress,
+            TeamNodeRefs
         )
         named_node_resolver = WorkItemNode
         interface_resolvers = {
@@ -255,7 +257,8 @@ class WorkItem(
             'ImplementationCost': WorkItemsImplementationCost,
             'ParentNodeRef': WorkItemsParentNodeRef,
             'EpicNodeRef': WorkItemsEpicNodeRef,
-            'DevelopmentProgress': WorkItemsDevelopmentProgress
+            'DevelopmentProgress': WorkItemsDevelopmentProgress,
+            'TeamNodeRefs': WorkItemTeamNodeRefs,
         }
         connection_node_resolvers = {
             'work_item_events': WorkItemEventNodes,

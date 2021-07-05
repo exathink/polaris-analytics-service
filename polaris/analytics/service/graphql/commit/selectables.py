@@ -63,20 +63,11 @@ class CommitsCommitTeamNodeRefs:
         ]).select_from(
             commit_nodes.join(
                 commits, commit_nodes.c.id == commits.c.id
-            ).join(
-                repositories, commits.c.repository_id == repositories.c.id
             ).outerjoin(
-                author_teams,
-                and_(
-                    commits.c.author_team_id == author_teams.c.id,
-                    author_teams.c.organization_id == repositories.c.organization_id
-                )
+                author_teams, commits.c.author_team_id == author_teams.c.id,
             ).outerjoin(
                 committer_teams,
-                and_(
-                    commits.c.committer_team_id == committer_teams.c.id,
-                    committer_teams.c.organization_id == repositories.c.organization_id
-                )
+                commits.c.committer_team_id == committer_teams.c.id,
             )
         )
 

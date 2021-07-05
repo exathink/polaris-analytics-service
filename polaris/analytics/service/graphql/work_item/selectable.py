@@ -802,3 +802,27 @@ class WorkItemPullRequestNodes(ConnectionResolver):
     @staticmethod
     def sort_order(pull_request_nodes, **kwargs):
         return [pull_request_nodes.c.created_at.desc().nullsfirst()]
+
+
+class WorkItemTeamNodeRefs(InterfaceResolver):
+    interface = TeamNodeRefs
+
+    @staticmethod
+    def interface_selector(work_item_nodes, **kwargs):
+        return select([
+            work_item_nodes.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'team_name', teams.c.name,
+                    'team_key', teams.c.key
+                )
+            ).label('team_node_refs')
+        ]).select_from(
+            work_item_nodes.outerjoin(
+                work_items_teams, work_item_nodes.c.id == work_items_teams.c.work_item_id
+            ).outerjoin(
+                teams, work_items_teams.c.team_id == teams.c.id
+            )
+        ).group_by(
+            work_item_nodes.c.id
+        )

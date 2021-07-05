@@ -193,10 +193,7 @@ class TestProjectCommitsConnection:
             """
             result = client.execute(query, variable_values=dict(
                 key=fixture.project.key,
-                # use a before date earlier than the latest commmit to eliminate the
-                # the latest commit.
-                # use days 1 less than the window from the fixture
-                # so we can include the earliest commit in the window
+                # before date == latestCommit
                 before=graphql_date_string(fixture.latest_commit)
             ))
 

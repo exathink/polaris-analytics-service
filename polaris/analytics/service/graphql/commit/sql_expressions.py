@@ -58,12 +58,12 @@ def apply_time_window_filters(select_stmt, commits_relation, **kwargs):
         return select_stmt.where(
             and_(
                 commits_relation.c.commit_date >= commit_window_start,
-                commits_relation.c.commit_date < before
+                commits_relation.c.commit_date <= before
             )
         )
     elif kwargs.get('before'):
         return select_stmt.where(
-            commits_relation.c.commit_date < before
+            commits_relation.c.commit_date <= before
         )
     else:
         return select_stmt

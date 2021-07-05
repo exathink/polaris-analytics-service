@@ -913,7 +913,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                 ]
                 ))
 
-            new_work_items = session.connection.execute(
+            new_work_items = session.connection().execute(
                 select([
                     work_items_temp.c.key
                 ]).where(

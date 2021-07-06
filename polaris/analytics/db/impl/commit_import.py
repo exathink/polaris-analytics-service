@@ -372,8 +372,9 @@ def update_repositories_contributor_aliases(session, repository, commits_temp):
         ), dict(repository_id=repository.id)
     )
 
+
 def update_teams_repositories(session, repository, commits_temp):
-    # Usting the commits_temp table group the new commits
+    # Using the commits_temp table group the new commits
     # by team and insert teams with their stats
     # into the teams_repositories table. We will also calculate commit spans for teams in this step.
 

@@ -175,127 +175,130 @@ def update_contributor_team_assignments(session, organization_key, contributor_t
 
 def assign_contributor_commits_to_teams(session, organization_key, contributor_team_assignments):
     assignment_count = 0
-    for assignment in contributor_team_assignments:
-        if assignment.get('initial_assignment'):
-            contributor_key = assignment.get('contributor_key')
-            team_key = assignment.get('new_team_key')
-            team = Team.find_by_key(session, team_key)
-            if team is not None:
-                session.connection().execute(
-                    commits.update().where(
-                        and_(
-                            commits.c.author_contributor_key == contributor_key,
-                            teams.c.key == team_key
+    organization = Organization.find_by_organization_key(session, organization_key)
+    if organization is not None:
+        for assignment in contributor_team_assignments:
+            if assignment.get('initial_assignment'):
+                contributor_key = assignment.get('contributor_key')
+                team_key = assignment.get('new_team_key')
+                team = Team.find_by_key(session, team_key)
+                if team is not None:
+                    organization_commits = select([
+                        commits.c.id,
+                        commits.c.author_contributor_key,
+                        commits.c.committer_contributor_key,
+                    ]).select_from(
+                        commits.join(
+                            repositories, commits.c.repository_id == repositories.c.id,
                         )
-                    ).values(
-                        author_team_key=team_key,
-                        author_team_id=teams.c.id
-                    )
-                )
+                    ).where(
+                        repositories.c.organization_id == organization.id
+                    ).cte()
 
-                session.connection().execute(
-                    commits.update().where(
-                        and_(
-                            commits.c.committer_contributor_key == contributor_key,
-                            teams.c.key == team_key
+                    session.connection().execute(
+                        commits.update().where(
+                            and_(
+                                commits.c.id == organization_commits.c.id,
+                                commits.c.author_contributor_key == contributor_key,
+                            )
+                        ).values(
+                            author_team_key=team.key,
+                            author_team_id=team.id
                         )
-                    ).values(
-                        committer_team_key=team_key,
-                        committer_team_id=teams.c.id
                     )
-                )
 
-                update_teams_repositories_stats(session, contributor_key, team_key)
+                    session.connection().execute(
+                        commits.update().where(
+                            and_(
+                                commits.c.id == organization_commits.c.id,
+                                commits.c.committer_contributor_key == contributor_key,
+                            )
+                        ).values(
+                            committer_team_key=team.key,
+                            committer_team_id=team.id
+                        )
+                    )
 
-                # assign work items to teams based on the commits just associated
-                assign_work_items_to_team(session, organization_key, team_key)
+                    update_teams_repositories_stats(session, organization_key, contributor_key, team_key)
 
-                #
-                assignment_count = assignment_count + 1
+                    # assign work items to teams based on the commits just associated
+                    assign_work_items_to_team(session, organization_key, team_key)
 
-            else:
-                raise ProcessingException(f'Could not find team with key {team_key} in organization {organization_key}')
+                    #
+                    assignment_count = assignment_count + 1
+
+                else:
+                    raise ProcessingException(
+                        f'Could not find team with key {team_key} in organization {organization_key}')
 
     return dict(
         update_count=assignment_count
     )
 
 
-def update_teams_repositories_stats(session, contributor_key, team_key):
+def update_teams_repositories_stats(session, organization_key, contributor_key, team_key):
     # Update the existing stats on teams_repositories to reflect the commits from
     # the given contributor being added to the given team
     team = Team.find_by_key(session, team_key)
+    organization = Organization.find_by_organization_key(session, organization_key)
+
+    # In this case we are going to recompute the commit stats across all the commits
+    # that are now associated with the team due to this new contributor being assigned to the
+    # team and just replace the stats for the affected repositories
 
     if team is not None:
-        to_upsert = select([
-            bindparam('team_id').label('team_id'),
-            commits.c.repository_id.label('repository_id'),
-            func.min(commits.c.commit_date).label('earliest_commit'),
-            func.max(commits.c.commit_date).label('latest_commit')
-        ]).select_from(
-            commits
-        ).where(
-            or_(
-                commits.c.author_contributor_key == contributor_key,
-                commits.c.committer_contributor_key == contributor_key
-            )
-        ).group_by(commits.c.repository_id)
-        upsert = insert(teams_repositories).from_select(
-            [
-                to_upsert.c.team_id,
-                to_upsert.c.repository_id,
-                to_upsert.c.earliest_commit,
-                to_upsert.c.latest_commit
-            ],
-            to_upsert
-        )
-
-        session.connection().execute(
-            upsert.on_conflict_do_update(
-                index_elements=['repository_id', 'team_id'],
-                set_=dict(
-                    earliest_commit=func.least(upsert.excluded.earliest_commit, teams_repositories.c.earliest_commit),
-                    latest_commit=func.greatest(upsert.excluded.latest_commit, teams_repositories.c.latest_commit)
-                )
-            ), dict(team_id=team.id)
-        )
-
-        # commit counts for the team_repos need to be recomputed from scratch because we
-        # may have a mix of existing or new commits added to the team based on whether the
-        # contributor is an author or a committer, we still need to have the net new total commits for the
-        # team recorded here and we cannot do this as an incremental update.
-
-        commit_counts = select([
-            teams_repositories.c.team_id,
-            commits.c.repository_id.label('repository_id'),
-            func.count(commits.c.id.distinct()).label('commit_count')
-        ]).select_from(
-            teams_repositories.join(
-                commits, teams_repositories.c.repository_id == commits.c.repository_id
+        team_commits = select([
+            commits.c.id,
+            commits.c.commit_date,
+            commits.c.repository_id
+        ]).distinct().select_from(
+            commits.join(
+                repositories, commits.c.repository_id == repositories.c.id
             )
         ).where(
             and_(
-                teams_repositories.c.team_id == team.id,
+                repositories.c.organization_id == organization.id,
                 or_(
                     commits.c.author_team_id == team.id,
                     commits.c.committer_team_id == team.id
                 )
             )
-        ).group_by(
-            teams_repositories.c.team_id,
-            commits.c.repository_id,
         ).cte()
 
-        session.connection().execute(
-            teams_repositories.update().values(
-                commit_count=commit_counts.c.commit_count
-            ).where(
-                and_(
-                    teams_repositories.c.repository_id == commit_counts.c.repository_id,
-                    teams_repositories.c.team_id == commit_counts.c.team_id
-                )
-            )
+        to_upsert = select([
+            bindparam('team_id').label('team_id'),
+            team_commits.c.repository_id.label('repository_id'),
+            func.min(team_commits.c.commit_date).label('earliest_commit'),
+            func.max(team_commits.c.commit_date).label('latest_commit'),
+            func.count(team_commits.c.id).label('commit_count')
+        ]).select_from(
+            team_commits
+        ).group_by(team_commits.c.repository_id)
+
+        upsert = insert(teams_repositories).from_select(
+            [
+                to_upsert.c.team_id,
+                to_upsert.c.repository_id,
+                to_upsert.c.earliest_commit,
+                to_upsert.c.latest_commit,
+                to_upsert.c.commit_count
+            ],
+            to_upsert
         )
+        # replace the stats on all affected team repository pairs,
+        # insert new rows into the ones that dont exist.
+        session.connection().execute(
+            upsert.on_conflict_do_update(
+                index_elements=['repository_id', 'team_id'],
+                set_=dict(
+                    earliest_commit=upsert.excluded.earliest_commit,
+                    latest_commit=upsert.excluded.latest_commit,
+                    commit_count=upsert.excluded.commit_count
+                )
+            ), dict(team_id=team.id)
+        )
+
+
 
 
 def assign_work_items_to_team(session, organization_key, team_key):

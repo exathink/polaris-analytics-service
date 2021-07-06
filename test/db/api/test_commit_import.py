@@ -12,6 +12,7 @@ import uuid
 from test.fixtures.commit_history import *
 from test.fixtures.commit_details import *
 
+from datetime import timedelta
 from polaris.analytics.db import api, model
 from polaris.utils.collections import find, Fixture
 
@@ -330,12 +331,142 @@ class TestCommitTeamAssignment:
         )
 
         assert result['success']
-        row = db.connection().execute("select committer_team_key, committer_team_id, author_team_key, author_team_id from analytics.commits where source_commit_id='XXXX'").fetchone()
+        row = db.connection().execute(
+            "select committer_team_key, committer_team_id, author_team_key, author_team_id from analytics.commits where source_commit_id='XXXX'").fetchone()
         assert row.committer_team_key == fixture.team_key
         assert row.committer_team_id is not None
         assert row.author_team_key == fixture.team_key
         assert row.author_team_id is not None
 
+    def it_updates_teams_repositories(self, setup):
+        fixture = setup
+
+        test_commit = dict(
+            source_commit_id='XXXX',
+            key=uuid.uuid4().hex,
+            **commit_common_fields
+        )
+        test_date = datetime.utcnow()
+
+        test_commit['commit_date'] = test_date
+        result = api.import_new_commits(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            new_commits=[
+                test_commit
+            ],
+            new_contributors=[]
+        )
+
+        assert result['success']
+        result = db.connection().execute(
+            "select repository_id, team_id, commit_count, earliest_commit, latest_commit from analytics.teams_repositories").fetchall()
+        assert len(result) == 1
+        assert result[0].commit_count == 1
+        assert result[0].earliest_commit == test_date
+        assert result[0].latest_commit == test_date
+
+    def it_updates_teams_repositories_stats_when_there_are_multiple_commits(self, setup):
+        fixture = setup
+
+        test_commits = [
+            dict(
+                source_commit_id='XXXX',
+                key=uuid.uuid4().hex,
+                **commit_common_fields
+            ),
+            dict(
+                source_commit_id='YYYY',
+                key=uuid.uuid4().hex,
+                **commit_common_fields
+            ),
+            dict(
+                source_commit_id='ZZZZ',
+                key=uuid.uuid4().hex,
+                **commit_common_fields
+            )
+        ]
+        test_date = datetime.utcnow()
+
+        test_commits[0]['commit_date'] = test_date
+        test_commits[1]['commit_date'] = test_date - timedelta(days=1)
+        test_commits[2]['commit_date'] = test_date + timedelta(days=1)
+
+        result = api.import_new_commits(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            new_commits= test_commits,
+            new_contributors=[]
+        )
+
+        assert result['success']
+        result = db.connection().execute(
+            "select repository_id, team_id, commit_count, earliest_commit, latest_commit from analytics.teams_repositories").fetchall()
+        assert len(result) == 1
+        assert result[0].commit_count == 3
+        assert result[0].earliest_commit == test_commits[1]['commit_date']
+
+        assert result[0].latest_commit == test_commits[2]['commit_date']
+
+
+    def it_updates_teams_repositories_stats_correctly_across_batches(self, setup):
+        fixture = setup
+
+        test_commits = [
+            dict(
+                source_commit_id='XXXX',
+                key=uuid.uuid4().hex,
+                **commit_common_fields
+            ),
+            dict(
+                source_commit_id='YYYY',
+                key=uuid.uuid4().hex,
+                **commit_common_fields
+            ),
+            dict(
+                source_commit_id='ZZZZ',
+                key=uuid.uuid4().hex,
+                **commit_common_fields
+            )
+        ]
+        test_date = datetime.utcnow()
+
+        test_commits[0]['commit_date'] = test_date
+        test_commits[1]['commit_date'] = test_date - timedelta(days=1)
+        test_commits[2]['commit_date'] = test_date + timedelta(days=1)
+
+        result = api.import_new_commits(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            new_commits= test_commits[0:2],
+            new_contributors=[]
+        )
+
+        assert result['success']
+        result = db.connection().execute(
+            "select repository_id, team_id, commit_count, earliest_commit, latest_commit from analytics.teams_repositories").fetchall()
+        assert len(result) == 1
+        assert result[0].commit_count == 2
+        assert result[0].earliest_commit == test_commits[1]['commit_date']
+
+        assert result[0].latest_commit == test_commits[0]['commit_date']
+
+        # now repeat with the last commit in a second batch
+        result = api.import_new_commits(
+            organization_key=rails_organization_key,
+            repository_key=rails_repository_key,
+            new_commits=test_commits[2:],
+            new_contributors=[]
+        )
+
+        assert result['success']
+        result = db.connection().execute(
+            "select repository_id, team_id, commit_count, earliest_commit, latest_commit from analytics.teams_repositories").fetchall()
+        assert len(result) == 1
+        assert result[0].commit_count == 3
+        assert result[0].earliest_commit == test_commits[1]['commit_date']
+
+        assert result[0].latest_commit == test_commits[2]['commit_date']
 
     def it_does_not_resolve_teams_with_new_committer_and_author(self, setup):
         new_contributor_key = uuid.uuid4().hex

@@ -12,7 +12,7 @@
 from polaris.common import db
 from polaris.utils.collections import dict_select, dict_summarize_totals
 from polaris.analytics.db.model import commits, contributors, contributor_aliases, Repository, repositories, \
-    repositories_contributor_aliases, contributors_teams, teams
+    repositories_contributor_aliases, contributors_teams, teams, teams_repositories
 
 from sqlalchemy import Column, String, select, Integer, and_, bindparam, func, distinct, or_, case
 
@@ -258,6 +258,7 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
 
     update_repositories_contributor_aliases(session, repository, commits_temp)
 
+    update_teams_repositories(session, repository, commits_temp)
 
     new_commits = session.connection.execute(
         select(commit_columns).where(
@@ -272,6 +273,96 @@ def import_new_commits(session, organization_key, repository_key, new_commits, n
 
 
 def update_repositories_contributor_aliases(session, repository, commits_temp, ):
+    # Usting the commits_temp table group the new commits
+    # by team and insert teams with their stats
+    # into the teams_repositories table. We will also calculate commit spans for teams in this step.
+
+    to_upsert = select([
+        bindparam('repository_id').label('repository_id'),
+        teams.c.id.label('team_id'),
+        func.count(distinct(commits_temp.c.source_commit_id)).label('commit_count'),
+        func.min(commits_temp.c.commit_date).label('earliest_commit'),
+        func.max(commits_temp.c.commit_date).label('latest_commit')
+    ]).select_from(
+        commits_temp.join(
+            teams,
+            or_(
+                commits_temp.c.author_team_id == teams.c.id,
+                commits_temp.c.committer_team_id == teams.c.id
+            )
+        )
+    ).where(
+        commits_temp.c.commit_id == None
+    ).group_by(teams.c.id)
+
+    # We can limit this to only new commits under the inductive assumption
+    # that existing commits and their stats are reflected in the current state
+    # of the table. Only new commits can give rise to new teams for the repo.
+    # If an new commit from a new team is seen it is inserted, and if a new commit from
+    # and existing team s is seen it is updated via the upsert statement.
+    upsert = insert(teams_repositories).from_select(
+        [
+            to_upsert.c.repository_id,
+            to_upsert.c.team_id,
+            to_upsert.c.commit_count,
+            to_upsert.c.earliest_commit,
+            to_upsert.c.latest_commit
+        ],
+        to_upsert
+    )
+
+    session.connection.execute(
+        upsert.on_conflict_do_update(
+            index_elements=['repository_id', 'team_id'],
+            set_=dict(
+                team_id=upsert.excluded.team_id,
+                commit_count=upsert.excluded.commit_count + teams_repositories.c.commit_count,
+                earliest_commit=case(
+                    [(upsert.excluded.earliest_commit < teams_repositories.c.earliest_commit,
+                      upsert.excluded.earliest_commit)],
+                    else_=teams_repositories.c.earliest_commit
+                ),
+                latest_commit=case(
+                    [(upsert.excluded.latest_commit > teams_repositories.c.latest_commit,
+                      upsert.excluded.latest_commit)],
+                    else_=teams_repositories.c.latest_commit
+                )
+            )
+        ), dict(repository_id=repository.id)
+    )
+
+
+def update_repository_stats(session, repository, commits_temp):
+    new_commits_stats = session.connection.execute(
+        select(
+            [
+                func.min(commits_temp.c.commit_date).label('earliest_commit'),
+                func.max(commits_temp.c.commit_date).label('latest_commit'),
+                func.count(commits_temp.c.key).label('commit_count')
+            ]
+        ).where(
+            commits_temp.c.commit_id == None
+        )
+    ).fetchone()
+
+    if new_commits_stats.commit_count > 0:
+        updated_columns = {}
+        if repository['earliest_commit'] is None or new_commits_stats.earliest_commit < repository['earliest_commit']:
+            updated_columns['earliest_commit'] = new_commits_stats.earliest_commit
+        if repository['latest_commit'] is None or new_commits_stats.latest_commit > repository['latest_commit']:
+            updated_columns['latest_commit'] = new_commits_stats.latest_commit
+
+        current_commits = repository['commit_count'] if repository['commit_count'] is not None else 0
+        updated_columns['commit_count'] = current_commits + new_commits_stats.commit_count
+
+        if len(updated_columns) > 0:
+            session.connection.execute(
+                repositories.update().where(
+                    repositories.c.id == repository.id
+                ).values(updated_columns)
+            )
+
+def update_teams_repositories(session, repository, commits_temp, ):
     # we have marked all existing commit id in an earlier stage and stored in
     # in commit summary temp. Now we use this table to group the new commits
     # by contributor alias and insert contributor_aliases with their stats
@@ -337,38 +428,6 @@ def update_repositories_contributor_aliases(session, repository, commits_temp, )
             )
         ), dict(repository_id=repository.id)
     )
-
-
-def update_repository_stats(session, repository, commits_temp):
-    new_commits_stats = session.connection.execute(
-        select(
-            [
-                func.min(commits_temp.c.commit_date).label('earliest_commit'),
-                func.max(commits_temp.c.commit_date).label('latest_commit'),
-                func.count(commits_temp.c.key).label('commit_count')
-            ]
-        ).where(
-            commits_temp.c.commit_id == None
-        )
-    ).fetchone()
-
-    if new_commits_stats.commit_count > 0:
-        updated_columns = {}
-        if repository['earliest_commit'] is None or new_commits_stats.earliest_commit < repository['earliest_commit']:
-            updated_columns['earliest_commit'] = new_commits_stats.earliest_commit
-        if repository['latest_commit'] is None or new_commits_stats.latest_commit > repository['latest_commit']:
-            updated_columns['latest_commit'] = new_commits_stats.latest_commit
-
-        current_commits = repository['commit_count'] if repository['commit_count'] is not None else 0
-        updated_columns['commit_count'] = current_commits + new_commits_stats.commit_count
-
-        if len(updated_columns) > 0:
-            session.connection.execute(
-                repositories.update().where(
-                    repositories.c.id == repository.id
-                ).values(updated_columns)
-            )
-
 
 def import_commit_details(session, repository_key, commit_details):
     repository = Repository.find_by_repository_key(session, repository_key)

@@ -425,3 +425,185 @@ class TestAssignContributorCommitsToTeams:
             with db.orm_session() as session:
                 team = Team.find_by_key(session, fixture.team_a['key'])
                 assert len(team.work_items) == 2
+
+    class TestTeamsRepositoriesStats:
+
+        @pytest.yield_fixture()
+        def setup(self, setup):
+            fixture = setup
+            with db.orm_session() as session:
+                repo = Repository.find_by_repository_key(session, fixture.repository_key)
+                commits = repo.commits
+                earliest_commit = datetime.utcnow() - timedelta(days=1)
+                latest_commit = datetime.utcnow()
+
+                commits[0].commit_date = earliest_commit
+                commits[1].commit_date = latest_commit
+
+            yield Fixture(
+                parent=fixture,
+                earliest_commit=earliest_commit,
+                latest_commit=latest_commit
+            )
+
+        def it_inserts_rows_into_teams_repositories_if_the_team_is_being_assigned_for_the_first_time(self, setup):
+            fixture = setup
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        contributor_key=billy_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            teams_repos = db.connection().execute("select * from analytics.teams_repositories").fetchall()
+            assert len(teams_repos) == 1
+
+        def it_computes_the_teams_repos_stats(self, setup):
+            fixture = setup
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        contributor_key=billy_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            teams_repos = db.connection().execute("select * from analytics.teams_repositories").fetchall()
+            assert len(teams_repos) == 1
+            assert teams_repos[0].earliest_commit == fixture.earliest_commit
+            assert teams_repos[0].latest_commit == fixture.latest_commit
+            assert teams_repos[0].commit_count == 2
+
+
+        def it_only_includes_commits_from_the_selected_contributor(self, setup):
+            fixture = setup
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        # Joe only has one commit as author
+                        contributor_key=joe_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            teams_repos = db.connection().execute("select * from analytics.teams_repositories").fetchall()
+            assert len(teams_repos) == 1
+            assert teams_repos[0].earliest_commit == fixture.earliest_commit
+            assert teams_repos[0].latest_commit == fixture.earliest_commit
+            assert teams_repos[0].commit_count == 1
+
+        def it_updates_stats_for_existing_rows_when_new_team_members_are_added(self, setup):
+            fixture = setup
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        # Joe only has one commit as author
+                        contributor_key=joe_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            # now add joe_alt who has a second commit as author
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        # Joe only has one commit as author
+                        contributor_key=joe_alt_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            teams_repos = db.connection().execute("select * from analytics.teams_repositories").fetchall()
+            assert len(teams_repos) == 1
+            assert teams_repos[0].earliest_commit == fixture.earliest_commit
+            assert teams_repos[0].latest_commit == fixture.latest_commit
+            assert teams_repos[0].commit_count == 2
+
+        def it_does_not_include_duplicated_commits_in_commit_counts(self, setup):
+            fixture = setup
+
+            # This is a tricky case. We may have already recorded a commit via the author.
+            # now if same commit comes in via the committer being added, it should not affect the
+            # commit count
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        # Joe only has one commit as author
+                        contributor_key=joe_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            # now add joe_alt who has a second commit as author
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        # Joe only has one commit as author
+                        contributor_key=joe_alt_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            # now add billy who is committer on both commits, but it should not really affect the commit count or other stats
+            # since there are no net new commits
+
+            result = assign_contributor_commits_to_teams(
+                fixture.organization_key,
+                [
+                    dict(
+                        # Joe only has one commit as author
+                        contributor_key=billy_contributor_key,
+                        new_team_key=fixture.team_a['key'],
+                        initial_assignment=True
+                    )
+                ]
+            )
+            assert result['success']
+            assert result['update_count'] == 1
+
+            teams_repos = db.connection().execute("select * from analytics.teams_repositories").fetchall()
+            assert len(teams_repos) == 1
+            assert teams_repos[0].earliest_commit == fixture.earliest_commit
+            assert teams_repos[0].latest_commit == fixture.latest_commit
+            assert teams_repos[0].commit_count == 2
+

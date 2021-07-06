@@ -84,6 +84,16 @@ work_items_teams = Table(
     Column('team_id', ForeignKey('teams.id'), primary_key=True, index=True)
 )
 
+teams_repositories = Table(
+    'teams_repositories', Base.metadata,
+Column('repository_id', Integer, ForeignKey('repositories.id', ondelete='CASCADE'), primary_key=True, index=True),
+    Column('team_id', Integer, ForeignKey('teams.id', ondelete='CASCADE'), primary_key=True, index=True),
+    Column('earliest_commit', DateTime, nullable=True),
+    Column('latest_commit', DateTime, nullable=True),
+    Column('commit_count', Integer, nullable=True),
+)
+
+
 class Account(Base):
     __tablename__ = 'accounts'
 

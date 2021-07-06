@@ -16,13 +16,13 @@ from polaris.analytics.db.model import teams, contributors_teams, \
     work_item_delivery_cycles, work_items, work_items_teams, \
     work_items_source_state_map, work_item_delivery_cycle_durations, \
     work_items_commits, commits, repositories, contributor_aliases, work_items_sources, pull_requests, \
-    work_items_pull_requests
+    teams_repositories
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 
 from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, CycleMetricsTrends, \
-    PipelineCycleMetrics, CommitInfo, WorkItemsSourceRef, PullRequestInfo
+    PipelineCycleMetrics, CommitInfo, WorkItemsSourceRef, PullRequestInfo, CommitSummary
 
 from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, \
     work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase, work_items_connection_apply_filters
@@ -220,6 +220,34 @@ class TeamPullRequestNodes(ConnectionResolver):
 
 
 # Interface resolvers
+
+class TeamCommitSummary(InterfaceResolver):
+    interface = CommitSummary
+
+    @staticmethod
+    def interface_selector(team_nodes, **kwargs):
+        return select([
+            team_nodes.c.id,
+            func.min(teams_repositories.c.earliest_commit).label('earliest_commit'),
+            func.max(teams_repositories.c.latest_commit).label('latest_commit'),
+            func.sum(teams_repositories.c.commit_count).label('commit_count')
+
+        ]).select_from(
+            team_nodes.join(
+                teams, team_nodes.c.id == teams.c.id
+            ).outerjoin(
+                teams_repositories, teams_repositories.c.team_id == teams.c.id
+            ).outerjoin(
+                repositories, teams_repositories.c.repository_id == repositories.c.id
+            )
+        ).where(
+            # we need to limit this to the current organization because teams may be associated with cross org repos
+            # which will give odd results if shown within an org.
+            repositories.c.organization_id == teams.c.organization_id
+        ).group_by(
+            team_nodes.c.id
+        )
+
 
 class TeamContributorCount(InterfaceResolver):
     interface = ContributorCount

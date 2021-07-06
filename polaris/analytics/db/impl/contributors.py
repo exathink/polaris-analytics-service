@@ -8,10 +8,10 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import and_, or_, distinct, select, bindparam
+from sqlalchemy import and_, or_, distinct, select, bindparam, func
 from polaris.analytics.db.model import Contributor, ContributorAlias, Organization, Team, teams
 from polaris.analytics.db.model import contributor_aliases, commits, repositories_contributor_aliases, \
-    work_items, work_items_commits, work_items_teams, repositories
+    work_items, work_items_commits, work_items_teams, repositories, teams_repositories
 from polaris.utils.exceptions import ProcessingException
 from sqlalchemy.dialects.postgresql import insert
 
@@ -205,6 +205,8 @@ def assign_contributor_commits_to_teams(session, organization_key, contributor_t
                     )
                 )
 
+                update_teams_repositories_stats(session, contributor_key, team_key)
+
                 # assign work items to teams based on the commits just associated
                 assign_work_items_to_team(session, organization_key, team_key)
 
@@ -217,6 +219,83 @@ def assign_contributor_commits_to_teams(session, organization_key, contributor_t
     return dict(
         update_count=assignment_count
     )
+
+
+def update_teams_repositories_stats(session, contributor_key, team_key):
+    # Update the existing stats on teams_repositories to reflect the commits from
+    # the given contributor being added to the given team
+    team = Team.find_by_key(session, team_key)
+
+    if team is not None:
+        to_upsert = select([
+            bindparam('team_id').label('team_id'),
+            commits.c.repository_id.label('repository_id'),
+            func.min(commits.c.commit_date).label('earliest_commit'),
+            func.max(commits.c.commit_date).label('latest_commit')
+        ]).select_from(
+            commits
+        ).where(
+            or_(
+                commits.c.author_contributor_key == contributor_key,
+                commits.c.committer_contributor_key == contributor_key
+            )
+        ).group_by(commits.c.repository_id)
+        upsert = insert(teams_repositories).from_select(
+            [
+                to_upsert.c.team_id,
+                to_upsert.c.repository_id,
+                to_upsert.c.earliest_commit,
+                to_upsert.c.latest_commit
+            ],
+            to_upsert
+        )
+
+        session.connection().execute(
+            upsert.on_conflict_do_update(
+                index_elements=['repository_id', 'team_id'],
+                set_=dict(
+                    earliest_commit=func.least(upsert.excluded.earliest_commit, teams_repositories.c.earliest_commit),
+                    latest_commit=func.greatest(upsert.excluded.latest_commit, teams_repositories.c.latest_commit)
+                )
+            ), dict(team_id=team.id)
+        )
+
+        # commit counts for the team_repos need to be recomputed from scratch because we
+        # may have a mix of existing or new commits added to the team based on whether the
+        # contributor is an author or a committer, we still need to have the net new total commits for the
+        # team recorded here and we cannot do this as an incremental update.
+
+        commit_counts = select([
+            teams_repositories.c.team_id,
+            commits.c.repository_id.label('repository_id'),
+            func.count(commits.c.id.distinct()).label('commit_count')
+        ]).select_from(
+            teams_repositories.join(
+                commits, teams_repositories.c.repository_id == commits.c.repository_id
+            )
+        ).where(
+            and_(
+                teams_repositories.c.team_id == team.id,
+                or_(
+                    commits.c.author_team_id == team.id,
+                    commits.c.committer_team_id == team.id
+                )
+            )
+        ).group_by(
+            teams_repositories.c.team_id,
+            commits.c.repository_id,
+        ).cte()
+
+        session.connection().execute(
+            teams_repositories.update().values(
+                commit_count=commit_counts.c.commit_count
+            ).where(
+                and_(
+                    teams_repositories.c.repository_id == commit_counts.c.repository_id,
+                    teams_repositories.c.team_id == commit_counts.c.team_id
+                )
+            )
+        )
 
 
 def assign_work_items_to_team(session, organization_key, team_key):

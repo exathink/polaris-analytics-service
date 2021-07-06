@@ -26,7 +26,7 @@ def migrate_data():
             where TR.team_id is not null
         """)
 
-    # TODO: Update earliest_commmit and latest_commit for teams_repositories
+    # Update earliest and latest commits based on author team id
     op.execute(
         """
         with author_repos_stats as (
@@ -36,32 +36,33 @@ def migrate_data():
             analytics.commits
             group by author_team_id, repository_id
             having author_team_id is not null
-        ),
-        committer_repos_stats as (
+        )
+        update analytics.teams_repositories set earliest_commit=author_repos_stats.earliest_commit, latest_commit=author_repos_stats.latest_commit
+        from author_repos_stats where author_repos_stats.repository_id=teams_repositories.repository_id and author_repos_stats.team_id=teams_repositories.team_id
+        """
+    )
+    # Update earliest and latest commits based on commit_team_id
+    # we need to do this separately since there could be repositories where either author_team_id or commit_team_id is null
+    # for all commits.
+    op.execute(
+        """
+        with committer_repos_stats as (
             select committer_team_id as team_id, repository_id,
             min(commit_date) as earliest_commit,
             max(commit_date) as latest_commit from
             analytics.commits
             group by committer_team_id, repository_id
             having committer_team_id is not null
-        ),
-        teams_repos_stats as (
-            select author_repos_stats.team_id, author_repos_stats.repository_id,
-                   least(author_repos_stats.earliest_commit, committer_repos_stats.earliest_commit) as earliest_commit,
-                   greatest(author_repos_stats.latest_commit, committer_repos_stats.latest_commit) as latest_commit
-            from
-                author_repos_stats inner join committer_repos_stats
-                on author_repos_stats.team_id = committer_repos_stats.team_id and
-                   author_repos_stats.repository_id = committer_repos_stats.repository_id
         )
         update analytics.teams_repositories
-        set earliest_commit = teams_repos_stats.earliest_commit,
-            latest_commit = teams_repos_stats.latest_commit
-        from teams_repos_stats where teams_repos_stats.team_id = teams_repositories.team_id
-            and teams_repos_stats.repository_id = teams_repositories.repository_id
+        set earliest_commit = least(committer_repos_stats.earliest_commit, teams_repositories.earliest_commit),
+            latest_commit = greatest(committer_repos_stats.latest_commit, teams_repositories.latest_commit)
+        from committer_repos_stats where committer_repos_stats.team_id = teams_repositories.team_id
+            and committer_repos_stats.repository_id = teams_repositories.repository_id
         """
     )
 
+    # Finally update the commit counts.
     op.execute("""
         with teams_repos_commit_count as (
             select team_id, teams_repositories.repository_id, count(distinct commits.id) as commit_count

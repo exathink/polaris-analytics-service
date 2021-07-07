@@ -479,6 +479,21 @@ class TestUpdateWorkItems:
         assert db.connection().execute(
             f"select count(id) from analytics.work_items where parent_id='{parent_id}'").scalar() == 1
 
+    def it_returns_new_work_item_keys(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        work_items[0]['key'] = uuid.uuid4()
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(name='foo')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(id) from analytics.work_items where name='foo'").scalar() == 1
+        assert len(result['new_work_items']) == 1
+        assert result['new_work_items'][0] == work_items[0]['key']
+
 
 class TestStateTransitionSequence:
 

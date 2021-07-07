@@ -1030,7 +1030,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
         return dict(
             update_count=updated,
             state_changes=state_changes,
-            new_work_items=new_work_items
+            new_work_items=[wi[0] for wi in new_work_items]
         )
 
 

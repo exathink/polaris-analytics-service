@@ -57,14 +57,14 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                         else:
                             updated_work_items.append(work_item)
                     work_items_created = WorkItemsCreated(send=dict(
-                        organization_key=all_work_items['organization_key'],
-                        work_items_source_key=all_work_items['work_items_source_key'],
+                        organization_key=work_items['organization_key'],
+                        work_items_source_key=work_items['work_items_source_key'],
                         new_work_items=new_work_items
                     ), in_response_to=message)
                     self.publish(WorkItemsTopic, work_items_created, channel=channel)
                     work_items_updated = WorkItemsUpdated(send=dict(
-                        organization_key=all_work_items['organization_key'],
-                        work_items_source_key=all_work_items['work_items_source_key'],
+                        organization_key=work_items['organization_key'],
+                        work_items_source_key=work_items['work_items_source_key'],
                         updated_work_items=updated_work_items
                     ), in_response_to=message)
                 else:

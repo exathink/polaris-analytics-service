@@ -916,8 +916,10 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
             new_work_items = session.connection().execute(
                 select([
                     work_items_temp.c.key
-                ]).where(
-                    work_items_temp.c.key != work_items.c.key
+                ]).select_from(
+                    work_items_temp.outerjoin(work_items, work_items.c.key == work_items_temp.c.key)
+                ).where(
+                    work_items.c.key == None
                 )
             ).fetchall()
 

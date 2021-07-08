@@ -1167,6 +1167,10 @@ def move_work_item(session, source_work_items_source_key, target_work_items_sour
         return dict(update_count=1)
 
 
+def delete_work_item(session, work_items_source_key, work_item_data):
+    return dict(delete_count=1)
+
+
 def resolve_teams_for_work_items(session, organization_key, work_items_commits):
     if len(work_items_commits) > 0:
         organization = Organization.find_by_organization_key(session, organization_key)
@@ -1234,7 +1238,6 @@ def resolve_teams_for_work_items(session, organization_key, work_items_commits):
                     teams.c.organization_id == organization.id
                 )
             )
-
 
             updated = session.connection().execute(
                 insert(work_items_teams).from_select(

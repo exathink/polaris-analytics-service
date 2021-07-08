@@ -11,7 +11,7 @@ import logging
 
 from polaris.analytics.db import api
 from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated, \
-    WorkItemsStatesChanged, ProjectImported, WorkItemMoved
+    WorkItemsStatesChanged, ProjectImported, WorkItemMoved, WorkItemDeleted
 from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic, AnalyticsTopic
 from polaris.messaging.utils import raise_on_failure
 
@@ -21,13 +21,14 @@ logger = logging.getLogger('polaris.analytics.work_items_topic_subscriber')
 class WorkItemsTopicSubscriber(TopicSubscriber):
     def __init__(self, channel, publisher=None):
         super().__init__(
-            topic = WorkItemsTopic(channel, create=True),
+            topic=WorkItemsTopic(channel, create=True),
             subscriber_queue='work_items_analytics',
             message_classes=[
-                #Events
+                # Events
                 WorkItemsCreated,
                 WorkItemsUpdated,
                 WorkItemMoved,
+                WorkItemDeleted,
                 ProjectImported
             ],
             publisher=publisher,
@@ -53,7 +54,7 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                         send=dict(
                             organization_key=message['organization_key'],
                             work_items_source_key=message['work_items_source_key'],
-                            state_changes = resolved['state_changes']
+                            state_changes=resolved['state_changes']
                         )
                     )
                     self.publish(AnalyticsTopic, work_items_states_changed, channel=channel)
@@ -62,6 +63,9 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
 
         elif WorkItemMoved.message_type == message.message_type:
             return self.process_work_item_moved(message)
+
+        elif WorkItemDeleted.message_type == message.message_type:
+            return self.process_work_item_deleted(message)
 
         elif ProjectImported.message_type == message.message_type:
             logger.info('Received ProjectImported Message')
@@ -119,9 +123,20 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
         work_item_data = work_item_moved['moved_work_item']
         return raise_on_failure(
             message,
-            api.move_work_item(organization_key, source_work_items_source_key, target_work_items_source_key, work_item_data)
+            api.move_work_item(organization_key, source_work_items_source_key, target_work_items_source_key,
+                               work_item_data)
         )
 
+    @staticmethod
+    def process_work_item_deleted(message):
+        work_item_deleted = message.dict
+        organization_key = work_item_deleted['organization_key']
+        work_items_source_key = work_item_deleted['work_items_source_key']
+        work_item_data = work_item_deleted['deleted_work_item']
+        return raise_on_failure(
+            message,
+            api.delete_work_item(organization_key, work_items_source_key, work_item_data)
+        )
 
     @staticmethod
     def process_project_imported(message):

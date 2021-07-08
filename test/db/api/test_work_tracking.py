@@ -108,6 +108,33 @@ class TestImportWorkItems:
         assert result['insert_count'] == 0
         assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 10
 
+    def it_inserts_only_the_new_items_from_a_batch(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=str(i),
+                display_id=str(i),
+                **work_items_common()
+            )
+            for i in range(0, 10)
+        ]
+
+        api.import_new_work_items(organization_key, work_items_source_key, work_items)
+        work_items.append(
+            dict(
+                key=uuid.uuid4().hex,
+                name='New item',
+                display_id='11',
+                **work_items_common()
+            )
+        )
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+        assert result['insert_count'] == 1
+        assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 11
+
     def it_only_creates_new_items(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_items = [
@@ -481,7 +508,7 @@ class TestUpdateWorkItems:
 
     def it_returns_new_work_item_keys(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
-        work_items[0]['key'] = uuid.uuid4()
+        work_items[0]['key'] = str(uuid.uuid4())
         result = api.update_work_items(organization_key, work_items_source_key, [
             dict_merge(
                 work_item,

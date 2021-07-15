@@ -13,8 +13,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import select, func, bindparam, distinct, and_, cast, Text, between, extract, case, literal_column, \
     union_all, literal, Date, true, or_, desc
 
-from polaris.analytics.db.enums import WorkItemTypesToIncludeInCycleMetrics, FlowTypes, \
-    WorkItemTypesToFlowTypes
+from polaris.analytics.db.enums import WorkItemTypesToIncludeInCycleMetrics
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import projects, projects_repositories, organizations, \
     repositories, contributors, \
@@ -45,7 +44,8 @@ from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
-    work_item_info_group_expr_columns, apply_specs_only_filter, apply_defects_only_filter, CycleMetricsTrendsBase
+    work_item_info_group_expr_columns, apply_specs_only_filter, apply_defects_only_filter, CycleMetricsTrendsBase, \
+    map_work_item_type_to_flow_type
 from ..utils import date_column_is_in_measurement_window, get_measurement_period, get_timeline_dates_for_trending
 
 
@@ -1544,37 +1544,7 @@ class ProjectsFlowMixTrends(InterfaceResolver):
             projects_timeline_dates.c.measurement_date,
             work_items.c.id.label('work_item_id'),
             work_items.c.work_item_type,
-            case([
-                # We need both a test for is_bug and for work_item_type
-                # here, because in some providers like Github issues there is
-                # no explicit issue type for bug. We use labels and other
-                # attributes to set the is_bug flag and so that should always
-                # override the work_item_type in determining if something is a bug.
-                (
-                    work_items.c.is_bug,
-                    FlowTypes.defect.value
-                ),
-                (
-                    work_items.c.work_item_type.in_(
-                        WorkItemTypesToFlowTypes.defect_types
-                    ),
-                    FlowTypes.defect.value
-                ),
-                (
-                    work_items.c.work_item_type.in_(
-                        WorkItemTypesToFlowTypes.feature_types
-                    ),
-                    FlowTypes.feature.value
-                ),
-                (
-                    work_items.c.work_item_type.in_(
-                        WorkItemTypesToFlowTypes.task_types
-                    ),
-                    FlowTypes.task.value
-                )
-
-            ], else_=FlowTypes.other.value
-            ).label('category'),
+            map_work_item_type_to_flow_type(work_items).label('category'),
             work_item_delivery_cycles.c.effort.label('effort')
         ]).select_from(
             projects_timeline_dates.join(

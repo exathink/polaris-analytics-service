@@ -913,6 +913,16 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
                 ]
                 ))
 
+            new_work_items = session.connection().execute(
+                select([
+                    work_items_temp.c.key
+                ]).select_from(
+                    work_items_temp.outerjoin(work_items, work_items.c.key == work_items_temp.c.key)
+                ).where(
+                    work_items.c.key == None
+                )
+            ).fetchall()
+
             session.connection().execute(
                 work_items_temp.update().where(
                     work_items.c.key == work_items_temp.c.parent_key
@@ -1019,7 +1029,8 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
 
         return dict(
             update_count=updated,
-            state_changes=state_changes
+            state_changes=state_changes,
+            new_work_items=[str(wi[0]) for wi in new_work_items]
         )
 
 
@@ -1234,7 +1245,6 @@ def resolve_teams_for_work_items(session, organization_key, work_items_commits):
                     teams.c.organization_id == organization.id
                 )
             )
-
 
             updated = session.connection().execute(
                 insert(work_items_teams).from_select(

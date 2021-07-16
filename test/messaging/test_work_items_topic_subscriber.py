@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 
 import uuid
-from polaris.messaging.topics import AnalyticsTopic
+from polaris.messaging.topics import AnalyticsTopic, WorkItemsTopic
 from polaris.analytics.messaging.subscribers import WorkItemsTopicSubscriber
 from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated, \
     WorkItemsStatesChanged, ProjectImported
@@ -32,7 +32,7 @@ class TestWorkItemsCreated:
                     key=uuid.uuid4(),
                     display_id='1000',
                     **dict_merge(
-                        dict_drop(work_items_common(),['parent_id']),
+                        dict_drop(work_items_common(), ['parent_id']),
                         dict(parent_key=None)
                     )
                 )
@@ -56,7 +56,7 @@ class TestWorkItemsUpdated:
             work_items_source_key=work_items_source_key,
             updated_work_items=[
                 dict_merge(
-                    dict_drop(work_item,['parent_id']),
+                    dict_drop(work_item, ['parent_id']),
                     dict(parent_key=None)
                 )
                 for work_item in work_items
@@ -76,7 +76,7 @@ class TestWorkItemsUpdated:
             work_items_source_key=work_items_source_key,
             updated_work_items=[
                 dict_merge(
-                    dict_drop(work_item,['parent_id']),
+                    dict_drop(work_item, ['parent_id']),
                     dict(parent_key=None, state='foo')
                 )
                 for work_item in work_items
@@ -89,6 +89,53 @@ class TestWorkItemsUpdated:
         WorkItemsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
         publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsUpdated, call=0)
         publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsStatesChanged, call=1)
+
+    def it_publishes_both_work_items_created_and_updated_response_when_there_is_a_new_work_item(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        work_items[0]['key'] = uuid.uuid4()
+        payload = dict(
+            organization_key=organization_key,
+            work_items_source_key=work_items_source_key,
+            updated_work_items=[
+                dict_merge(
+                    dict_drop(work_item, ['parent_id']),
+                    dict(parent_key=None)
+                )
+                for work_item in work_items
+            ]
+        )
+        message = fake_send(WorkItemsUpdated(send=payload))
+        channel = mock_channel()
+        publisher = mock_publisher()
+
+        WorkItemsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        publisher.assert_topic_called_with_message(WorkItemsTopic, WorkItemsCreated, call=0)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, WorkItemsUpdated, call=1)
+
+    def it_does_not_publish_an_updated_response_if_all_updates_are_new_items(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        for wi in work_items:
+            wi['key'] = uuid.uuid4()
+
+        payload = dict(
+            organization_key=organization_key,
+            work_items_source_key=work_items_source_key,
+            updated_work_items=[
+                dict_merge(
+                    dict_drop(work_item, ['parent_id']),
+                    dict(parent_key=None)
+                )
+                for work_item in work_items
+            ]
+        )
+        message = fake_send(WorkItemsUpdated(send=payload))
+        channel = mock_channel()
+        publisher = mock_publisher()
+
+        WorkItemsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        publisher.publish.assert_called_once()
+        publisher.assert_topic_called_with_message(WorkItemsTopic, WorkItemsCreated, call=0)
+
 
 
 class TestProjectImported:

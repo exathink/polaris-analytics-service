@@ -149,7 +149,10 @@ class TeamCommitNodes(ConnectionResolver):
                     commits.c.committer_team_id == teams.c.id
                 )
             ).join(
-                repositories, commits.c.repository_id == repositories.c.id
+                repositories, and_(
+                    commits.c.repository_id == repositories.c.id,
+                    repositories.c.organization_id == teams.c.organization_id
+                )
             ).join(
                 contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
             ).outerjoin(

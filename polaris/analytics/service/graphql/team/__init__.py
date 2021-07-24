@@ -12,14 +12,14 @@ import graphene
 
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import ContributorCount, PipelineCycleMetrics, CycleMetricsTrends, CommitSummary
+from ..interfaces import ContributorCount, PipelineCycleMetrics, CycleMetricsTrends, CommitSummary, FlowMixTrends
 from ..interface_mixins import NamedNodeResolverMixin, CycleMetricsTrendsResolverMixin, \
-    PipelineCycleMetricsResolverMixin
+    PipelineCycleMetricsResolverMixin, FlowMixTrendsResolverMixin
 from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes, \
     TeamCycleMetricsTrends, TeamPipelineCycleMetrics, TeamCommitNodes, TeamWorkItemNodes, \
-    TeamPullRequestNodes, TeamCommitSummary
+    TeamPullRequestNodes, TeamCommitSummary, TeamFlowMixTrends
 
-from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters
+from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, FlowMixTrendsParameters
 from ..work_item import WorkItemDeliveryCyclesConnectionMixin, WorkItemsConnectionMixin
 from ..commit import CommitsConnectionMixin
 from ..pull_request import PullRequestsConnectionMixin
@@ -33,17 +33,19 @@ class Team(
     PipelineCycleMetricsResolverMixin,
     CommitsConnectionMixin,
     PullRequestsConnectionMixin,
+    FlowMixTrendsResolverMixin,
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, ContributorCount, CycleMetricsTrends, PipelineCycleMetrics, CommitSummary)
+        interfaces = (NamedNode, ContributorCount, CycleMetricsTrends, PipelineCycleMetrics, CommitSummary, FlowMixTrends)
         named_node_resolver = TeamNode
 
         interface_resolvers = {
             'ContributorCount': TeamContributorCount,
             'PipelineCycleMetrics': TeamPipelineCycleMetrics,
             'CycleMetricsTrends': TeamCycleMetricsTrends,
-            'CommitSummary': TeamCommitSummary
+            'CommitSummary': TeamCommitSummary,
+            'FlowMixTrends': TeamFlowMixTrends
 
         }
 
@@ -74,6 +76,11 @@ class Team(
                 CycleMetricsParameters,
                 required=False,
                 description='Required when resolving PipelineCycleMetrics interface'
+            ),
+            flow_mix_trends_args=graphene.Argument(
+                FlowMixTrendsParameters,
+                required=False,
+                description='Required when resolving FlowMixTrends Interface'
             ),
             **kwargs
         )
@@ -107,6 +114,11 @@ class TeamsConnectionMixin(ConnectionResolverMixin):
             CycleMetricsParameters,
             required=False,
             description='Required when resolving PipelineCycleMetrics interface'
+        ),
+        flow_mix_trends_args=graphene.Argument(
+            FlowMixTrendsParameters,
+            required=False,
+            description='Required when resolving FlowMixTrends Interface'
         ),
     )
 

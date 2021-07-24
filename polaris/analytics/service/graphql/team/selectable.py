@@ -22,10 +22,11 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 
 from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, CycleMetricsTrends, \
-    PipelineCycleMetrics, CommitInfo, WorkItemsSourceRef, PullRequestInfo, CommitSummary
+    PipelineCycleMetrics, CommitInfo, WorkItemsSourceRef, PullRequestInfo, CommitSummary, FlowMixTrends
 
 from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, \
-    work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase, work_items_connection_apply_filters
+    work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase, work_items_connection_apply_filters, \
+    map_work_item_type_to_flow_type
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 
@@ -149,7 +150,10 @@ class TeamCommitNodes(ConnectionResolver):
                     commits.c.committer_team_id == teams.c.id
                 )
             ).join(
-                repositories, commits.c.repository_id == repositories.c.id
+                repositories, and_(
+                    commits.c.repository_id == repositories.c.id,
+                    repositories.c.organization_id == teams.c.organization_id
+                )
             ).join(
                 contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
             ).outerjoin(
@@ -555,4 +559,114 @@ class TeamPipelineCycleMetrics(CycleMetricsTrendsBase):
             cycle_metrics
         ).group_by(
             cycle_metrics.c.team_id
+        )
+
+
+class TeamFlowMixTrends(InterfaceResolver):
+    interface = FlowMixTrends
+
+    @staticmethod
+    def interface_selector(team_nodes, **kwargs):
+        flow_mix_trends_args = kwargs.get('flow_mix_trends_args')
+
+        measurement_window = flow_mix_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating FlowMixTrends"
+            )
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            flow_mix_trends_args,
+            arg_name='flow_mix_trends',
+            interface_name='FlowMixTrends'
+        )
+
+        teams_timeline_dates = select([team_nodes.c.id, timeline_dates]).cte()
+
+        select_work_items = select([
+            teams_timeline_dates.c.id,
+            teams_timeline_dates.c.measurement_date,
+            work_items.c.id.label('work_item_id'),
+            work_items.c.work_item_type,
+            map_work_item_type_to_flow_type(work_items).label('category'),
+            work_item_delivery_cycles.c.effort.label('effort')
+        ]).select_from(
+            teams_timeline_dates.join(
+                work_items_teams, work_items_teams.c.team_id == teams_timeline_dates.c.id
+            ).join(
+                work_items, work_items_teams.c.work_item_id == work_items.c.id
+            ).join(
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            )
+        ).where(
+            and_(
+                date_column_is_in_measurement_window(
+                    work_item_delivery_cycles.c.end_date,
+                    measurement_date=teams_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                ),
+                *TeamCycleMetricsTrends.get_work_item_filter_clauses(flow_mix_trends_args),
+                *TeamCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
+                    flow_mix_trends_args
+                )
+            )
+        ).cte()
+
+        select_category_counts = select([
+            teams_timeline_dates.c.id,
+            teams_timeline_dates.c.measurement_date,
+            select_work_items.c.category,
+            func.count(select_work_items.c.work_item_id.distinct()).label('work_item_count'),
+            func.sum(select_work_items.c.effort).label('total_effort')
+        ]).select_from(
+            teams_timeline_dates.outerjoin(
+                select_work_items,
+                and_(
+                    teams_timeline_dates.c.id == select_work_items.c.id,
+                    teams_timeline_dates.c.measurement_date == select_work_items.c.measurement_date
+                )
+            )
+        ).group_by(
+            teams_timeline_dates.c.id,
+            teams_timeline_dates.c.measurement_date,
+            select_work_items.c.category
+        ).alias()
+
+        select_flow_mix = select([
+            select_category_counts.c.id,
+            select_category_counts.c.measurement_date,
+            func.json_agg(
+                func.json_build_object(
+                    'category',
+                    select_category_counts.c.category,
+                    'work_item_count',
+                    select_category_counts.c.work_item_count,
+                    'total_effort',
+                    select_category_counts.c.total_effort,
+                )
+            ).label('flow_mix')
+        ]).select_from(
+            select_category_counts
+        ).group_by(
+            select_category_counts.c.id,
+            select_category_counts.c.measurement_date
+        ).order_by(
+            select_category_counts.c.id,
+            select_category_counts.c.measurement_date.desc(),
+        ).alias()
+
+        return select([
+            select_flow_mix.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', select_flow_mix.c.measurement_date,
+                    'measurement_window', measurement_window,
+                    'flow_mix', select_flow_mix.c.flow_mix
+                )
+            ).label('flow_mix_trends')
+        ]).select_from(
+            select_flow_mix
+        ).group_by(
+            select_flow_mix.c.id
         )

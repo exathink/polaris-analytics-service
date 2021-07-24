@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import and_, cast, Text, func, case, select, or_, literal, Date
 
-from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.analytics.db.enums import WorkItemsStateType, FlowTypes, WorkItemTypesToFlowTypes
 from polaris.analytics.db.model import work_items, work_item_delivery_cycles
 from polaris.analytics.service.graphql.utils import date_column_is_in_measurement_window, get_before_date
 from polaris.common.enums import JiraWorkItemType
@@ -701,3 +701,37 @@ class CycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
             columns.append(work_item_delivery_cycles.c.commit_count > 0)
 
         return columns
+
+
+def map_work_item_type_to_flow_type(work_items):
+    return case([
+        # We need both a test for is_bug and for work_item_type
+        # here, because in some providers like Github issues there is
+        # no explicit issue type for bug. We use labels and other
+        # attributes to set the is_bug flag and so that should always
+        # override the work_item_type in determining if something is a bug.
+        (
+            work_items.c.is_bug,
+            FlowTypes.defect.value
+        ),
+        (
+            work_items.c.work_item_type.in_(
+                WorkItemTypesToFlowTypes.defect_types
+            ),
+            FlowTypes.defect.value
+        ),
+        (
+            work_items.c.work_item_type.in_(
+                WorkItemTypesToFlowTypes.feature_types
+            ),
+            FlowTypes.feature.value
+        ),
+        (
+            work_items.c.work_item_type.in_(
+                WorkItemTypesToFlowTypes.task_types
+            ),
+            FlowTypes.task.value
+        )
+
+    ], else_=FlowTypes.other.value
+    )

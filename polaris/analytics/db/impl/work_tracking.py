@@ -25,7 +25,8 @@ from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
     Commit, WorkItem, work_item_state_transitions, Project, work_items_sources, \
-    work_item_delivery_cycles, teams, work_items_teams
+    work_item_delivery_cycles, teams, work_items_teams, work_items_pull_requests, work_item_delivery_cycle_contributors, \
+    work_item_delivery_cycle_durations, work_item_source_file_changes
 
 from .delivery_cycle_tracking import initialize_work_item_delivery_cycles, \
     initialize_work_item_delivery_cycle_durations, \
@@ -1176,6 +1177,84 @@ def move_work_item(session, source_work_items_source_key, target_work_items_sour
         else:
             work_item.is_moved_from_current_source = True
         return dict(update_count=1)
+
+
+def delete_work_item(session, work_items_source_key, work_item_data):
+    work_item = WorkItem.find_by_work_item_key(
+        session,
+        work_item_key=work_item_data.get('key')
+    )
+    if work_item:
+        delivery_cycles = work_item.delivery_cycles
+        if work_item.current_delivery_cycle.end_date is not None or len(delivery_cycles) > 1:
+            work_item.deleted_at = work_item_data.get('deleted_at')
+        else:
+            delivery_cycle = work_item.current_delivery_cycle
+
+            session.connection().execute(
+                work_item_state_transitions.delete().where(
+                    work_item_state_transitions.c.work_item_id == work_item.id
+                )
+            )
+
+            session.connection().execute(
+                work_items_commits_table.delete().where(
+                    work_items_commits_table.c.work_item_id == work_item.id
+                )
+            )
+
+            session.connection().execute(
+                work_items_teams.delete().where(
+                    work_items_teams.c.work_item_id == work_item.id
+                )
+            )
+
+            session.connection().execute(
+                work_items_pull_requests.delete().where(
+                    work_items_pull_requests.c.work_item_id == work_item.id
+                )
+            )
+
+            session.connection().execute(
+                work_item_delivery_cycle_contributors.delete().where(
+                    work_item_delivery_cycle_contributors.c.delivery_cycle_id == delivery_cycle.delivery_cycle_id
+                )
+            )
+
+            session.connection().execute(
+                work_item_delivery_cycle_durations.delete().where(
+                    work_item_delivery_cycle_durations.c.delivery_cycle_id == delivery_cycle.delivery_cycle_id
+                )
+            )
+
+            session.connection().execute(
+                work_item_source_file_changes.delete().where(
+                    or_(
+                        work_item_source_file_changes.c.delivery_cycle_id == delivery_cycle.delivery_cycle_id,
+                        and_(
+                            work_item_source_file_changes.c.delivery_cycle_id == None,
+                            work_item_delivery_cycles.c.work_item_id == work_item.id
+                        )
+                    )
+                )
+            )
+
+            session.connection().execute(
+                work_item_delivery_cycles.delete().where(
+                    work_item_delivery_cycles.c.work_item_id == work_item.id
+                )
+            )
+
+            session.connection().execute(
+                work_items.delete().where(
+                    work_items.c.id == work_item.id
+                )
+            )
+
+    else:
+        raise ProcessingException(f"Could not find work_item with key {work_item_data.get('key')}")
+
+    return dict(delete_count=1)
 
 
 def resolve_teams_for_work_items(session, organization_key, work_items_commits):

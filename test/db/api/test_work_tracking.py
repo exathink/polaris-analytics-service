@@ -1836,3 +1836,48 @@ class TestMoveWorkItem:
             assert db.connection().execute(
                 f"select count(id) from analytics.work_items where key='{work_item['key']}' and "
                 f"work_items_source_id={fixture.source_work_items_source.id} and is_moved_from_current_source=TRUE ").scalar() == 1
+
+
+class TestDeleteWorkItem:
+
+    @pytest.yield_fixture()
+    def setup(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        yield Fixture(
+            organization_key=organization_key,
+            work_items_source_key=work_items_source_key,
+            work_items=work_items
+        )
+
+    def it_deletes_work_item_when_there_is_an_open_delivery_cycle_and_no_closed_cycles(self, setup):
+        fixture = setup
+        work_item = fixture.work_items[0]
+        work_item['deleted_at'] = datetime.utcnow()
+        result = api.delete_work_item(fixture.organization_key, fixture.work_items_source_key, work_item)
+        assert result
+        assert db.connection().execute(
+            f"select count(id) from analytics.work_items where key='{work_item['key']}'").scalar() == 0
+
+    def it_updates_deleted_at_time_for_a_work_item_with_closed_delivery_cycle(self, setup):
+        fixture = setup
+        work_item = fixture.work_items[0]
+        work_item['state'] = 'closed'
+        api.update_work_items(fixture.organization_key, fixture.work_items_source_key, [work_item])
+        work_item['deleted_at'] = datetime.utcnow()
+        result = api.delete_work_item(fixture.organization_key, fixture.work_items_source_key, work_item)
+        assert result
+        assert db.connection().execute(
+            f"select count(id) from analytics.work_items where key='{work_item['key']}' and deleted_at='{work_item['deleted_at']}'").scalar() == 1
+
+    def it_updates_deleted_at_time_for_a_work_item_whic_was_reopened(self, setup):
+        fixture = setup
+        work_item = fixture.work_items[0]
+        work_item['state'] = 'closed'
+        api.update_work_items(fixture.organization_key, fixture.work_items_source_key, [work_item])
+        work_item['state'] = 'open'
+        api.update_work_items(fixture.organization_key, fixture.work_items_source_key, [work_item])
+        work_item['deleted_at'] = datetime.utcnow()
+        result = api.delete_work_item(fixture.organization_key, fixture.work_items_source_key, work_item)
+        assert result
+        assert db.connection().execute(
+            f"select count(id) from analytics.work_items where key='{work_item['key']}' and deleted_at='{work_item['deleted_at']}'").scalar() == 1

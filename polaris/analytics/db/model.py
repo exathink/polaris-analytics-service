@@ -841,6 +841,7 @@ class WorkItem(Base):
     source_id = Column(String, nullable=True)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
+    deleted_at = Column(DateTime, nullable=True)
     next_state_seq_no = Column(Integer, nullable=False, server_default='0')
 
     # Information related to Epic

@@ -11,7 +11,7 @@ import logging
 
 from polaris.analytics.db import api
 from polaris.messaging.messages import WorkItemsSourceCreated, WorkItemsCreated, WorkItemsUpdated, \
-    WorkItemsStatesChanged, ProjectImported, WorkItemMoved
+    WorkItemsStatesChanged, ProjectImported, WorkItemMoved, WorkItemDeleted
 from polaris.messaging.topics import TopicSubscriber, WorkItemsTopic, AnalyticsTopic
 from polaris.messaging.utils import raise_on_failure
 
@@ -28,6 +28,7 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
                 WorkItemsCreated,
                 WorkItemsUpdated,
                 WorkItemMoved,
+                WorkItemDeleted,
                 ProjectImported
             ],
             publisher=publisher,
@@ -73,6 +74,9 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
 
         elif WorkItemMoved.message_type == message.message_type:
             return self.process_work_item_moved(message)
+
+        elif WorkItemDeleted.message_type == message.message_type:
+            return self.process_work_item_deleted(message)
 
         elif ProjectImported.message_type == message.message_type:
             logger.info('Received ProjectImported Message')
@@ -164,6 +168,17 @@ class WorkItemsTopicSubscriber(TopicSubscriber):
             message,
             api.move_work_item(organization_key, source_work_items_source_key, target_work_items_source_key,
                                work_item_data)
+        )
+
+    @staticmethod
+    def process_work_item_deleted(message):
+        work_item_deleted = message.dict
+        organization_key = work_item_deleted['organization_key']
+        work_items_source_key = work_item_deleted['work_items_source_key']
+        work_item_data = work_item_deleted['deleted_work_item']
+        return raise_on_failure(
+            message,
+            api.delete_work_item(organization_key, work_items_source_key, work_item_data)
         )
 
     @staticmethod

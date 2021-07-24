@@ -156,6 +156,19 @@ def move_work_item(organization_key, source_work_item_source_key, target_work_it
         return db.failure_message('move_work_item failed', e)
 
 
+def delete_work_item(organization_key, work_item_source_key, work_item_data):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.delete_work_item(session, work_item_source_key, work_item_data)
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("delete_work_item failed", exc)
+    except Exception as e:
+        return db.failure_message('delete_work_item failed', e)
+
+
+
 def update_contributor(contributor_key, updated_info):
     try:
         with db.orm_session() as session:

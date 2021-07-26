@@ -41,7 +41,7 @@ def send_new_member_invite(user, invitation):
     """
     logging.info(f"Sending invite to {user.email}")
     send_mail(
-        invitation.get('subject', 'Welcome to Polaris Flow'),
+        invitation.get('subject', 'Welcome to Polaris'),
         user.email,
         'invite_member',
         user=user,
@@ -60,7 +60,7 @@ def send_join_account_notice(user, invitation):
     """
     logging.info(f"Sending invite to {user.email}")
     send_mail(
-        invitation.get('subject', 'Welcome to Polaris Flow'),
+        invitation.get('subject', 'Welcome to Polaris'),
         user.email,
         'invite_member',
         user=user,

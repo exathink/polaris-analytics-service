@@ -12,14 +12,17 @@ import graphene
 
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import ContributorCount, PipelineCycleMetrics, CycleMetricsTrends, CommitSummary, FlowMixTrends
+from ..interfaces import ContributorCount, PipelineCycleMetrics, CycleMetricsTrends, CommitSummary, FlowMixTrends,\
+    PullRequestMetricsTrends
 from ..interface_mixins import NamedNodeResolverMixin, CycleMetricsTrendsResolverMixin, \
-    PipelineCycleMetricsResolverMixin, FlowMixTrendsResolverMixin
+    PipelineCycleMetricsResolverMixin, FlowMixTrendsResolverMixin, PullRequestMetricsTrendsResolverMixin
+
 from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes, \
     TeamCycleMetricsTrends, TeamPipelineCycleMetrics, TeamCommitNodes, TeamWorkItemNodes, \
-    TeamPullRequestNodes, TeamCommitSummary, TeamFlowMixTrends
+    TeamPullRequestNodes, TeamCommitSummary, TeamFlowMixTrends, TeamPullRequestMetricsTrends
 
-from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, FlowMixTrendsParameters
+from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, FlowMixTrendsParameters, \
+    PullRequestMetricsTrendsParameters
 from ..work_item import WorkItemDeliveryCyclesConnectionMixin, WorkItemsConnectionMixin
 from ..commit import CommitsConnectionMixin
 from ..pull_request import PullRequestsConnectionMixin
@@ -34,10 +37,12 @@ class Team(
     CommitsConnectionMixin,
     PullRequestsConnectionMixin,
     FlowMixTrendsResolverMixin,
+    PullRequestMetricsTrendsResolverMixin,
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, ContributorCount, CycleMetricsTrends, PipelineCycleMetrics, CommitSummary, FlowMixTrends)
+        interfaces = (NamedNode, ContributorCount, CycleMetricsTrends, PipelineCycleMetrics, CommitSummary,
+                      FlowMixTrends, PullRequestMetricsTrends)
         named_node_resolver = TeamNode
 
         interface_resolvers = {
@@ -45,8 +50,8 @@ class Team(
             'PipelineCycleMetrics': TeamPipelineCycleMetrics,
             'CycleMetricsTrends': TeamCycleMetricsTrends,
             'CommitSummary': TeamCommitSummary,
-            'FlowMixTrends': TeamFlowMixTrends
-
+            'FlowMixTrends': TeamFlowMixTrends,
+            'PullRequestMetricsTrends': TeamPullRequestMetricsTrends
         }
 
         connection_node_resolvers = {
@@ -81,6 +86,11 @@ class Team(
                 FlowMixTrendsParameters,
                 required=False,
                 description='Required when resolving FlowMixTrends Interface'
+            ),
+            pull_request_metrics_trends_args=graphene.Argument(
+                PullRequestMetricsTrendsParameters,
+                required=False,
+                description='Required when resolving PullRequestMetricsTrends interface'
             ),
             **kwargs
         )
@@ -119,6 +129,11 @@ class TeamsConnectionMixin(ConnectionResolverMixin):
             FlowMixTrendsParameters,
             required=False,
             description='Required when resolving FlowMixTrends Interface'
+        ),
+        pull_request_metrics_trends_args=graphene.Argument(
+            PullRequestMetricsTrendsParameters,
+            required=False,
+            description='Required when resolving PullRequestMetricsTrends interface'
         ),
     )
 

@@ -11,7 +11,7 @@
 
 import graphene
 from datetime import datetime, timedelta
-from sqlalchemy import select, bindparam, func, distinct, true, and_, case, cast, Date, or_, union_all
+from sqlalchemy import select, bindparam, func, distinct, true, and_, case, cast, Date, or_, union_all, literal
 from polaris.analytics.db.model import teams, contributors_teams, \
     work_item_delivery_cycles, work_items, work_items_teams, \
     work_items_source_state_map, work_item_delivery_cycle_durations, \
@@ -22,7 +22,8 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 
 from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, CycleMetricsTrends, \
-    PipelineCycleMetrics, CommitInfo, WorkItemsSourceRef, PullRequestInfo, CommitSummary, FlowMixTrends
+    PipelineCycleMetrics, CommitInfo, WorkItemsSourceRef, PullRequestInfo, CommitSummary, FlowMixTrends, \
+    PullRequestMetricsTrends
 
 from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, \
     work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase, work_items_connection_apply_filters, \
@@ -175,6 +176,107 @@ class TeamCommitNodes(ConnectionResolver):
     def sort_order(team_commit_nodes, **kwargs):
         return [team_commit_nodes.c.commit_date.desc()]
 
+
+class TeamPullRequestMetricsTrends(InterfaceResolver):
+    interface = PullRequestMetricsTrends
+
+    @staticmethod
+    def interface_selector(team_nodes, **kwargs):
+        pull_request_metrics_trends_args = kwargs.get('pull_request_metrics_trends_args')
+        age_target_percentile = pull_request_metrics_trends_args.pull_request_age_target_percentile
+        # Get the list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            pull_request_metrics_trends_args,
+            arg_name='pull_request_metrics_trends',
+            interface_name='PullRequestMetricsTrends'
+        )
+        team_timeline_dates = select([team_nodes.c.id, timeline_dates]).cte()
+
+        measurement_window = pull_request_metrics_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
+            )
+
+        pull_request_attributes = select([
+            team_timeline_dates.c.id,
+            team_timeline_dates.c.measurement_date,
+            pull_requests.c.id.label('pull_request_id'),
+            pull_requests.c.state.label('state'),
+            pull_requests.c.updated_at,
+            (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
+                'age'),
+        ]).select_from(
+            team_timeline_dates.outerjoin(
+                teams_repositories, team_timeline_dates.c.id == teams_repositories.c.team_id
+            ).join(
+                repositories, repositories.c.id == teams_repositories.c.repository_id
+            ).join(
+                pull_requests, pull_requests.c.repository_id == repositories.c.id
+            )
+        ).where(
+            and_(
+                pull_requests.c.state != 'open',
+                date_column_is_in_measurement_window(
+                    pull_requests.c.updated_at,
+                    measurement_date=team_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                )
+            )
+        ).group_by(
+            team_timeline_dates.c.id,
+            team_timeline_dates.c.measurement_date,
+            pull_requests.c.id
+        ).alias('pull_request_attributes')
+
+        pull_request_metrics = select([
+            pull_request_attributes.c.id,
+            pull_request_attributes.c.measurement_date,
+            func.avg(pull_request_attributes.c.age).label('avg_age'),
+            func.min(pull_request_attributes.c.age).label('min_age'),
+            func.max(pull_request_attributes.c.age).label('max_age'),
+            func.percentile_disc(age_target_percentile).within_group(pull_request_attributes.c.age).label(
+                'percentile_age'),
+            func.count(pull_request_attributes.c.pull_request_id).label('total_closed'),
+            literal(0).label('total_open')
+        ]).select_from(
+            team_timeline_dates.outerjoin(
+                pull_request_attributes, and_(
+                    team_timeline_dates.c.id == pull_request_attributes.c.id,
+                    team_timeline_dates.c.measurement_date == pull_request_attributes.c.measurement_date
+                )
+            )).group_by(
+            pull_request_attributes.c.measurement_date,
+            pull_request_attributes.c.id
+        ).order_by(
+            pull_request_attributes.c.id,
+            pull_request_attributes.c.measurement_date.desc()
+        ).alias('pull_request_metrics')
+
+        return select([
+            team_timeline_dates.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(team_timeline_dates.c.measurement_date, Date),
+                    'measurement_window', measurement_window,
+                    'total_open', func.coalesce(pull_request_metrics.c.total_open, 0),
+                    'total_closed', func.coalesce(pull_request_metrics.c.total_closed, 0),
+                    'avg_age', func.coalesce(pull_request_metrics.c.avg_age, 0),
+                    'min_age', func.coalesce(pull_request_metrics.c.min_age, 0),
+                    'max_age', func.coalesce(pull_request_metrics.c.max_age, 0),
+                    'percentile_age', func.coalesce(pull_request_metrics.c.percentile_age, 0)
+                )
+            ).label('pull_request_metrics_trends')
+        ]).select_from(
+            team_timeline_dates.outerjoin(
+                pull_request_metrics, and_(
+                    team_timeline_dates.c.id == pull_request_metrics.c.id,
+                    team_timeline_dates.c.measurement_date == pull_request_metrics.c.measurement_date
+                )
+            )
+        ).group_by(
+            team_timeline_dates.c.id
+        )
 
 class TeamPullRequestNodes(ConnectionResolver):
     interfaces = (NamedNode, PullRequestInfo)

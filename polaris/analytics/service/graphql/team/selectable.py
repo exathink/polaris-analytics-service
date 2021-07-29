@@ -23,13 +23,13 @@ from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 
 from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, CycleMetricsTrends, \
     PipelineCycleMetrics, CommitInfo, WorkItemsSourceRef, PullRequestInfo, CommitSummary, FlowMixTrends, \
-    PullRequestMetricsTrends
+    PullRequestMetricsTrends, CapacityTrends
 
 from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, \
     work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase, work_items_connection_apply_filters, \
     map_work_item_type_to_flow_type
 
-from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
+from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 
 from ..utils import date_column_is_in_measurement_window, get_timeline_dates_for_trending
 
@@ -772,3 +772,191 @@ class TeamFlowMixTrends(InterfaceResolver):
         ).group_by(
             select_flow_mix.c.id
         )
+
+
+class TeamCapacityTrends(InterfaceResolver):
+    interface = CapacityTrends
+
+    @classmethod
+    def get_aggregate_capacity_trends(cls, measurement_window, team_nodes, timeline_dates):
+
+        select_capacity = select([
+            team_nodes.c.id,
+            timeline_dates.c.measurement_date,
+            commits.c.author_contributor_key,
+            func.count(commit_day(commits).distinct()).label('commit_days')
+        ]).select_from(
+            timeline_dates.join(
+                team_nodes, true()
+            ).join(
+                commits, or_(
+                    commits.c.author_team_id == team_nodes.c.id,
+                    commits.c.committer_team_id == team_nodes.c.id
+                )
+            ).join(
+                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+            )
+        ).where(
+            and_(
+                date_column_is_in_measurement_window(
+                    commits.c.commit_date,
+                    measurement_date=timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                ),
+                contributor_aliases.c.robot == False,
+            )
+        ).group_by(
+            team_nodes.c.id,
+            timeline_dates.c.measurement_date,
+            commits.c.author_contributor_key
+        ).alias()
+
+        capacity_metrics = select([
+            select_capacity.c.id,
+            select_capacity.c.measurement_date,
+            func.sum(select_capacity.c.commit_days).label('total_commit_days'),
+            func.avg(select_capacity.c.commit_days).label('avg_commit_days'),
+            func.min(select_capacity.c.commit_days).label('min_commit_days'),
+            func.max(select_capacity.c.commit_days).label('max_commit_days'),
+            func.count(select_capacity.c.author_contributor_key.distinct()).label('contributor_count')
+        ]).select_from(
+            select_capacity
+        ).group_by(
+            select_capacity.c.id,
+            select_capacity.c.measurement_date
+        ).order_by(
+            select_capacity.c.id,
+            select_capacity.c.measurement_date.desc()
+        ).alias()
+        return select([
+            capacity_metrics.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', capacity_metrics.c.measurement_date,
+                    'measurement_window', measurement_window,
+                    'total_commit_days', capacity_metrics.c.total_commit_days,
+                    'avg_commit_days', capacity_metrics.c.avg_commit_days,
+                    'min_commit_days', capacity_metrics.c.min_commit_days,
+                    'max_commit_days', capacity_metrics.c.max_commit_days,
+                    'contributor_count', capacity_metrics.c.contributor_count
+                )
+            ).label('capacity_trends')
+        ]).select_from(
+            capacity_metrics,
+        ).group_by(
+            capacity_metrics.c.id
+        )
+
+    @classmethod
+    def get_contributor_level_capacity_trends(cls, measurement_window, team_nodes, timeline_dates):
+
+        # Note: we are doing a very different query strategy here compared to
+        # other trending interfaces. Rather than joining against projects_timeline_dates,
+        # derived from joining project_nodes to timeline_dates, we are doing a cross join of the projects table
+        # with timelinedates and using the commit date filter to select commits, and *then* limiting by the
+        # id's in the project_nodes. We are doing this because
+        # the regular approach was leading to query plans in prod where it was always doing a table scan on
+        # the commits table. For some reason, the  query planner was ignoring the indexes on commit_date and repository
+        # id and selecting the commits in scope using a full table scan of commits, which is obviously slow.
+        # the current strategy is about 500x faster as result. Dont have a clear explanation as to why
+        # the other plan was so bad, but going with this approach here since it is functionally equivalent, even if a
+        # bit less obvious in a logical sense.
+
+        select_capacity = select([
+            team_nodes.c.id,
+            timeline_dates.c.measurement_date,
+            commits.c.author_contributor_key.label('contributor_key'),
+            commits.c.author_contributor_name.label('contributor_name'),
+            commit_day(commits).label('commit_day')
+        ]).select_from(
+            timeline_dates.join(
+                team_nodes, true()
+            ).join(
+                commits, or_(
+                    commits.c.author_team_id == team_nodes.c.id,
+                    commits.c.committer_team_id == team_nodes.c.id
+                )
+            ).join(
+                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+            )
+        ).where(
+            and_(
+                date_column_is_in_measurement_window(
+                    commits.c.commit_date,
+                    measurement_date=timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                ),
+                contributor_aliases.c.robot == False,
+            )
+        ).alias()
+
+        capacity_metrics = select([
+            select_capacity.c.id,
+            select_capacity.c.measurement_date,
+            select_capacity.c.contributor_key,
+            select_capacity.c.contributor_name,
+            func.count(select_capacity.c.commit_day.distinct()).label('total_commit_days'),
+        ]).select_from(
+            select_capacity
+        ).group_by(
+            select_capacity.c.id,
+            select_capacity.c.measurement_date,
+            select_capacity.c.contributor_key,
+            select_capacity.c.contributor_name,
+        ).order_by(
+            select_capacity.c.id,
+            select_capacity.c.measurement_date.desc()
+        ).alias()
+        return select([
+            capacity_metrics.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', capacity_metrics.c.measurement_date,
+                    'measurement_window', measurement_window,
+                    'contributor_key', capacity_metrics.c.contributor_key,
+                    'contributor_name', capacity_metrics.c.contributor_name,
+                    'total_commit_days', capacity_metrics.c.total_commit_days,
+                )
+            ).label('contributor_detail')
+        ]).select_from(
+            capacity_metrics,
+        ).group_by(
+            capacity_metrics.c.id
+        )
+
+    @classmethod
+    def interface_selector(cls, team_nodes, **kwargs):
+        capacity_trends_args = kwargs.get('capacity_trends_args')
+
+        measurement_window = capacity_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating CapacityTrends"
+            )
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            capacity_trends_args,
+            arg_name='capacity_trends',
+            interface_name='CapacityTrends'
+        )
+
+        if capacity_trends_args.show_contributor_detail:
+            capacity_trends = cls.get_aggregate_capacity_trends(measurement_window, team_nodes,
+                                                                timeline_dates).alias()
+            contributor_detail = cls.get_contributor_level_capacity_trends(measurement_window,
+                                                                           team_nodes, timeline_dates).alias()
+
+            return select([
+                team_nodes.c.id,
+                capacity_trends.c.capacity_trends,
+                contributor_detail.c.contributor_detail,
+            ]).select_from(
+                team_nodes.outerjoin(
+                    capacity_trends, capacity_trends.c.id == team_nodes.c.id
+                ).outerjoin(
+                    contributor_detail, contributor_detail.c.id == team_nodes.c.id
+                )
+            )
+        else:
+            return cls.get_aggregate_capacity_trends(measurement_window, team_nodes, timeline_dates)

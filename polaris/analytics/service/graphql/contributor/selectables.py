@@ -211,7 +211,8 @@ class ContributorTeamNodeRef(InterfaceResolver):
         return select([
             contributors.c.id,
             teams.c.name.label('team_name'),
-            teams.c.key.label('team_key')
+            teams.c.key.label('team_key'),
+            contributors_teams.c.capacity
         ]).select_from(
             contributor_nodes.join(
                 contributors, contributor_nodes.c.id == contributors.c.id

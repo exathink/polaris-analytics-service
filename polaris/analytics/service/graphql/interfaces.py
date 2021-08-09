@@ -88,6 +88,7 @@ class EpicNodeRef(graphene.Interface):
 class TeamNodeRef(graphene.Interface):
     team_name = graphene.String(required=False)
     team_key = graphene.String(required=False)
+    capacity = graphene.Float(required=False)
 
 
 class TeamNodeRefImpl(graphene.ObjectType):

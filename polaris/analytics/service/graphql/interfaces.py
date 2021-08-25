@@ -279,6 +279,11 @@ class ProjectInfo(graphene.Interface):
     settings = graphene.Field(ProjectSettingsImpl, required=False)
 
 
+class ProjectSetupInfo(graphene.Interface):
+    work_stream_count = graphene.Int(required=False)
+    mapped_work_stream_count = graphene.Int(required=False)
+
+
 class WorkItemsSourceRef(graphene.Interface):
     work_items_source_name = graphene.String(required=True)
     work_items_source_key = graphene.String(required=True)

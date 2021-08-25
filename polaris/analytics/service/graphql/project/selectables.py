@@ -31,7 +31,7 @@ from .sql_expressions import select_funnel_work_items
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..interfaces import \
-    CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
+    ProjectSetupInfo, CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
     WorkItemEventSpan, WorkItemsSourceRef, WorkItemInfo, WorkItemStateTransition, WorkItemCommitInfo, \
     FunnelViewAggregateMetrics, AggregateCycleMetrics, DeliveryCycleInfo, CycleMetricsTrends, \
@@ -534,6 +534,28 @@ class ProjectWeeklyContributorCount(SelectableFieldResolver):
             extract('year', commits.c.commit_date),
             extract('week', commits.c.commit_date)
         )
+
+
+class ProjectsProjectSetupInfo(InterfaceResolver):
+
+    interface = ProjectSetupInfo
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        return select([
+            project_nodes.c.id,
+            func.count(work_items_sources.c.id.distinct()).label('work_stream_count'),
+            func.count(work_items_source_state_map.c.work_items_source_id.distinct()).label('mapped_work_stream_count')
+
+        ]).select_from(
+            project_nodes.join(
+                work_items_sources,
+                work_items_sources.c.project_id == project_nodes.c.id
+            ).join(
+                work_items_source_state_map,
+                work_items_source_state_map.c.work_items_source_id == work_items_sources.c.id
+            )
+        ).group_by(project_nodes.c.id)
 
 
 class ProjectsCommitSummary(InterfaceResolver):

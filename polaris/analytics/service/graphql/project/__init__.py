@@ -17,7 +17,7 @@ from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, FunnelViewAggregateMetrics, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
-    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, BacklogTrends
+    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, BacklogTrends, ProjectSetupInfo
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
@@ -83,7 +83,8 @@ from .selectables import ProjectNode, \
     ProjectPullRequestMetricsTrends, \
     ProjectPullRequestNodes, \
     ProjectFlowRateTrends, \
-    ProjectBacklogTrends
+    ProjectBacklogTrends, \
+    ProjectsProjectSetupInfo
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -138,6 +139,7 @@ Implicit Interfaces: ArchivedStatus
             ProjectInfo,
 
             # ---- Explicit Interfaces -------#
+            ProjectSetupInfo,
             CommitSummary,
             ContributorCount,
             DeliveryCycleSpan,
@@ -160,6 +162,7 @@ Implicit Interfaces: ArchivedStatus
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
+            'ProjectSetupInfo': ProjectsProjectSetupInfo,
             'CommitSummary': ProjectsCommitSummary,
             'ContributorCount': ProjectsContributorCount,
             'DeliveryCycleSpan': ProjectsDeliveryCycleSpan,

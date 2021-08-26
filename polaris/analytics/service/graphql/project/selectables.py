@@ -548,12 +548,15 @@ class ProjectsProjectSetupInfo(InterfaceResolver):
             func.count(work_items_source_state_map.c.work_items_source_id.distinct()).label('mapped_work_stream_count')
 
         ]).select_from(
-            project_nodes.join(
+            project_nodes.outerjoin(
                 work_items_sources,
                 work_items_sources.c.project_id == project_nodes.c.id
-            ).join(
+            ).outerjoin(
                 work_items_source_state_map,
-                work_items_source_state_map.c.work_items_source_id == work_items_sources.c.id
+                and_(
+                    work_items_source_state_map.c.work_items_source_id == work_items_sources.c.id,
+                    work_items_source_state_map.c.state != 'created'
+                )
             )
         ).group_by(project_nodes.c.id)
 

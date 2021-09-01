@@ -526,6 +526,8 @@ class Team(Base):
 
     name = Column(String, nullable=False)
 
+    settings = Column(JSONB, server_default=text("'{}'"), nullable=True)
+
     # parent
     organization_id = Column(Integer, ForeignKey('organizations.id'), index=True, nullable=False)
     organization = relationship('Organization', back_populates='teams')

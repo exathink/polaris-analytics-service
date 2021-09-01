@@ -15,6 +15,8 @@ from polaris.analytics.db import api as db_api
 from ..team import Team
 from polaris.utils.exceptions import ProcessingException
 
+from ..input_types import FlowMetricsSettingsInput, AnalysisPeriodsInput, WipInspectorSettingsInput
+
 logger = logging.getLogger('polaris.analytics.graphql')
 
 
@@ -48,5 +50,26 @@ class CreateTeam(graphene.Mutation):
             )
 
 
+class UpdateTeamSettingsInput(graphene.InputObjectType):
+    key = graphene.String(required=True)
+    flow_metrics_settings = graphene.Field(FlowMetricsSettingsInput, required=False)
+    analysis_periods = graphene.Field(AnalysisPeriodsInput, required=False)
+    wip_inspector_settings = graphene.Field(WipInspectorSettingsInput, required=False)
+
+
+class UpdateTeamSettings(graphene.Mutation):
+    class Arguments:
+        update_team_settings_input = UpdateTeamSettingsInput(required=True)
+
+    success = graphene.Boolean()
+    error_message = graphene.String()
+
+    def mutate(self, info, update_team_settings_input):
+        logger.info('UpdateTeam Settings called')
+        result = db_api.update_team_settings(update_team_settings_input)
+        return UpdateTeamSettings(success=result['success'], error_message=result.get('exception'))
+
+
 class TeamMutationsMixin:
     create_team = CreateTeam.Field()
+    update_team_settings = UpdateTeamSettings.Field()

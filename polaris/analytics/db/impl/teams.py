@@ -30,3 +30,14 @@ def create_team(session, organization_key, name):
 
     else:
         raise ProcessingException(f"Organization with key {organization_key} was not found")
+
+
+def update_team_settings(session, update_team_settings_input):
+    team = Team.find_by_key(session, update_team_settings_input.key)
+    if team is not None:
+        team.update_settings(update_team_settings_input)
+        return dict(
+            key=team.key
+        )
+    else:
+        raise ProcessingException(f'Could not find project with key: {update_team_settings_input.key}')

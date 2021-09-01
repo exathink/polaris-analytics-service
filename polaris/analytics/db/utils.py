@@ -64,3 +64,5 @@ def delete_feature_flag(feature_flag_name, join_this=None):
         feature_flag = FeatureFlag.find_by_name(session, feature_flag_name)
         if feature_flag is not None:
             session.delete(feature_flag)
+
+

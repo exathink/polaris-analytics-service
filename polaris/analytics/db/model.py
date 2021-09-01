@@ -336,71 +336,12 @@ class Project(Base):
         # we have to make a deep copy here since sqlalchemy does not recognize in place modifications
         # to the dict in the jsonb field
         current = copy.deepcopy(self.settings) if self.settings is not None else dict()
-        self.update_flow_metrics_settings(current, update_project_settings_input)
-        self.update_analysis_periods(current, update_project_settings_input)
-        self.update_wip_inspector_settings(current, update_project_settings_input)
+        Settings.update_flow_metrics_settings(current, update_project_settings_input)
+        Settings.update_analysis_periods(current, update_project_settings_input)
+        Settings.update_wip_inspector_settings(current, update_project_settings_input)
         self.settings = current
 
-    @staticmethod
-    def update_flow_metrics_settings(current, update_project_settings_input):
-        if getattr(update_project_settings_input, 'flow_metrics_settings', None) is not None:
-            flow_metrics_input = update_project_settings_input.flow_metrics_settings
 
-            if 'flow_metrics_settings' not in current:
-                current['flow_metrics_settings'] = dict()
-
-            flow_metrics_settings = current['flow_metrics_settings']
-
-            if flow_metrics_input.lead_time_target:
-                flow_metrics_settings['lead_time_target'] = flow_metrics_input.lead_time_target
-
-            if flow_metrics_input.cycle_time_target:
-                flow_metrics_settings['cycle_time_target'] = flow_metrics_input.cycle_time_target
-
-            if flow_metrics_input.response_time_confidence_target:
-                flow_metrics_settings[
-                    'response_time_confidence_target'] = flow_metrics_input.response_time_confidence_target
-
-            if flow_metrics_input.lead_time_confidence_target:
-                flow_metrics_settings['lead_time_confidence_target'] = flow_metrics_input.lead_time_confidence_target
-
-            if flow_metrics_input.cycle_time_confidence_target:
-                flow_metrics_settings['cycle_time_confidence_target'] = flow_metrics_input.cycle_time_confidence_target
-
-            if flow_metrics_input.include_sub_tasks is not None:
-                flow_metrics_settings['include_sub_tasks'] = flow_metrics_input.include_sub_tasks
-
-    @staticmethod
-    def update_analysis_periods(current, update_project_settings_input):
-        if getattr(update_project_settings_input, 'analysis_periods', None) is not None:
-            analysis_periods_input = update_project_settings_input.analysis_periods
-
-            if 'analysis_periods' not in current:
-                current['analysis_periods'] = dict()
-
-            analysis_periods = current['analysis_periods']
-
-            if analysis_periods_input.wip_analysis_period:
-                analysis_periods['wip_analysis_period'] = analysis_periods_input.wip_analysis_period
-
-            if analysis_periods_input.flow_analysis_period:
-                analysis_periods['flow_analysis_period'] = analysis_periods_input.flow_analysis_period
-
-            if analysis_periods_input.trends_analysis_period:
-                analysis_periods['trends_analysis_period'] = analysis_periods_input.trends_analysis_period
-
-    @staticmethod
-    def update_wip_inspector_settings(current, update_project_settings_input):
-        if getattr(update_project_settings_input, 'wip_inspector_settings', None) is not None:
-            wip_inspector_input = update_project_settings_input.wip_inspector_settings
-
-            if 'wip_inspector_settings' not in current:
-                current['wip_inspector_settings'] = dict()
-
-            wip_inspector_settings = current['wip_inspector_settings']
-
-            if wip_inspector_input.include_sub_tasks is not None:
-                wip_inspector_settings['include_sub_tasks'] = wip_inspector_input.include_sub_tasks
 
 
 projects = Project.__table__
@@ -541,6 +482,15 @@ class Team(Base):
     @classmethod
     def find_by_key(cls, session, key):
         return session.query(cls).filter(cls.key == key).first()
+
+    def update_settings(self, update_team_settings_input):
+        # we have to make a deep copy here since sqlalchemy does not recognize in place modifications
+        # to the dict in the jsonb field
+        current = copy.deepcopy(self.settings) if self.settings is not None else dict()
+        Settings.update_flow_metrics_settings(current, update_team_settings_input)
+        Settings.update_analysis_periods(current, update_team_settings_input)
+        Settings.update_wip_inspector_settings(current, update_team_settings_input)
+        self.settings = current
 
 
 teams = Team.__table__
@@ -1186,3 +1136,66 @@ feature_flag_enablements = FeatureFlagEnablement.__table__
 def recreate_all(engine):
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+
+
+class Settings:
+    @staticmethod
+    def update_flow_metrics_settings(current, update_settings_input):
+        if getattr(update_settings_input, 'flow_metrics_settings', None) is not None:
+            flow_metrics_input = update_settings_input.flow_metrics_settings
+
+            if 'flow_metrics_settings' not in current:
+                current['flow_metrics_settings'] = dict()
+
+            flow_metrics_settings = current['flow_metrics_settings']
+
+            if flow_metrics_input.lead_time_target:
+                flow_metrics_settings['lead_time_target'] = flow_metrics_input.lead_time_target
+
+            if flow_metrics_input.cycle_time_target:
+                flow_metrics_settings['cycle_time_target'] = flow_metrics_input.cycle_time_target
+
+            if flow_metrics_input.response_time_confidence_target:
+                flow_metrics_settings[
+                    'response_time_confidence_target'] = flow_metrics_input.response_time_confidence_target
+
+            if flow_metrics_input.lead_time_confidence_target:
+                flow_metrics_settings['lead_time_confidence_target'] = flow_metrics_input.lead_time_confidence_target
+
+            if flow_metrics_input.cycle_time_confidence_target:
+                flow_metrics_settings['cycle_time_confidence_target'] = flow_metrics_input.cycle_time_confidence_target
+
+            if flow_metrics_input.include_sub_tasks is not None:
+                flow_metrics_settings['include_sub_tasks'] = flow_metrics_input.include_sub_tasks
+
+    @staticmethod
+    def update_analysis_periods(current, update_settings_input):
+        if getattr(update_settings_input, 'analysis_periods', None) is not None:
+            analysis_periods_input = update_settings_input.analysis_periods
+
+            if 'analysis_periods' not in current:
+                current['analysis_periods'] = dict()
+
+            analysis_periods = current['analysis_periods']
+
+            if analysis_periods_input.wip_analysis_period:
+                analysis_periods['wip_analysis_period'] = analysis_periods_input.wip_analysis_period
+
+            if analysis_periods_input.flow_analysis_period:
+                analysis_periods['flow_analysis_period'] = analysis_periods_input.flow_analysis_period
+
+            if analysis_periods_input.trends_analysis_period:
+                analysis_periods['trends_analysis_period'] = analysis_periods_input.trends_analysis_period
+
+    @staticmethod
+    def update_wip_inspector_settings(current, update_settings_input):
+        if getattr(update_settings_input, 'wip_inspector_settings', None) is not None:
+            wip_inspector_input = update_settings_input.wip_inspector_settings
+
+            if 'wip_inspector_settings' not in current:
+                current['wip_inspector_settings'] = dict()
+
+            wip_inspector_settings = current['wip_inspector_settings']
+
+            if wip_inspector_input.include_sub_tasks is not None:
+                wip_inspector_settings['include_sub_tasks'] = wip_inspector_input.include_sub_tasks

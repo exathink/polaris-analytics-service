@@ -164,3 +164,6 @@ def update_project_settings(session, update_project_settings_input):
         )
     else:
         raise ProcessingException(f'Could not find project with key: {update_project_settings_input.key}')
+
+
+

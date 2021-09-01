@@ -13,11 +13,11 @@ import graphene
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import ContributorCount, PipelineCycleMetrics, CycleMetricsTrends, CommitSummary, FlowMixTrends,\
-    PullRequestMetricsTrends, CapacityTrends
+    PullRequestMetricsTrends, CapacityTrends, TeamInfo
 
 from ..interface_mixins import NamedNodeResolverMixin, CycleMetricsTrendsResolverMixin, \
     PipelineCycleMetricsResolverMixin, FlowMixTrendsResolverMixin, PullRequestMetricsTrendsResolverMixin, \
-    CapacityTrendsResolverMixin
+    CapacityTrendsResolverMixin, TeamInfoResolverMixin
 
 from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes, \
     TeamCycleMetricsTrends, TeamPipelineCycleMetrics, TeamCommitNodes, TeamWorkItemNodes, \
@@ -42,10 +42,11 @@ class Team(
     FlowMixTrendsResolverMixin,
     PullRequestMetricsTrendsResolverMixin,
     CapacityTrendsResolverMixin,
+    TeamInfoResolverMixin,
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, ContributorCount, CycleMetricsTrends, PipelineCycleMetrics, CommitSummary,
+        interfaces = (NamedNode, TeamInfo, ContributorCount, CycleMetricsTrends, PipelineCycleMetrics, CommitSummary,
                       FlowMixTrends, PullRequestMetricsTrends, CapacityTrends)
         named_node_resolver = TeamNode
 

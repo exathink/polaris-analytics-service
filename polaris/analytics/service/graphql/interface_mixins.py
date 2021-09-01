@@ -14,7 +14,7 @@ from datetime import datetime
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
     WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
     ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl, \
-    ContributorAliasInfoImpl, FlowRateMeasurementImpl, BacklogMeasurementImpl, TeamNodeRefImpl
+    ContributorAliasInfoImpl, FlowRateMeasurementImpl, BacklogMeasurementImpl, TeamNodeRefImpl, TeamSettingsImpl
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -182,6 +182,16 @@ class ProjectInfoResolverMixin(KeyIdResolverMixin):
 
     def resolve_settings(self, info, **kwargs):
         return ProjectSettingsImpl(**(self.settings if self.settings is not None else {}))
+
+
+class TeamInfoResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.settings = {}
+        super().__init__(*args, **kwargs)
+
+    def resolve_settings(self, info, **kwargs):
+        return TeamSettingsImpl(**(self.settings if self.settings is not None else {}))
 
 
 class CapacityTrendsResolverMixin(KeyIdResolverMixin):

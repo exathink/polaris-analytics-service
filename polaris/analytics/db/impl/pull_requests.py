@@ -136,7 +136,8 @@ def import_new_pull_requests(session, repository_key, pull_request_summaries):
                 )
             ).rowcount
         else:
-            raise ProcessingException(f"Could not find repository with key: {repository_key}")
+            raise ProcessingException(f"Cannot import pull requests.  "
+                                      f"The repository with key {repository_key} has not yet been imported.")
     return dict(
         insert_count=inserted
     )
@@ -193,7 +194,8 @@ def update_pull_requests(session, repository_key, pull_request_summaries):
                 )
             ).rowcount
         else:
-            raise ProcessingException(f"Could not find repository with key: {repository_key}")
+            raise ProcessingException(f"Cannot import pull requests.  "
+                                      f"The repository with key {repository_key} has not yet been imported.")
     return dict(
         update_count=updated
     )

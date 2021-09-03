@@ -9,6 +9,7 @@
 # Author: Krishna Kumar
 
 import logging
+from polaris.messaging.utils import raise_on_failure
 from polaris.messaging.topics import TopicSubscriber, VcsTopic, AnalyticsTopic
 from polaris.messaging.messages import RepositoriesImported, PullRequestsCreated, PullRequestsUpdated
 from polaris.analytics.db import api
@@ -47,6 +48,7 @@ class VcsTopicSubscriber(TopicSubscriber):
 
                 response = PullRequestsCreated(send=message.dict, in_response_to=message)
                 self.publish(AnalyticsTopic, response, channel=channel)
+
         if PullRequestsUpdated.message_type == message.message_type:
             result = self.process_pull_requests_updated(message)
             if result['success']:
@@ -59,25 +61,34 @@ class VcsTopicSubscriber(TopicSubscriber):
     def process_repositories_imported(message):
         logger.info(f"Organization Key: {message['organization_key']}")
 
-        return api.import_repositories(
-            organization_key=message['organization_key'],
-            repository_summaries=message['imported_repositories']
+        return raise_on_failure(
+            message,
+            api.import_repositories(
+                organization_key=message['organization_key'],
+                repository_summaries=message['imported_repositories']
+            )
         )
 
     @staticmethod
     def process_pull_requests_created(message):
         logger.info(f"Repository Key: {message['repository_key']}")
 
-        return api.import_new_pull_requests(
-            message['repository_key'],
-            message['pull_request_summaries']
+        return raise_on_failure(
+            message,
+            api.import_new_pull_requests(
+                message['repository_key'],
+                message['pull_request_summaries']
+            )
         )
 
     @staticmethod
     def process_pull_requests_updated(message):
         logger.info(f"Repository Key: {message['repository_key']}")
 
-        return api.update_pull_requests(
-            message['repository_key'],
-            message['pull_request_summaries']
+        return raise_on_failure(
+            message,
+            api.update_pull_requests(
+                message['repository_key'],
+                message['pull_request_summaries']
+            )
         )

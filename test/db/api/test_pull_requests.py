@@ -107,7 +107,7 @@ class TestCreatePullRequests:
         ]
         result = api.import_new_pull_requests(rails_repository_key, pr_summaries)
         assert not result['success']
-        assert result['exception'] == f"Could not find repository with key: {rails_repository_key}"
+        assert result['exception']
         assert db.connection().execute('select count(id) from analytics.pull_requests').scalar() == 0
 
 

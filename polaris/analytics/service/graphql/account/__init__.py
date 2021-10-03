@@ -78,8 +78,16 @@ class Account(
         }
 
     @classmethod
-    def Field(cls, **kwargs):
-        return super().Field(key_is_required=False, **kwargs)
+    def Field(cls, key_is_required=False, **kwargs):
+        return super().Field(
+            key_is_required,
+            contributor_count_days=graphene.Argument(
+                graphene.Int,
+                required=False,
+                description="When evaluating contributor count "
+                            "return only contributors that have committed code to the project in this many days"
+            )
+        )
 
     @classmethod
     def check_access(cls, key):

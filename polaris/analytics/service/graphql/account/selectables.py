@@ -27,7 +27,7 @@ from polaris.analytics.db.model import organizations, accounts_organizations, ac
     work_items_sources, account_members
 from polaris.auth.db.model import users
 
-from ..contributor.sql_expressions import contributors_connection_apply_filters
+from ..contributor.sql_expressions import contributors_connection_apply_filters, contributor_count_apply_contributor_days_filter
 from polaris.auth.db.model import users
 
 from ..interfaces import CommitSummary, UserInfo, \
@@ -392,7 +392,7 @@ class AccountContributorCount(InterfaceResolver):
 
     @staticmethod
     def interface_selector(account_node, **kwargs):
-        return select([
+        select_stmt = select([
             account_node.c.id,
             func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
         ]).select_from(
@@ -407,8 +407,11 @@ class AccountContributorCount(InterfaceResolver):
             )
         ).where(
             repositories_contributor_aliases.c.robot == False
-        ).group_by(account_node.c.id)
+        )
 
+        select_stmt = contributor_count_apply_contributor_days_filter(select_stmt, **kwargs)
+
+        return select_stmt.group_by(account_node.c.id)
 
 class AccountUserInfo(InterfaceResolver):
     interface = UserInfo

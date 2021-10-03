@@ -68,6 +68,18 @@ class Repository(
         connection_class = lambda: Repositories
 
     @classmethod
+    def Field(cls, key_is_required=True, **kwargs):
+        return super().Field(
+            key_is_required,
+            contributor_count_days=graphene.Argument(
+                graphene.Int,
+                required=False,
+                description="When evaluating contributor count "
+                            "return only contributors that have committed code to the project in this many days"
+            )
+        )
+
+    @classmethod
     def resolve_field(cls, parent, info, repository_key, **kwargs):
         return cls.resolve_instance(repository_key, **kwargs)
 

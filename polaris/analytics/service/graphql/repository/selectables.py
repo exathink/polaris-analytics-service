@@ -10,12 +10,16 @@
 from sqlalchemy import select, func, bindparam, and_, distinct, extract, between
 from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
-from polaris.analytics.db.model import repositories, organizations, contributors, commits, repositories_contributor_aliases, contributor_aliases
+from polaris.analytics.db.model import repositories, organizations, contributors, commits, \
+    repositories_contributor_aliases, contributor_aliases
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, \
     CommitCount, WeeklyContributorCount
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
+
+from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
+
 
 class RepositoryNode:
     interface = NamedNode
@@ -186,7 +190,7 @@ class RepositoriesContributorCount:
 
     @staticmethod
     def selectable(repositories_nodes, **kwargs):
-        return select([
+        select_stmt = select([
             repositories_nodes.c.id,
             func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
         ]).select_from(
@@ -197,8 +201,10 @@ class RepositoriesContributorCount:
             )
         ).where(
             repositories_contributor_aliases.c.robot == False
-        ).group_by(repositories_nodes.c.id)
+        )
 
+        select_stmt = contributor_count_apply_contributor_days_filter(select_stmt, **kwargs)
+        return select_stmt.group_by(repositories_nodes.c.id)
 
 class RepositoriesOrganizationRef:
     interface = OrganizationRef

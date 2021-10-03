@@ -91,6 +91,18 @@ class Organization(
 
         connection_class = lambda: Organizations
 
+    @classmethod
+    def Field(cls, key_is_required=True, **kwargs):
+        return super().Field(
+            key_is_required,
+            contributor_count_days=graphene.Argument(
+                graphene.Int,
+                required=False,
+                description="When evaluating contributor count "
+                            "return only contributors that have committed code to the project in this many days"
+            )
+        )
+
 
     @classmethod
     def resolve_field(cls, parent, info, organization_key, **kwargs):

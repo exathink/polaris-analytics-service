@@ -37,7 +37,8 @@ from ..work_item.sql_expressions import \
     work_items_connection_apply_filters, \
     work_item_events_connection_apply_time_window_filters
 
-from ..contributor.sql_expressions import contributors_connection_apply_filters
+from ..contributor.sql_expressions import contributors_connection_apply_filters, \
+    contributor_count_apply_contributor_days_filter
 
 
 class OrganizationNode(NamedNodeResolver):
@@ -426,12 +427,13 @@ class OrganizationsCommitSummary(InterfaceResolver):
     def sort_order(organizations_commit_summary, **kwargs):
         return [nulls_to_zero(organizations_commit_summary.c.commit_count).desc()]
 
+
 class OrganizationsContributorCount(InterfaceResolver):
     interface = ContributorCount
 
     @staticmethod
     def interface_selector(organization_nodes, **kwargs):
-        return select([
+        select_stmt = select([
             organization_nodes.c.id,
             func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
         ]).select_from(
@@ -442,7 +444,11 @@ class OrganizationsContributorCount(InterfaceResolver):
             )
         ).where(
             repositories_contributor_aliases.c.robot == False
-        ).group_by(organization_nodes.c.id)
+        )
+
+        select_stmt = contributor_count_apply_contributor_days_filter(select_stmt, **kwargs)
+
+        return select_stmt.group_by(organization_nodes.c.id)
 
 
 class OrganizationsProjectCount(InterfaceResolver):

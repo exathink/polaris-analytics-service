@@ -40,8 +40,8 @@ class WorkItemResolver:
 
 
 class PivotalTrackerWorkItemResolver(WorkItemResolver):
-    stories = re.compile("[#'](\d+)")
-    branch = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names
+    stories = re.compile(r"[#'](\d+)")
+    branch = re.compile(r'^#?(\d+)$')  # the hash is optional for matching in branch names
 
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):
@@ -56,8 +56,8 @@ class PivotalTrackerWorkItemResolver(WorkItemResolver):
 
 
 class GithubWorkItemResolver(WorkItemResolver):
-    commit_message_matcher = re.compile('#(\d+)')
-    branch_or_display_id = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names or display ids
+    commit_message_matcher = re.compile(r'#(\d+)')
+    branch_or_display_id = re.compile(r'^#?(\d+)$')  # the hash is optional for matching in branch names or display ids
 
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):
@@ -77,8 +77,8 @@ class GithubWorkItemResolver(WorkItemResolver):
 
 
 class GitlabWorkItemResolver(WorkItemResolver):
-    commit_message_matcher = re.compile('#(\d+)')
-    branch_or_display_id = re.compile('^#?(\d+)$')  # the hash is optional for matching in branch names or display ids
+    commit_message_matcher = re.compile(r'#(\d+)')
+    branch_or_display_id = re.compile(r'^#?(\d+)$')  # the hash is optional for matching in branch names or display ids
 
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):
@@ -93,7 +93,7 @@ class GitlabWorkItemResolver(WorkItemResolver):
 
 
 class JiraWorkItemResolver(WorkItemResolver):
-    matcher = re.compile('([\w]+-\d+)')
+    matcher = re.compile(r'([\w]+-\d+)')
 
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):
@@ -107,9 +107,9 @@ class JiraWorkItemResolver(WorkItemResolver):
 
 
 class TrelloWorkItemResolver(WorkItemResolver):
-    id_matcher = re.compile('#(\d+)')
-    branch_id_matcher = re.compile('^#?(\d+)$')
-    url_matcher = re.compile('trello.com/c/[a-zA-Z\d]+')
+    id_matcher = re.compile(r'#(\d+)')
+    branch_id_matcher = re.compile(r'^#?(\d+)$')
+    url_matcher = re.compile(r'trello.com/c/[a-zA-Z\d]+')
 
     @classmethod
     def resolve(cls, *text_tokens, display_id=None, branch_name=None):

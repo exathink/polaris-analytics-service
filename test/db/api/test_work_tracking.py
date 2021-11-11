@@ -1746,7 +1746,7 @@ class TestWorkItemDeliveryCycleDurations:
 class TestMoveWorkItem:
     class TestWhenTargetExists:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, update_work_items_setup):
             organization_key, work_items_source_key, work_items = update_work_items_setup
             # create another work items source
@@ -1812,7 +1812,7 @@ class TestMoveWorkItem:
 
     class TestWhenTargetDoesNotExist:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, update_work_items_setup):
             organization_key, work_items_source_key, work_items = update_work_items_setup
             with db.orm_session() as session:
@@ -1840,7 +1840,7 @@ class TestMoveWorkItem:
 
 class TestDeleteWorkItem:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
         yield Fixture(

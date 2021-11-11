@@ -17,7 +17,7 @@ from test.graphql.queries.projects.shared_testing_mixins import TrendingWindowMe
 
 class TestProjectPullRequestMetricsTrends:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, api_pull_requests_import_fixture):
         organization, project, repositories, work_items_source, work_items_common, pull_requests_common = api_pull_requests_import_fixture
         api_helper = PullRequestImportApiHelper(organization, repositories, work_items_source)
@@ -49,7 +49,7 @@ class TestProjectPullRequestMetricsTrends:
         )
 
     class TestPullRequestMetricsTrends:
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
             trends_query = """
@@ -94,7 +94,7 @@ class TestProjectPullRequestMetricsTrends:
             )
 
         class TestTrendingWindowContract(TrendingWindowMeasurementDate):
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -126,7 +126,7 @@ class TestProjectPullRequestMetricsTrends:
 
         class TestWithTwoPullRequests:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 api_helper = fixture.api_helper
@@ -159,7 +159,7 @@ class TestProjectPullRequestMetricsTrends:
 
                 class TestWhenOneOpenOneClosedPullRequests:
 
-                    @pytest.yield_fixture()
+                    @pytest.fixture()
                     def setup(self, setup):
                         fixture = setup
                         api_helper = fixture.api_helper

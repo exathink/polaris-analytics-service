@@ -17,7 +17,7 @@ from polaris.messaging.messages import ProjectsRepositoriesAdded
 from test.fixtures.work_item_commit_resolution import *
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def work_items_commits_fixture(commits_fixture):
     organization, projects, repositories, _ = commits_fixture
     # select project and repo so that repo is NOT currently associated with project

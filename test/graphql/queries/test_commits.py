@@ -16,7 +16,7 @@ from test.constants import *
 from polaris.analytics.service.graphql import schema
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def test_commits_fixture(commits_fixture, org_repo_fixture):
     _, _, repositories = org_repo_fixture
 

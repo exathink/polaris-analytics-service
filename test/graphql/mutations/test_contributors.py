@@ -146,7 +146,7 @@ class TestUpdateContributorForContributorAlias:
 
 class TestUpdateContributorTeamAssignments:
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, setup_team_assignments):
         yield setup_team_assignments
 
@@ -437,7 +437,7 @@ class TestUpdateContributorTeamAssignments:
 
     class TestInitialAssignmentDetection:
 
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup_teams):
             # In this case we are setting thing up without any initial assignments
             fixture = setup_teams

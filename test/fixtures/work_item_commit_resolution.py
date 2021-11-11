@@ -37,7 +37,7 @@ work_items_common = dict(
 )
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def org_repo_fixture(setup_schema):
     repositories = {}
     projects = {}
@@ -82,7 +82,7 @@ def org_repo_fixture(setup_schema):
     db.connection().execute("delete from analytics.organizations")
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def commits_fixture(org_repo_fixture, cleanup):
     organization, projects, repositories = org_repo_fixture
 
@@ -112,7 +112,7 @@ def commits_fixture(org_repo_fixture, cleanup):
     yield organization, projects, repositories, contributor
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def cleanup():
     yield
 

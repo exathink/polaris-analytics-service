@@ -20,7 +20,7 @@ from test.graphql.queries.projects.shared_testing_mixins import \
 
 class TestProjectResponseTimePredictabilityTrends:
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
@@ -52,7 +52,7 @@ class TestProjectResponseTimePredictabilityTrends:
         TrendingWindowMeasurementDate
     ):
 
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup):
             fixture = setup
             measurements_query = """
@@ -90,7 +90,7 @@ class TestProjectResponseTimePredictabilityTrends:
 
     class TestResponseTimeConfidenceCalculations:
 
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup):
             fixture = setup
             query = """
@@ -178,7 +178,7 @@ class TestProjectResponseTimePredictabilityTrends:
                     assert measurement['leadTimeTarget'] == 14
 
         class CaseWorkItemsWithLeadTimesButNoCycleTimes:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -294,7 +294,7 @@ class TestProjectResponseTimePredictabilityTrends:
                        ]
 
         class CaseWorkItemsWithLeadTimesAndCycleTimes:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -451,7 +451,7 @@ class TestProjectResponseTimePredictabilityTrends:
                        ]
 
         class CaseWorkItemsWithLeadTimesAndSomeNullCycleTimes:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -501,7 +501,7 @@ class TestProjectResponseTimePredictabilityTrends:
 
         class TestSpecsOnly:
 
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -620,7 +620,7 @@ class TestProjectResponseTimePredictabilityTrends:
                        ]
 
         class TestEpicsAndSubTasks:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 

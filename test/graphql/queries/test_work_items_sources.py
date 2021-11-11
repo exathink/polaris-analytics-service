@@ -165,7 +165,7 @@ class TestWorkItemsSourceWorkItemCommits:
             assert node['commitMessage']
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def work_items_sources_state_mapping_fixture(work_items_sources_fixture):
     _, work_items_sources = work_items_sources_fixture
     with db.orm_session() as session:
@@ -182,7 +182,7 @@ def work_items_sources_state_mapping_fixture(work_items_sources_fixture):
     yield work_items_sources['github'].key
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def work_items_sources_with_unmapped_states_fixture(work_items_sources_state_mapping_fixture):
     work_items_source_key = work_items_sources_state_mapping_fixture
     work_items_common = dict(
@@ -230,7 +230,7 @@ def work_items_sources_with_unmapped_states_fixture(work_items_sources_state_map
 
     yield work_items_source_key
 
-@pytest.yield_fixture
+@pytest.fixture
 def empty_work_items_sources_state_mapping_fixture(work_items_sources_fixture):
     _, work_items_sources = work_items_sources_fixture
     with db.orm_session() as session:

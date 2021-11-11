@@ -19,7 +19,7 @@ from test.graphql.queries.projects.shared_testing_mixins import \
 
 class TestProjectFlowRateTrends:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
@@ -50,7 +50,7 @@ class TestProjectFlowRateTrends:
         TrendingWindowMeasurementDate
     ):
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
 
@@ -92,7 +92,7 @@ class TestProjectFlowRateTrends:
 
     class TestForAllWorkitems:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
 
@@ -158,7 +158,7 @@ class TestProjectFlowRateTrends:
 
         class TestWithFilters:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
 

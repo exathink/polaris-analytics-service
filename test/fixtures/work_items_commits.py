@@ -41,7 +41,7 @@ test_work_items = [
 ]
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def work_items_commits_fixture(commits_fixture):
     organization, projects, repositories, contributor = commits_fixture
     test_repo = repositories['alpha']
@@ -169,7 +169,7 @@ def work_items_commits_fixture(commits_fixture):
     yield organization, [w1.id, w2.id], test_commits, test_work_items
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def implementation_effort_commits_fixture(org_repo_fixture, cleanup):
     organization, projects, repositories = org_repo_fixture
     contributors_fixture = []
@@ -261,7 +261,7 @@ def update_delivery_cycle_commit_info(work_item_key, commit_keys):
                         session.connection().execute(stmt)
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def implementation_effort_fixture(implementation_effort_commits_fixture):
     def add_work_item_commits(work_item_commits):
         for entry in work_item_commits:

@@ -281,7 +281,7 @@ class TestCommitImport:
 
 class TestCommitTeamAssignment:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, setup_repo_org):
         contributors = init_contributors([
             dict(

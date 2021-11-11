@@ -22,7 +22,7 @@ from polaris.analytics.service.graphql.interfaces import FlowMetricsSettingsImpl
 
 class TestProjectSettings:
     class TestFlowMetricsSettings:
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup_projects):
             project = test_projects[0]
 
@@ -48,7 +48,7 @@ class TestProjectSettings:
             )
 
         class WhenSettingsIsNull:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -91,7 +91,7 @@ class TestProjectSettings:
                 assert not flow_metrics['includeSubTasks']
 
         class WhenSettingsIsNotEmpty:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
                 settings_fixture = Fixture(
@@ -143,7 +143,7 @@ class TestProjectSettings:
                        == fixture.settings.flow_metrics_settings.include_sub_tasks
 
     class TestAnalysisPeriods:
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup_projects):
             project = test_projects[0]
 
@@ -166,7 +166,7 @@ class TestProjectSettings:
             )
 
         class WhenSettingsIsNull:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -207,7 +207,7 @@ class TestProjectSettings:
                 assert not flow_metrics['trendsAnalysisPeriod']
 
         class WhenSettingsIsNotEmpty:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
                 settings_fixture = Fixture(
@@ -250,7 +250,7 @@ class TestProjectSettings:
                        == fixture.settings.analysis_periods.trends_analysis_period
 
     class TestWipInspectorSettings:
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup_projects):
             project = test_projects[0]
 
@@ -271,7 +271,7 @@ class TestProjectSettings:
             )
 
         class WhenSettingsIsNull:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -308,7 +308,7 @@ class TestProjectSettings:
                 assert wip_inspector['includeSubTasks'] is True
 
         class WhenSettingsIsNotEmpty:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
                 settings_fixture = Fixture(

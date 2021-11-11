@@ -19,7 +19,7 @@ from polaris.common.enums import JiraWorkItemType
 from polaris.utils.collections import dict_select, dict_to_object
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def projects_import_commits_fixture(org_repo_fixture, cleanup):
     _, projects, repositories = org_repo_fixture
 
@@ -1669,7 +1669,7 @@ class TestAggregateVsDetailConsistency:
                {(3.0, 1.0)}
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def project_work_items_source_state_mapping_fixture(org_repo_fixture):
     organization, projects, _ = org_repo_fixture
 

@@ -68,7 +68,7 @@ def work_item_source_common():
     )
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def work_items_setup(setup_repo_org):
     _, organization_id = setup_repo_org
     with db.orm_session() as session:
@@ -101,7 +101,7 @@ def work_items_setup(setup_repo_org):
     db.connection().execute("delete from analytics.work_items_sources")
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def update_work_items_setup(work_items_setup):
     organization_key, work_items_source_key = work_items_setup
     work_items_list = [
@@ -156,7 +156,7 @@ def update_work_items_setup(work_items_setup):
     yield organization_key, work_items_source_key, work_items_list
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def update_closed_work_items_setup(work_items_setup):
     organization_key, work_items_source_key = work_items_setup
     work_items_list = [

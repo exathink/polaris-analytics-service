@@ -27,7 +27,7 @@ def create_source_files(test_source_files):
         )
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def project_work_items_commits_fixture(commits_fixture):
     organization, projects, repositories, contributor = commits_fixture
     test_repo = repositories['alpha']

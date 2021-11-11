@@ -53,7 +53,7 @@ def getRepository(name):
         return find(organization.repositories, lambda repository: repository.name == name)
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def org_repo_fixture(setup_schema):
     repositories = {}
     projects = {}
@@ -122,7 +122,7 @@ def org_repo_fixture(setup_schema):
     db.connection().execute("delete from analytics.accounts")
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def user_fixture(setup_auth_schema, org_repo_fixture):
     organization, projects, repositories = org_repo_fixture
     with db.orm_session() as session:
@@ -141,7 +141,7 @@ def user_fixture(setup_auth_schema, org_repo_fixture):
     db.connection().execute("delete from auth.users")
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def commits_fixture(org_repo_fixture, cleanup):
     organization, projects, repositories = org_repo_fixture
 
@@ -185,7 +185,7 @@ def commits_fixture(org_repo_fixture, cleanup):
     yield organization, projects, repositories, contributor
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def cleanup():
     yield
     db.connection().execute("delete from analytics.work_items_commits")
@@ -401,7 +401,7 @@ work_items_common = dict(
 )
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def work_items_fixture(commits_fixture):
     organization, _, repositories, _ = commits_fixture
     test_repo = repositories['alpha']
@@ -460,7 +460,7 @@ def work_items_fixture(commits_fixture):
     yield new_key, test_commit_key, new_work_items
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def work_items_commit_summary_fixture(commits_fixture):
     organization, _, repositories, _ = commits_fixture
     test_repo = repositories['alpha']
@@ -513,7 +513,7 @@ def work_items_commit_summary_fixture(commits_fixture):
     yield new_key, test_commit_key, new_work_items
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def commit_summary_fixture(commits_fixture):
     organization, _, repositories, _ = commits_fixture
     project = organization.projects[0]
@@ -567,7 +567,7 @@ def commit_summary_fixture(commits_fixture):
     yield work_item_key, test_commit_key, new_work_items, project
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def setup_work_item_transitions(work_items_fixture):
     new_key, test_commit_key, new_work_items = work_items_fixture
     key = new_work_items[0]['key']
@@ -607,7 +607,7 @@ def setup_work_item_transitions(work_items_fixture):
     db.connection().execute("delete from analytics.work_item_state_transitions")
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def project_fixture(commits_fixture):
     organization, _, repositories, _ = commits_fixture
     project = organization.projects[0]
@@ -736,7 +736,7 @@ def api_import_commits_fixture(org_repo_fixture, cleanup):
     )
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def work_items_sources_fixture(org_repo_fixture, cleanup):
     organization, _, _ = org_repo_fixture
     new_key = uuid.uuid4()
@@ -775,7 +775,7 @@ def work_items_sources_fixture(org_repo_fixture, cleanup):
     yield new_key, work_items_sources
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def work_items_sources_work_items_fixture(commits_fixture, cleanup):
     organization, _, repositories, _ = commits_fixture
     new_key = uuid.uuid4()
@@ -842,7 +842,7 @@ def work_items_sources_work_items_fixture(commits_fixture, cleanup):
     yield new_key, work_items_sources
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def jira_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
     work_items_common_fields = dict(
         is_bug=True,
@@ -901,7 +901,7 @@ def jira_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
     yield jira_source_key, work_items_sources
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def github_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
     work_items_common_fields = dict(
         is_bug=True,
@@ -960,7 +960,7 @@ def github_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup
     yield github_source_key, work_items_sources
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def pivotal_work_items_source_work_items_states_fixture(org_repo_fixture, cleanup):
     work_items_common_fields = dict(
         is_bug=True,
@@ -1030,7 +1030,7 @@ def pivotal_work_items_source_work_items_states_fixture(org_repo_fixture, cleanu
     yield pivotal_source_key, work_items_sources
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def api_work_items_import_fixture(org_repo_fixture):
     organization, projects, _ = org_repo_fixture
 
@@ -1162,7 +1162,7 @@ class WorkItemImportApiHelper:
                 session.connection().execute(stmt)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def api_pull_requests_import_fixture(org_repo_fixture):
     organization, projects, repositories = org_repo_fixture
 

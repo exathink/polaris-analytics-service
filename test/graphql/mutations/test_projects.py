@@ -1194,7 +1194,7 @@ class TestPopulateWorkItemSourceFileChangesOnUpdateStateMaps:
 
 class TestUpdateProjectSettings:
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, setup_projects):
         query = """
             mutation updatProjectSettings($updateProjectSettingsInput: UpdateProjectSettingsInput!) {
@@ -1396,7 +1396,7 @@ class TestUpdateProjectSettings:
 
 class TestUpdateWorkItems:
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, setup_work_items):
         project = setup_work_items
         work_items = project.work_items_sources[0].work_items

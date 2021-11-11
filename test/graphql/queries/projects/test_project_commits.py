@@ -15,7 +15,7 @@ from test.graphql.queries.projects.shared_fixtures import *
 
 class TestProjectCommitsConnection:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, project_commits_work_items_fixture):
         fixture = project_commits_work_items_fixture
 
@@ -270,7 +270,7 @@ class TestProjectCommitsConnection:
 
     class CaseThereAreWorkItemsInTheProject:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup_case(self, setup):
             fixture = setup
             parent_fixture = fixture.parent_fixture
@@ -690,7 +690,7 @@ class TestProjectCommitsConnection:
 
         class CaseWhenThereAreExcludedContributors:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup_case(self, setup_case):
                 fixture = setup_case
 

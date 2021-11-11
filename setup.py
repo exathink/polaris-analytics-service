@@ -70,6 +70,11 @@ setup(
     ],
     # Run time dependencies - we will assume pytest is dependency of all packages.
     install_requires=[
-        'pytest'
+        'pytest',
+        'polaris-flask',
+        'polaris-graphql',
+        'polaris-messaging',
+        'polaris-common-db',
+        'polaris-utils'
     ]
 )

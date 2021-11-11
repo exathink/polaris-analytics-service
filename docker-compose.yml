@@ -3,13 +3,13 @@ version: '3.1'
 services:
   package-base:
     environment:
-      POLARIS_TEST_DB_URL: postgres://polaris:polaris@polaris-db/polaris_test
+      POLARIS_TEST_DB_URL: postgresql://polaris:polaris@polaris-db/polaris_test
     depends_on:
       - polaris-db
 
   package:
     environment:
-      POLARIS_TEST_DB_URL: postgres://polaris:polaris@polaris-db/polaris_test
+      POLARIS_TEST_DB_URL: postgresql://polaris:polaris@polaris-db/polaris_test
     depends_on:
       - polaris-db
 

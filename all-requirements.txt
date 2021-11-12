@@ -8,7 +8,7 @@ blinker==1.4
 Brotli==1.0.9
 cffi==1.15.0
 click==7.1.2
-coverage==6.1.1
+coverage==6.1.2
 Flask==1.1.4
 Flask-Admin==1.5.8
 Flask-BabelEx==0.9.4

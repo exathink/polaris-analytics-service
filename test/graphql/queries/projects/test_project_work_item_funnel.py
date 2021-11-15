@@ -475,7 +475,7 @@ class TestProjectFunnelViewAggregateMetrics:
 
     class TestParameter:
 
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, api_work_items_import_fixture):
             organization, project, work_items_source, work_items_common = api_work_items_import_fixture
             api_helper = WorkItemImportApiHelper(organization, work_items_source)
@@ -549,7 +549,7 @@ class TestProjectFunnelViewAggregateMetrics:
             )
 
         class TestClosedWithinDays:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -724,7 +724,7 @@ class TestProjectFunnelViewAggregateMetrics:
                 assert state_type_counts['complete'] is None
 
         class TestSpecsOnly:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -882,7 +882,7 @@ class TestProjectTotalEffortByStateType:
 # This tests the detailed work items that are selected in the funnel details view.
 class TestProjectWorkItemsFunnelView:
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)

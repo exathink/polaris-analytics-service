@@ -59,7 +59,7 @@ test_work_items = [
 ]
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def contributor_commits_fixture(org_repo_fixture, cleanup):
     organization, projects, repositories = org_repo_fixture
     contributor_list = []
@@ -110,7 +110,7 @@ def commits_common_fields(contributor_commits_fixture):
     )
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def work_items_commits_contributors_fixture(contributor_commits_fixture):
     organization, projects, repositories, contributor_list = contributor_commits_fixture
     test_repo = repositories['alpha']

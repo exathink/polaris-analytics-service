@@ -38,14 +38,14 @@ def create_feature_flags(feature_flags):
         session.add_all(feature_flags)
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def feature_flag_fixture(org_repo_fixture, user_fixture,  cleanup):
     yield
 
 
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def user_feature_flag_fixture_enable_all_true_enabled_true(org_repo_fixture, cleanup):
     _, _, _ = org_repo_fixture
     with db.orm_session() as session:
@@ -61,7 +61,7 @@ def user_feature_flag_fixture_enable_all_true_enabled_true(org_repo_fixture, cle
 
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def user_feature_flag_fixture_enable_all_true_enabled_false(org_repo_fixture, cleanup):
     _, _, _ = org_repo_fixture
     with db.orm_session() as session:
@@ -80,7 +80,7 @@ def user_feature_flag_fixture_enable_all_true_enabled_false(org_repo_fixture, cl
 
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def user_feature_flag_fixture_enable_all_false_enabled_true(org_repo_fixture, cleanup):
     _, _, _ = org_repo_fixture
     with db.orm_session() as session:
@@ -94,7 +94,7 @@ def user_feature_flag_fixture_enable_all_false_enabled_true(org_repo_fixture, cl
 
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def user_feature_flag_fixture_enable_all_false_enabled_false(org_repo_fixture, cleanup):
     _, _, _ = org_repo_fixture
     with db.orm_session() as session:
@@ -107,7 +107,7 @@ def user_feature_flag_fixture_enable_all_false_enabled_false(org_repo_fixture, c
 
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def account_user_feature_flag_fixture_inactive_feature(org_repo_fixture, cleanup):
     _, _, _ = org_repo_fixture
     with db.orm_session() as session:
@@ -123,7 +123,7 @@ def account_user_feature_flag_fixture_inactive_feature(org_repo_fixture, cleanup
     yield feature_flag
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def account_user_feature_flag_fixture_multiple_features_multiple_enablements_random(org_repo_fixture, cleanup):
     _, _, _ = org_repo_fixture
     with db.orm_session() as session:
@@ -147,7 +147,7 @@ def account_user_feature_flag_fixture_multiple_features_multiple_enablements_ran
     yield feature_flag1, feature_flag2
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def all_feature_flag_fixture_multiple_features_multiple_enablements(user_fixture, cleanup):
     _, _, _, user = user_fixture
     with db.orm_session() as session:

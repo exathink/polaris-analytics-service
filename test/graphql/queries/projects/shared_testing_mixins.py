@@ -53,7 +53,7 @@ class TrendingWindowTestNumberOfMeasurements:
 
         class WhenThereAreClosedWorkItems:
 
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 

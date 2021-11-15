@@ -19,7 +19,7 @@ from polaris.analytics.db.model import Contributor, ContributorTeam, Team
 
 class TestTeamNode:
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, setup_teams):
         fixture = setup_teams
 
@@ -46,7 +46,7 @@ class TestTeamNode:
 
 class TestOrganizationTeams:
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, setup_teams):
         fixture = setup_teams
 
@@ -79,7 +79,7 @@ class TestOrganizationTeams:
 
 class TestContributorTeams:
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, setup_team_assignments):
         yield setup_team_assignments
 

@@ -19,7 +19,7 @@ from polaris.common import db
 
 class TestCreateTeam:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, org_repo_fixture, cleanup_teams):
         organization, projects, repositories = org_repo_fixture
 

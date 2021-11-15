@@ -296,7 +296,7 @@ class ContributorImportApiHelper:
 
 class TestAccountContributorsConnection:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, org_repo_fixture):
         organization, projects, repositories = org_repo_fixture
         contributor_aliases_info = [
@@ -357,7 +357,7 @@ class TestAccountContributorsConnection:
     class TestWithNoContributors:
         class TestWithoutFilterWithoutInterface:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 plain_query = """
@@ -405,7 +405,7 @@ class TestAccountContributorsConnection:
 
     class TestWithContributorsWithSingleAlias:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
             api_helper = fixture.api_helper
@@ -473,7 +473,7 @@ class TestAccountContributorsConnection:
                     assert contributor['commitCount'] == contributor['contributorAliasesInfo'][0]['commitCount']
 
         class TestWithFilterWithoutInterface:
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 plain_query = """
@@ -510,7 +510,7 @@ class TestAccountContributorsConnection:
 
         class TestWithContributorWithMultipleAliases:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 api_helper = fixture.api_helper
@@ -557,7 +557,7 @@ class TestAccountContributorsConnection:
 
             class TestWithLatestCommitsOutsideSpecifiedWindow:
 
-                @pytest.yield_fixture()
+                @pytest.fixture()
                 def setup(self, setup):
                     fixture = setup
                     api_helper = fixture.api_helper
@@ -603,7 +603,7 @@ class TestAccountContributorsConnection:
 
             class TestWithMultipleRepositories:
 
-                @pytest.yield_fixture()
+                @pytest.fixture()
                 def setup(self, setup):
                     fixture = setup
                     api_helper = fixture.api_helper

@@ -19,7 +19,7 @@ from test.graphql.queries.projects.shared_testing_mixins import \
 class TestProjectCapacityTrends:
 
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, org_repo_fixture, cleanup):
         organization, projects, repositories = org_repo_fixture
         contributors_fixture = []
@@ -92,7 +92,7 @@ class TestProjectCapacityTrends:
         TrendingWindowMeasurementDate
     ):
 
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup):
             fixture = setup
             measurements_query = """
@@ -130,7 +130,7 @@ class TestProjectCapacityTrends:
             )
 
     class TestCommitDays:
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup):
             fixture = setup
             test_repo = fixture.repositories['alpha']
@@ -174,7 +174,7 @@ class TestProjectCapacityTrends:
 
         class TestAggregateMetrics:
 
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -260,7 +260,7 @@ class TestProjectCapacityTrends:
 
         class TestContributorDetail:
 
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -326,7 +326,7 @@ class TestProjectCapacityTrends:
 
 
     class TestRobotFiltering:
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup):
             fixture = setup
             test_repo = fixture.repositories['alpha']
@@ -369,7 +369,7 @@ class TestProjectCapacityTrends:
 
         class TestAggregateMetrics:
 
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 
@@ -428,7 +428,7 @@ class TestProjectCapacityTrends:
 
         class TestContributorDetail:
 
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
 

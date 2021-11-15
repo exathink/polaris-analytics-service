@@ -14,7 +14,7 @@ from polaris.common import db
 from test.constants import rails_organization_key, rails_repository_key
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def cleanup(setup_schema):
     yield
     db.connection().execute("delete from analytics.work_item_source_file_changes")
@@ -40,7 +40,7 @@ def cleanup(setup_schema):
     db.connection().execute("delete from analytics.organizations")
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def setup_org(cleanup):
     with db.orm_session() as session:
         session.expire_on_commit = False
@@ -53,7 +53,7 @@ def setup_org(cleanup):
     yield organization
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def setup_repo_org(cleanup):
     with db.create_session() as session:
         organization_id = session.connection.execute(

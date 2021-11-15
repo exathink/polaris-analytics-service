@@ -18,7 +18,7 @@ from test.graphql.queries.projects.shared_testing_mixins import \
 
 class TestProjectFlowMixTrends:
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
@@ -36,7 +36,7 @@ class TestProjectFlowMixTrends:
         TrendingWindowMeasurementDate
     ):
 
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup):
             fixture = setup
 
@@ -90,7 +90,7 @@ class TestProjectFlowMixTrends:
             )
 
     class TestFlowMixCalculations:
-        @pytest.yield_fixture
+        @pytest.fixture
         def setup(self, setup):
             fixture = setup
 
@@ -250,7 +250,7 @@ class TestProjectFlowMixTrends:
 
         class WhenThereAreSpecs:
 
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
                 api_helper = fixture.api_helper
@@ -294,7 +294,7 @@ class TestProjectFlowMixTrends:
                 ]
 
         class TestParameters:
-            @pytest.yield_fixture
+            @pytest.fixture
             def setup(self, setup):
                 fixture = setup
                 api_helper = fixture.api_helper

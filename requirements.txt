@@ -1,12 +1,9 @@
 argh
 pytest
-alembic==1.0.2
-sqlalchemy==1.2.8
-psycopg2==2.6.1
-PyYaml
+alembic
+sqlalchemy
+psycopg2
 uwsgi
-flask-restful
-marshmallow
-Flask-GraphQL==1.4.1
-flask-compress
+
+
 

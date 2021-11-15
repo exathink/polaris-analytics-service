@@ -18,7 +18,7 @@ from test.fixtures.work_items_commits import *
 
 class TestPullRequestInstance:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, api_pull_requests_import_fixture):
         organization, project, repositories, work_items_source, work_items_common, pull_requests_common = api_pull_requests_import_fixture
         api_helper = PullRequestImportApiHelper(organization, repositories, work_items_source)
@@ -65,7 +65,7 @@ class TestPullRequestInstance:
 
     class TestNamedNodeInterface:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
             query = """
@@ -98,7 +98,7 @@ class TestPullRequestInstance:
 
         class TestWhenPullRequestExists:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 api_helper = fixture.api_helper
@@ -126,7 +126,7 @@ class TestPullRequestInstance:
 
     class TestBranchRefInterface:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
             query = """
@@ -162,7 +162,7 @@ class TestPullRequestInstance:
 
         class TestWhenPullRequestExists:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 api_helper = fixture.api_helper
@@ -189,7 +189,7 @@ class TestPullRequestInstance:
 
     class TestPullRequestWorkItemsSummariesInterface:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
             query = """
@@ -217,7 +217,7 @@ class TestPullRequestInstance:
 
         class TestWithNoWorkItems:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 api_helper = fixture.api_helper
@@ -237,7 +237,7 @@ class TestPullRequestInstance:
 
             class TestWithLinkedWorkItems:
 
-                @pytest.yield_fixture()
+                @pytest.fixture()
                 def setup(self, setup):
                     fixture = setup
                     api_helper = fixture.api_helper

@@ -16,7 +16,7 @@ from test.fixtures.graphql import *
 
 class TestProjectPullRequests:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, api_pull_requests_import_fixture):
         organization, project, repositories, work_items_source, work_items_common, pull_requests_common = api_pull_requests_import_fixture
         api_helper = PullRequestImportApiHelper(organization, repositories, work_items_source)
@@ -64,7 +64,7 @@ class TestProjectPullRequests:
     class TestProjectPullRequestsConnection:
         class TestWithNoPullRequest:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 query = """
@@ -105,7 +105,7 @@ class TestProjectPullRequests:
 
             class TestWithActivePullRequests:
 
-                @pytest.yield_fixture()
+                @pytest.fixture()
                 def setup(self, setup):
                     fixture = setup
                     api_helper = fixture.api_helper
@@ -158,7 +158,7 @@ class TestProjectPullRequests:
                     assert len(result['data']['project']['pullRequests']['edges']) == 2
 
                 class TestWithOneClosedPullRequest:
-                    @pytest.yield_fixture()
+                    @pytest.fixture()
                     def setup(self, setup):
                         fixture = setup
                         api_helper = fixture.api_helper
@@ -233,7 +233,7 @@ class TestProjectPullRequests:
 
     class TestProjectPullRequestEventSpan:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
 

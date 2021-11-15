@@ -313,7 +313,7 @@ class TestProjectWorkItems:
 
 class TestProjectEpicWorkItems:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
@@ -382,7 +382,7 @@ class TestProjectEpicWorkItems:
 
     class TestWithoutWorkItemCommits:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
             query = """
@@ -451,7 +451,7 @@ class TestProjectEpicWorkItems:
 
     class TestWithWorkItemCommits:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             # Add only work item delivery cycle contributors and update work item delivery cycles
             fixture = setup
@@ -593,7 +593,7 @@ class TestProjectEpicWorkItems:
 
         class TestWithOneClosedDeliveryCycle:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
 
@@ -629,7 +629,7 @@ class TestProjectEpicWorkItems:
 
         class TestWithIncludeEpicsFalse:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 query = """
@@ -710,7 +710,7 @@ class TestProjectEpicWorkItems:
 
         class TestWithSubtasks:
 
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 api_helper = fixture.api_helper
@@ -774,7 +774,7 @@ class TestProjectEpicWorkItems:
                 assert str(uuid.UUID(fixture.work_items[3]['key'])) in [wi['node']['key'] for wi in all_work_items]
 
         class TestActiveWithinDaysFilter:
-            @pytest.yield_fixture()
+            @pytest.fixture()
             def setup(self, setup):
                 fixture = setup
                 api_helper = fixture.api_helper

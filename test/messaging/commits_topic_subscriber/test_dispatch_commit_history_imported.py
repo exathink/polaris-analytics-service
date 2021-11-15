@@ -18,7 +18,7 @@ from polaris.analytics.messaging.subscribers import CommitsTopicSubscriber
 import pytest
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def commit_history_imported_payload():
     yield dict(
             **commit_history_imported_common,

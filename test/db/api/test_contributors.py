@@ -192,7 +192,7 @@ class TestUpdateContributorForContributorAliases:
 
 class TestAssignContributorCommitsToTeams:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, setup_commits_for_contributor_updates, setup_teams):
         yield Fixture(
             organization_key=rails_organization_key,
@@ -334,7 +334,7 @@ class TestAssignContributorCommitsToTeams:
                 parent_id=None
             )
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
             with db.orm_session() as session:
@@ -428,7 +428,7 @@ class TestAssignContributorCommitsToTeams:
 
     class TestTeamsRepositoriesStats:
 
-        @pytest.yield_fixture()
+        @pytest.fixture()
         def setup(self, setup):
             fixture = setup
             with db.orm_session() as session:

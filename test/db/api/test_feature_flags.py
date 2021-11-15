@@ -23,7 +23,7 @@ enablementsInput = [
 ]
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def create_feature_flag_fixture(cleanup):
     with db.orm_session() as session:
         session.expire_on_commit = False
@@ -32,7 +32,7 @@ def create_feature_flag_fixture(cleanup):
     yield feature_flag
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def create_feature_flag_enablement_fixture(cleanup):
     with db.orm_session() as session:
         session.expire_on_commit = False

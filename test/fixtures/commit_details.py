@@ -17,7 +17,7 @@ from polaris.analytics.db import model
 from polaris.common import db
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def import_commit_details_fixture(setup_repo_org):
     repository_id, organization_id = setup_repo_org
 
@@ -68,7 +68,7 @@ def import_commit_details_fixture(setup_repo_org):
 
     yield keys
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def commit_details_imported_payload(import_commit_details_fixture):
     keys = import_commit_details_fixture
     payload = dict(

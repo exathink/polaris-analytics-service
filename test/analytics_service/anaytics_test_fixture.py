@@ -52,7 +52,7 @@ commit_history_imported_common = dict(
 )
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def cleanup(setup_schema):
     yield
 
@@ -63,7 +63,7 @@ def cleanup(setup_schema):
     db.connection().execute("delete from analytics.organizations")
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def setup_repo_org(cleanup):
     with db.create_session() as session:
         organization_id = session.connection.execute(

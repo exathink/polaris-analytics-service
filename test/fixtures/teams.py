@@ -17,7 +17,7 @@ from polaris.common import db
 from polaris.analytics.db.model import Team, Contributor
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def setup_teams(org_repo_fixture, cleanup_teams):
     organization, projects, repositories = org_repo_fixture
 
@@ -50,7 +50,7 @@ def setup_teams(org_repo_fixture, cleanup_teams):
     )
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def setup_team_assignments(setup_teams):
     fixture = setup_teams
 
@@ -87,7 +87,7 @@ def setup_team_assignments(setup_teams):
         arjun=arjun
     )
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def cleanup_teams():
     yield
 

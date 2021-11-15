@@ -40,7 +40,7 @@ def exclude_contributors_from_analysis(contributors):
             contributor = Contributor.find_by_contributor_key(session, contributor_summmary['key'])
             contributor.exclude_from_analysis()
 
-@pytest.yield_fixture
+@pytest.fixture
 def project_commits_work_items_fixture(org_repo_fixture):
     organization, projects, repositories = org_repo_fixture
 

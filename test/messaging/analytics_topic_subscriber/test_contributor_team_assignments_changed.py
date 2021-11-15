@@ -20,7 +20,7 @@ from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChang
 
 class TestContributorTeamAssignmentsChanged:
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, setup_commits_for_contributor_updates, setup_teams):
         yield Fixture(
             organization_key=rails_organization_key,

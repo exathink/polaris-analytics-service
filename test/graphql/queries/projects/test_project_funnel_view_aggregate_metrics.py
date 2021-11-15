@@ -16,7 +16,7 @@ from polaris.utils.collections import dict_merge
 
 class TestProjectFunnelViewAggregateMetrics:
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def setup(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)

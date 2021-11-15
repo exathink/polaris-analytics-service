@@ -18,7 +18,7 @@ from test.fixtures.work_item_commit_resolution import *
 from polaris.utils.collections import dict_merge, dict_drop
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def work_items_commits_fixture(commits_fixture):
     organization, _, repositories, _ = commits_fixture
     test_repo = repositories['alpha']

@@ -11,7 +11,7 @@ import uuid
 from polaris.analytics.db.model import Repository, WorkItemsSource
 from test.fixtures.repo_org import *
 
-@pytest.yield_fixture
+@pytest.fixture
 def setup_work_items_source_repo_resolution(setup_org):
     organization = setup_org
     repo_source_id = str(uuid.uuid4())
@@ -29,7 +29,7 @@ def setup_work_items_source_repo_resolution(setup_org):
     yield organization, repository
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def setup_repo_work_items_source_resolution(setup_org):
     organization = setup_org
     repo_source_id = str(uuid.uuid4())

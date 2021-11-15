@@ -61,7 +61,7 @@ class TestResolveTeamsForWorkItems:
             created_on_branch='master'
         )
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def setup(self, org_repo_fixture, setup_teams):
         organization, _, repositories = org_repo_fixture
 
@@ -286,7 +286,7 @@ class TestResolveTeamsForWorkItems:
         assert resolved['success']
         assert resolved['updated'] == 4
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def teardown(self):
         yield
 

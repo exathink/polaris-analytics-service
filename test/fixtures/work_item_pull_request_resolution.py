@@ -35,7 +35,7 @@ work_items_common = dict(
 )
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def org_repo_fixture(setup_schema):
     repositories = {}
     projects = {}
@@ -99,7 +99,7 @@ def pull_requests_common_fields():
     )
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def cleanup():
     yield
     db.connection().execute("delete from analytics.work_items_pull_requests")
@@ -122,7 +122,7 @@ def create_test_pull_requests(test_pull_requests):
         )
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def pull_requests_fixture(org_repo_fixture, cleanup):
     organization, projects, repositories = org_repo_fixture
     yield organization, projects, repositories

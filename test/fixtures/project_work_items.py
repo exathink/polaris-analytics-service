@@ -22,7 +22,7 @@ test_projects = [
 ]
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def setup_projects(setup_org):
     organization = setup_org
     for project in test_projects:
@@ -39,7 +39,7 @@ def setup_projects(setup_org):
     yield organization
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def setup_work_items_sources(setup_projects):
     organization = setup_projects
     project = organization.projects[0]
@@ -62,7 +62,7 @@ def setup_work_items_sources(setup_projects):
     yield project
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def setup_work_items(setup_projects):
     organization = setup_projects
     project = organization.projects[0]
@@ -123,7 +123,7 @@ def setup_work_items(setup_projects):
     yield project
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def work_items_delivery_cycles_setup(setup_projects):
     organization = setup_projects
     project = organization.projects[0]

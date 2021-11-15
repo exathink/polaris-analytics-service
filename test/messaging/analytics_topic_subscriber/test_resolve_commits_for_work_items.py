@@ -18,7 +18,7 @@ from polaris.analytics.messaging.commands import ResolveCommitsForWorkItems
 from test.fixtures.work_item_commit_resolution import *
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def work_items_commits_fixture(commits_fixture):
     organization, _, repositories, _ = commits_fixture
     test_repo = repositories['alpha']

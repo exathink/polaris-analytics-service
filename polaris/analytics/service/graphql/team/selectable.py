@@ -390,6 +390,8 @@ class TeamCycleMetricsTrends(CycleMetricsTrendsBase):
             arg_name='cycle_metrics_trends',
             interface_name='CycleMetricTrends'
         )
+        team_nodes_dates = select([team_nodes, timeline_dates]).cte()
+
         measurement_window = cycle_metrics_trends_args.measurement_window
         if measurement_window is None:
             raise ProcessingException(
@@ -404,8 +406,8 @@ class TeamCycleMetricsTrends(CycleMetricsTrendsBase):
         # within the measurement window for that date. We will be using a *lateral* join for doing the full aggregation
         # so note the lateral clause at the end instead of the usual alias.
         cycle_metrics = select([
-            team_nodes.c.id.label('team_id'),
-
+            team_nodes_dates.c.id.label('team_id'),
+            team_nodes_dates.c.measurement_date,
             # These are standard attributes returned for the the AggregateCycleMetricsInterface
 
             func.max(work_item_delivery_cycles.c.end_date).label('latest_closed_date'),
@@ -431,8 +433,8 @@ class TeamCycleMetricsTrends(CycleMetricsTrendsBase):
             ]
 
         ]).select_from(
-            team_nodes.join(
-                work_items_teams, work_items_teams.c.team_id == team_nodes.c.id
+            team_nodes_dates.join(
+                work_items_teams, work_items_teams.c.team_id == team_nodes_dates.c.id
             ).join(
                 work_items,
                 and_(
@@ -452,7 +454,7 @@ class TeamCycleMetricsTrends(CycleMetricsTrendsBase):
                     # delivery cycles that closed on the measurement_date.
                     date_column_is_in_measurement_window(
                         work_item_delivery_cycles.c.end_date,
-                        measurement_date=timeline_dates.c.measurement_date,
+                        measurement_date=team_nodes_dates.c.measurement_date,
                         measurement_window=measurement_window
                     ),
                     *TeamCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
@@ -461,14 +463,18 @@ class TeamCycleMetricsTrends(CycleMetricsTrendsBase):
                 )
             )
         ).group_by(
-            team_nodes.c.id
-        ).lateral()
+            team_nodes_dates.c.id,
+            team_nodes_dates.c.measurement_date
+        ).order_by(
+            team_nodes_dates.c.id,
+            team_nodes_dates.c.measurement_date.desc()
+        ).alias()
 
         return select([
             cycle_metrics.c.team_id.label('id'),
             func.json_agg(
                 func.json_build_object(
-                    'measurement_date', timeline_dates.c.measurement_date,
+                    'measurement_date', cycle_metrics.c.measurement_date,
                     'measurement_window', measurement_window,
                     'earliest_closed_date', cycle_metrics.c.earliest_closed_date,
                     'latest_closed_date', cycle_metrics.c.latest_closed_date,
@@ -489,9 +495,9 @@ class TeamCycleMetricsTrends(CycleMetricsTrendsBase):
 
             ).label('cycle_metrics_trends')
         ]).select_from(
-            timeline_dates.join(cycle_metrics, true())
+            cycle_metrics
         ).group_by(
-            cycle_metrics.c.team_id
+            cycle_metrics.c.team_id,
         )
 
 

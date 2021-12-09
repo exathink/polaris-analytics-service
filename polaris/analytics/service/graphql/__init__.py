@@ -30,6 +30,7 @@ from .repository import Repository
 from .contributor import Contributor, ContributorMutationsMixin
 from .public import Public
 from .work_item import WorkItem
+from .work_item.mutations import WorkItemsMutationsMixin
 from .work_items_source import WorkItemsSource
 from .pull_request import PullRequest
 from .feature_flag import FeatureFlag
@@ -113,7 +114,8 @@ class Mutations(
     UseMutationsMixin,
     ProjectMutationsMixin,
     FeatureFlagMutationsMixin,
-    TeamMutationsMixin
+    TeamMutationsMixin,
+    WorkItemsMutationsMixin
 ):
     pass
 

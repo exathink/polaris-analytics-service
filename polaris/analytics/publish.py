@@ -12,6 +12,7 @@
 from polaris.messaging.topics import AnalyticsTopic
 from polaris.messaging.utils import publish
 from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChanged
+from polaris.analytics.messaging.commands import ResolveCommitsForWorkItems
 
 
 def contributor_team_assignments_changed(organization_key, contributor_team_assignments, channel=None):
@@ -19,6 +20,22 @@ def contributor_team_assignments_changed(organization_key, contributor_team_assi
         send=dict(
             organization_key=organization_key,
             contributor_team_assignments=contributor_team_assignments
+        )
+    )
+    publish(
+        AnalyticsTopic,
+        message,
+        channel=channel
+    )
+    return message
+
+
+def resolve_commits_for_work_items(organization_key, work_items_source_key, work_item_summaries, channel=None):
+    message = ResolveCommitsForWorkItems(
+        send=dict(
+            organization_key=organization_key,
+            work_items_source_key=work_items_source_key,
+            new_work_items=work_item_summaries
         )
     )
     publish(

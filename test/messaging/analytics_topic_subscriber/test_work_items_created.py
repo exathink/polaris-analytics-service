@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 from unittest.mock import patch
 from polaris.analytics.messaging.subscribers import AnalyticsTopicSubscriber
-from polaris.messaging.messages import WorkItemsCreated, WorkItemsCommitsResolved
+from polaris.messaging.messages import WorkItemsCreated, WorkItemsUpdated
 from polaris.messaging.test_utils import mock_channel, fake_send, mock_publisher
 from polaris.messaging.topics import AnalyticsTopic
 from polaris.analytics.messaging.commands import ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems
@@ -67,6 +67,34 @@ class TestWorkItemsCreated:
                     organization_key=test_organization_key,
                     work_items_source_key=work_items_source.key,
                     new_work_items=[
+                        dict_merge(
+                            dict_drop(work_item, ['parent_id']),
+                            dict(parent_key=None)
+                        )
+                        for work_item in new_work_items
+                    ]
+                )
+            )
+        )
+        publisher = mock_publisher()
+        channel = mock_channel()
+
+        result = AnalyticsTopicSubscriber(channel, publisher=publisher).dispatch(channel, message)
+        assert len(result) == 2
+        publisher.assert_topic_called_with_message(AnalyticsTopic, ResolveCommitsForWorkItems, call=0)
+        publisher.assert_topic_called_with_message(AnalyticsTopic, ResolvePullRequestsForWorkItems, call=1)
+
+class TestWorkItemsUpdated:
+
+
+    def it_publishes_responses_correctly(self, work_items_commits_fixture):
+        work_items_source, new_work_items = work_items_commits_fixture
+        message = fake_send(
+            WorkItemsUpdated(
+                send=dict(
+                    organization_key=test_organization_key,
+                    work_items_source_key=work_items_source.key,
+                    updated_work_items=[
                         dict_merge(
                             dict_drop(work_item, ['parent_id']),
                             dict(parent_key=None)

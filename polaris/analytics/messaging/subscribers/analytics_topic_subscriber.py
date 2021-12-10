@@ -10,7 +10,10 @@
 
 import logging
 from polaris.messaging.topics import TopicSubscriber, AnalyticsTopic
-from polaris.messaging.messages import CommitsCreated, CommitDetailsCreated, WorkItemsCreated, WorkItemsCommitsResolved, \
+from polaris.messaging.messages import \
+    CommitsCreated, CommitDetailsCreated, \
+    WorkItemsCreated, WorkItemsUpdated, \
+    WorkItemsCommitsResolved, \
     ProjectsRepositoriesAdded, RepositoriesImported, PullRequestsCreated, PullRequestsUpdated
 
 from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, \
@@ -79,8 +82,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
             self.publish(AnalyticsTopic, resolve_work_items_for_commits_command)
 
-
-
         elif WorkItemsCreated.message_type == message.message_type:
             resolve_commits_for_work_items_command = ResolveCommitsForWorkItems(
                 send=message.dict,
@@ -90,6 +91,34 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
             resolve_pull_requests_for_work_items_command = ResolvePullRequestsForWorkItems(
                 send=message.dict,
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, resolve_pull_requests_for_work_items_command)
+
+            return resolve_commits_for_work_items_command, resolve_pull_requests_for_work_items_command
+
+        elif WorkItemsUpdated.message_type == message.message_type:
+            # Need this extra mapping here since the original assumption was this
+            # would be called only for new work items. We are now extending this call
+            # to all updates to give more chances for work item commit resolution to
+            # process in case resolveWorkItemsForCommits fails for any reason on any single
+            # commit.
+            resolve_commits_for_work_items_command = ResolveCommitsForWorkItems(
+                send=dict(
+                    organization_key=message['organization_key'],
+                    work_items_source_key=message['work_items_source_key'],
+                    new_work_items=message['updated_work_items']
+                ),
+                in_response_to=message
+            )
+            self.publish(AnalyticsTopic, resolve_commits_for_work_items_command)
+
+            resolve_pull_requests_for_work_items_command = ResolvePullRequestsForWorkItems(
+                send=dict(
+                    organization_key=message['organization_key'],
+                    work_items_source_key=message['work_items_source_key'],
+                    new_work_items=message['updated_work_items']
+                ),
                 in_response_to=message
             )
             self.publish(AnalyticsTopic, resolve_pull_requests_for_work_items_command)

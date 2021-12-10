@@ -326,10 +326,11 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     @staticmethod
     def process_register_source_file_versions(channel, message):
         organization_key = message['organization_key']
-        repository_name = message['repository_name']
+        repository_key = message['repository_key']
         commit_details = message['commit_details']
         logger.info(
-            f'Organization {organization_key} repository {repository_name}')
+            f'process_register_source_file_versions for organization {organization_key} repository {repository_key}'
+        )
 
         if len(commit_details) > 0:
             return raise_on_failure(
@@ -345,6 +346,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     def process_populate_work_item_source_file_changes_for_commits(channel, message):
         organization_key = message['organization_key']
         commit_details = message['commit_details']
+        logger.info(f'process_populate_work_item_source_file_changes_for_commits '
+                    f'for organization {organization_key} '
+                    f'commits {commit_details} ')
 
         if len(commit_details) > 0:
             return raise_on_failure(
@@ -359,6 +363,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     def process_populate_work_item_source_file_changes_for_work_items(channel, message):
         organization_key = message['organization_key']
         work_items_commits = message['work_items_commits']
+        logger.info(f'process_populate_work_item_source_file_changes_for_work_items '
+                    f'for organization {organization_key} '
+                    f'work_item_commits {work_items_commits} ')
 
         if len(work_items_commits) > 0:
             return raise_on_failure(
@@ -375,7 +382,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         work_item_source_key = message['work_items_source_key']
         new_work_items = message['new_work_items']
         logger.info(
-            f'Process ResolveCommitsForWorkItems for Organization {organization_key} work item source {work_item_source_key}')
+            f'process_resolve_commits_for_work_items for organization {organization_key} '
+            f'work item source {work_item_source_key} '
+            f'new_work_items {new_work_items} ')
 
         if len(new_work_items) > 0:
             return raise_on_failure(
@@ -394,7 +403,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         work_item_source_key = message['work_items_source_key']
         new_work_items = message['new_work_items']
         logger.info(
-            f'Process WorkItemsCreated for Organization {organization_key} work item source {work_item_source_key}')
+            f'process_resolve_pull_requests_for_work_items for organization {organization_key} '
+            f'work item source {work_item_source_key} '
+            f'new_work_items {new_work_items} ')
 
         if len(new_work_items) > 0:
             return raise_on_failure(
@@ -412,7 +423,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         repository_key = message['repository_key']
         pull_request_summaries = message['pull_request_summaries']
         logger.info(
-            f'Process PullRequestsCreated for Organization {organization_key} repository {repository_key}')
+            f'process_process_resolve_work_items_for_pull_requests for organization {organization_key} '
+            f'repository {repository_key} '
+            f'pull_requests {pull_request_summaries} ')
 
         if len(pull_request_summaries) > 0:
             return raise_on_failure(
@@ -429,7 +442,11 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         organization_key = message['organization_key']
         repository_key = message['repository_key']
         commit_summaries = message['new_commits']
-        logger.info(f'Processing resolve_work_items_for_commits for organization {organization_key}')
+
+        logger.info(
+            f'process_resolve_work_items_for_commits for organization {organization_key} '
+            f'repository {repository_key} '
+            f'commits {commit_summaries} ')
 
         if len(commit_summaries) > 0:
             return raise_on_failure(
@@ -448,6 +465,10 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         organization_key = message['organization_key']
         work_items_commits = message['work_items_commits']
 
+        logger.info(
+            f'process_update_commits_work_items_summaries for organization {organization_key} '
+            f'work_items_commits {work_items_commits} ')
+
         if len(work_items_commits) > 0:
             return raise_on_failure(
                 message,
@@ -458,6 +479,10 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     def process_update_work_items_commits_stats(channel, message):
         organization_key = message['organization_key']
         work_items_commits = message['work_items_commits']
+
+        logger.info(
+            f'process_update_work_items_commits_stats for organization {organization_key} '
+            f'work_items_commits {work_items_commits} ')
 
         if len(work_items_commits) > 0:
             return raise_on_failure(
@@ -470,6 +495,10 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         organization_key = message['organization_key']
         work_items_commits = message['work_items_commits']
 
+        logger.info(
+            f'process_compute_implementation_complexity_metrics_for_work_items for organization {organization_key} '
+            f'work_items_commits {work_items_commits} ')
+
         if len(work_items_commits) > 0:
             return raise_on_failure(
                 message,
@@ -480,6 +509,10 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     def process_compute_implementation_complexity_metrics_for_commits(channel, message):
         organization_key = message['organization_key']
         commit_details = message['commit_details']
+
+        logger.info(
+            f'process_compute_implementation_complexity_metrics_for_commits for organization {organization_key} '
+            f'commit_details {commit_details} ')
 
         if len(commit_details) > 0:
             return raise_on_failure(
@@ -492,6 +525,10 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         organization_key = message['organization_key']
         work_items_commits = message['work_items_commits']
 
+        logger.info(
+            f'process_compute_contributor_metrics_for_work_items for organization {organization_key} '
+            f'work_items_commits {work_items_commits} ')
+
         if len(work_items_commits) > 0:
             return raise_on_failure(
                 message,
@@ -501,7 +538,15 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     @staticmethod
     def process_compute_contributor_metrics_for_commits(channel, message):
         organization_key = message['organization_key']
+        repository_name = message['repository_name']
+        repository_key = message['repository_key']
         commit_details = message['commit_details']
+
+        logger.info(
+            f'process_compute_contributor_metrics_for_commits for '
+            f'organization {organization_key} '
+            f'repository {repository_name}({repository_key})'
+        )
 
         if len(commit_details) > 0:
             return raise_on_failure(
@@ -513,6 +558,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     def process_infer_projects_repositories_relationships(channel, message):
         organization_key = message['organization_key']
         work_items_commits = message['work_items_commits']
+        logger.info(f'process_infer_projects_repositories_relationships '
+                    f'for organization {organization_key} '
+                    f'work_items_commits {work_items_commits} ')
 
         if len(work_items_commits) > 0:
             return raise_on_failure(
@@ -524,6 +572,9 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     def process_resolve_work_items_sources_for_repositories(channel, message):
         organization_key = message['organization_key']
         repositories = message['repositories']
+        logger.info(f'process_resolve_work_items_sources_for_repositories '
+                    f'for organization {organization_key} '
+                    f'repositories: {repositories}')
 
         if len(repositories) > 0:
             return raise_on_failure(
@@ -539,7 +590,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         organization_key = message['organization_key']
         assignments = message['contributor_team_assignments']
 
-        logger.info(f"Process resolve contributor team assignments changed for {organization_key}")
+        logger.info(f"process_contributor_team_assignments_changed for {organization_key}")
         if len(assignments) > 0:
             return raise_on_failure(
                 message,
@@ -554,7 +605,10 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         organization_key = message['organization_key']
         work_items_commits = message['work_items_commits']
 
-        logger.info(f"Process resolve teams for work items for {organization_key}")
+        logger.info(
+            f'process_compute_contributor_metrics_for_work_items for organization {organization_key} '
+            f'process_resolve_teams_for_work_items {work_items_commits} ')
+
         if len(work_items_commits) > 0:
             return raise_on_failure(
                 message,

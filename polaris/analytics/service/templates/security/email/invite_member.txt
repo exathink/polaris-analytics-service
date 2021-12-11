@@ -1,3 +1,5 @@
-{{ _('Click the link below to reset your password:') }}
+{{ _('Welcome to Polaris Advisor') }}
+{{ _('The Value Delivery Optimization Program') }}
+{{ _('from Exathink Research') }}
 
-{{ reset_link }}
+Click this link to get started: {{ get_started_link }}

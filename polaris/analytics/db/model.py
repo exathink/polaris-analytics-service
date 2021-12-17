@@ -657,7 +657,7 @@ class SourceFile(Base):
     file_type = Column(String, nullable=False, default='')
     version_count = Column(Integer, nullable=False, default=1)
 
-    repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False)
+    repository_id = Column(Integer, ForeignKey('repositories.id'), nullable=False, index=True)
     repository = relationship('Repository', back_populates='source_files')
 
     # Work Items Source File Relationship

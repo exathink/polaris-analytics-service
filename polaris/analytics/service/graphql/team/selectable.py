@@ -157,7 +157,7 @@ class TeamCommitNodes(ConnectionResolver):
                     repositories.c.organization_id == teams.c.organization_id
                 )
             ).join(
-                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             ).outerjoin(
                 work_items_commits, work_items_commits.c.commit_id == commits.c.id
             )
@@ -801,7 +801,7 @@ class TeamCapacityTrends(InterfaceResolver):
                     commits.c.committer_team_id == team_nodes.c.id
                 )
             ).join(
-                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(
@@ -884,7 +884,7 @@ class TeamCapacityTrends(InterfaceResolver):
                     commits.c.committer_team_id == team_nodes.c.id
                 )
             ).join(
-                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(

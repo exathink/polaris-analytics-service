@@ -344,7 +344,7 @@ class TestProjectCapacityTrends:
                         source_commit_id=uuid.uuid4().hex,
                         repository_id=test_repo.id,
                         commit_date=start_date + timedelta(days=i + 1),
-                        # in this case contributor c is committer only, should still be filtered out.
+                        # in this case contributor c is committer only, should NOT be filtered out.
                         **contributor_a['as_author'],
                         **contributor_c_robot['as_committer'],
                         **commits_common
@@ -408,7 +408,7 @@ class TestProjectCapacityTrends:
 
 
 
-            def it_filters_out_commits_with_robots_as_commiter(self, setup):
+            def it_filters_out_commits_with_robots_as_author(self, setup):
                 fixture = setup
 
                 fixture.create_test_commits(fixture.test_commits)
@@ -424,7 +424,7 @@ class TestProjectCapacityTrends:
                 ))
                 assert result['data']
                 project = result['data']['project']
-                assert len(project['capacityTrends']) == 0
+                assert len(project['capacityTrends']) == 5
 
         class TestContributorDetail:
 
@@ -466,7 +466,7 @@ class TestProjectCapacityTrends:
 
                 )
 
-            def it_filters_out_commits_with_robots_as_committer(self, setup):
+            def it_filters_out_commits_with_robots_as_author(self, setup):
                 fixture = setup
 
                 fixture.create_test_commits(fixture.test_commits)
@@ -482,4 +482,4 @@ class TestProjectCapacityTrends:
                 ))
                 assert result['data']
                 project = result['data']['project']
-                assert len(project['contributorDetail']) == 0
+                assert len(project['contributorDetail']) == 5

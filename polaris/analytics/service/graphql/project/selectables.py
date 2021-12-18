@@ -197,7 +197,7 @@ class ProjectCommitNodes(ConnectionResolver):
             ).join(
                 repositories, commits.c.repository_id == repositories.c.id
             ).join(
-                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(
@@ -217,7 +217,7 @@ class ProjectCommitNodes(ConnectionResolver):
             ).join(
                 commits, commits.c.repository_id == repositories.c.id
             ).join(
-                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             ).outerjoin(
                 work_items_commits, work_items_commits.c.commit_id == commits.c.id
             )
@@ -1678,7 +1678,7 @@ class ProjectsCapacityTrends(InterfaceResolver):
             ).join(
                 commits, projects_repositories.c.repository_id == commits.c.repository_id
             ).join(
-                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(
@@ -1761,7 +1761,7 @@ class ProjectsCapacityTrends(InterfaceResolver):
             ).join(
                 commits, projects_repositories.c.repository_id == commits.c.repository_id
             ).join(
-                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(

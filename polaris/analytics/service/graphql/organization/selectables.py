@@ -250,7 +250,7 @@ class OrganizationCommitNodes(ConnectionResolver):
             ).join(
                 commits
             ).join(
-                contributor_aliases, commits.c.committer_contributor_alias_id == contributor_aliases.c.id
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(

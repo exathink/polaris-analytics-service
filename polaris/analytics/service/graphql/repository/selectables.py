@@ -10,6 +10,7 @@
 from sqlalchemy import select, func, bindparam, and_, distinct, extract, between
 from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
+from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 from polaris.analytics.db.model import repositories, organizations, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases, pull_requests
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, \
@@ -39,11 +40,11 @@ class RepositoryNode:
         )
 
 
-class RepositoryCommitNodes:
+class RepositoryCommitNodes(ConnectionResolver):
     interface = CommitInfo
 
-    @staticmethod
-    def selectable(**kwargs):
+    @classmethod
+    def connection_nodes_selector(cls, **kwargs):
         select_stmt = select([
             *commit_info_columns(repositories, commits)
         ]).select_from(
@@ -58,11 +59,11 @@ class RepositoryCommitNodes:
         return [repository_commit_nodes.c.commit_date.desc()]
 
 
-class RepositoryPullRequestNodes:
+class RepositoryPullRequestNodes(ConnectionResolver):
     interfaces = (NamedNode, PullRequestInfo)
 
-    @staticmethod
-    def selectable(**kwargs):
+    @classmethod
+    def connection_nodes_selector(cls, **kwargs):
         select_stmt = select([
             *pull_request_info_columns(pull_requests)
         ]).select_from(
@@ -80,11 +81,11 @@ class RepositoryPullRequestNodes:
         return [repository_pull_request_nodes.c.end_date.desc().nullsfirst()]
 
 
-class RepositoryContributorNodes:
+class RepositoryContributorNodes(ConnectionResolver):
     interface = NamedNode
 
-    @staticmethod
-    def selectable(**kwargs):
+    @classmethod
+    def connection_nodes_selector(cls, **kwargs):
         return select([
             contributors.c.id,
             contributors.c.key,
@@ -104,11 +105,11 @@ class RepositoryContributorNodes:
         ).distinct()
 
 
-class RepositoryRecentlyActiveContributorNodes:
+class RepositoryRecentlyActiveContributorNodes(ConnectionResolver):
     interfaces = (NamedNode, CommitCount)
 
-    @staticmethod
-    def selectable(**kwargs):
+    @classmethod
+    def connection_nodes_selector(cls, **kwargs):
         end_date = kwargs.get('before') or datetime.utcnow()
         window = time_window(begin=end_date - timedelta(days=kwargs.get('days', 7)), end=end_date)
 
@@ -138,12 +139,12 @@ class RepositoryRecentlyActiveContributorNodes:
         return [recently_active_contributors.c.commit_count.desc()]
 
 
-class RepositoryCumulativeCommitCount:
+class RepositoryCumulativeCommitCount(InterfaceResolver):
 
     interface = CumulativeCommitCount
 
     @staticmethod
-    def selectable(**kwargs):
+    def interface_selector(repositories_nodes, **kwargs):
         commit_counts = select([
             extract('year', commits.c.commit_date).label('year'),
             extract('week', commits.c.commit_date).label('week'),
@@ -166,12 +167,13 @@ class RepositoryCumulativeCommitCount:
             ]).label('cumulative_commit_count')
         ])
 
-class RepositoryWeeklyContributorCount:
+
+class RepositoryWeeklyContributorCount(InterfaceResolver):
 
     interface = WeeklyContributorCount
 
     @staticmethod
-    def selectable(**kwargs):
+    def interface_selector(repositories_nodes, **kwargs):
         return select([
             extract('year', commits.c.commit_date).label('year'),
             extract('week', commits.c.commit_date).label('week'),
@@ -191,7 +193,7 @@ class RepositoriesCommitSummary:
     interface = CommitSummary
 
     @staticmethod
-    def selectable(repositories_nodes, **kwargs):
+    def interface_selector(repositories_nodes, **kwargs):
         return select([
             repositories_nodes.c.id,
             repositories.c.commit_count.label('commit_count'),
@@ -213,7 +215,7 @@ class RepositoriesContributorCount:
     interface = ContributorCount
 
     @staticmethod
-    def selectable(repositories_nodes, **kwargs):
+    def interface_selector(repositories_nodes, **kwargs):
         select_stmt = select([
             repositories_nodes.c.id,
             func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
@@ -234,7 +236,7 @@ class RepositoriesOrganizationRef:
     interface = OrganizationRef
 
     @staticmethod
-    def selectable(repositories_nodes, **kwargs):
+    def interface_selector(repositories_nodes, **kwargs):
         return select([
             repositories_nodes.c.id,
             organizations.c.key,
@@ -248,3 +250,5 @@ class RepositoriesOrganizationRef:
                 organizations, repositories.c.organization_id == organizations.c.id
             )
         )
+
+

@@ -11,14 +11,16 @@ from sqlalchemy import select, func, bindparam, and_, distinct, extract, between
 from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
 from polaris.analytics.db.model import repositories, organizations, contributors, commits, \
-    repositories_contributor_aliases, contributor_aliases
+    repositories_contributor_aliases, contributor_aliases, pull_requests
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, \
-    CommitCount, WeeklyContributorCount
+    CommitCount, WeeklyContributorCount, PullRequestInfo
+
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
 
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
+from ..pull_request.sql_expressions import pull_request_info_columns, pull_requests_connection_apply_filters
 
 
 class RepositoryNode:
@@ -54,6 +56,28 @@ class RepositoryCommitNodes:
     @staticmethod
     def sort_order(repository_commit_nodes, **kwargs):
         return [repository_commit_nodes.c.commit_date.desc()]
+
+
+class RepositoryPullRequestNodes:
+    interfaces = (NamedNode, PullRequestInfo)
+
+    @staticmethod
+    def selectable(**kwargs):
+        select_stmt = select([
+            *pull_request_info_columns(pull_requests)
+        ]).select_from(
+            repositories.join(
+                pull_requests,
+                pull_requests.c.repository_id == repositories.c.id
+            )
+        ).where(
+            repositories.c.key == bindparam('key')
+        )
+        return pull_requests_connection_apply_filters(select_stmt, **kwargs)
+
+    @staticmethod
+    def sort_order(repository_pull_request_nodes, **kwargs):
+        return [repository_pull_request_nodes.c.end_date.desc().nullsfirst()]
 
 
 class RepositoryContributorNodes:

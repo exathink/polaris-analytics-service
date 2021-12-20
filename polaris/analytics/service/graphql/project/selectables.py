@@ -1943,8 +1943,8 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             project_timeline_dates.c.measurement_date,
             pull_requests.c.id.label('pull_request_id'),
             pull_requests.c.state.label('state'),
-            pull_requests.c.updated_at,
-            (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
+            pull_requests.c.end_date,
+            (func.extract('epoch', pull_requests.c.end_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
                 'age'),
         ]).select_from(
             project_timeline_dates.outerjoin(
@@ -1956,9 +1956,9 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             )
         ).where(
             and_(
-                pull_requests.c.state != 'open',
+                pull_requests.c.end_date != None,
                 date_column_is_in_measurement_window(
-                    pull_requests.c.updated_at,
+                    pull_requests.c.end_date,
                     measurement_date=project_timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 )

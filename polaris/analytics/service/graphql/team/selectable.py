@@ -204,8 +204,8 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
             team_timeline_dates.c.measurement_date,
             pull_requests.c.id.label('pull_request_id'),
             pull_requests.c.state.label('state'),
-            pull_requests.c.updated_at,
-            (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
+            pull_requests.c.end_date,
+            (func.extract('epoch', pull_requests.c.end_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
                 'age'),
         ]).select_from(
             team_timeline_dates.outerjoin(
@@ -217,9 +217,9 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
             )
         ).where(
             and_(
-                pull_requests.c.state != 'open',
+                pull_requests.c.end_date != None,
                 date_column_is_in_measurement_window(
-                    pull_requests.c.updated_at,
+                    pull_requests.c.end_date,
                     measurement_date=team_timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 )
@@ -307,7 +307,7 @@ class TeamPullRequestNodes(ConnectionResolver):
             teams.c.key == bindparam('key')
         )
 
-        select_pull_requests = pull_requests_connection_apply_filters(select_pull_requests, kwargs)
+        select_pull_requests = pull_requests_connection_apply_filters(select_pull_requests, **kwargs)
 
         return select_pull_requests
 

@@ -39,7 +39,7 @@ from ..interfaces import \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends, \
     BacklogTrends
-from ..pull_request.sql_expressions import pull_request_info_columns
+from ..pull_request.sql_expressions import pull_request_info_columns, pull_requests_connection_apply_filters
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
@@ -1943,8 +1943,8 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             project_timeline_dates.c.measurement_date,
             pull_requests.c.id.label('pull_request_id'),
             pull_requests.c.state.label('state'),
-            pull_requests.c.updated_at,
-            (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
+            pull_requests.c.end_date,
+            (func.extract('epoch', pull_requests.c.end_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
                 'age'),
         ]).select_from(
             project_timeline_dates.outerjoin(
@@ -1956,9 +1956,9 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             )
         ).where(
             and_(
-                pull_requests.c.state != 'open',
+                pull_requests.c.end_date != None,
                 date_column_is_in_measurement_window(
-                    pull_requests.c.updated_at,
+                    pull_requests.c.end_date,
                     measurement_date=project_timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 )
@@ -2036,20 +2036,9 @@ class ProjectPullRequestNodes(ConnectionResolver):
             projects.c.key == bindparam('key')
         )
 
-        if kwargs.get('active_only'):
-            select_pull_requests = select_pull_requests.where(pull_requests.c.state == 'open')
+        return pull_requests_connection_apply_filters(select_pull_requests, **kwargs)
 
-        if 'closed_within_days' in kwargs:
-            window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
 
-            select_pull_requests = select_pull_requests.where(
-                and_(
-                    pull_requests.c.state != 'open',
-                    pull_requests.c.end_date >= window_start
-                )
-            )
-
-        return select_pull_requests
 
     @staticmethod
     def sort_order(pull_request_nodes, **kwargs):

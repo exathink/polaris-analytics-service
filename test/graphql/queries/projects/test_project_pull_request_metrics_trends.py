@@ -165,7 +165,7 @@ class TestProjectPullRequestMetricsTrends:
                         api_helper = fixture.api_helper
                         # close 1 PR at now() - it should be recognized
                         api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'],
-                                                       update_dict=dict(state='closed', updated_at=datetime.utcnow()))
+                                                       update_dict=dict(state='closed', end_date=datetime.utcnow()))
                         yield fixture
 
                     def it_returns_one_closed_pr_that_was_closed_just_now(self, setup):
@@ -201,7 +201,7 @@ class TestProjectPullRequestMetricsTrends:
                         # close 2nd PR
                         fixture.api_helper.update_pull_request(pull_request_key=fixture.pull_requests[1]['key'],
                                                        update_dict=dict(state='closed',
-                                                                        updated_at=datetime.utcnow()))
+                                                                        end_date=datetime.utcnow()))
 
                         result = client.execute(fixture.query, variable_values=dict(
                             project_key=fixture.project.key
@@ -232,7 +232,7 @@ class TestProjectPullRequestMetricsTrends:
                         # close 2nd PR
                         fixture.api_helper.update_pull_request(pull_request_key=fixture.pull_requests[1]['key'],
                                                        update_dict=dict(state='closed',
-                                                                        updated_at=datetime.utcnow() - timedelta(days=1)))
+                                                                        end_date=datetime.utcnow() - timedelta(days=1)))
 
                         result = client.execute(fixture.query, variable_values=dict(
                             project_key=fixture.project.key

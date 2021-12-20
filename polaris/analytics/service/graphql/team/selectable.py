@@ -33,7 +33,7 @@ from ..commit.sql_expressions import commit_info_columns, commits_connection_app
 
 from ..utils import date_column_is_in_measurement_window, get_timeline_dates_for_trending
 
-from ..pull_request.sql_expressions import pull_request_info_columns
+from ..pull_request.sql_expressions import pull_request_info_columns, pull_requests_connection_apply_filters
 
 from polaris.analytics.db.enums import WorkItemsStateType
 
@@ -204,8 +204,8 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
             team_timeline_dates.c.measurement_date,
             pull_requests.c.id.label('pull_request_id'),
             pull_requests.c.state.label('state'),
-            pull_requests.c.updated_at,
-            (func.extract('epoch', pull_requests.c.updated_at - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
+            pull_requests.c.end_date,
+            (func.extract('epoch', pull_requests.c.end_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
                 'age'),
         ]).select_from(
             team_timeline_dates.outerjoin(
@@ -217,9 +217,9 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
             )
         ).where(
             and_(
-                pull_requests.c.state != 'open',
+                pull_requests.c.end_date != None,
                 date_column_is_in_measurement_window(
-                    pull_requests.c.updated_at,
+                    pull_requests.c.end_date,
                     measurement_date=team_timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 )
@@ -279,6 +279,7 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
             team_timeline_dates.c.id
         )
 
+
 class TeamPullRequestNodes(ConnectionResolver):
     interfaces = (NamedNode, PullRequestInfo)
 
@@ -306,18 +307,7 @@ class TeamPullRequestNodes(ConnectionResolver):
             teams.c.key == bindparam('key')
         )
 
-        if kwargs.get('active_only'):
-            select_pull_requests = select_pull_requests.where(pull_requests.c.state == 'open')
-
-        if 'closed_within_days' in kwargs:
-            window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
-
-            select_pull_requests = select_pull_requests.where(
-                and_(
-                    pull_requests.c.state != 'open',
-                    pull_requests.c.end_date >= window_start
-                )
-            )
+        select_pull_requests = pull_requests_connection_apply_filters(select_pull_requests, **kwargs)
 
         return select_pull_requests
 

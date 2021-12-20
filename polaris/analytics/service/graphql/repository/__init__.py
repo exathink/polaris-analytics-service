@@ -13,11 +13,12 @@ import graphene
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 
-from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, Describable
-from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
+from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, Describable, PullRequestMetricsTrends
+from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, PullRequestMetricsTrendsResolverMixin
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolverMixin
 from ..selectable_field_mixins import CumulativeCommitCountResolverMixin, WeeklyContributorCountsResolverMixin
+from ..arguments import PullRequestMetricsTrendsParameters
 
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
@@ -27,7 +28,8 @@ from .selectables import RepositoryNode, \
     RepositoriesContributorCount, RepositoriesOrganizationRef, \
     RepositoryCommitNodes, \
     RepositoryCumulativeCommitCount, \
-    RepositoryWeeklyContributorCount
+    RepositoryWeeklyContributorCount, \
+    RepositoriesPullRequestMetricsTrends
 
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
@@ -47,16 +49,19 @@ class Repository(
     # field mixins
     CumulativeCommitCountResolverMixin,
     WeeklyContributorCountsResolverMixin,
+    # interface mixins
+    PullRequestMetricsTrendsResolverMixin,
     #
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, ContributorCount, OrganizationRef, Describable)
+        interfaces = (NamedNode, CommitSummary, ContributorCount, OrganizationRef, Describable, PullRequestMetricsTrends )
         named_node_resolver = RepositoryNode
         interface_resolvers = {
             'CommitSummary': RepositoriesCommitSummary,
             'ContributorCount': RepositoriesContributorCount,
-            'OrganizationRef': RepositoriesOrganizationRef
+            'OrganizationRef': RepositoriesOrganizationRef,
+            'PullRequestMetricsTrends': RepositoriesPullRequestMetricsTrends
         }
         connection_node_resolvers = {
             'contributors': RepositoryContributorNodes,
@@ -80,7 +85,12 @@ class Repository(
                 required=False,
                 description="When evaluating contributor count "
                             "return only contributors that have committed code to the project in this many days"
-            )
+            ),
+            pull_request_metrics_trends_args=graphene.Argument(
+                PullRequestMetricsTrendsParameters,
+                required=False,
+                description='Required when resolving PullRequestMetricsTrends interface'
+            ),
         )
 
     @classmethod

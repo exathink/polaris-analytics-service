@@ -7,18 +7,21 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, and_, distinct, extract, between
+from sqlalchemy import select, func, bindparam, and_, distinct, extract, between, literal, cast, Date
 from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 from polaris.analytics.db.model import repositories, organizations, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases, pull_requests
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, \
-    CommitCount, WeeklyContributorCount, PullRequestInfo
+    CommitCount, WeeklyContributorCount, PullRequestInfo, PullRequestMetricsTrends
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
+from polaris.utils.exceptions import ProcessingException
+
+from ..utils import date_column_is_in_measurement_window, get_timeline_dates_for_trending
 
 from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
 from ..pull_request.sql_expressions import pull_request_info_columns, pull_requests_connection_apply_filters
@@ -188,7 +191,6 @@ class RepositoryWeeklyContributorCount(InterfaceResolver):
         )
 
 
-
 class RepositoriesCommitSummary:
     interface = CommitSummary
 
@@ -232,6 +234,7 @@ class RepositoriesContributorCount:
         select_stmt = contributor_count_apply_contributor_days_filter(select_stmt, **kwargs)
         return select_stmt.group_by(repositories_nodes.c.id)
 
+
 class RepositoriesOrganizationRef:
     interface = OrganizationRef
 
@@ -252,3 +255,100 @@ class RepositoriesOrganizationRef:
         )
 
 
+
+class RepositoriesPullRequestMetricsTrends(InterfaceResolver):
+    interface = PullRequestMetricsTrends
+
+    @staticmethod
+    def interface_selector(repositories_nodes, **kwargs):
+        pull_request_metrics_trends_args = kwargs.get('pull_request_metrics_trends_args')
+        age_target_percentile = pull_request_metrics_trends_args.pull_request_age_target_percentile
+        # Get the list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            pull_request_metrics_trends_args,
+            arg_name='pull_request_metrics_trends',
+            interface_name='PullRequestMetricsTrends'
+        )
+        repositories_timeline_dates = select([repositories_nodes.c.id, timeline_dates]).cte()
+
+        measurement_window = pull_request_metrics_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
+            )
+
+        pull_request_attributes = select([
+            repositories_timeline_dates.c.id,
+            repositories_timeline_dates.c.measurement_date,
+            pull_requests.c.id.label('pull_request_id'),
+            pull_requests.c.state.label('state'),
+            pull_requests.c.end_date,
+            (func.extract('epoch', pull_requests.c.end_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
+                'age'),
+        ]).select_from(
+            repositories_timeline_dates.outerjoin(
+                pull_requests, pull_requests.c.repository_id == repositories_timeline_dates.c.id
+            )
+        ).where(
+            and_(
+                pull_requests.c.end_date != None,
+                date_column_is_in_measurement_window(
+                    pull_requests.c.end_date,
+                    measurement_date=repositories_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                )
+            )
+        ).group_by(
+            repositories_timeline_dates.c.id,
+            repositories_timeline_dates.c.measurement_date,
+            pull_requests.c.id
+        ).alias('pull_request_attributes')
+
+        pull_request_metrics = select([
+            pull_request_attributes.c.id,
+            pull_request_attributes.c.measurement_date,
+            func.avg(pull_request_attributes.c.age).label('avg_age'),
+            func.min(pull_request_attributes.c.age).label('min_age'),
+            func.max(pull_request_attributes.c.age).label('max_age'),
+            func.percentile_disc(age_target_percentile).within_group(pull_request_attributes.c.age).label(
+                'percentile_age'),
+            func.count(pull_request_attributes.c.pull_request_id).label('total_closed'),
+            literal(0).label('total_open')
+        ]).select_from(
+            repositories_timeline_dates.outerjoin(
+                pull_request_attributes, and_(
+                    repositories_timeline_dates.c.id == pull_request_attributes.c.id,
+                    repositories_timeline_dates.c.measurement_date == pull_request_attributes.c.measurement_date
+                )
+            )).group_by(
+            pull_request_attributes.c.measurement_date,
+            pull_request_attributes.c.id
+        ).order_by(
+            pull_request_attributes.c.id,
+            pull_request_attributes.c.measurement_date.desc()
+        ).alias('pull_request_metrics')
+
+        return select([
+            repositories_timeline_dates.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(repositories_timeline_dates.c.measurement_date, Date),
+                    'measurement_window', measurement_window,
+                    'total_open', func.coalesce(pull_request_metrics.c.total_open, 0),
+                    'total_closed', func.coalesce(pull_request_metrics.c.total_closed, 0),
+                    'avg_age', func.coalesce(pull_request_metrics.c.avg_age, 0),
+                    'min_age', func.coalesce(pull_request_metrics.c.min_age, 0),
+                    'max_age', func.coalesce(pull_request_metrics.c.max_age, 0),
+                    'percentile_age', func.coalesce(pull_request_metrics.c.percentile_age, 0)
+                )
+            ).label('pull_request_metrics_trends')
+        ]).select_from(
+            repositories_timeline_dates.outerjoin(
+                pull_request_metrics, and_(
+                    repositories_timeline_dates.c.id == pull_request_metrics.c.id,
+                    repositories_timeline_dates.c.measurement_date == pull_request_metrics.c.measurement_date
+                )
+            )
+        ).group_by(
+            repositories_timeline_dates.c.id
+        )

@@ -142,12 +142,12 @@ class RepositoryRecentlyActiveContributorNodes(ConnectionResolver):
         return [recently_active_contributors.c.commit_count.desc()]
 
 
-class RepositoryCumulativeCommitCount(InterfaceResolver):
+class RepositoryCumulativeCommitCount:
 
     interface = CumulativeCommitCount
 
     @staticmethod
-    def interface_selector(repositories_nodes, **kwargs):
+    def selectable(**kwargs):
         commit_counts = select([
             extract('year', commits.c.commit_date).label('year'),
             extract('week', commits.c.commit_date).label('week'),
@@ -171,12 +171,12 @@ class RepositoryCumulativeCommitCount(InterfaceResolver):
         ])
 
 
-class RepositoryWeeklyContributorCount(InterfaceResolver):
+class RepositoryWeeklyContributorCount:
 
     interface = WeeklyContributorCount
 
     @staticmethod
-    def interface_selector(repositories_nodes, **kwargs):
+    def selectable(**kwargs):
         return select([
             extract('year', commits.c.commit_date).label('year'),
             extract('week', commits.c.commit_date).label('week'),

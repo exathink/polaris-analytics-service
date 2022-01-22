@@ -21,7 +21,7 @@
     only:
         - master
     tags:
-      - yarn-runner
+      - polaris-runner
     script:
         - git submodule sync --recursive
         - package submodule_update checkout-clean "${CI_COMMIT_REF_NAME}"
@@ -32,7 +32,7 @@
     only:
         - master
     tags:
-      - yarn-runner
+      - polaris-runner
     script:
         - package test-package
 
@@ -41,7 +41,7 @@
     only:
         - master
     tags:
-      - yarn-runner
+      - polaris-runner
     script:
       - package push
 
@@ -50,7 +50,7 @@
     only:
         - master
     tags:
-        - yarn-runner
+        - polaris-runner
     script: package down
 
 

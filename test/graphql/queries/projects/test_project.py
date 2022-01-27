@@ -90,8 +90,8 @@ def projects_import_commits_fixture(org_repo_fixture, cleanup):
 
 class TestProjectContributorCount:
 
-    def it_implements_the_contributor_count_interface(self, projects_import_commits_fixture):
-        projects, _ = projects_import_commits_fixture
+    def it_implements_the_contributor_count_interface(self, project_fixture):
+        _, _, _, test_project = project_fixture
 
         client = Client(schema)
         query = """
@@ -101,39 +101,13 @@ class TestProjectContributorCount:
                 }
             }
         """
-        result = client.execute(query, variable_values=dict(project_key=projects['mercury'].key))
+        result = client.execute(query, variable_values=dict(project_key=test_project.key))
         assert 'data' in result
         project = result['data']['project']
         assert project['contributorCount'] == 1
 
-    def it_returns_contributor_counts_for_a_specified_days_interval(self, projects_import_commits_fixture):
-        projects, repositories = projects_import_commits_fixture
-
-        api.import_new_commits(
-            organization_key=test_organization_key,
-            repository_key=repositories['alpha'].key,
-            new_commits=[
-                dict(
-                    source_commit_id='c-XXXX',
-                    commit_date=datetime.utcnow(),
-                    key=uuid.uuid4().hex,
-                    commit_date_tz_offset=0,
-                    committer_alias_key=test_contributor_key,
-                    author_date=datetime.utcnow(),
-                    author_date_tz_offset=0,
-                    author_alias_key=test_contributor_key,
-                    created_at=datetime.utcnow(),
-                    commit_message='a change'
-                ),
-            ],
-            new_contributors=[
-                dict(
-                    name='Joe Blow',
-                    key=test_contributor_key,
-                    alias='joe@blow.com'
-                )
-            ]
-        )
+    def it_returns_contributor_counts_for_a_specified_days_interval(self, project_fixture):
+        _, _, _, test_project = project_fixture
 
         client = Client(schema)
         query = """
@@ -144,7 +118,7 @@ class TestProjectContributorCount:
             }
         """
         result = client.execute(query, variable_values=dict(
-            project_key=projects['mercury'].key,
+            project_key=test_project.key,
             days=7
         ))
         assert 'data' in result

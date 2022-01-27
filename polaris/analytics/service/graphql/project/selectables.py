@@ -19,7 +19,7 @@ from polaris.analytics.db.model import projects, projects_repositories, organiza
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
     work_items, work_item_state_transitions, work_items_commits, work_item_delivery_cycles, work_items_source_state_map, \
-    work_item_delivery_cycle_durations, pull_requests
+    work_item_delivery_cycle_durations, pull_requests, work_item_delivery_cycle_contributors
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
     SelectableFieldResolver
 from polaris.graphql.interfaces import NamedNode
@@ -587,24 +587,45 @@ class ProjectsCommitSummary(InterfaceResolver):
 
 class ProjectsContributorCount(InterfaceResolver):
     interface = ContributorCount
+    # A project contributor is someone who has authored code
+    # for that project. If the contributor count days is provided
+    # we filter for those contributors who have authored code that was
+    # committed in given time period.
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
+
         select_stmt = select([
             project_nodes.c.id,
-            func.count(distinct(repositories_contributor_aliases.c.contributor_id)).label('contributor_count')
+            func.count(
+                distinct(
+                    contributor_aliases.c.contributor_id
+                )
+            ).label('contributor_count')
+
         ]).select_from(
             project_nodes.outerjoin(
-                projects_repositories, projects_repositories.c.project_id == project_nodes.c.id
-            ).outerjoin(
-                repositories, projects_repositories.c.repository_id == repositories.c.id
-            ).outerjoin(
-                repositories_contributor_aliases, repositories.c.id == repositories_contributor_aliases.c.repository_id
+                projects, project_nodes.c.id == projects.c.id
+            ).join(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
+            ).join(
+                commits, work_items_commits.c.commit_id == commits.c.id
+            ).join(
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
-            repositories_contributor_aliases.c.robot == False
+            contributor_aliases.c.robot == False
         )
-        select_stmt = contributor_count_apply_contributor_days_filter(select_stmt, **kwargs)
+
+        if 'contributor_count_days' in kwargs and kwargs['contributor_count_days'] > 0:
+            commit_window_start = datetime.utcnow() - timedelta(days=kwargs['contributor_count_days'])
+            select_stmt = select_stmt.where(
+                commits.c.commit_date >= commit_window_start
+            )
 
         return select_stmt.group_by(project_nodes.c.id)
 

@@ -8,17 +8,89 @@
 
 # Author: Krishna Kumar
 
+import uuid
+import pytest
+from datetime import datetime, timedelta
 from graphene.test import Client
-
+from polaris.common import db
+from polaris.utils.collections import Fixture
+from polaris.analytics.db.model import contributors, contributor_aliases
 from polaris.analytics.service.graphql import schema
-from test.fixtures.graphql import *
+
+from test.fixtures.graphql import org_repo_fixture, commits_fixture, cleanup, \
+    get_date, work_items_common, create_work_item_commits, create_project_work_items, \
+    work_items_source_common, generate_n_work_items, generate_work_item
+from test.fixtures.fixture_helpers import create_test_commits
+
 from test.graphql.queries.projects.shared_testing_mixins import \
     TrendingWindowMeasurementDate
 
+def create_commit_sequence(repository, contributor, end_date, start_date_offset_days, days_increment,
+                           author=None, committer=None, common_commit_fields=None, session=None):
+    commits = []
+    start_date  = end_date - timedelta(days=start_date_offset_days)
+    commit_date = start_date
+    while commit_date <= end_date:
+        commits.extend([
+            dict(
+                key=uuid.uuid4().hex,
+                source_commit_id=uuid.uuid4().hex,
+                repository_id=repository.id,
+                commit_date=commit_date,
+                **(contributor if author is None else author)['as_author'],
+                **(contributor if committer is None else committer)['as_committer'],
+                **(common_commit_fields if common_commit_fields is not None else {})
+            )
+        ])
+        commit_date = commit_date + timedelta(days=days_increment)
+    create_test_commits(commits, session=session)
+    return commits
+
+def create_work_items_in_project(organization, project, work_items):
+    create_project_work_items(
+        organization,
+        project,
+        source_data=dict(
+            integration_type='github',
+            commit_mapping_scope='repository',
+            commit_mapping_scope_key=uuid.uuid4().hex,
+            **work_items_source_common
+        ),
+        items_data=work_items
+    )
+
+
+def create_commit_sequence_in_project(
+        organization,
+        project,
+        repository,
+        contributor,
+        end_date,
+        start_date_offset_days,
+        days_increment,
+        commits_common=None,
+        author=None,
+        committer=None,
+        session=None
+):
+    commit_sequence = create_commit_sequence(
+        repository,
+        contributor=contributor,
+        end_date=end_date,
+        start_date_offset_days=start_date_offset_days,
+        days_increment=days_increment,
+        common_commit_fields=commits_common,
+        author=author,
+        committer=committer,
+        session=session
+    )
+    test_work_item = generate_work_item(name='foo', display_id='1000')
+    create_work_items_in_project(organization, project, [test_work_item])
+    create_work_item_commits(test_work_item['key'], [commit['key'] for commit in commit_sequence])
+    return commit_sequence
+
 
 class TestProjectCapacityTrends:
-
-
     @pytest.fixture
     def setup(self, org_repo_fixture, cleanup):
         organization, projects, repositories = org_repo_fixture
@@ -78,14 +150,14 @@ class TestProjectCapacityTrends:
         yield Fixture(
             organization=organization,
             project=projects['mercury'],
-            repositories=repositories,
+            reposities=repositories,
 
             contributor_a=contributors_fixture[0],
             contributor_b=contributors_fixture[1],
             contributor_c_robot=contributors_fixture[2],
 
             commits_common=commits_common,
-            create_test_commits=create_test_commits,
+
         )
 
     class TestTrendingWindows(
@@ -129,49 +201,7 @@ class TestProjectCapacityTrends:
                 output_attribute='capacityTrends'
             )
 
-    class TestCommitDays:
-        @pytest.fixture
-        def setup(self, setup):
-            fixture = setup
-            test_repo = fixture.repositories['alpha']
-            contributor_a = fixture.contributor_a
-            contributor_b = fixture.contributor_b
-            commits_common = fixture.commits_common
-
-            start_date = datetime.utcnow() - timedelta(days=60)
-            commits = []
-            for i in range(0, 60):
-                commits.extend([
-                    dict(
-                        key=uuid.uuid4().hex,
-                        source_commit_id=uuid.uuid4().hex,
-                        repository_id=test_repo.id,
-                        commit_date=start_date + timedelta(days=i + 1),
-                        **contributor_a['as_author'],
-                        **contributor_a['as_committer'],
-                        **commits_common
-                    ),
-                    dict(
-                        key=uuid.uuid4().hex,
-                        source_commit_id=uuid.uuid4().hex,
-                        repository_id=test_repo.id,
-                        commit_date=start_date + timedelta(days=i + 1),
-                        **contributor_b['as_author'],
-                        **contributor_b['as_committer'],
-                        **commits_common
-                    ),
-                ])
-
-
-
-
-            yield Fixture(
-                parent=fixture,
-                test_commits=commits,
-            )
-
-
-
+    class TestCapacityTrends:
         class TestAggregateMetrics:
 
             @pytest.fixture
@@ -212,15 +242,24 @@ class TestProjectCapacityTrends:
                 )
 
 
-            def it_returns_an_empty_list_when_there_are_no_commits(self, setup):
+            def it_returns_an_empty_list_when_there_are_commits_but_no_commits_mapped_to_the_project(self, setup):
                 fixture = setup
+                project = fixture.project
+                repository = project.repositories[0]
+                create_commit_sequence(
+                    repository,
+                    contributor=fixture.contributor_a,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    common_commit_fields=fixture.commits_common
+                )
 
-                # Dont create commits before calling the query
 
                 client = Client(schema)
 
                 result = client.execute(fixture.query, variable_values=dict(
-                    project_key=fixture.project.key,
+                    project_key=project.key,
                     days=30,
                     window=30,
                     sample=7,
@@ -231,10 +270,33 @@ class TestProjectCapacityTrends:
                 assert len(project['capacityTrends']) == 0
 
 
-            def it_returns_commit_days_metrics(self, setup):
+            def it_returns_aggregate_commit_days_when_there_are_commits_mapped_to_the_project(self, setup):
                 fixture = setup
 
-                fixture.create_test_commits(fixture.test_commits)
+                # contributor_a_commits in project
+
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[0],
+                    fixture.contributor_a,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+                )
+                # contributor_b_commits in project
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[1],
+                    fixture.contributor_b,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+
+                )
 
                 client = Client(schema)
 
@@ -253,8 +315,6 @@ class TestProjectCapacityTrends:
                     assert capacityTrend['minCommitDays'] == 30
                     assert capacityTrend['maxCommitDays'] == 30
                     assert capacityTrend['avgCommitDays'] == 30
-
-
 
 
 
@@ -298,11 +358,31 @@ class TestProjectCapacityTrends:
 
                 )
 
-            def it_returns_contributor_detail_metrics(self, setup):
+            def it_returns_contributor_detail_metrics_when_there_are_commits_mapped_to_the_project(self, setup):
                 fixture = setup
 
-                fixture.create_test_commits(fixture.test_commits)
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[0],
+                    fixture.contributor_a,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+                )
+                # contributor_b_commits in project
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[1],
+                    fixture.contributor_b,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
 
+                )
                 client = Client(schema)
 
                 result = client.execute(fixture.query, variable_values=dict(
@@ -326,47 +406,6 @@ class TestProjectCapacityTrends:
 
 
     class TestRobotFiltering:
-        @pytest.fixture
-        def setup(self, setup):
-            fixture = setup
-            test_repo = fixture.repositories['alpha']
-            contributor_a = fixture.contributor_a
-
-            contributor_c_robot = fixture.contributor_c_robot
-            commits_common = fixture.commits_common
-
-            start_date = datetime.utcnow() - timedelta(days=60)
-            commits = []
-            for i in range(0, 60):
-                commits.extend([
-                    dict(
-                        key=uuid.uuid4().hex,
-                        source_commit_id=uuid.uuid4().hex,
-                        repository_id=test_repo.id,
-                        commit_date=start_date + timedelta(days=i + 1),
-                        # in this case contributor c is committer only, should NOT be filtered out.
-                        **contributor_a['as_author'],
-                        **contributor_c_robot['as_committer'],
-                        **commits_common
-                    ),
-                    dict(
-                        key=uuid.uuid4().hex,
-                        source_commit_id=uuid.uuid4().hex,
-                        repository_id=test_repo.id,
-                        commit_date=start_date + timedelta(days=i + 1),
-                        # In this case contributor c is both author and committer
-                        # should be filtered out
-                        **contributor_c_robot['as_author'],
-                        **contributor_c_robot['as_committer'],
-                        **commits_common
-                    ),
-                ])
-
-            yield Fixture(
-                parent=fixture,
-                test_commits=commits,
-            )
-
         class TestAggregateMetrics:
 
             @pytest.fixture
@@ -411,7 +450,30 @@ class TestProjectCapacityTrends:
             def it_filters_out_commits_with_robots_as_author(self, setup):
                 fixture = setup
 
-                fixture.create_test_commits(fixture.test_commits)
+                # contributor_a_commits with robot as author in project
+
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[0],
+                    fixture.contributor_a,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+                    author=fixture.contributor_c_robot
+                )
+                # contributor_b_commits in project as author and committer
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[1],
+                    fixture.contributor_b,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+                )
 
                 client = Client(schema)
 
@@ -469,7 +531,29 @@ class TestProjectCapacityTrends:
             def it_filters_out_commits_with_robots_as_author(self, setup):
                 fixture = setup
 
-                fixture.create_test_commits(fixture.test_commits)
+                # robot author
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[0],
+                    fixture.contributor_a,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+                    author=fixture.contributor_c_robot
+                )
+                # no robot author
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[1],
+                    fixture.contributor_b,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+                )
 
                 client = Client(schema)
 

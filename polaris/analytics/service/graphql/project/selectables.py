@@ -1687,6 +1687,8 @@ class ProjectsCapacityTrends(InterfaceResolver):
     def get_aggregate_capacity_trends(cls, measurement_window, project_nodes, timeline_dates):
 
         select_capacity = select([
+            # Note - See related comment in get_contributor_level_capacity_trends
+            # we are doing the cross join to projects here deliberately.
             projects.c.id,
             timeline_dates.c.measurement_date,
             commits.c.author_contributor_key,
@@ -1695,9 +1697,13 @@ class ProjectsCapacityTrends(InterfaceResolver):
             timeline_dates.join(
                 projects, true()
             ).join(
-                projects_repositories, projects_repositories.c.project_id == projects.c.id
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
-                commits, projects_repositories.c.repository_id == commits.c.repository_id
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
+            ).join(
+                commits, work_items_commits.c.commit_id == commits.c.id
             ).join(
                 contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
@@ -1778,9 +1784,13 @@ class ProjectsCapacityTrends(InterfaceResolver):
             projects.join(
                 timeline_dates, true()
             ).join(
-                projects_repositories, projects_repositories.c.project_id == projects.c.id
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
-                commits, projects_repositories.c.repository_id == commits.c.repository_id
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
+            ).join(
+                commits, work_items_commits.c.commit_id == commits.c.id
             ).join(
                 contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )

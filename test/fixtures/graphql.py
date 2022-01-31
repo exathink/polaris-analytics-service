@@ -239,9 +239,9 @@ def commit_summary_common_fields(commits_fixture):
     )
 
 
-def create_test_commits(test_commits):
-    with db.create_session() as session:
-        session.connection.execute(
+def create_test_commits(test_commits, session=None):
+    with db.orm_session(join_this=session) as session:
+        session.connection().execute(
             commits.insert(test_commits)
         )
 
@@ -606,32 +606,32 @@ def setup_work_item_transitions(work_items_fixture):
 
     db.connection().execute("delete from analytics.work_item_state_transitions")
 
+def generate_work_item(name, display_id, created_date=None, updated_date=None):
+    return dict(
+        key=uuid.uuid4().hex,
+        name=name,
+        display_id=display_id,
+        created_at=created_date if created_date is not None else datetime.today(),
+        updated_at=updated_date if updated_date is not None else datetime.today(),
+        **work_items_common
+    )
+
+
+def generate_n_work_items(n):
+    return [
+        generate_work_item(name=f'Issue {i}', display_id=f'100{i}')
+        for i in range(0,n)
+    ]
 
 @pytest.fixture
 def project_fixture(commits_fixture):
     organization, _, repositories, _ = commits_fixture
     project = organization.projects[0]
     test_repo = repositories['alpha']
-    new_key = uuid.uuid4()
-    new_work_items = [
-        dict(
-            key=new_key.hex,
-            name='Issue 1',
-            display_id='1000',
-            created_at=get_date("2018-12-02"),
-            updated_at=get_date("2018-12-03"),
-            **work_items_common
-        ),
-        dict(
-            key=uuid.uuid4().hex,
-            name='Issue 2',
-            display_id='2000',
-            created_at=get_date("2018-12-03"),
-            updated_at=get_date("2018-12-04"),
-            **work_items_common
-        ),
 
-    ]
+    new_work_items = generate_n_work_items(2)
+
+    new_key = new_work_items[0]['key'],
     create_project_work_items(
         organization,
         project,

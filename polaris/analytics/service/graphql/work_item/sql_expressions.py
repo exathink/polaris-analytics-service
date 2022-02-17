@@ -292,9 +292,19 @@ def apply_active_within_days_filter(select_stmt, work_items, work_item_delivery_
 
 def apply_specs_only_filter(select_stmt, work_items, work_item_delivery_cycles, **kwargs):
     if kwargs.get('specs_only'):
-        select_stmt = select_stmt.where(
-            work_item_delivery_cycles.c.commit_count > 0
-        )
+        if kwargs.get('include_epics'):
+            select_stmt = select_stmt.where(
+                or_(
+                    # The notion of specs does not apply to epics only to cards
+                    # we are simply going to allow all epics as specs if include epics is true
+                    work_items.c.is_epic == True,
+                    work_item_delivery_cycles.c.commit_count > 0,
+                )
+            )
+        else:
+            select_stmt = select_stmt.where(
+                work_item_delivery_cycles.c.commit_count > 0
+            )
     return select_stmt
 
 

@@ -58,18 +58,18 @@
         - polaris-runner
     script: package down
 
-deploy:
-  stage: deploy
-  environment:
-    name: production
+  deploy:
+    stage: deploy
+    environment:
+      name: production
 
-  tags:
+    tags:
       - polaris-runner
-  script:
+    script:
       - echo "deploy to production"
       - package aws deploy
 
-  rules:
+    rules:
       - if: $CI_COMMIT_BRANCH == 'production' && $CI_COMMIT_MESSAGE =~ /\[deploy]/
 
       - if: $CI_COMMIT_BRANCH == 'production'

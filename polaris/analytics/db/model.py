@@ -593,7 +593,7 @@ class Commit(Base):
 
     author_contributor_name = Column(String, nullable=True)
     author_contributor_key = Column(UUID(as_uuid=True), nullable=True)
-    author_date = Column(DateTime, nullable=True)
+    author_date = Column(DateTime, index=True, nullable=True)
     author_date_tz_offset = Column(Integer, default=0)
     author_contributor_alias_id = Column(Integer, ForeignKey('contributor_aliases.id'), nullable=False, index=True)
     author_team_id = Column(Integer, ForeignKey('teams.id'), nullable=True, index=True)

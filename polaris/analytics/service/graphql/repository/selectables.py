@@ -7,14 +7,15 @@
 # confidential.
 
 # Author: Krishna Kumar
-from sqlalchemy import select, func, bindparam, and_, distinct, extract, between, literal, cast, Date
+from polaris.common import db
+from sqlalchemy import select, func, bindparam, and_, distinct, extract, between, literal, cast, Date, case
 from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 from polaris.analytics.db.model import repositories, organizations, contributors, commits, \
-    repositories_contributor_aliases, contributor_aliases, pull_requests
+    repositories_contributor_aliases, contributor_aliases, pull_requests, work_items_commits
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, \
-    CommitCount, WeeklyContributorCount, PullRequestInfo, PullRequestMetricsTrends
+    CommitCount, WeeklyContributorCount, PullRequestInfo, PullRequestMetricsTrends, TraceabilityTrends
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 from datetime import datetime, timedelta
@@ -347,6 +348,88 @@ class RepositoriesPullRequestMetricsTrends(InterfaceResolver):
                 pull_request_metrics, and_(
                     repositories_timeline_dates.c.id == pull_request_metrics.c.id,
                     repositories_timeline_dates.c.measurement_date == pull_request_metrics.c.measurement_date
+                )
+            )
+        ).group_by(
+            repositories_timeline_dates.c.id
+        )
+
+class RepositoriesTraceabilityTrends(InterfaceResolver):
+    interface = TraceabilityTrends
+
+    @staticmethod
+    def interface_selector(repository_nodes, **kwargs):
+        traceability_trends_args = kwargs.get('traceability_trends_args')
+        measurement_window = traceability_trends_args.measurement_window
+
+        # Get the a list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            traceability_trends_args,
+            arg_name='traceability_trends',
+            interface_name='TraceabilityTrends'
+        )
+
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+            )
+
+        repositories_timeline_dates = select([repository_nodes, timeline_dates]).alias()
+
+        # we compute the total commits and spec counts for
+        # each measurement date and repository combination.
+        # for each of these points we are aggrgating the commits
+        # that fall within the window to count the commits and specs
+        traceability_metrics = select([
+            repositories_timeline_dates.c.id,
+            repositories_timeline_dates.c.measurement_date,
+            func.count(commits.c.id.distinct()).label('total_commits'),
+            func.count(commits.c.id.distinct()).filter(
+                work_items_commits.c.work_item_id != None
+            ).label('spec_count')
+        ]).select_from(
+            repositories_timeline_dates.join(
+                commits,
+                commits.c.repository_id == repositories_timeline_dates.c.id
+            ).outerjoin(
+                work_items_commits,
+                work_items_commits.c.commit_id == commits.c.id
+            )
+        ).where(
+            date_column_is_in_measurement_window(
+                commits.c.commit_date,
+                measurement_date=repositories_timeline_dates.c.measurement_date,
+                measurement_window=measurement_window
+            )
+        ).group_by(
+            repositories_timeline_dates.c.id,
+            repositories_timeline_dates.c.measurement_date
+        ).order_by(
+            repositories_timeline_dates.c.id,
+            repositories_timeline_dates.c.measurement_date.desc()
+        ).alias()
+
+        return select([
+            repositories_timeline_dates.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', cast(repositories_timeline_dates.c.measurement_date, Date),
+                    'measurement_window', measurement_window,
+                    'total_commits', func.coalesce(traceability_metrics.c.total_commits, 0),
+                    'spec_count', func.coalesce(traceability_metrics.c.spec_count, 0),
+                    'nospec_count', func.coalesce(traceability_metrics.c.total_commits - traceability_metrics.c.spec_count, 0),
+                    'traceability', case([
+                            (traceability_metrics.c.total_commits > 0, (traceability_metrics.c.spec_count/(traceability_metrics.c.total_commits*1.0)))
+                        ], else_=0
+                    )
+                )
+            ).label('traceability_trends')
+        ]).select_from(
+            repositories_timeline_dates.outerjoin(
+                traceability_metrics,
+                and_(
+                    repositories_timeline_dates.c.id == traceability_metrics.c.id,
+                    repositories_timeline_dates.c.measurement_date == traceability_metrics.c.measurement_date
                 )
             )
         ).group_by(

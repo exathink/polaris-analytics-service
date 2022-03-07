@@ -13,12 +13,12 @@ import graphene
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 
-from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, Describable, PullRequestMetricsTrends
-from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, PullRequestMetricsTrendsResolverMixin
+from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, Describable, PullRequestMetricsTrends, TraceabilityTrends
+from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, PullRequestMetricsTrendsResolverMixin, TraceabilityTrendsResolverMixin
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import ActivityLevelSummaryResolverMixin, InceptionsResolverMixin
 from ..selectable_field_mixins import CumulativeCommitCountResolverMixin, WeeklyContributorCountsResolverMixin
-from ..arguments import PullRequestMetricsTrendsParameters
+from ..arguments import PullRequestMetricsTrendsParameters, TraceabilityMetricsTrendsParameters
 
 from .selectables import RepositoryNode, \
     RepositoriesCommitSummary, \
@@ -29,7 +29,8 @@ from .selectables import RepositoryNode, \
     RepositoryCommitNodes, \
     RepositoryCumulativeCommitCount, \
     RepositoryWeeklyContributorCount, \
-    RepositoriesPullRequestMetricsTrends
+    RepositoriesPullRequestMetricsTrends, \
+    RepositoriesTraceabilityTrends
 
 from ..contributor import ContributorsConnectionMixin, RecentlyActiveContributorsConnectionMixin
 from ..commit import CommitsConnectionMixin
@@ -51,17 +52,19 @@ class Repository(
     WeeklyContributorCountsResolverMixin,
     # interface mixins
     PullRequestMetricsTrendsResolverMixin,
+    TraceabilityTrendsResolverMixin,
     #
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, CommitSummary, ContributorCount, OrganizationRef, Describable, PullRequestMetricsTrends )
+        interfaces = (NamedNode, CommitSummary, ContributorCount, OrganizationRef, Describable, PullRequestMetricsTrends, TraceabilityTrends)
         named_node_resolver = RepositoryNode
         interface_resolvers = {
             'CommitSummary': RepositoriesCommitSummary,
             'ContributorCount': RepositoriesContributorCount,
             'OrganizationRef': RepositoriesOrganizationRef,
-            'PullRequestMetricsTrends': RepositoriesPullRequestMetricsTrends
+            'PullRequestMetricsTrends': RepositoriesPullRequestMetricsTrends,
+            'TraceabilityTrends': RepositoriesTraceabilityTrends
         }
         connection_node_resolvers = {
             'contributors': RepositoryContributorNodes,
@@ -91,6 +94,11 @@ class Repository(
                 required=False,
                 description='Required when resolving PullRequestMetricsTrends interface'
             ),
+            traceability_trends_args=graphene.Argument(
+                TraceabilityMetricsTrendsParameters,
+                required=False,
+                description='Required when resolving TraceabilityTrends interface'
+            ),
         )
 
     @classmethod
@@ -109,7 +117,13 @@ class Repositories(
 
 
 class RepositoriesConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
-    repositories = Repository.ConnectionField()
+    repositories = Repository.ConnectionField(
+        traceability_trends_args=graphene.Argument(
+            TraceabilityMetricsTrendsParameters,
+            required=False,
+            description='Required when resolving TraceabilityTrends interface'
+        ),
+    )
 
     def resolve_repositories(self, info, **kwargs):
         return Repository.resolve_connection(

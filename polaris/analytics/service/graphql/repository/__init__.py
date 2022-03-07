@@ -118,6 +118,12 @@ class Repositories(
 
 class RepositoriesConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
     repositories = Repository.ConnectionField(
+        contributor_count_days=graphene.Argument(
+            graphene.Int,
+            required=False,
+            description="When evaluating contributor count "
+                        "return only contributors that have committed code to the project in this many days"
+        ),
         traceability_trends_args=graphene.Argument(
             TraceabilityMetricsTrendsParameters,
             required=False,

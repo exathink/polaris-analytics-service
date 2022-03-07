@@ -380,7 +380,7 @@ class RepositoriesTraceabilityTrends(InterfaceResolver):
         # each measurement date and repository combination.
         # for each of these points we are aggrgating the commits
         # that fall within the window to count the commits and specs
-        traceability_metrics = select([
+        traceability_metrics_base = select([
             repositories_timeline_dates.c.id,
             repositories_timeline_dates.c.measurement_date,
             func.count(commits.c.id.distinct()).label('total_commits'),
@@ -404,16 +404,31 @@ class RepositoriesTraceabilityTrends(InterfaceResolver):
         ).group_by(
             repositories_timeline_dates.c.id,
             repositories_timeline_dates.c.measurement_date
+        ).alias()
+        # outer join with the timeline dates to make sure we get one entry per repository and date in the
+        # series and that the series is ordered by descending date.
+        traceability_metrics = select([
+            repositories_timeline_dates.c.id,
+            repositories_timeline_dates.c.measurement_date,
+            traceability_metrics_base.c.total_commits,
+            traceability_metrics_base.c.spec_count
+        ]).select_from(
+            repositories_timeline_dates.outerjoin(
+                traceability_metrics_base,
+                and_(
+                    repositories_timeline_dates.c.id == traceability_metrics_base.c.id,
+                    repositories_timeline_dates.c.measurement_date == traceability_metrics_base.c.measurement_date
+                )
+            )
         ).order_by(
             repositories_timeline_dates.c.id,
             repositories_timeline_dates.c.measurement_date.desc()
         ).alias()
-
         return select([
-            repositories_timeline_dates.c.id,
+            traceability_metrics.c.id,
             func.json_agg(
                 func.json_build_object(
-                    'measurement_date', cast(repositories_timeline_dates.c.measurement_date, Date),
+                    'measurement_date', cast(traceability_metrics.c.measurement_date, Date),
                     'measurement_window', measurement_window,
                     'total_commits', func.coalesce(traceability_metrics.c.total_commits, 0),
                     'spec_count', func.coalesce(traceability_metrics.c.spec_count, 0),
@@ -425,13 +440,7 @@ class RepositoriesTraceabilityTrends(InterfaceResolver):
                 )
             ).label('traceability_trends')
         ]).select_from(
-            repositories_timeline_dates.outerjoin(
-                traceability_metrics,
-                and_(
-                    repositories_timeline_dates.c.id == traceability_metrics.c.id,
-                    repositories_timeline_dates.c.measurement_date == traceability_metrics.c.measurement_date
-                )
-            )
+            traceability_metrics
         ).group_by(
-            repositories_timeline_dates.c.id
+            traceability_metrics.c.id
         )

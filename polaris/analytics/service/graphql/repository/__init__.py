@@ -124,6 +124,11 @@ class RepositoriesConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             description="When evaluating contributor count "
                         "return only contributors that have committed code to the project in this many days"
         ),
+        pull_request_metrics_trends_args=graphene.Argument(
+            PullRequestMetricsTrendsParameters,
+            required=False,
+            description='Required when resolving PullRequestMetricsTrends interface'
+        ),
         traceability_trends_args=graphene.Argument(
             TraceabilityMetricsTrendsParameters,
             required=False,

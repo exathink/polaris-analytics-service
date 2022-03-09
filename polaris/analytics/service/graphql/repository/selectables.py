@@ -362,42 +362,67 @@ class RepositoriesTraceabilityTrends(InterfaceResolver):
         traceability_trends_args = kwargs.get('traceability_trends_args')
         measurement_window = traceability_trends_args.measurement_window
 
-        # Get the a list of dates for trending using the trends_args for control
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+            )
+
+        # Get a list of dates for trending using the trends_args for control
         timeline_dates = get_timeline_dates_for_trending(
             traceability_trends_args,
             arg_name='traceability_trends',
             interface_name='TraceabilityTrends'
         )
 
-        if measurement_window is None:
-            raise ProcessingException(
-                "'measurement_window' must be specified when calculating ProjectCycleMetricsTrends"
+        # compute the overall span of dates in the trending window so we can scan and load all the
+        # relevant commits that fall within that window. This should be more efficient than scanning
+        # all the repositories and then the commits for each measurement point.
+        timeline_span = select([
+            (func.min(timeline_dates.c.measurement_date) - timedelta(days=measurement_window)).label('window_start'),
+            func.max(timeline_dates.c.measurement_date).label('window_end')
+        ]).cte()
+        # find the candidate commits.
+        candidate_commits = select([
+            repository_nodes.c.id.label('repository_id'),
+            commits.c.id.label('commit_id'),
+            commits.c.commit_date
+        ]).select_from(
+            repository_nodes.join(
+                commits, commits.c.repository_id == repository_nodes.c.id
             )
+        ).where(
+            commits.c.commit_date.between(
+                timeline_span.c.window_start,
+                timeline_span.c.window_end
+            )
+        ).cte()
 
+        # do the cross join to compute one row for each repo and each trend measurement date
+        # we will compute the traceability metrics for each of these rows
         repositories_timeline_dates = select([repository_nodes, timeline_dates]).alias()
 
         # we compute the total commits and spec counts for
         # each measurement date and repository combination.
-        # for each of these points we are aggrgating the commits
+        # for each of these points we are aggrgating the candidate commits
         # that fall within the window to count the commits and specs
         traceability_metrics_base = select([
             repositories_timeline_dates.c.id,
             repositories_timeline_dates.c.measurement_date,
-            func.count(commits.c.id.distinct()).label('total_commits'),
-            func.count(commits.c.id.distinct()).filter(
+            func.count(candidate_commits.c.commit_id.distinct()).label('total_commits'),
+            func.count(candidate_commits.c.commit_id.distinct()).filter(
                 work_items_commits.c.work_item_id != None
             ).label('spec_count')
         ]).select_from(
             repositories_timeline_dates.join(
-                commits,
-                commits.c.repository_id == repositories_timeline_dates.c.id
+                candidate_commits,
+                candidate_commits.c.repository_id == repositories_timeline_dates.c.id
             ).outerjoin(
                 work_items_commits,
-                work_items_commits.c.commit_id == commits.c.id
+                work_items_commits.c.commit_id == candidate_commits.c.commit_id
             )
         ).where(
             date_column_is_in_measurement_window(
-                commits.c.commit_date,
+                candidate_commits.c.commit_date,
                 measurement_date=repositories_timeline_dates.c.measurement_date,
                 measurement_window=measurement_window
             )

@@ -715,7 +715,7 @@ class TestProjectTraceabilityTrends:
                ]
 
         # now we test the metrics for venus. which shares commits with mercury, but does not have  work items, so its
-        # spec count should be zero and spec_count + non_spec_count should be < total commit count
+        # spec count should be zero and total commits should match that of alpha.
 
         result = client.execute(self.project_traceability_query, variable_values=dict(
             project_key=fixture.projects['venus'].key,
@@ -726,8 +726,6 @@ class TestProjectTraceabilityTrends:
         assert result['data']
         traceability_trends = result['data']['project']['traceabilityTrends']
 
-        # the first set of assertions tests the metrics for mercury, which should not have changed in
-        # from the last test.
 
         # there should one measurement per sample in the measurement window, including each end point.
         assert len(traceability_trends) == 5
@@ -739,13 +737,13 @@ class TestProjectTraceabilityTrends:
                    dict(
                        traceability=0.0,
                        specCount=0,
-                       nospecCount=0,
+                       nospecCount=1,
                        totalCommits=1
                    ),
                    dict(
                        traceability=0.0,
                        specCount=0,
-                       nospecCount=1,
+                       nospecCount=2,
                        totalCommits=2
                    ),
                    dict(

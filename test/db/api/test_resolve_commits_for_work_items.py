@@ -13,7 +13,7 @@ from polaris.analytics.db import api
 from polaris.analytics.db.model import work_items as work_items_impl
 from test.fixtures.work_item_commit_resolution import *
 from polaris.utils.collections import dict_merge
-
+from datetime import datetime, date, timedelta
 
 class TestSingleRepo:
 
@@ -25,7 +25,7 @@ class TestSingleRepo:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -47,7 +47,7 @@ class TestSingleRepo:
                 key=test_commit_key,
                 source_commit_id=test_commit_source_id,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -70,7 +70,7 @@ class TestSingleRepo:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -92,7 +92,7 @@ class TestSingleRepo:
                 key=test_commit_key,
                 source_commit_id=test_commit_source_id,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -112,7 +112,7 @@ class TestSingleRepo:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -134,7 +134,7 @@ class TestSingleRepo:
                 key=test_commit_key,
                 source_commit_id=test_commit_source_id,
                 commit_message="Another change.",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **dict_merge(
                     commits_common_fields(commits_fixture),
                     dict(created_on_branch="1000")
@@ -161,19 +161,19 @@ class TestSingleRepo:
             dict(
                 key=key_1000,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             ),
             dict(
                 key=key_1002,
                 display_id='1002',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             ),
             dict(
                 key=uuid.uuid4(),
                 display_id='1003',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -197,7 +197,7 @@ class TestSingleRepo:
                 key=commit_1000_key,
                 source_commit_id=commit_1000_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             ),
             dict(
@@ -205,7 +205,7 @@ class TestSingleRepo:
                 key=commit_1002_key,
                 source_commit_id=commit_1002_key,
                 commit_message="Another change. Fixes issue #1002",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             ),
             dict(
@@ -213,7 +213,7 @@ class TestSingleRepo:
                 key=uuid.uuid4(),
                 source_commit_id=uuid.uuid4(),
                 commit_message="Another change. Fixes no issues",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -232,7 +232,7 @@ class TestSingleRepo:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -254,7 +254,7 @@ class TestSingleRepo:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -273,7 +273,7 @@ class TestSingleRepo:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -294,7 +294,7 @@ class TestSingleRepo:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-01"),
+                author_date=datetime.utcnow() + timedelta(days=-1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -313,7 +313,7 @@ class TestSingleRepo:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -334,10 +334,10 @@ class TestSingleRepo:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **dict_merge(
                     commits_common_fields(commits_fixture),
-                    dict(commit_date=get_date("2018-12-04"))
+                    dict(commit_date=datetime.utcnow() + timedelta(days=2))
                 )
             )
         ])
@@ -356,7 +356,7 @@ class TestSingleRepo:
             dict(
                 key=new_key,
                 display_id='999',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             ),
             dict(
@@ -383,7 +383,7 @@ class TestSingleRepo:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **dict_merge(
                     commits_common_fields(commits_fixture),
                     dict(commit_date=get_date("2019-12-01"))
@@ -410,7 +410,7 @@ class TestMultipleRepos:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -431,7 +431,7 @@ class TestMultipleRepos:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             ),
             dict(
@@ -439,7 +439,7 @@ class TestMultipleRepos:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Also changed here to Fixes issue #1000",
-                author_date=get_date("2018-12-04"),
+                author_date=datetime.utcnow() + timedelta(days=2),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -460,7 +460,7 @@ class TestMultipleRepos:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -487,7 +487,7 @@ class TestMultipleRepos:
                 key=alpha_commit_key,
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             ),
             dict(
@@ -495,7 +495,7 @@ class TestMultipleRepos:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Also changed here to Fixes issue #1000",
-                author_date=get_date("2018-12-04"),
+                author_date=datetime.utcnow() + timedelta(days=2),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -522,7 +522,7 @@ class TestMultipleRepos:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -543,7 +543,7 @@ class TestMultipleRepos:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             ),
             dict(
@@ -551,7 +551,7 @@ class TestMultipleRepos:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Also changed here to Fixes issue #1000",
-                author_date=get_date("2018-12-04"),
+                author_date=datetime.utcnow() + timedelta(days=2),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -574,19 +574,19 @@ class TestPaging:
             dict(
                 key=key_1000,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             ),
             dict(
                 key=key_1002,
                 display_id='1002',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             ),
             dict(
                 key=uuid.uuid4(),
                 display_id='1003',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 **work_items_common
             )
         ]
@@ -608,7 +608,7 @@ class TestPaging:
                 key=uuid.uuid4(),
                 source_commit_id=uuid.uuid4(),
                 commit_message=f"Change {i}. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
             for i in range(0, 11)
@@ -631,7 +631,7 @@ class TestTrelloWorkItemCommits:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 commit_identifiers=['1000', 'https://trello.com/c/x28QspUQ', 'x28QspUQ'],
                 **work_items_common
             )
@@ -654,7 +654,7 @@ class TestTrelloWorkItemCommits:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -673,7 +673,7 @@ class TestTrelloWorkItemCommits:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 commit_identifiers=['1000', 'trello.com/c/x28QspUQ', 'x28QspUQ'],
                 **work_items_common
             )
@@ -696,7 +696,7 @@ class TestTrelloWorkItemCommits:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue trello.com/c/x28QspUQ",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -715,7 +715,7 @@ class TestTrelloWorkItemCommits:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 commit_identifiers=[],
                 **work_items_common
             )
@@ -738,7 +738,7 @@ class TestTrelloWorkItemCommits:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -757,7 +757,7 @@ class TestTrelloWorkItemCommits:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 commit_identifiers=[],
                 **work_items_common
             )
@@ -780,7 +780,7 @@ class TestTrelloWorkItemCommits:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue trello.com/c/x28QspUQ",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -799,7 +799,7 @@ class TestTrelloWorkItemCommits:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 commit_identifiers=None,
                 **work_items_common
             )
@@ -822,7 +822,7 @@ class TestTrelloWorkItemCommits:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue #1000",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -841,7 +841,7 @@ class TestTrelloWorkItemCommits:
             dict(
                 key=new_key,
                 display_id='1000',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 commit_identifiers=None,
                 **work_items_common
             )
@@ -864,7 +864,7 @@ class TestTrelloWorkItemCommits:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue trello.com/c/x28QspUQ",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -886,7 +886,7 @@ class TestJiraWorkItemCommits:
             dict(
                 key=new_key,
                 display_id='PX-11',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 commit_identifiers=['PX-11', 'Px-11', 'px-11'],
                 **work_items_common
             )
@@ -909,7 +909,7 @@ class TestJiraWorkItemCommits:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue PX-11",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -928,7 +928,7 @@ class TestJiraWorkItemCommits:
             dict(
                 key=new_key,
                 display_id='PX-11',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 commit_identifiers=['PX-11', 'Px-11', 'px-11'],
                 **work_items_common
             )
@@ -951,7 +951,7 @@ class TestJiraWorkItemCommits:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue Px-11",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])
@@ -970,7 +970,7 @@ class TestJiraWorkItemCommits:
             dict(
                 key=new_key,
                 display_id='PX-11',
-                created_at=get_date("2018-12-02"),
+                created_at=datetime.utcnow(),
                 commit_identifiers=['PX-11', 'Px-11', 'px-11'],
                 **work_items_common
             )
@@ -993,7 +993,7 @@ class TestJiraWorkItemCommits:
                 key=uuid.uuid4(),
                 source_commit_id=test_commit_key,
                 commit_message="Another change. Fixes issue px-11",
-                author_date=get_date("2018-12-03"),
+                author_date=datetime.utcnow() + timedelta(days=1),
                 **commits_common_fields(commits_fixture)
             )
         ])

@@ -16,7 +16,7 @@ from polaris.analytics.messaging.commands import ResolveCommitsForWorkItems
 
 
 from test.fixtures.work_item_commit_resolution import *
-
+from datetime import date, timedelta
 
 @pytest.fixture
 def work_items_commits_fixture(commits_fixture):
@@ -49,7 +49,7 @@ def work_items_commits_fixture(commits_fixture):
             key=test_commit_key.hex,
             source_commit_id=test_commit_source_id,
             commit_message="Another change. Fixes issue #1000",
-            author_date=get_date("2018-12-03"),
+            author_date=date.today() + timedelta(days=1),
             **commits_common_fields(commits_fixture)
         )
     ])

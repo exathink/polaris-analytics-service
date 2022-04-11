@@ -14,6 +14,7 @@ from functools import reduce
 from polaris.common import db
 from polaris.utils.collections import dict_select, find
 from polaris.utils.exceptions import ProcessingException
+from datetime import date, timedelta
 
 from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, DateTime, \
     union
@@ -436,11 +437,21 @@ map_commit_identifiers_to_commits_page_size = 1000
 
 def map_commit_identifiers_to_commits(session, work_item_summaries, work_items_source):
     commit_query = get_commits_query(work_items_source)
+
     earliest_created = reduce(
         lambda earliest, work_item: min(earliest, work_item['created_at']),
         work_item_summaries,
         work_item_summaries[0]['created_at']
     )
+    # We limit the maximum search window to 90 days
+    # This is a bit of a hack, but if we leave this unbounded,
+    # we can get really expensive searches on the commits table
+    # This should really be a problem only during historical imports
+    # and even if we miss something here, it should not be a big issue.
+    # The risk of a runaway query is much more problematic.
+    search_window = date.today() - timedelta(days=90)
+    earliest_created = max(search_window, earliest_created.date())
+
     # first get a total so we can paginate through commits
     total = session.connection().execute(
         select([func.count()]).select_from(
@@ -487,6 +498,7 @@ def map_commit_identifiers_to_commits(session, work_item_summaries, work_items_s
 
 def resolve_commits_for_work_items(session, organization_key, work_items_source_key, work_item_summaries):
     if len(work_item_summaries) > 0:
+
         work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
         if work_items_source is not None:
             resolved = map_commit_identifiers_to_commits(session, work_item_summaries, work_items_source)

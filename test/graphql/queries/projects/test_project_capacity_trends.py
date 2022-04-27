@@ -16,7 +16,7 @@ from polaris.common import db
 from polaris.utils.collections import Fixture
 from polaris.analytics.db.model import contributors, contributor_aliases
 from polaris.analytics.service.graphql import schema
-
+from test.graphql.queries.projects.shared_fixtures import exclude_repos_from_project
 from test.fixtures.graphql import org_repo_fixture, commits_fixture, cleanup, \
     get_date, work_items_common, create_work_item_commits, create_project_work_items, \
     work_items_source_common, generate_n_work_items, generate_work_item
@@ -256,7 +256,53 @@ class TestProjectCapacityTrends:
                     assert capacityTrend['maxCommitDays'] == 30
                     assert capacityTrend['avgCommitDays'] == 30
 
+            def it_excludes_repositories_excluded_from_the_projects_in_capacity_calculations(self, setup):
+                fixture = setup
 
+                # contributor_a_commits in project
+
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[0],
+                    fixture.contributor_a,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+                )
+                # contributor_b_commits in project
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[1],
+                    fixture.contributor_b,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+
+                )
+                # exclude the first repo from the project.
+                exclude_repos_from_project(fixture.project, [fixture.project.repositories[0]])
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=30,
+                    window=30,
+                    sample=7,
+
+                ))
+                assert result['data']
+                project = result['data']['project']
+                assert len(project['capacityTrends']) == 5
+                for capacityTrend in project['capacityTrends']:
+                    assert capacityTrend['totalCommitDays'] == 30
+                    assert capacityTrend['minCommitDays'] == 30
+                    assert capacityTrend['maxCommitDays'] == 30
+                    assert capacityTrend['avgCommitDays'] == 30
 
         class TestContributorDetail:
 
@@ -343,6 +389,56 @@ class TestProjectCapacityTrends:
                     contributorDetail['contributorKey']
                     for contributorDetail in project['contributorDetail']
                 )) == 2
+
+            def it_excludes_contributors_from_excluded_repos(self, setup):
+                fixture = setup
+
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[0],
+                    fixture.contributor_a,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+                )
+                # contributor_b_commits in project
+                create_commit_sequence_in_project(
+                    fixture.organization,
+                    fixture.project,
+                    fixture.project.repositories[1],
+                    fixture.contributor_b,
+                    end_date=datetime.utcnow(),
+                    start_date_offset_days=60,
+                    days_increment=1,
+                    commits_common=fixture.commits_common,
+
+                )
+
+                exclude_repos_from_project(fixture.project, [fixture.project.repositories[0]])
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(
+                    project_key=fixture.project.key,
+                    days=30,
+                    window=30,
+                    sample=7,
+
+                ))
+                assert result['data']
+                project = result['data']['project']
+                # only one contributor from non-excluded repos.
+                assert len(project['contributorDetail']) == 5
+                for contributorDetail in project['contributorDetail']:
+                    assert contributorDetail['totalCommitDays'] == 30
+
+                # only one distinct author in the set. other is in an excluded repo.
+                assert len(set(
+                    contributorDetail['contributorKey']
+                    for contributorDetail in project['contributorDetail']
+                )) == 1
 
 
     class TestRobotFiltering:

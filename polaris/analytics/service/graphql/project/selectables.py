@@ -624,18 +624,27 @@ class ProjectsContributorCount(InterfaceResolver):
             project_nodes.outerjoin(
                 projects, project_nodes.c.id == projects.c.id
             ).join(
+              projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
                 work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
             ).join(
-                commits, work_items_commits.c.commit_id == commits.c.id
+                commits,
+                and_(
+                    commits.c.repository_id == projects_repositories.c.repository_id,
+                    work_items_commits.c.commit_id == commits.c.id
+                )
             ).join(
                 contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
-            contributor_aliases.c.robot == False
+            and_(
+                contributor_aliases.c.robot == False,
+                projects_repositories.c.excluded == False
+            )
         )
 
         if 'contributor_count_days' in kwargs and kwargs['contributor_count_days'] > 0:
@@ -1595,13 +1604,19 @@ class ProjectsCapacityTrends(InterfaceResolver):
             timeline_dates.join(
                 projects, true()
             ).join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
                 work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
                 work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
             ).join(
-                commits, work_items_commits.c.commit_id == commits.c.id
+                commits,
+                and_(
+                    work_items_commits.c.commit_id == commits.c.id,
+                    projects_repositories.c.repository_id == commits.c.repository_id
+                )
             ).join(
                 contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
@@ -1613,6 +1628,7 @@ class ProjectsCapacityTrends(InterfaceResolver):
                     measurement_window=measurement_window
                 ),
                 contributor_aliases.c.robot == False,
+                projects_repositories.c.excluded == False,
                 projects.c.id.in_(select([project_nodes.c.id]))
             )
         ).group_by(
@@ -1682,13 +1698,18 @@ class ProjectsCapacityTrends(InterfaceResolver):
             projects.join(
                 timeline_dates, true()
             ).join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
                 work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
                 work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
             ).join(
-                commits, work_items_commits.c.commit_id == commits.c.id
+                commits, and_(
+                    work_items_commits.c.commit_id == commits.c.id,
+                    projects_repositories.c.repository_id == commits.c.repository_id
+                )
             ).join(
                 contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
@@ -1700,6 +1721,7 @@ class ProjectsCapacityTrends(InterfaceResolver):
                     measurement_window=measurement_window
                 ),
                 contributor_aliases.c.robot == False,
+                projects_repositories.c.excluded == False,
                 projects.c.id.in_(select([project_nodes.c.id]))
             )
         ).alias()

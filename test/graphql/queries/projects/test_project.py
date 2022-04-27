@@ -224,6 +224,25 @@ class TestProjectContributorCount:
         project = result['data']['project']
         assert project['contributorCount'] == 1
 
+
+    def it_excludes_contributions_from_excluded_repos(self, project_fixture):
+        _, _, _, test_project = project_fixture
+
+        exclude_repos_from_project(test_project, test_project.repositories)
+        client = Client(schema)
+        query = """
+            query getProjectWorkItems($project_key:String!) {
+                project(key: $project_key, interfaces: [ContributorCount]) {
+                    contributorCount
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(project_key=test_project.key))
+        assert 'data' in result
+        project = result['data']['project']
+        assert project['contributorCount'] == 0
+
+
     def it_returns_contributor_counts_for_a_specified_days_interval(self, project_fixture):
         _, _, _, test_project = project_fixture
 

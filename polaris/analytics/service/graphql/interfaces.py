@@ -340,6 +340,9 @@ class BranchRef(graphene.Interface):
     branch_name = graphene.String(required=True)
 
 
+class Excluded(graphene.Interface):
+    excluded = graphene.Boolean(required=False)
+
 class ImplementationCost(graphene.Interface):
     budget = graphene.Float(required=False, description="Total engineering days estimated as per budget")
     effort = graphene.Float(required=False, description="Total engineering days required")

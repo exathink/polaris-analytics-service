@@ -35,12 +35,8 @@ organizations_contributors = Table(
     Column('contributor_id', ForeignKey('contributors.id'), primary_key=True)
 )
 
-projects_repositories = Table(
-    'projects_repositories', Base.metadata,
-    Column('project_id', ForeignKey('projects.id'), primary_key=True),
-    Column('repository_id', ForeignKey('repositories.id'), primary_key=True),
-    Column('excluded', Boolean, nullable=True, default=False, server_default='FALSE'),
-)
+
+
 
 accounts_organizations = Table(
     'accounts_organizations', Base.metadata,
@@ -305,7 +301,7 @@ class Project(Base):
 
     organization_id = Column(Integer, ForeignKey('organizations.id'))
     organization = relationship('Organization', back_populates='projects')
-    repositories = relationship('Repository', secondary=projects_repositories, back_populates='projects')
+    repositories_rel = relationship("ProjectsRepositories",  back_populates='project')
     work_items_sources = relationship('WorkItemsSource')
 
     @classmethod
@@ -342,7 +338,12 @@ class Project(Base):
         Settings.update_wip_inspector_settings(current, update_project_settings_input)
         self.settings = current
 
-
+    @property
+    def repositories(self):
+        return [
+            rel.repository
+            for rel in self.repositories_rel
+        ]
 
 
 projects = Project.__table__
@@ -374,7 +375,7 @@ class Repository(Base):
 
     # relationships
     commits = relationship('Commit', back_populates='repository')
-    projects = relationship('Project', secondary=projects_repositories, back_populates='repositories')
+    projects_rel = relationship("ProjectsRepositories", back_populates="repository")
     source_files = relationship('SourceFile', back_populates='repository')
     source_file_changes = relationship('WorkItemSourceFileChange', cascade='all, delete-orphan')
 
@@ -434,9 +435,26 @@ class Repository(Base):
         if kwargs.get('properties'):
             instance.properties = {*instance.properties, *kwargs['properties']}
 
+    @property
+    def projects(self):
+        return [
+            project_rel.project
+            for project_rel in self.projects_rel
+        ]
 
 repositories = Repository.__table__
 UniqueConstraint(repositories.c.organization_id, repositories.c.name)
+
+
+class ProjectsRepositories(Base):
+    __tablename__ = 'projects_repositories'
+    project_id = Column(ForeignKey('projects.id'), primary_key=True)
+    repository_id = Column(ForeignKey('repositories.id'), primary_key=True)
+    excluded = Column(Boolean, nullable=True, default=False, server_default='FALSE')
+    repository = relationship("Repository", back_populates='projects_rel')
+    project = relationship("Project", back_populates='repositories_rel')
+
+projects_repositories = ProjectsRepositories.__table__
 
 
 class ContributorTeam(Base):

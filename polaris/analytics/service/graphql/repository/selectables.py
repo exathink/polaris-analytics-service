@@ -15,7 +15,7 @@ from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 from polaris.analytics.db.model import repositories, organizations, contributors, commits, \
     repositories_contributor_aliases, contributor_aliases, pull_requests, work_items_commits
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, \
-    CommitCount, WeeklyContributorCount, PullRequestInfo, PullRequestMetricsTrends, TraceabilityTrends
+    CommitCount, WeeklyContributorCount, PullRequestInfo, PullRequestMetricsTrends, TraceabilityTrends, Excluded
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters
 from datetime import datetime, timedelta
@@ -97,8 +97,8 @@ class RepositoryContributorNodes(ConnectionResolver):
             repositories_contributor_aliases.c.repository_id
         ]).select_from(
             contributors.join(
-                    repositories_contributor_aliases.join(
-                        repositories
+                repositories_contributor_aliases.join(
+                    repositories
                 )
             )
         ).where(
@@ -144,7 +144,6 @@ class RepositoryRecentlyActiveContributorNodes(ConnectionResolver):
 
 
 class RepositoryCumulativeCommitCount:
-
     interface = CumulativeCommitCount
 
     @staticmethod
@@ -173,7 +172,6 @@ class RepositoryCumulativeCommitCount:
 
 
 class RepositoryWeeklyContributorCount:
-
     interface = WeeklyContributorCount
 
     @staticmethod
@@ -189,6 +187,33 @@ class RepositoryWeeklyContributorCount:
         ).group_by(
             extract('year', commits.c.commit_date),
             extract('week', commits.c.commit_date)
+        )
+
+
+class RepositoriesExcluded:
+    interface = Excluded
+    # Note that this is a somewhat hacky way of solving the resolution of this
+    # interface. Unlike other repository attributes, the excluded attribute does not
+    # make sense on it's own, but only in the context of a connection resolver. The Excluded
+    # attribute is actually maintained on the relationship edge between a repository node and some
+    # other node. So in this case, there is an implicit assumption that the connection node resolver
+    # will pass along the exclude attribute on the project_nodes and that all we are doing here is to simply
+    # interpolate it as a repository attribute on the returned collection. This is why the select statement does
+    # not reference any other tables other than the repository_nodes passed in. If the connection resolver
+    # does not pass in the required column then this will throw an error.
+    @staticmethod
+    def interface_selector(repositories_nodes, **kwargs):
+        if 'excluded' not in repositories_nodes.columns:
+            raise ProcessingException(
+                "The excluded column needed to resolve "
+                "this interface must be passed in by the connection resolver query"
+            )
+        return select([
+            repositories_nodes.c.id,
+            repositories_nodes.c.excluded
+
+        ]).select_from(
+            repositories_nodes
         )
 
 
@@ -254,7 +279,6 @@ class RepositoriesOrganizationRef:
                 organizations, repositories.c.organization_id == organizations.c.id
             )
         )
-
 
 
 class RepositoriesPullRequestMetricsTrends(InterfaceResolver):
@@ -353,6 +377,7 @@ class RepositoriesPullRequestMetricsTrends(InterfaceResolver):
         ).group_by(
             repositories_timeline_dates.c.id
         )
+
 
 class RepositoriesTraceabilityTrends(InterfaceResolver):
     interface = TraceabilityTrends
@@ -457,10 +482,12 @@ class RepositoriesTraceabilityTrends(InterfaceResolver):
                     'measurement_window', measurement_window,
                     'total_commits', func.coalesce(traceability_metrics.c.total_commits, 0),
                     'spec_count', func.coalesce(traceability_metrics.c.spec_count, 0),
-                    'nospec_count', func.coalesce(traceability_metrics.c.total_commits - traceability_metrics.c.spec_count, 0),
+                    'nospec_count',
+                    func.coalesce(traceability_metrics.c.total_commits - traceability_metrics.c.spec_count, 0),
                     'traceability', case([
-                            (traceability_metrics.c.total_commits > 0, (traceability_metrics.c.spec_count/(traceability_metrics.c.total_commits*1.0)))
-                        ], else_=0
+                        (traceability_metrics.c.total_commits > 0,
+                         (traceability_metrics.c.spec_count / (traceability_metrics.c.total_commits * 1.0)))
+                    ], else_=0
                     )
                 )
             ).label('traceability_trends')

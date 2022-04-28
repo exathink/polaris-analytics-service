@@ -54,7 +54,8 @@ class TeamNodeRefsResolverMixin(KeyIdResolverMixin):
         super().__init__(*args, **kwargs)
 
     def resolve_team_node_refs(self, info, **kwargs):
-        return [TeamNodeRefImpl(**ref) for ref in (self.team_node_refs or []) if ref is not None and ref.get('team_name') is not None]
+        return [TeamNodeRefImpl(**ref) for ref in (self.team_node_refs or []) if
+                ref is not None and ref.get('team_name') is not None]
 
 
 class FlowMixTrendsResolverMixin(KeyIdResolverMixin):
@@ -160,6 +161,14 @@ class TraceabilityTrendsResolverMixin(KeyIdResolverMixin):
             for measurement in self.traceability_trends or []
         ]
 
+
+class ExcludedResolverMixin(KeyIdResolverMixin):
+    def __init__(self, *args, **kwargs):
+        self.excluded = False
+        super().__init__(*args, **kwargs)
+
+    def resolve_excluded(self, info, **kwargs):
+        return self.excluded
 
 class ResponseTimeConfidenceTrendsResolverMixin(KeyIdResolverMixin):
 

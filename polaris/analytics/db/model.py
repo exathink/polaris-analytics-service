@@ -38,7 +38,8 @@ organizations_contributors = Table(
 projects_repositories = Table(
     'projects_repositories', Base.metadata,
     Column('project_id', ForeignKey('projects.id'), primary_key=True),
-    Column('repository_id', ForeignKey('repositories.id'), primary_key=True)
+    Column('repository_id', ForeignKey('repositories.id'), primary_key=True),
+    Column('excluded', Boolean, nullable=True, default=False, server_default='FALSE'),
 )
 
 accounts_organizations = Table(

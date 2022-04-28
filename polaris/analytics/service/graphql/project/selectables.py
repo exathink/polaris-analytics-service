@@ -71,10 +71,11 @@ class ProjectRepositoriesNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
-        return select([
+        select_stmt = select([
             repositories.c.id,
             repositories.c.key,
-            repositories.c.name
+            repositories.c.name,
+            projects_repositories.c.excluded
         ]).select_from(
             projects.join(
                 projects_repositories
@@ -82,6 +83,11 @@ class ProjectRepositoriesNodes(ConnectionResolver):
                 repositories
             )
         ).where(projects.c.key == bindparam('key'))
+        if not kwargs.get('showExcluded'):
+            select_stmt = select_stmt.where(
+                projects_repositories.c.excluded == False
+            )
+        return select_stmt
 
 
 class ProjectWorkItemsSourceNodes(ConnectionResolver):
@@ -167,6 +173,7 @@ class ProjectRecentlyActiveRepositoriesNodes(ConnectionResolver):
         ).where(
             and_(
                 projects.c.key == bindparam('key'),
+                projects_repositories.c.excluded == False,
                 between(commits.c.commit_date, window.begin, window.end)
             )
         ).group_by(
@@ -224,6 +231,7 @@ class ProjectCommitNodes(ConnectionResolver):
         ).where(
             and_(
                 projects.c.key == bindparam('key'),
+                projects_repositories.c.excluded == False,
                 work_items_commits.c.work_item_id == None,
                 contributor_aliases.c.robot == False
             )
@@ -266,7 +274,8 @@ class ProjectContributorNodes(ConnectionResolver):
         ).where(
             and_(
                 projects.c.key == bindparam('key'),
-                repositories_contributor_aliases.c.robot == False
+                repositories_contributor_aliases.c.robot == False,
+                projects_repositories.c.excluded == False
             )
         ).distinct()
 
@@ -298,7 +307,8 @@ class ProjectRecentlyActiveContributorNodes(ConnectionResolver):
             and_(
                 projects.c.key == bindparam('key'),
                 between(commits.c.commit_date, window.begin, window.end),
-                contributor_aliases.c.robot == False
+                contributor_aliases.c.robot == False,
+                projects_repositories.c.excluded == False
             )
         ).group_by(
             commits.c.author_contributor_key
@@ -495,7 +505,10 @@ class ProjectCumulativeCommitCount(SelectableFieldResolver):
                 commits, commits.c.repository_id == repositories.c.id
             )
         ).where(
-            projects.c.key == bindparam('key')
+            and_(
+                projects.c.key == bindparam('key'),
+                projects_repositories.c.excluded == False
+            )
         ).group_by(
             extract('year', commits.c.commit_date),
             extract('week', commits.c.commit_date)
@@ -529,7 +542,10 @@ class ProjectWeeklyContributorCount(SelectableFieldResolver):
                 commits, commits.c.repository_id == repositories.c.id
             )
         ).where(
-            projects.c.key == bindparam('key')
+            and_(
+                projects.c.key == bindparam('key'),
+                projects_repositories.c.excluded == False
+            )
         ).group_by(
             extract('year', commits.c.commit_date),
             extract('week', commits.c.commit_date)
@@ -537,7 +553,6 @@ class ProjectWeeklyContributorCount(SelectableFieldResolver):
 
 
 class ProjectsProjectSetupInfo(InterfaceResolver):
-
     interface = ProjectSetupInfo
 
     @staticmethod
@@ -578,6 +593,8 @@ class ProjectsCommitSummary(InterfaceResolver):
             ).outerjoin(
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             )
+        ).where(
+            projects_repositories.c.excluded == False
         ).group_by(project_nodes.c.id)
 
     @staticmethod
@@ -587,6 +604,7 @@ class ProjectsCommitSummary(InterfaceResolver):
 
 class ProjectsContributorCount(InterfaceResolver):
     interface = ContributorCount
+
     # A project contributor is someone who has authored code
     # for that project. If the contributor count days is provided
     # we filter for those contributors who have authored code that was
@@ -594,7 +612,6 @@ class ProjectsContributorCount(InterfaceResolver):
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
-
         select_stmt = select([
             project_nodes.c.id,
             func.count(
@@ -607,18 +624,27 @@ class ProjectsContributorCount(InterfaceResolver):
             project_nodes.outerjoin(
                 projects, project_nodes.c.id == projects.c.id
             ).join(
+              projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
                 work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
             ).join(
-                commits, work_items_commits.c.commit_id == commits.c.id
+                commits,
+                and_(
+                    commits.c.repository_id == projects_repositories.c.repository_id,
+                    work_items_commits.c.commit_id == commits.c.id
+                )
             ).join(
                 contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
-            contributor_aliases.c.robot == False
+            and_(
+                contributor_aliases.c.robot == False,
+                projects_repositories.c.excluded == False
+            )
         )
 
         if 'contributor_count_days' in kwargs and kwargs['contributor_count_days'] > 0:
@@ -673,6 +699,8 @@ class ProjectsRepositoryCount(InterfaceResolver):
             ).outerjoin(
                 repositories, projects_repositories.c.repository_id == repositories.c.id
             )
+        ).where(
+            projects_repositories.c.excluded == False
         ).group_by(project_nodes.c.id)
 
 
@@ -742,6 +770,8 @@ class ProjectPullRequestEventSpan(InterfaceResolver):
             ).join(
                 pull_requests, pull_requests.c.repository_id == projects_repositories.c.repository_id
             )
+        ).where(
+            projects_repositories.c.excluded == False
         ).group_by(project_nodes.c.id)
 
 
@@ -1175,6 +1205,7 @@ class ProjectPipelineCycleMetrics(CycleMetricsTrendsBase):
             cycle_metrics.c.project_id
         )
 
+
 class ProjectTraceabilityTrends(InterfaceResolver):
     interface = TraceabilityTrends
 
@@ -1217,9 +1248,12 @@ class ProjectTraceabilityTrends(InterfaceResolver):
                 commits, commits.c.repository_id == projects_repositories.c.repository_id
             )
         ).where(
-            commits.c.commit_date.between(
-                timeline_span.c.window_start,
-                timeline_span.c.window_end
+            and_(
+                projects_repositories.c.excluded == False,
+                commits.c.commit_date.between(
+                    timeline_span.c.window_start,
+                    timeline_span.c.window_end
+                )
             )
         )
         if traceability_trends_args.exclude_merges:
@@ -1251,7 +1285,7 @@ class ProjectTraceabilityTrends(InterfaceResolver):
             # repos where "most" of the work is done for a single project. Traceability for projects
             # is different from traceability for repositories in this sense.
             func.count(candidate_commits.c.commit_id.distinct()).filter(
-                    work_items_sources.c.project_id == projects_timeline_dates.c.id
+                work_items_sources.c.project_id == projects_timeline_dates.c.id
             ).label('spec_count')
         ]).select_from(
             projects_timeline_dates.join(
@@ -1570,13 +1604,19 @@ class ProjectsCapacityTrends(InterfaceResolver):
             timeline_dates.join(
                 projects, true()
             ).join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
                 work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
                 work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
             ).join(
-                commits, work_items_commits.c.commit_id == commits.c.id
+                commits,
+                and_(
+                    work_items_commits.c.commit_id == commits.c.id,
+                    projects_repositories.c.repository_id == commits.c.repository_id
+                )
             ).join(
                 contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
@@ -1588,6 +1628,7 @@ class ProjectsCapacityTrends(InterfaceResolver):
                     measurement_window=measurement_window
                 ),
                 contributor_aliases.c.robot == False,
+                projects_repositories.c.excluded == False,
                 projects.c.id.in_(select([project_nodes.c.id]))
             )
         ).group_by(
@@ -1657,13 +1698,18 @@ class ProjectsCapacityTrends(InterfaceResolver):
             projects.join(
                 timeline_dates, true()
             ).join(
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
+            ).join(
                 work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
                 work_items_commits, work_items_commits.c.work_item_id == work_items.c.id
             ).join(
-                commits, work_items_commits.c.commit_id == commits.c.id
+                commits, and_(
+                    work_items_commits.c.commit_id == commits.c.id,
+                    projects_repositories.c.repository_id == commits.c.repository_id
+                )
             ).join(
                 contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
@@ -1675,6 +1721,7 @@ class ProjectsCapacityTrends(InterfaceResolver):
                     measurement_window=measurement_window
                 ),
                 contributor_aliases.c.robot == False,
+                projects_repositories.c.excluded == False,
                 projects.c.id.in_(select([project_nodes.c.id]))
             )
         ).alias()
@@ -1774,7 +1821,10 @@ class ProjectPipelinePullRequestMetrics(InterfaceResolver):
                 pull_requests, pull_requests.c.repository_id == projects_repositories.c.repository_id
             )
         ).where(
-            pull_requests.c.state == 'open'
+            and_(
+                pull_requests.c.state == 'open',
+                projects_repositories.c.excluded == False
+            )
         ).alias('pull_request_attributes')
 
         pull_request_metrics = select([
@@ -1861,6 +1911,7 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
         ).where(
             and_(
                 pull_requests.c.end_date != None,
+                projects_repositories.c.excluded == False,
                 date_column_is_in_measurement_window(
                     pull_requests.c.end_date,
                     measurement_date=project_timeline_dates.c.measurement_date,
@@ -1937,12 +1988,13 @@ class ProjectPullRequestNodes(ConnectionResolver):
                 pull_requests, pull_requests.c.repository_id == projects_repositories.c.repository_id
             )
         ).where(
-            projects.c.key == bindparam('key')
+            and_(
+                projects.c.key == bindparam('key'),
+                projects_repositories.c.excluded == False
+            )
         )
 
         return pull_requests_connection_apply_filters(select_pull_requests, **kwargs)
-
-
 
     @staticmethod
     def sort_order(pull_request_nodes, **kwargs):
@@ -2090,7 +2142,8 @@ class ProjectBacklogTrends(InterfaceResolver):
         )
 
         daily_backlog_counts = apply_defects_only_filter(daily_backlog_counts, work_items, **backlog_trends_args)
-        daily_backlog_counts = apply_specs_only_filter(daily_backlog_counts, work_items, work_item_delivery_cycles, **backlog_trends_args)
+        daily_backlog_counts = apply_specs_only_filter(daily_backlog_counts, work_items, work_item_delivery_cycles,
+                                                       **backlog_trends_args)
 
         daily_backlog_counts = daily_backlog_counts.group_by(
             project_nodes.c.id,
@@ -2109,7 +2162,8 @@ class ProjectBacklogTrends(InterfaceResolver):
         ).where(
             and_(
                 daily_backlog_counts.c.date_of_window <= timeline_dates.c.measurement_date,
-                daily_backlog_counts.c.date_of_window > timeline_dates.c.measurement_date - timedelta(days=measurement_window)
+                daily_backlog_counts.c.date_of_window > timeline_dates.c.measurement_date - timedelta(
+                    days=measurement_window)
             )
         ).group_by(
             timeline_dates.c.measurement_date,

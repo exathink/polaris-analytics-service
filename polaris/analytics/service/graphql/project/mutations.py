@@ -131,8 +131,32 @@ class UpdateProjectSettings(graphene.Mutation):
         return UpdateProjectSettings(success=result['success'], error_message=result.get('exception'))
 
 
+class RepositoryExclusionState(graphene.InputObjectType):
+    repository_key = graphene.String(required=True)
+    excluded = graphene.Boolean(required=True)
+
+
+class UpdateProjectExcludedRepositoriesInput(graphene.InputObjectType):
+    project_key = graphene.String(required=True)
+    exclusions = graphene.List(RepositoryExclusionState, required=True)
+
+
+class UpdateProjectExcludedRepositories(graphene.Mutation):
+    class Arguments:
+        update_project_excluded_repositories_input = UpdateProjectExcludedRepositoriesInput(required=True)
+
+    success = graphene.Boolean()
+    error_message = graphene.String()
+
+    def mutate(self, info, update_project_excluded_repositories_input):
+        logger.info('UpdateProject Excluded Repositories called')
+        result = db_api.update_project_excluded_repositories(update_project_excluded_repositories_input)
+        return UpdateProjectExcludedRepositories(success=result['success'], error_message=result.get('exception'))
+
+
 class ProjectMutationsMixin:
     archive_project = ArchiveProject.Field()
     update_project_state_maps = UpdateProjectStateMaps.Field()
     update_project_settings = UpdateProjectSettings.Field()
     update_project_work_items = UpdateProjectWorkItems.Field()
+    update_project_excluded_repositories = UpdateProjectExcludedRepositories.Field()

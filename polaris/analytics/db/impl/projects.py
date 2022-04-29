@@ -9,11 +9,11 @@
 # Author: Krishna Kumar
 import logging
 
-from sqlalchemy.sql.expression import and_, select, distinct, bindparam
+from sqlalchemy.sql.expression import and_, select, distinct, bindparam, update
 
 from polaris.analytics.db.enums import WorkItemsStateType
 from polaris.analytics.db.model import Project, WorkItemsSource, work_items, work_items_source_state_map, \
-    work_item_state_transitions
+    work_item_state_transitions, projects_repositories
 from polaris.utils.collections import find
 from polaris.utils.exceptions import ProcessingException
 
@@ -166,4 +166,18 @@ def update_project_settings(session, update_project_settings_input):
         raise ProcessingException(f'Could not find project with key: {update_project_settings_input.key}')
 
 
+def update_project_excluded_repositories(session, update_project_excluded_repositories_input):
+    project = Project.find_by_project_key(session, update_project_excluded_repositories_input.project_key)
+    if project is not None:
+        for exclusion in update_project_excluded_repositories_input.exclusions:
+            repository_rel = find(project.repositories_rel, lambda rel: str(rel.repository.key) == exclusion.repository_key)
+            if repository_rel is not None:
+                repository_rel.excluded = exclusion.excluded
+            else:
+                raise ProcessingException(f"Could not find repository with key {exclusion.repository_key} in this project")
 
+        return dict(
+            key=project.key
+        )
+    else:
+        raise ProcessingException(f'Could not find project with key: {update_project_excluded_repositories_input.project_key}')

@@ -109,10 +109,10 @@ class TestProjectRepositories:
                 """
         result = client.execute(query, variable_values=dict(project_key=projects['mercury'].key))
         assert 'data' in result
-        assert [edge['node']['name'] for edge in result['data']['project']['repositories']['edges']] == [
+        assert {edge['node']['name'] for edge in result['data']['project']['repositories']['edges']} == {
             'alpha',
             'beta'
-        ]
+        }
 
     def it_shows_the_excluded_attribute(self, projects_import_commits_fixture):
         projects, repositories = projects_import_commits_fixture

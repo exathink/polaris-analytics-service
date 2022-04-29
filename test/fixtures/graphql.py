@@ -92,13 +92,13 @@ def org_repo_fixture(setup_schema):
             )
             organization.projects.append(projects[project_name])
 
-        projects['mercury'].repositories.extend([
+        projects['mercury'].add_repositories(
             repositories['alpha'], repositories['beta']
-        ])
+        )
 
-        projects['venus'].repositories.extend([
+        projects['venus'].add_repositories(
             repositories['alpha'], repositories['gamma']
-        ])
+        )
 
         session.add(organization)
         session.flush()

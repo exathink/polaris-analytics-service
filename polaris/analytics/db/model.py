@@ -327,7 +327,7 @@ class Project(Base):
         for repo in repo_instances:
             if repo not in self.repositories:
                 logger.info("Adding repo {} to project  {}".format(repo.name, self.name))
-                self.repositories.append(repo)
+                self.add_repositories(repo)
 
     def update_settings(self, update_project_settings_input):
         # we have to make a deep copy here since sqlalchemy does not recognize in place modifications
@@ -338,6 +338,11 @@ class Project(Base):
         Settings.update_wip_inspector_settings(current, update_project_settings_input)
         self.settings = current
 
+    # Note: since we have an association object
+    # for project repositories, we can no longer
+    # add repos to the repositories collection by calling
+    # repositories.extend/append etc.. Use the add_repositories
+    # method to mutate the repositories_rel relation instead.
     @property
     def repositories(self):
         return [
@@ -345,6 +350,11 @@ class Project(Base):
             for rel in self.repositories_rel
         ]
 
+    def add_repositories(self, *repos):
+        self.repositories_rel.extend([
+            ProjectsRepositories(project=self, repository=repo)
+            for repo in repos
+        ])
 
 projects = Project.__table__
 

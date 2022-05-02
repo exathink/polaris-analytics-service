@@ -499,6 +499,122 @@ class TestProjectTraceabilityTrends:
 
                ]
 
+    def it_excludes_repos_that_have_been_excluded_from_the_traceability_calculation(self,
+                                                                                                 project_commits_work_items_fixture):
+        fixture = project_commits_work_items_fixture
+
+        # first we set up a project with commits mapped to it.
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+        new_commits = [
+            dict(
+                source_commit_id='a-XXXX',
+                # one commit 10 days from the end of the window
+                commit_date=start_date,
+                key=uuid.uuid4().hex,
+                **fixture.commit_common_fields
+            ),
+            dict(
+                source_commit_id='a-YYYY',
+                # next commit 20 days from end of the window
+                commit_date=start_date - timedelta(days=10),
+                key=uuid.uuid4().hex,
+                **fixture.commit_common_fields
+            )
+        ]
+        api.import_new_commits(
+            organization_key=fixture.organization.key,
+            repository_key=fixture.projects['mercury'].repositories[0].key,
+            new_commits=new_commits,
+            new_contributors=fixture.contributors
+        )
+
+        api_helper = WorkItemImportApiHelper(fixture.organization, fixture.projects['mercury'].work_items_sources[0])
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **fixture.work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        add_work_item_commits([(work_items[0]['key'], new_commits[0]['key'])])
+
+        # Now we add some commits to the second repo associated with the project.
+        api.import_new_commits(
+            organization_key=fixture.organization.key,
+            repository_key=fixture.projects['mercury'].repositories[1].key,
+            new_commits=new_commits,
+            new_contributors=fixture.contributors
+        )
+
+        # and exclude this second repo
+        exclude_repos_from_project(fixture.projects['mercury'], [fixture.projects['mercury'].repositories[1]])
+
+        # This should give the same results as though the commits were not added to the second repository.
+
+        client = Client(schema)
+
+        result = client.execute(self.project_traceability_query, variable_values=dict(
+            project_key=fixture.projects['mercury'].key,
+            days=30,
+            window=15,
+            sample=7
+        ))
+        assert result['data']
+        traceability_trends = result['data']['project']['traceabilityTrends']
+        # assertions here are the same as the last test, as adding work items should have no impact on the metrics
+
+        # there should one measurement per sample in the measurement window, including each end point.
+        assert len(traceability_trends) == 5
+
+        assert [
+                   dict_select(measurement, ['traceability', 'specCount', 'nospecCount', 'totalCommits'])
+                   for measurement in traceability_trends
+               ] == [
+                   dict(
+                       traceability=1.0,
+                       specCount=1,
+                       nospecCount=0,
+                       totalCommits=1
+                   ),
+                   dict(
+                       traceability=0.5,
+                       specCount=1,
+                       nospecCount=1,
+                       totalCommits=2
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=1,
+                       totalCommits=1
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+
+               ]
+
     def it_respects_exclude_merges_when_there_are_merge_commits_associated_with_work_items(self,
                                                                                            project_commits_work_items_fixture):
         fixture = project_commits_work_items_fixture
@@ -766,3 +882,5 @@ class TestProjectTraceabilityTrends:
                    ),
 
                ]
+
+

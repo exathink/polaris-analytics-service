@@ -8,11 +8,11 @@
 # Author: Krishna Kumar
 
 
-
 from graphene.test import Client
 from datetime import timedelta
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
+from test.graphql.queries.projects.shared_fixtures import exclude_repos_from_project
 from polaris.analytics.db.enums import WorkItemsStateType
 from test.fixtures.graphql import WorkItemImportApiHelper
 from polaris.common.enums import JiraWorkItemType
@@ -88,6 +88,124 @@ def projects_import_commits_fixture(org_repo_fixture, cleanup):
     yield projects, repositories
 
 
+class TestProjectRepositories:
+    def it_returns_the_repositories_in_the_project(self, projects_import_commits_fixture):
+        projects, repositories = projects_import_commits_fixture
+
+        client = Client(schema)
+        query = """
+                    query getProjectRepositories($project_key:String!) {
+                        project(key: $project_key) {
+                            repositories {
+                                edges {
+                                    node {
+                                        id
+                                        name
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(project_key=projects['mercury'].key))
+        assert 'data' in result
+        assert {edge['node']['name'] for edge in result['data']['project']['repositories']['edges']} == {
+            'alpha',
+            'beta'
+        }
+
+    def it_shows_the_excluded_attribute(self, projects_import_commits_fixture):
+        projects, repositories = projects_import_commits_fixture
+
+        client = Client(schema)
+        query = """
+                    query getProjectRepositories($project_key:String!) {
+                        project(key: $project_key) {
+                            repositories (interfaces: [Excluded]) {
+                                edges {
+                                    node {
+                                        id
+                                        name
+                                        excluded
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(project_key=projects['mercury'].key))
+        assert 'data' in result
+        assert {
+                   (edge['node']['name'], edge['node']['excluded'])
+                   for edge in result['data']['project']['repositories']['edges']
+               } == {
+                   ('alpha', False),
+                   ('beta', False)
+               }
+
+    def it_hides_the_excluded_repos_by_default(self, projects_import_commits_fixture):
+        projects, repositories = projects_import_commits_fixture
+
+        exclude_repos_from_project(projects['mercury'], [repositories['alpha']])
+
+        client = Client(schema)
+        query = """
+                    query getProjectRepositories($project_key:String!) {
+                        project(key: $project_key) {
+                            repositories (interfaces: [Excluded]) {
+                                edges {
+                                    node {
+                                        id
+                                        name
+                                        excluded
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(project_key=projects['mercury'].key))
+        assert 'data' in result
+        assert {
+                   (edge['node']['name'], edge['node']['excluded'])
+                   for edge in result['data']['project']['repositories']['edges']
+               } == {
+
+                   ('beta', False)
+               }
+
+    def it_shows_the_excluded_repos_when_show_excluded_is_true(self, projects_import_commits_fixture):
+        projects, repositories = projects_import_commits_fixture
+
+        exclude_repos_from_project(projects['mercury'], [repositories['alpha']])
+
+        client = Client(schema)
+        query = """
+                    query getProjectRepositories($project_key:String!) {
+                        project(key: $project_key) {
+                            repositories (interfaces: [Excluded], showExcluded: true) {
+                                edges {
+                                    node {
+                                        id
+                                        name
+                                        excluded
+                                    }
+                                }
+                            }
+                        }
+                    }
+                """
+        result = client.execute(query, variable_values=dict(project_key=projects['mercury'].key))
+        assert 'data' in result
+        assert {
+                   (edge['node']['name'], edge['node']['excluded'])
+                   for edge in result['data']['project']['repositories']['edges']
+               } == {
+                ('alpha', True),
+                ('beta', False)
+               }
+
+
 class TestProjectContributorCount:
 
     def it_implements_the_contributor_count_interface(self, project_fixture):
@@ -105,6 +223,25 @@ class TestProjectContributorCount:
         assert 'data' in result
         project = result['data']['project']
         assert project['contributorCount'] == 1
+
+
+    def it_excludes_contributions_from_excluded_repos(self, project_fixture):
+        _, _, _, test_project = project_fixture
+
+        exclude_repos_from_project(test_project, test_project.repositories)
+        client = Client(schema)
+        query = """
+            query getProjectWorkItems($project_key:String!) {
+                project(key: $project_key, interfaces: [ContributorCount]) {
+                    contributorCount
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(project_key=test_project.key))
+        assert 'data' in result
+        project = result['data']['project']
+        assert project['contributorCount'] == 0
+
 
     def it_returns_contributor_counts_for_a_specified_days_interval(self, project_fixture):
         _, _, _, test_project = project_fixture
@@ -232,7 +369,6 @@ class TestProjectDeliveryCycleSpan:
 
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 1
         assert (graphql_date(project['latestClosedDate']) - start_date).days == 2
-
 
 
 class TestProjectAggregateCycleMetrics:
@@ -908,7 +1044,6 @@ class TestProjectAggregateCycleMetrics:
         assert (graphql_date(project['earliestClosedDate']) - start_date).days == 6
         assert (graphql_date(project['latestClosedDate']) - start_date).days == 8
 
-
     def it_respects_the_specs_only_parameter(self, api_work_items_import_fixture):
         organization, project, work_items_source, _ = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)
@@ -964,7 +1099,6 @@ class TestProjectAggregateCycleMetrics:
         api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=6))])
         # make item 0 a spec
         api_helper.update_delivery_cycles(([(0, dict(property='commit_count', value=2))]))
-
 
         api_helper.update_work_items([(1, 'upnext', start_date + timedelta(days=2))])
         api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
@@ -1482,7 +1616,6 @@ class TestProjectWorkItemDeliveryCycles:
         api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=2))])
         api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=8))])
 
-
         api_helper.update_work_items([(2, 'done', start_date + timedelta(days=5))])
 
         client = Client(schema)
@@ -1517,8 +1650,6 @@ class TestProjectWorkItemDeliveryCycles:
             else:
                 assert not node['leadTime']
                 assert not node['cycleTime']
-
-
 
     def it_returns_cycle_metrics_for_reopened_items(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
@@ -1731,9 +1862,3 @@ class TestProjectWorkItemsSourceWorkItemStateMappings:
                } == {
                    6, 3
                }
-
-
-
-
-
-

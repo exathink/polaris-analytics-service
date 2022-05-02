@@ -104,6 +104,37 @@ class TestProjectCommitsConnection:
 
             assert len(project_commits) == 2
 
+        def it_exclude_commits_for_repos_that_are_excluded_from_the_project(self, setup):
+            fixture = setup
+
+            exclude_repos_from_project(fixture.project, [fixture.project.repositories[0]])
+
+            client = Client(schema)
+            query = """
+                query getProjectCommits($key: String!) {
+                    project(key: $key){
+                        commits {
+                            edges {
+                                node {
+                                    key
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+            result = client.execute(query, variable_values=dict(
+                key=fixture.project.key
+            ))
+
+            assert result['data']
+            project_commits = [
+                edge['node']
+                for edge in result['data']['project']['commits']['edges']
+            ]
+
+            assert len(project_commits) == 1
+
         def it_respects_the_days_parameter(self, setup):
             fixture = setup
 

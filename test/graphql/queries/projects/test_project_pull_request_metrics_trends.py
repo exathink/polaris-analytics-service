@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Pragya Goyal
-
+import uuid
 
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
@@ -45,7 +45,10 @@ class TestProjectPullRequestMetricsTrends:
             api_helper=api_helper,
             start_date=start_date,
             pull_requests=pull_requests,
-            repositories=repositories
+            repositories=repositories,
+            work_items_common=work_items_common,
+            organization=organization,
+            work_items_source=work_items_source
         )
 
     class TestPullRequestMetricsTrends:
@@ -264,4 +267,141 @@ class TestProjectPullRequestMetricsTrends:
                             assert measurement['minAge'] == 0
                             assert measurement['maxAge'] == 0
                             assert measurement['percentileAge'] == 0
+
+        class TestSpecsOnlyFlag:
+
+            @pytest.fixture()
+            def setup(self, setup):
+                fixture = setup
+                api_helper = fixture.api_helper
+                # Import and map 2 PRs to work item
+                api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
+
+                work_items_api_helper = WorkItemImportApiHelper(fixture.organization, fixture.work_items_source)
+                work_items = [
+                    dict(
+                        key=uuid.uuid4().hex,
+                        name=f'Issue',
+                        display_id='1000',
+                        state='backlog',
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                        **fixture.work_items_common
+                    )
+                ]
+                work_items_api_helper.import_work_items(work_items)
+                api_helper.map_pull_request_to_work_item(work_items[0]['key'], fixture.pull_requests[0]['key'])
+
+                fixture.query = """
+                query getProjectPullRequestMetricsTrends(
+                    $project_key:String!,
+                    ) {
+                        project(
+                            key: $project_key,
+                            interfaces: [PullRequestMetricsTrends], 
+                            pullRequestMetricsTrendsArgs: {
+                                measurementWindow: 1,
+                                days: 30,
+                                samplingFrequency: 1,
+                                pullRequestAgeTargetPercentile: 0.9,
+                                metrics: [
+                                    total_open
+                                    total_closed
+                                    avg_age
+                                    min_age
+                                    max_age
+                                    percentile_age
+                                ],
+                                specsOnly: true
+                            }
+                        ) {
+                            pullRequestMetricsTrends {
+                                measurementDate,
+                                measurementWindow,
+                                totalOpen
+                                totalClosed
+                                avgAge
+                                minAge
+                                maxAge
+                                percentileAge
+                            }
+                        }
+                }
+            """
+                yield fixture
+
+            class TestWhenTwoOpenNoClosedPullRequests:
+
+                def it_returns_null_values_when_there_are_no_closed_pull_requests_that_are_specs(self, setup):
+                    fixture = setup
+                    client = Client(schema)
+
+                    result = client.execute(fixture.query, variable_values=dict(
+                        project_key=fixture.project.key
+                    ))
+
+                    assert result['data']
+                    project = result['data']['project']
+                    assert len(project['pullRequestMetricsTrends']) == 31
+                    for measurement in project['pullRequestMetricsTrends']:
+                        assert measurement['totalOpen'] == 0
+                        assert measurement['totalClosed'] == 0
+                        assert measurement['avgAge'] == 0
+                        assert measurement['minAge'] == 0
+                        assert measurement['percentileAge'] == 0
+
+                class TestWhenOneOpenOneClosedPullRequests:
+
+                    def it_only_returns_one_closed_pr_that_was_closed_just_now_and_is_a_spec(self, setup):
+                        fixture = setup
+                        client = Client(schema)
+
+                        # close 1 PR at now() - it should be recognized
+                        fixture.api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'],
+                                                       update_dict=dict(state='closed', end_date=datetime.utcnow()))
+
+                        result = client.execute(fixture.query, variable_values=dict(
+                            project_key=fixture.project.key
+                        ))
+
+                        assert result['data']
+                        project = result['data']['project']
+                        assert len(project['pullRequestMetricsTrends']) == 31
+                        metrics_values = project['pullRequestMetricsTrends'][0]
+                        assert metrics_values['totalOpen'] == 0
+                        assert metrics_values['totalClosed'] == 1
+                        assert int(metrics_values['avgAge']) == 10
+                        assert int(metrics_values['minAge']) == 10
+                        assert int(metrics_values['maxAge']) == 10
+                        assert int(metrics_values['percentileAge']) == 10
+                        for measurement in project['pullRequestMetricsTrends'][1:]:
+                            assert measurement['totalOpen'] == 0
+                            assert measurement['totalClosed'] == 0
+                            assert measurement['avgAge'] == 0
+                            assert measurement['minAge'] == 0
+                            assert measurement['percentileAge'] == 0
+
+                    def it_excludes_one_closed_pr_that_was_closed_just_now_if_it_is_not_a_spec(self, setup):
+                        fixture = setup
+                        client = Client(schema)
+
+                        # close 1 PR at now() - it should be recognized
+                        fixture.api_helper.update_pull_request(pull_request_key=fixture.pull_requests[1]['key'],
+                                                       update_dict=dict(state='closed', end_date=datetime.utcnow()))
+
+                        result = client.execute(fixture.query, variable_values=dict(
+                            project_key=fixture.project.key
+                        ))
+
+                        assert result['data']
+                        project = result['data']['project']
+                        assert len(project['pullRequestMetricsTrends']) == 31
+                        for measurement in project['pullRequestMetricsTrends']:
+                            assert measurement['totalOpen'] == 0
+                            assert measurement['totalClosed'] == 0
+                            assert measurement['avgAge'] == 0
+                            assert measurement['minAge'] == 0
+                            assert measurement['percentileAge'] == 0
+
+
 

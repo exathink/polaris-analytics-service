@@ -2024,11 +2024,23 @@ class ProjectPullRequestNodes(ConnectionResolver):
     def connection_nodes_selector(**kwargs):
         select_pull_requests = select([
             *pull_request_info_columns(pull_requests)
-        ]).select_from(
+        ]).distinct().select_from(
             projects.join(
-                projects_repositories, projects_repositories.c.project_id == projects.c.id
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
-                pull_requests, pull_requests.c.repository_id == projects_repositories.c.repository_id
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items.c.id
+            ).join(
+                pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
+            ).join(
+                repositories, pull_requests.c.repository_id == repositories.c.id
+            ).join(
+                projects_repositories,
+                and_(
+                    repositories.c.id == projects_repositories.c.repository_id,
+                    projects.c.id == projects_repositories.c.project_id
+                )
             )
         ).where(
             and_(

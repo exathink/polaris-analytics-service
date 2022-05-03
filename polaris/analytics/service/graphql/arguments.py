@@ -194,6 +194,10 @@ class PullRequestMetricsParameters(graphene.InputObjectType):
         required=False,
         description="If percentile age is requested, then this specifies the target percentile value"
     )
+    specs_only = graphene.Boolean(
+        required=False,
+        description="Only returns metrics for pull requests mapped to a card"
+    )
 
 
 class PullRequestMetricsTrendsParameters(AggregateMetricsTrendsParameters, PullRequestMetricsParameters):

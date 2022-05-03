@@ -1903,7 +1903,7 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
 
     @staticmethod
     def pull_request_attributes_specs(measurement_window, project_timeline_dates, pull_request_attribute_cols):
-        pull_request_attributes = select(pull_request_attribute_cols).select_from(
+        pull_request_attributes = select(pull_request_attribute_cols).distinct().select_from(
             project_timeline_dates.join(
                 work_items_sources, work_items_sources.c.project_id == project_timeline_dates.c.id
             ).join(
@@ -1912,6 +1912,14 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
                 work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items.c.id
             ).join(
                 pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
+            ).join(
+                repositories, pull_requests.c.repository_id == repositories.c.id
+            ).join(
+                projects_repositories,
+                and_(
+                    repositories.c.id == projects_repositories.c.repository_id,
+                    project_timeline_dates.c.id == projects_repositories.c.project_id
+                )
             )
         ).where(
             and_(

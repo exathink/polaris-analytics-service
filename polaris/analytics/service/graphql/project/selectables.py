@@ -19,7 +19,7 @@ from polaris.analytics.db.model import projects, projects_repositories, organiza
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
     work_items, work_item_state_transitions, work_items_commits, work_item_delivery_cycles, work_items_source_state_map, \
-    work_item_delivery_cycle_durations, pull_requests, work_item_delivery_cycle_contributors
+    work_item_delivery_cycle_durations, pull_requests, work_items_pull_requests
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
     SelectableFieldResolver
 from polaris.graphql.interfaces import NamedNode
@@ -47,7 +47,7 @@ from ..work_item.sql_expressions import work_item_events_connection_apply_time_w
     work_item_info_group_expr_columns, apply_specs_only_filter, apply_defects_only_filter, CycleMetricsTrendsBase, \
     map_work_item_type_to_flow_type
 from ..utils import date_column_is_in_measurement_window, get_measurement_period, get_timeline_dates_for_trending
-
+from polaris.common import db
 
 class ProjectNode(NamedNodeResolver):
     interfaces = (NamedNode, ArchivedStatus, ProjectInfo)
@@ -624,7 +624,7 @@ class ProjectsContributorCount(InterfaceResolver):
             project_nodes.outerjoin(
                 projects, project_nodes.c.id == projects.c.id
             ).join(
-              projects_repositories, projects_repositories.c.project_id == projects.c.id
+                projects_repositories, projects_repositories.c.project_id == projects.c.id
             ).join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
             ).join(
@@ -1875,32 +1875,8 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
     interface = PullRequestMetricsTrends
 
     @staticmethod
-    def interface_selector(project_nodes, **kwargs):
-        pull_request_metrics_trends_args = kwargs.get('pull_request_metrics_trends_args')
-        age_target_percentile = pull_request_metrics_trends_args.pull_request_age_target_percentile
-        # Get the list of dates for trending using the trends_args for control
-        timeline_dates = get_timeline_dates_for_trending(
-            pull_request_metrics_trends_args,
-            arg_name='pull_request_metrics_trends',
-            interface_name='PullRequestMetricsTrends'
-        )
-        project_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
-
-        measurement_window = pull_request_metrics_trends_args.measurement_window
-        if measurement_window is None:
-            raise ProcessingException(
-                "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
-            )
-
-        pull_request_attributes = select([
-            project_timeline_dates.c.id,
-            project_timeline_dates.c.measurement_date,
-            pull_requests.c.id.label('pull_request_id'),
-            pull_requests.c.state.label('state'),
-            pull_requests.c.end_date,
-            (func.extract('epoch', pull_requests.c.end_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
-                'age'),
-        ]).select_from(
+    def pull_request_attributes_all(measurement_window, project_timeline_dates, pull_request_attribute_cols):
+        pull_request_attributes = select(pull_request_attribute_cols).select_from(
             project_timeline_dates.outerjoin(
                 projects_repositories, project_timeline_dates.c.id == projects_repositories.c.project_id
             ).join(
@@ -1923,10 +1899,82 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
             project_timeline_dates.c.measurement_date,
             pull_requests.c.id
         ).alias('pull_request_attributes')
+        return pull_request_attributes
 
+    @staticmethod
+    def pull_request_attributes_specs(measurement_window, project_timeline_dates, pull_request_attribute_cols):
+        pull_request_attributes = select(pull_request_attribute_cols).distinct().select_from(
+            project_timeline_dates.join(
+                work_items_sources, work_items_sources.c.project_id == project_timeline_dates.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items.c.id
+            ).join(
+                pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
+            ).join(
+                repositories, pull_requests.c.repository_id == repositories.c.id
+            ).join(
+                projects_repositories,
+                and_(
+                    repositories.c.id == projects_repositories.c.repository_id,
+                    project_timeline_dates.c.id == projects_repositories.c.project_id
+                )
+            )
+        ).where(
+            and_(
+                pull_requests.c.end_date != None,
+                projects_repositories.c.excluded == False,
+                date_column_is_in_measurement_window(
+                    pull_requests.c.end_date,
+                    measurement_date=project_timeline_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                )
+            )
+        ).group_by(
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date,
+            pull_requests.c.id
+        ).alias('pull_request_attributes')
+        return pull_request_attributes
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        pull_request_metrics_trends_args = kwargs.get('pull_request_metrics_trends_args')
+        age_target_percentile = pull_request_metrics_trends_args.pull_request_age_target_percentile
+        # Get the list of dates for trending using the trends_args for control
+        timeline_dates = get_timeline_dates_for_trending(
+            pull_request_metrics_trends_args,
+            arg_name='pull_request_metrics_trends',
+            interface_name='PullRequestMetricsTrends'
+        )
+        project_timeline_dates = select([project_nodes.c.id, timeline_dates]).cte()
+
+        measurement_window = pull_request_metrics_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
+            )
+
+        pull_request_attribute_cols = [
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date,
+            pull_requests.c.id.label('pull_request_id'),
+            pull_requests.c.state.label('state'),
+            pull_requests.c.end_date,
+            (func.extract('epoch', pull_requests.c.end_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
+                'age'),
+        ]
+
+        if pull_request_metrics_trends_args.get('specs_only'):
+            pull_request_attributes = ProjectPullRequestMetricsTrends.pull_request_attributes_specs(
+                measurement_window, project_timeline_dates, pull_request_attribute_cols)
+        else:
+            pull_request_attributes = ProjectPullRequestMetricsTrends.pull_request_attributes_all(measurement_window,
+                                                                                                  project_timeline_dates,                                                                                    pull_request_attribute_cols)
         pull_request_metrics = select([
-            pull_request_attributes.c.id,
-            pull_request_attributes.c.measurement_date,
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date,
             func.avg(pull_request_attributes.c.age).label('avg_age'),
             func.min(pull_request_attributes.c.age).label('min_age'),
             func.max(pull_request_attributes.c.age).label('max_age'),
@@ -1941,18 +1989,18 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
                     project_timeline_dates.c.measurement_date == pull_request_attributes.c.measurement_date
                 )
             )).group_by(
-            pull_request_attributes.c.measurement_date,
-            pull_request_attributes.c.id
+            project_timeline_dates.c.measurement_date,
+            project_timeline_dates.c.id
         ).order_by(
-            pull_request_attributes.c.id,
-            pull_request_attributes.c.measurement_date.desc()
+            project_timeline_dates.c.id,
+            project_timeline_dates.c.measurement_date.desc()
         ).alias('pull_request_metrics')
 
         return select([
-            project_timeline_dates.c.id,
+            pull_request_metrics.c.id,
             func.json_agg(
                 func.json_build_object(
-                    'measurement_date', cast(project_timeline_dates.c.measurement_date, Date),
+                    'measurement_date', cast(pull_request_metrics.c.measurement_date, Date),
                     'measurement_window', measurement_window,
                     'total_open', func.coalesce(pull_request_metrics.c.total_open, 0),
                     'total_closed', func.coalesce(pull_request_metrics.c.total_closed, 0),
@@ -1963,14 +2011,9 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
                 )
             ).label('pull_request_metrics_trends')
         ]).select_from(
-            project_timeline_dates.outerjoin(
-                pull_request_metrics, and_(
-                    project_timeline_dates.c.id == pull_request_metrics.c.id,
-                    project_timeline_dates.c.measurement_date == pull_request_metrics.c.measurement_date
-                )
-            )
+            pull_request_metrics
         ).group_by(
-            project_timeline_dates.c.id
+            pull_request_metrics.c.id
         )
 
 
@@ -1981,11 +2024,23 @@ class ProjectPullRequestNodes(ConnectionResolver):
     def connection_nodes_selector(**kwargs):
         select_pull_requests = select([
             *pull_request_info_columns(pull_requests)
-        ]).select_from(
+        ]).distinct().select_from(
             projects.join(
-                projects_repositories, projects_repositories.c.project_id == projects.c.id
+                work_items_sources, work_items_sources.c.project_id == projects.c.id
             ).join(
-                pull_requests, pull_requests.c.repository_id == projects_repositories.c.repository_id
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items.c.id
+            ).join(
+                pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
+            ).join(
+                repositories, pull_requests.c.repository_id == repositories.c.id
+            ).join(
+                projects_repositories,
+                and_(
+                    repositories.c.id == projects_repositories.c.repository_id,
+                    projects.c.id == projects_repositories.c.project_id
+                )
             )
         ).where(
             and_(

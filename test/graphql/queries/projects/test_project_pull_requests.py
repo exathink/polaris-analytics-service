@@ -21,6 +21,7 @@ class TestProjectPullRequests:
         organization, project, repositories, work_items_source, work_items_common, pull_requests_common = api_pull_requests_import_fixture
         api_helper = PullRequestImportApiHelper(organization, repositories, work_items_source)
 
+
         start_date = datetime.utcnow() - timedelta(days=10)
 
         work_items = [
@@ -35,6 +36,9 @@ class TestProjectPullRequests:
             )
             for i in range(0, 1)
         ]
+
+        work_items_api_helper = WorkItemImportApiHelper(organization, work_items_source)
+        work_items_api_helper.import_work_items(work_items)
 
         pull_requests = [
             dict(
@@ -55,6 +59,7 @@ class TestProjectPullRequests:
         yield Fixture(
             project=project,
             api_helper=api_helper,
+            work_items_api_helper=work_items_api_helper,
             start_date=start_date,
             work_items=work_items,
             pull_requests=pull_requests,
@@ -103,14 +108,19 @@ class TestProjectPullRequests:
                 assert result['data']
                 assert result['data']['project']['pullRequests']['edges'] == []
 
-            class TestWithActivePullRequests:
+            class TestWithActivePullRequestsFromProject:
 
                 @pytest.fixture()
                 def setup(self, setup):
                     fixture = setup
                     api_helper = fixture.api_helper
+
                     # Import 2 PRs
                     api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
+                    fixture.api_helper.map_pull_request_to_work_item(fixture.work_items[0]['key'],
+                                                                     fixture.pull_requests[0]['key'])
+                    fixture.api_helper.map_pull_request_to_work_item(fixture.work_items[0]['key'],
+                                                                     fixture.pull_requests[1]['key'])
 
                     yield fixture
 
@@ -230,6 +240,33 @@ class TestProjectPullRequests:
 
                         assert result['data']
                         assert len(result['data']['project']['pullRequests']['edges']) == 1
+
+            class TestOnlyProjectPullRequestsAreReturned:
+
+                @pytest.fixture()
+                def setup(self, setup):
+                    fixture = setup
+                    api_helper = fixture.api_helper
+
+                    # Import 2 PRs
+                    api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
+                    fixture.api_helper.map_pull_request_to_work_item(fixture.work_items[0]['key'],
+                                                                     fixture.pull_requests[0]['key'])
+
+                    yield fixture
+
+                def it_returns_only_project_pull_requests(self, setup):
+                    fixture = setup
+
+                    client = Client(schema)
+
+                    result = client.execute(fixture.query, variable_values=dict(
+                        key=fixture.project.key
+                    ))
+
+                    assert result['data']
+                    assert len(result['data']['project']['pullRequests']['edges']) == 1
+
 
     class TestProjectPullRequestEventSpan:
 

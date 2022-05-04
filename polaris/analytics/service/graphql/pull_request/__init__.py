@@ -60,6 +60,10 @@ class PullRequestsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             graphene.Boolean,
             required=False,
             description="Return only delivery cycles that are not closed"
+        ),
+        specs_only=graphene.Boolean(
+            required=False,
+            description="Only returns metrics for pull requests mapped to a card"
         )
     )
 

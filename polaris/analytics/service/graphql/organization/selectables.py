@@ -11,7 +11,7 @@
 from datetime import datetime, timedelta
 from polaris.utils.datetime_utils import time_window
 
-from sqlalchemy import select, func, bindparam, distinct, and_, between, cast, Text, extract
+from sqlalchemy import select, func, bindparam, distinct, and_, between, cast, Text, extract, literal
 
 from polaris.graphql.utils import nulls_to_zero
 from polaris.graphql.interfaces import NamedNode
@@ -50,6 +50,7 @@ class OrganizationNode(NamedNodeResolver):
             organizations.c.id,
             organizations.c.key.label('key'),
             organizations.c.name,
+
 
         ]).select_from(
             organizations
@@ -122,7 +123,8 @@ class OrganizationRepositoriesNodes(ConnectionResolver):
             repositories.c.id,
             repositories.c.key,
             repositories.c.name,
-            repositories.c.description
+            repositories.c.description,
+            literal(False).label('excluded')
         ]).select_from(
             repositories.join(
                 organizations

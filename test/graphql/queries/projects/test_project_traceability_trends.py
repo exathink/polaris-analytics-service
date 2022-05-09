@@ -192,6 +192,86 @@ class TestProjectTraceabilityTrends:
                    ),
                ]
 
+    def it_excludes_robots_from_commit_and_nospec_counts_when_there_are_commits_in_the_project(self,
+                                                                                                         project_commits_work_items_fixture
+                                                                                                         ):
+        fixture = project_commits_work_items_fixture
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        api.import_new_commits(
+            organization_key=fixture.organization.key,
+            repository_key=fixture.projects['mercury'].repositories[0].key,
+            new_commits=[
+                dict(
+                    source_commit_id='a-XXXX',
+                    # one commit 10 days from the end of the window
+                    commit_date=start_date,
+                    key=uuid.uuid4().hex,
+                    **fixture.commit_common_fields
+                ),
+                dict(
+                    source_commit_id='a-YYYY',
+                    # next commit 20 days from end of the window
+                    commit_date=start_date - timedelta(days=10),
+                    key=uuid.uuid4().hex,
+                    **fixture.commit_common_fields
+                )
+            ],
+            new_contributors=fixture.contributors
+        )
+
+        exclude_contributors_from_analysis(fixture.contributors)
+
+        client = Client(schema)
+
+        result = client.execute(self.project_traceability_query, variable_values=dict(
+            project_key=fixture.projects['mercury'].key,
+            days=30,
+            window=15,
+            sample=7
+        ))
+        assert result['data']
+        traceability_trends = result['data']['project']['traceabilityTrends']
+        # there should one measurement per sample in the measurement window, including each end point.
+        assert len(traceability_trends) == 5
+
+        assert [
+                   dict_select(measurement, ['traceability', 'specCount', 'nospecCount', 'totalCommits'])
+                   for measurement in traceability_trends
+               ] == [
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+               ]
+
     def it_reports_commit_and_nospec_counts_when_there_are_commits_that_are_not_associated_with_any_work_items(self,
                                                                                                                project_commits_work_items_fixture):
         fixture = project_commits_work_items_fixture
@@ -483,6 +563,109 @@ class TestProjectTraceabilityTrends:
                        specCount=0,
                        nospecCount=1,
                        totalCommits=1
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+
+               ]
+
+    def it_excludes_robot_contributions_from_traceability_and_spec_count_when_there_are_commits_associated_with_work_items(self,
+                                                                                                 project_commits_work_items_fixture):
+        fixture = project_commits_work_items_fixture
+
+        # same setup as last one, but we are going to add some work items and associate some commits
+        start_date = datetime.utcnow() - timedelta(days=10)
+        new_commits = [
+            dict(
+                source_commit_id='a-XXXX',
+                # one commit 10 days from the end of the window
+                commit_date=start_date,
+                key=uuid.uuid4().hex,
+                **fixture.commit_common_fields
+            ),
+            dict(
+                source_commit_id='a-YYYY',
+                # next commit 20 days from end of the window
+                commit_date=start_date - timedelta(days=10),
+                key=uuid.uuid4().hex,
+                **fixture.commit_common_fields
+            )
+        ]
+        api.import_new_commits(
+            organization_key=fixture.organization.key,
+            repository_key=fixture.projects['mercury'].repositories[0].key,
+            new_commits=new_commits,
+            new_contributors=fixture.contributors
+        )
+        exclude_contributors_from_analysis(fixture.contributors)
+
+        api_helper = WorkItemImportApiHelper(fixture.organization, fixture.projects['mercury'].work_items_sources[0])
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **fixture.work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+
+        add_work_item_commits([(work_items[0]['key'], new_commits[0]['key'])])
+
+        client = Client(schema)
+
+        result = client.execute(self.project_traceability_query, variable_values=dict(
+            project_key=fixture.projects['mercury'].key,
+            days=30,
+            window=15,
+            sample=7
+        ))
+        assert result['data']
+        traceability_trends = result['data']['project']['traceabilityTrends']
+        # assertions here are the same as the last test, as adding work items should have no impact on the metrics
+
+        # there should one measurement per sample in the measurement window, including each end point.
+        assert len(traceability_trends) == 5
+
+        assert [
+                   dict_select(measurement, ['traceability', 'specCount', 'nospecCount', 'totalCommits'])
+                   for measurement in traceability_trends
+               ] == [
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
+                   ),
+                   dict(
+                       traceability=0.0,
+                       specCount=0,
+                       nospecCount=0,
+                       totalCommits=0
                    ),
                    dict(
                        traceability=0.0,

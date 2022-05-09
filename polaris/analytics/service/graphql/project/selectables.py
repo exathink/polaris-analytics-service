@@ -1246,10 +1246,13 @@ class ProjectTraceabilityTrends(InterfaceResolver):
                 projects_repositories, projects_repositories.c.project_id == project_nodes.c.id
             ).join(
                 commits, commits.c.repository_id == projects_repositories.c.repository_id
+            ).join(
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
             and_(
                 projects_repositories.c.excluded == False,
+                contributor_aliases.c.robot == False,
                 commits.c.commit_date.between(
                     timeline_span.c.window_start,
                     timeline_span.c.window_end
@@ -1275,7 +1278,7 @@ class ProjectTraceabilityTrends(InterfaceResolver):
             projects_timeline_dates.c.id,
             projects_timeline_dates.c.measurement_date,
             # The total commits include all the candidate commits in the specific
-            # masurement window.
+            # measurement window.
             func.count(candidate_commits.c.commit_id.distinct()).label('total_commits'),
             # The specs are the subset of those commits that are associated with this
             # specific project. Note that under this definition, if a repo is shared across

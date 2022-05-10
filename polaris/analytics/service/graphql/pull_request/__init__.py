@@ -64,7 +64,12 @@ class PullRequestsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
         specs_only=graphene.Boolean(
             required=False,
             description="Only returns metrics for pull requests mapped to a card"
-        )
+        ),
+        before=graphene.Argument(
+            graphene.DateTime,
+            required=False,
+            description="End date of period to search for activity. If not specified it defaults to utc now"
+        ),
     )
 
     def resolve_pull_requests(self, info, **kwargs):

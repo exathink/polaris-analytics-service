@@ -12,7 +12,7 @@ from graphene.test import Client
 
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
-
+from polaris.analytics.service.graphql.utils import get_before_date
 
 class TestProjectPullRequests:
 
@@ -240,6 +240,92 @@ class TestProjectPullRequests:
 
                         assert result['data']
                         assert len(result['data']['project']['pullRequests']['edges']) == 1
+
+                    class TestBeforeDateHandling:
+
+                        def it_returns_items_closed_within_the_window_starting_at_the_end_of_the_before_date_when_it_is_a_date_time(self, setup):
+                            fixture = setup
+                            api_helper = fixture.api_helper
+                            # Set the target before date to be a point in the middle of a day
+                            before = datetime.utcnow()
+                            # the expected behavior is to start the search in a window starting at the end of
+                            # the before date
+                            end_of_today = before.date() + timedelta(days=1)
+                            # so close the pull request two days before the end of today.
+                            api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'],
+                                                           update_dict=dict(state='closed', end_date=end_of_today - timedelta(days=2)))
+                            client = Client(schema)
+                            query = """
+                                                query getProjectPullRequests($key:String!, $before: DateTime!, $days: Int!) {
+                                                    project(key: $key){
+                                                        pullRequests (closedWithinDays: $days, before: $before) {
+                                                            edges {
+                                                                node {
+                                                                    id
+                                                                    name
+                                                                    key
+                                                                    age
+                                                                    state
+                                                                    createdAt
+                                                                    endDate
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                 }
+                                                """
+
+                            result = client.execute(query, variable_values=dict(
+                                key=fixture.project.key,
+                                days=2,
+                                before=before
+                            ))
+
+                            assert result['data']
+                            assert len(result['data']['project']['pullRequests']['edges']) == 1
+
+                    def it_excludes_items_closed_within_the_window_starting_with_the_before_date_it_is_a_date_time(
+                            self, setup):
+                        fixture = setup
+                        api_helper = fixture.api_helper
+                        # Set the target before date to be a point in the middle of a day
+                        before = datetime.utcnow()
+
+                        # now close the pull request two days before the actual before date
+                        # we should not find the pull request since it falls outside the window. This is counter-intuitive
+                        # but the expected behavior given the conventions around the search window
+                        api_helper.update_pull_request(pull_request_key=fixture.pull_requests[0]['key'],
+                                                       update_dict=dict(state='closed',
+                                                                        end_date=before - timedelta(days=2)))
+                        client = Client(schema)
+                        query = """
+                                            query getProjectPullRequests($key:String!, $before: DateTime!, $days: Int!) {
+                                                project(key: $key){
+                                                    pullRequests (closedWithinDays: $days, before: $before) {
+                                                        edges {
+                                                            node {
+                                                                id
+                                                                name
+                                                                key
+                                                                age
+                                                                state
+                                                                createdAt
+                                                                endDate
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                             }
+                                            """
+
+                        result = client.execute(query, variable_values=dict(
+                            key=fixture.project.key,
+                            days=2,
+                            before=before
+                        ))
+
+                        assert result['data']
+                        assert len(result['data']['project']['pullRequests']['edges']) == 0
 
             class TestOnlyProjectPullRequestsAreReturned:
 

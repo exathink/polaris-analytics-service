@@ -9,7 +9,7 @@
 from sqlalchemy import func, case, and_
 from datetime import datetime, timedelta
 from polaris.analytics.db.model import pull_requests
-
+from polaris.analytics.service.graphql.utils import get_before_date
 
 def pull_request_info_columns(pull_requests):
     return [
@@ -37,13 +37,16 @@ def pull_request_info_columns(pull_requests):
 def pull_requests_connection_apply_filters(select_pull_requests, **kwargs):
     if kwargs.get('active_only'):
         select_pull_requests = select_pull_requests.where(pull_requests.c.state == 'open')
-    if 'closed_within_days' in kwargs:
-        window_start = datetime.utcnow() - timedelta(days=kwargs.get('closed_within_days'))
+    if 'closed_within_days' in kwargs and kwargs['closed_within_days'] > 0:
+        before = get_before_date(**kwargs)
+
+        window_start = before - timedelta(days=kwargs.get('closed_within_days'))
 
         select_pull_requests = select_pull_requests.where(
             and_(
                 pull_requests.c.state != 'open',
-                pull_requests.c.end_date >= window_start
+                pull_requests.c.end_date >= window_start,
+                pull_requests.c.end_date < before
             )
         )
     return select_pull_requests

@@ -414,13 +414,25 @@ class RepositoriesTraceabilityTrends(InterfaceResolver):
         ]).select_from(
             repository_nodes.join(
                 commits, commits.c.repository_id == repository_nodes.c.id
+            ).join(
+                contributor_aliases, commits.c.author_contributor_alias_id == contributor_aliases.c.id
             )
         ).where(
-            commits.c.commit_date.between(
-                timeline_span.c.window_start,
-                timeline_span.c.window_end
+            and_ (
+                contributor_aliases.c.robot == False,
+                commits.c.commit_date.between(
+                    timeline_span.c.window_start,
+                    timeline_span.c.window_end
+                )
             )
-        ).cte()
+        )
+
+        if traceability_trends_args.exclude_merges:
+            candidate_commits = candidate_commits.where(
+                commits.c.num_parents <= 1
+            )
+
+        candidate_commits = candidate_commits.cte()
 
         # do the cross join to compute one row for each repo and each trend measurement date
         # we will compute the traceability metrics for each of these rows

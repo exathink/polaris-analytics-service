@@ -416,6 +416,7 @@ class AccountInfo(graphene.Interface):
 
 class OrganizationRole(graphene.ObjectType):
     organization_key = graphene.String()
+    organization_name = graphene.String()
     organization_role = graphene.String()
 
 

@@ -46,7 +46,9 @@ class UserUserInfo:
             func.json_agg(
                 func.json_build_object(
                     'organization_key', organizations.c.key,
-                    'organization_role', organization_members.c.role
+                    'organization_name', organizations.c.name,
+                    'organization_role', organization_members.c.role,
+                    'organization_name', organizations.c.name
                 )
             ).label('organization_roles')
 

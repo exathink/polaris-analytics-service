@@ -414,11 +414,17 @@ class AccountInfo(graphene.Interface):
     updated = graphene.DateTime(required=False)
 
 
+class OrganizationRole(graphene.ObjectType):
+    organization_key = graphene.String()
+    organization_role = graphene.String()
+
+
 class UserInfo(graphene.Interface):
     name = graphene.String(required=True)
     first_name = graphene.String(required=True)
     last_name = graphene.String(required=True)
     email = graphene.String(required=True)
+    organization_roles = graphene.List(OrganizationRole, required=False)
 
 
 class OwnerInfo(graphene.Interface):

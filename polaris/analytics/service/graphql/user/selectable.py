@@ -13,6 +13,7 @@
 import graphene
 from sqlalchemy import select, bindparam, func
 from polaris.auth.db.model import users
+from polaris.analytics.db.model import organizations, organization_members
 from polaris.graphql.interfaces import KeyIdNode, NamedNode
 from ..interfaces import UserInfo
 
@@ -41,11 +42,27 @@ class UserUserInfo:
             func.concat(users.c.first_name, ' ', users.c.last_name).label('name'),
             users.c.first_name,
             users.c.last_name,
-            users.c.email
+            users.c.email,
+            func.json_agg(
+                func.json_build_object(
+                    'organization_key', organizations.c.key,
+                    'organization_role', organization_members.c.role
+                )
+            ).label('organization_roles')
+
         ]).select_from(
             user_node.outerjoin(
                 users, user_node.c.key == users.c.key
+            ).join(
+                organization_members, organization_members.c.user_key == users.c.key
+            ).join(
+                organizations, organization_members.c.organization_id == organizations.c.id
             )
+        ).group_by(
+            users.c.key,
+            users.c.first_name,
+            users.c.last_name,
+            users.c.email
         )
         if kwargs.get('active_only'):
             return select_stmt.where(

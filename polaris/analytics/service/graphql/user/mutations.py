@@ -81,6 +81,45 @@ class InviteUser(graphene.Mutation):
         else:
             abort(403)
 
+class UpdateUserInput(graphene.InputObjectType):
+    account_key = graphene.String(required=True)
+    id = graphene.Int(required=True)
+    email = graphene.String(required=True)
+    first_name = graphene.String(required=True)
+    last_name = graphene.String(required=True)
+    organizations = graphene.Field(graphene.List(graphene.String), required=True)
+
+
+class UpdateUser(graphene.Mutation):
+    class Arguments:
+        update_user_input = UpdateUserInput(required=True)
+
+    user = User.Field()
+    updated = graphene.Boolean()
+
+    def mutate(self, info, update_user_input):
+        if Viewer.is_account_owner(update_user_input.account_key):
+            with db.orm_session() as session:
+                user, updated, account, added_orgs = api.update_user(
+                    update_user_input.email,
+                    update_user_input.id,
+                    update_user_input.first_name,
+                    update_user_input.last_name,
+                    update_user_input.account_key,
+                    update_user_input.organizations,
+                    join_this=session
+                )
+
+                if user is not None:
+                    return UpdateUser(
+                        user=User.resolve_field(info, user_key=user.key),
+                        updated=updated
+                    )
+
+        else:
+            abort(403)
+
 
 class UseMutationsMixin:
     invite_user = InviteUser.Field()
+    update_user = UpdateUser.Field()

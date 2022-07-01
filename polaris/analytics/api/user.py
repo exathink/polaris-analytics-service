@@ -50,3 +50,28 @@ def invite_user(email, first_name, last_name, account_key, organization_keys, jo
         else:
             raise ProcessingException(f'Account with key {account_key} not found')
 
+
+def update_user(email, user_id, first_name, last_name, account_key, organization_keys, join_this=None):
+    with db.orm_session(join_this) as session:
+        added_orgs = []
+        account = Account.find_by_account_key(session, account_key)
+        if account is not None:
+
+            user = User.find_by_id(session, user_id)
+            user.update(dict(first_name=first_name, last_name=last_name, email=email))
+
+
+            session.flush()
+            created = True
+
+            # for organization_key in organization_keys:
+              #  organization = Organization.find_by_organization_key(session, organization_key)
+               # if organization.belongs_to_account(account):
+                #    if organization.add_member(user):
+                 #       added_orgs.append(organization)
+                  #      added = True
+
+            return user, created,  account, added_orgs
+
+        else:
+            raise ProcessingException('Account with key {account_key} not found')

@@ -24,6 +24,12 @@ from polaris.common.enums import AccountRoles, OrganizationRoles
 logger = logging.getLogger('polaris.analytics.graphql')
 
 AccountRoleType = graphene.Enum.from_enum(AccountRoles)
+OrganizationRoleType = graphene.Enum.from_enum(OrganizationRoles)
+
+
+class OrgRoleDictionary(graphene.InputObjectType):
+    org_key = graphene.String()
+    role = graphene.Field(OrganizationRoleType)
 
 
 class InviteUserInput(graphene.InputObjectType):
@@ -94,7 +100,7 @@ class UpdateUserInput(graphene.InputObjectType):
     email = graphene.String(required=False)
     first_name = graphene.String(required=False)
     last_name = graphene.String(required=False)
-    organizations = graphene.Field(graphene.List(graphene.List(graphene.String)), required=False)
+    organizations = graphene.List(OrgRoleDictionary, required=False)
 
 
 class UpdateUser(graphene.Mutation):

@@ -52,7 +52,7 @@ def invite_user(email, first_name, last_name, account_key, organization_keys, jo
             raise ProcessingException(f'Account with key {account_key} not found')
 
 
-def update_user(account_key, key, account_role, active, email, first_name, last_name, organization_keys, join_this=None):
+def update_user(account_key, key, account_role, active, email, first_name, last_name, organization_roles, join_this=None):
     with db.orm_session(join_this) as session:
         added_orgs = []
         updated = False
@@ -77,18 +77,29 @@ def update_user(account_key, key, account_role, active, email, first_name, last_
 
                 if account_role is not None:
                     if account_role in [member.name for member in AccountRoles]:
-                        # if account_role == 'member' or account_role == 'owner':
                         account_member = account.get_member(user)
                         setattr(account_member, 'role', account_role)
                         updated = True
+                    else:
+                        raise ProcessingException(f'Account Role provided  {account_role} is invalid')
 
-                    # for organization_key in organization_keys:
-                      #  organization = Organization.find_by_organization_key(session, organization_key)
-                       # if organization.belongs_to_account(account):
-                        #    if organization.add_member(user):
-                         #       added_orgs.append(organization)
-                          #      added = True
-
+                if organization_roles is not None:
+                    for org_role in organization_roles:
+                        if org_role.role in [member.name for member in OrganizationRoles]:
+                            organization = Organization.find_by_organization_key(session, org_role.org_key)
+                            if organization.belongs_to_account(account):
+                                organization_member = organization.get_member(user)
+                                if organization_member is not None:
+                                    setattr(organization_member, 'role', org_role.role)
+                                else:
+                                    if organization.add_member(user):
+                                        added_orgs.append(organization)
+                                updated = True
+                            else:
+                                raise ProcessingException(f'Organization with key {org_role.org_key} does not belong '
+                                                          f'to account with account key {account_key}')
+                        else:
+                            raise ProcessingException(f'Organization Role provided  {org_role.role} is invalid')
                 return user, updated,  account, added_orgs
             else:
                 raise ProcessingException(f'User with key {key} not found')

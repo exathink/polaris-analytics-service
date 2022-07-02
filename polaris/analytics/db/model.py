@@ -239,6 +239,11 @@ class Organization(Base):
             if member.user_key == user.key:
                 return True
 
+    def get_member(self, user):
+        for member in self.members:
+            if member.user_key == user.key:
+                return member
+
     def add_member(self, user, role=OrganizationRoles.member):
         if not self.is_member(user):
             self.members.append(

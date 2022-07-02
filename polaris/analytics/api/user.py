@@ -13,6 +13,7 @@ from polaris.utils.exceptions import ProcessingException
 from polaris.auth.db.api import create_user
 from polaris.auth.db.model import User
 from polaris.analytics.db.model import Account, Organization, OrganizationMember, AccountMember
+from polaris.common.enums import AccountRoles, OrganizationRoles
 
 
 def invite_user(email, first_name, last_name, account_key, organization_keys, join_this=None):
@@ -51,27 +52,45 @@ def invite_user(email, first_name, last_name, account_key, organization_keys, jo
             raise ProcessingException(f'Account with key {account_key} not found')
 
 
-def update_user(email, user_id, first_name, last_name, account_key, organization_keys, join_this=None):
+def update_user(account_key, key, account_role, active, email, first_name, last_name, organization_keys, join_this=None):
     with db.orm_session(join_this) as session:
         added_orgs = []
+        updated = False
         account = Account.find_by_account_key(session, account_key)
         if account is not None:
 
-            user = User.find_by_id(session, user_id)
-            user.update(dict(first_name=first_name, last_name=last_name, email=email))
+            user = User.find_by_key(session, key)
+            if user is not None:
+                if active is not None or email is not None or first_name is not None or last_name is not None:
+                    user_data_to_update = {}
+                    if active is not None:
+                        user_data_to_update['active'] = active
+                    if email is not None:
+                        user_data_to_update['email'] = email
+                    if first_name is not None:
+                        user_data_to_update['first_name'] = first_name
+                    if last_name is not None:
+                        user_data_to_update['last_name'] = last_name
 
+                    user.update(user_data_to_update)
+                    updated = True
 
-            session.flush()
-            created = True
+                if account_role is not None:
+                    if account_role in [member.name for member in AccountRoles]:
+                        # if account_role == 'member' or account_role == 'owner':
+                        account_member = account.get_member(user)
+                        setattr(account_member, 'role', account_role)
+                        updated = True
 
-            # for organization_key in organization_keys:
-              #  organization = Organization.find_by_organization_key(session, organization_key)
-               # if organization.belongs_to_account(account):
-                #    if organization.add_member(user):
-                 #       added_orgs.append(organization)
-                  #      added = True
+                    # for organization_key in organization_keys:
+                      #  organization = Organization.find_by_organization_key(session, organization_key)
+                       # if organization.belongs_to_account(account):
+                        #    if organization.add_member(user):
+                         #       added_orgs.append(organization)
+                          #      added = True
 
-            return user, created,  account, added_orgs
-
+                return user, updated,  account, added_orgs
+            else:
+                raise ProcessingException(f'User with key {key} not found')
         else:
-            raise ProcessingException('Account with key {account_key} not found')
+            raise ProcessingException(f'Account with key {account_key} not found')

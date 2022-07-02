@@ -18,8 +18,12 @@ from polaris.analytics.service.invite import send_new_member_invite, send_join_a
 
 from ..viewer import Viewer
 from . import User
+from polaris.common.enums import AccountRoles, OrganizationRoles
+
 
 logger = logging.getLogger('polaris.analytics.graphql')
+
+AccountRoleType = graphene.Enum.from_enum(AccountRoles)
 
 
 class InviteUserInput(graphene.InputObjectType):
@@ -81,13 +85,16 @@ class InviteUser(graphene.Mutation):
         else:
             abort(403)
 
+
 class UpdateUserInput(graphene.InputObjectType):
     account_key = graphene.String(required=True)
-    id = graphene.Int(required=True)
-    email = graphene.String(required=True)
-    first_name = graphene.String(required=True)
-    last_name = graphene.String(required=True)
-    organizations = graphene.Field(graphene.List(graphene.String), required=True)
+    key = graphene.String(required=True)
+    account_role = AccountRoleType(required=False)
+    active = graphene.Boolean(required=False)
+    email = graphene.String(required=False)
+    first_name = graphene.String(required=False)
+    last_name = graphene.String(required=False)
+    organizations = graphene.Field(graphene.List(graphene.List(graphene.String)), required=False)
 
 
 class UpdateUser(graphene.Mutation):
@@ -101,11 +108,13 @@ class UpdateUser(graphene.Mutation):
         if Viewer.is_account_owner(update_user_input.account_key):
             with db.orm_session() as session:
                 user, updated, account, added_orgs = api.update_user(
+                    update_user_input.account_key,
+                    update_user_input.key,
+                    update_user_input.account_role,
+                    update_user_input.active,
                     update_user_input.email,
-                    update_user_input.id,
                     update_user_input.first_name,
                     update_user_input.last_name,
-                    update_user_input.account_key,
                     update_user_input.organizations,
                     join_this=session
                 )

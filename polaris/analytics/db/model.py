@@ -135,6 +135,12 @@ class Account(Base):
             if member.user_key == user.key:
                 return True
 
+    def get_member(self, user):
+        for member in self.members:
+            if member.user_key == user.key:
+                return member
+
+
     def add_member(self, user, role=AccountRoles.member):
         if not self.is_member(user):
             self.members.append(
@@ -283,6 +289,9 @@ class OrganizationMember(Base):
     role = Column(String, nullable=False, server_default=OrganizationRoles.member.value)
 
     organization = relationship('Organization', back_populates='members')
+
+    def update(self, role_data):
+        setattr(self, 'role', role_data)
 
 
 organization_members = OrganizationMember.__table__

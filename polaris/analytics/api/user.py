@@ -87,17 +87,20 @@ def update_user(account_key, key, account_role, active, email, first_name, last_
                     for org_role in organization_roles:
                         if org_role.role in [member.name for member in OrganizationRoles]:
                             organization = Organization.find_by_organization_key(session, org_role.org_key)
-                            if organization.belongs_to_account(account):
-                                organization_member = organization.get_member(user)
-                                if organization_member is not None:
-                                    setattr(organization_member, 'role', org_role.role)
+                            if organization is not None:
+                                if organization.belongs_to_account(account):
+                                    organization_member = organization.get_member(user)
+                                    if organization_member is not None:
+                                        setattr(organization_member, 'role', org_role.role)
+                                    else:
+                                        if organization.add_member(user):
+                                            added_orgs.append(organization)
+                                    updated = True
                                 else:
-                                    if organization.add_member(user):
-                                        added_orgs.append(organization)
-                                updated = True
+                                    raise ProcessingException(f'Organization with key {org_role.org_key} does not '
+                                                              f'belong to account with account key {account_key}')
                             else:
-                                raise ProcessingException(f'Organization with key {org_role.org_key} does not belong '
-                                                          f'to account with account key {account_key}')
+                                raise ProcessingException(f'Organization with key {org_role.org_key} does not exist')
                         else:
                             raise ProcessingException(f'Organization Role provided  {org_role.role} is invalid')
                 return user, updated,  account, added_orgs

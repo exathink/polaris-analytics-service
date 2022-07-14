@@ -52,58 +52,35 @@ def invite_user(email, first_name, last_name, account_key, organization_keys, jo
             raise ProcessingException(f'Account with key {account_key} not found')
 
 
-def update_user(account_key, key, account_role, active, email, first_name, last_name, organization_roles, join_this=None):
+def update_user(user_info, join_this=None):
     with db.orm_session(join_this) as session:
-        added_orgs = []
         updated = False
-        account = Account.find_by_account_key(session, account_key)
+        account = Account.find_by_account_key(session, user_info.account_key)
         if account is not None:
 
-            user = User.find_by_key(session, key)
+            user = User.find_by_key(session, user_info.key)
             if user is not None:
-                if active is not None or email is not None or first_name is not None or last_name is not None:
-                    user_data_to_update = {}
-                    if active is not None:
-                        user_data_to_update['active'] = active
-                    if email is not None:
-                        user_data_to_update['email'] = email
-                    if first_name is not None:
-                        user_data_to_update['first_name'] = first_name
-                    if last_name is not None:
-                        user_data_to_update['last_name'] = last_name
+                user.update(user_info)
+                updated = True
 
-                    user.update(user_data_to_update)
+                if user_info.account_role is not None:
+                    account.set_user_role(user, user_info.account_role)
                     updated = True
 
-                if account_role is not None:
-                    if account_role in [member.name for member in AccountRoles]:
-                        account_member = account.get_member(user)
-                        setattr(account_member, 'role', account_role)
-                        updated = True
-                    else:
-                        raise ProcessingException(f'Account Role provided  {account_role} is invalid')
-
-                if organization_roles is not None:
-                    for org_role in organization_roles:
-                        if org_role.role in [member.name for member in OrganizationRoles]:
-                            organization = Organization.find_by_organization_key(session, org_role.org_key)
-                            if organization is not None:
-                                if organization.belongs_to_account(account):
-                                    organization_member = organization.get_member(user)
-                                    if organization_member is not None:
-                                        setattr(organization_member, 'role', org_role.role)
-                                    else:
-                                        if organization.add_member(user):
-                                            added_orgs.append(organization)
-                                    updated = True
-                                else:
-                                    raise ProcessingException(f'Organization with key {org_role.org_key} does not '
-                                                              f'belong to account with account key {account_key}')
+                if user_info.organization_roles is not None:
+                    for org_role in user_info.organization_roles:
+                        organization = Organization.find_by_organization_key(session, org_role.org_key)
+                        if organization is not None:
+                            if organization.belongs_to_account(account):
+                                organization.set_user_role(user, org_role.role)
+                                updated = True
                             else:
-                                raise ProcessingException(f'Organization with key {org_role.org_key} does not exist')
+                                raise ProcessingException(f'Organization with key {org_role.org_key} does not '
+                                                          f'belong to account with account key {account_key}')
                         else:
-                            raise ProcessingException(f'Organization Role provided  {org_role.role} is invalid')
-                return user, updated,  account, added_orgs
+                            raise ProcessingException(f'Organization with key {org_role.org_key} does not exist')
+
+                return user, updated,  account
             else:
                 raise ProcessingException(f'User with key {key} not found')
         else:

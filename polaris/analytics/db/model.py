@@ -140,7 +140,6 @@ class Account(Base):
             if member.user_key == user.key:
                 return member
 
-
     def add_member(self, user, role=AccountRoles.member):
         if not self.is_member(user):
             self.members.append(
@@ -150,6 +149,10 @@ class Account(Base):
                 )
             )
             return True
+
+    def set_user_role(self, user, role):
+        member = self.get_member(user)
+        member.role = role
 
     def create_organization(self, name, key=None, profile=None, owner=None):
         organization = Organization.create(name, key, profile)
@@ -256,6 +259,18 @@ class Organization(Base):
 
     def set_owner(self, user):
         self.add_member(user, OrganizationRoles.owner)
+
+    def set_user_role(self, user, role):
+        member = self.get_member(user)
+        if member is not None:
+            member.update(role)
+        else:
+            self.members.append(
+                OrganizationMember(
+                    user_key=user.key,
+                    role=role
+                )
+            )
 
     def add_or_update_project(self, name, project_key=None, properties=None, repositories=None):
         existing = find(self.projects, lambda project: project.name == name)

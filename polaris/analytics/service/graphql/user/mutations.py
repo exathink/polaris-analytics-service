@@ -100,7 +100,7 @@ class UpdateUserInput(graphene.InputObjectType):
     email = graphene.String(required=False)
     first_name = graphene.String(required=False)
     last_name = graphene.String(required=False)
-    organizations = graphene.List(OrgRoleDictionary, required=False)
+    organization_roles = graphene.List(OrgRoleDictionary, required=False)
 
 
 class UpdateUser(graphene.Mutation):
@@ -113,15 +113,8 @@ class UpdateUser(graphene.Mutation):
     def mutate(self, info, update_user_input):
         if Viewer.is_account_owner(update_user_input.account_key):
             with db.orm_session() as session:
-                user, updated, account, added_orgs = api.update_user(
-                    update_user_input.account_key,
-                    update_user_input.key,
-                    update_user_input.account_role,
-                    update_user_input.active,
-                    update_user_input.email,
-                    update_user_input.first_name,
-                    update_user_input.last_name,
-                    update_user_input.organizations,
+                user, updated, account = api.update_user(
+                    update_user_input,
                     join_this=session
                 )
 

@@ -311,7 +311,7 @@ class OrganizationMember(Base):
     organization = relationship('Organization', back_populates='members')
 
     def update(self, role_data):
-        setattr(self, 'role', role_data)
+        self.role = role_data
 
 
 organization_members = OrganizationMember.__table__

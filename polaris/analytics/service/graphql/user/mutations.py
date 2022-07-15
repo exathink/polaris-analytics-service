@@ -18,8 +18,18 @@ from polaris.analytics.service.invite import send_new_member_invite, send_join_a
 
 from ..viewer import Viewer
 from . import User
+from polaris.common.enums import AccountRoles, OrganizationRoles
+
 
 logger = logging.getLogger('polaris.analytics.graphql')
+
+AccountRoleType = graphene.Enum.from_enum(AccountRoles)
+OrganizationRoleType = graphene.Enum.from_enum(OrganizationRoles)
+
+
+class OrgRoleDictionary(graphene.InputObjectType):
+    org_key = graphene.String()
+    role = graphene.Field(OrganizationRoleType)
 
 
 class InviteUserInput(graphene.InputObjectType):
@@ -82,5 +92,42 @@ class InviteUser(graphene.Mutation):
             abort(403)
 
 
+class UpdateUserInput(graphene.InputObjectType):
+    account_key = graphene.String(required=True)
+    key = graphene.String(required=True)
+    account_role = AccountRoleType(required=False)
+    active = graphene.Boolean(required=False)
+    email = graphene.String(required=False)
+    first_name = graphene.String(required=False)
+    last_name = graphene.String(required=False)
+    organization_roles = graphene.List(OrgRoleDictionary, required=False)
+
+
+class UpdateUser(graphene.Mutation):
+    class Arguments:
+        update_user_input = UpdateUserInput(required=True)
+
+    user = User.Field()
+    updated = graphene.Boolean()
+
+    def mutate(self, info, update_user_input):
+        if Viewer.is_account_owner(update_user_input.account_key):
+            with db.orm_session() as session:
+                user, updated, account = api.update_user(
+                    update_user_input,
+                    join_this=session
+                )
+
+                if user is not None:
+                    return UpdateUser(
+                        user=User.resolve_field(info, user_key=user.key),
+                        updated=updated
+                    )
+
+        else:
+            abort(403)
+
+
 class UseMutationsMixin:
     invite_user = InviteUser.Field()
+    update_user = UpdateUser.Field()

@@ -13,6 +13,7 @@ from polaris.utils.exceptions import ProcessingException
 from polaris.auth.db.api import create_user
 from polaris.auth.db.model import User
 from polaris.analytics.db.model import Account, Organization, OrganizationMember, AccountMember
+from polaris.common.enums import AccountRoles, OrganizationRoles
 
 
 def invite_user(email, first_name, last_name, account_key, organization_keys, join_this=None):
@@ -50,3 +51,32 @@ def invite_user(email, first_name, last_name, account_key, organization_keys, jo
         else:
             raise ProcessingException(f'Account with key {account_key} not found')
 
+
+def update_user(update_user_input, join_this=None):
+    with db.orm_session(join_this) as session:
+        updated = False
+        account = Account.find_by_account_key(session, update_user_input.account_key)
+        if account is not None:
+
+            user = User.find_by_key(session, update_user_input.key)
+            if user is not None:
+                user.update(update_user_input)
+                updated = True
+
+                if update_user_input.account_role is not None:
+                    account.set_user_role(user, update_user_input.account_role)
+                    updated = True
+
+                if update_user_input.organization_roles is not None:
+                    for org_role in update_user_input.organization_roles:
+                        organization = Organization.find_by_organization_key(session, org_role.org_key)
+                        if organization is not None:
+                            updated = organization.set_user_role(account, user, org_role.role)
+                        else:
+                            raise ProcessingException(f'Organization with key {org_role.org_key} does not exist')
+
+                return user, updated,  account
+            else:
+                raise ProcessingException(f'User with key {key} not found')
+        else:
+            raise ProcessingException(f'Account with key {account_key} not found')

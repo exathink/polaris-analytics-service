@@ -243,9 +243,7 @@ class Organization(Base):
                 return True
 
     def get_member(self, user):
-        for member in self.members:
-            if member.user_key == user.key:
-                return member
+        return find(self.members, lambda member: member.user_key == user.key)
 
     def add_member(self, user, role=OrganizationRoles.member):
         if not self.is_member(user):
@@ -260,17 +258,22 @@ class Organization(Base):
     def set_owner(self, user):
         self.add_member(user, OrganizationRoles.owner)
 
-    def set_user_role(self, user, role):
-        member = self.get_member(user)
-        if member is not None:
-            member.update(role)
-        else:
-            self.members.append(
-                OrganizationMember(
-                    user_key=user.key,
-                    role=role
+    def set_user_role(self, account, user, role):
+        if self.belongs_to_account(account):
+            member = self.get_member(user)
+            if member is not None:
+                member.update(role)
+            else:
+                self.members.append(
+                    OrganizationMember(
+                        user_key=user.key,
+                        role=role
+                    )
                 )
-            )
+        else:
+            raise ProcessingException(f'Organization with key {self.key} does not '
+                                      f'belong to account with account key {account.key}')
+        return True
 
     def add_or_update_project(self, name, project_key=None, properties=None, repositories=None):
         existing = find(self.projects, lambda project: project.name == name)

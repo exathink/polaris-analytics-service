@@ -52,31 +52,26 @@ def invite_user(email, first_name, last_name, account_key, organization_keys, jo
             raise ProcessingException(f'Account with key {account_key} not found')
 
 
-def update_user(user_info, join_this=None):
+def update_user(update_user_input, join_this=None):
     with db.orm_session(join_this) as session:
         updated = False
-        account = Account.find_by_account_key(session, user_info.account_key)
+        account = Account.find_by_account_key(session, update_user_input.account_key)
         if account is not None:
 
-            user = User.find_by_key(session, user_info.key)
+            user = User.find_by_key(session, update_user_input.key)
             if user is not None:
-                user.update(user_info)
+                user.update(update_user_input)
                 updated = True
 
-                if user_info.account_role is not None:
-                    account.set_user_role(user, user_info.account_role)
+                if update_user_input.account_role is not None:
+                    account.set_user_role(user, update_user_input.account_role)
                     updated = True
 
-                if user_info.organization_roles is not None:
-                    for org_role in user_info.organization_roles:
+                if update_user_input.organization_roles is not None:
+                    for org_role in update_user_input.organization_roles:
                         organization = Organization.find_by_organization_key(session, org_role.org_key)
                         if organization is not None:
-                            if organization.belongs_to_account(account):
-                                organization.set_user_role(user, org_role.role)
-                                updated = True
-                            else:
-                                raise ProcessingException(f'Organization with key {org_role.org_key} does not '
-                                                          f'belong to account with account key {account_key}')
+                            updated = organization.set_user_role(account, user, org_role.role)
                         else:
                             raise ProcessingException(f'Organization with key {org_role.org_key} does not exist')
 

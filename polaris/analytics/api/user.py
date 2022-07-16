@@ -7,6 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
+import uuid
 
 from polaris.common import db
 from polaris.utils.exceptions import ProcessingException
@@ -57,7 +58,6 @@ def update_user(update_user_input, join_this=None):
         updated = False
         account = Account.find_by_account_key(session, update_user_input.account_key)
         if account is not None:
-
             user = User.find_by_key(session, update_user_input.key)
             if user is not None:
                 user.update(update_user_input)
@@ -77,6 +77,6 @@ def update_user(update_user_input, join_this=None):
 
                 return user, updated,  account
             else:
-                raise ProcessingException(f'User with key {key} not found')
+                raise ProcessingException(f'User with key {update_user_input.key} not found')
         else:
-            raise ProcessingException(f'Account with key {account_key} not found')
+            raise ProcessingException(f'Account with key {update_user_input.account_key} not found')

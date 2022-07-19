@@ -21,7 +21,9 @@ from polaris.common.enums import AccountRoles, OrganizationRoles
 
 test_account_key = uuid.uuid4().hex
 test_organization_key = uuid.uuid4().hex
+test_organization_key2 = uuid.uuid4().hex
 test_user_key = uuid.uuid4().hex
+
 
 @pytest.fixture()
 def account_org_user_fixture(setup_schema):
@@ -30,9 +32,15 @@ def account_org_user_fixture(setup_schema):
         account = Account(key=test_account_key,
                           name='test-account')
 
-        organization = Organization(
+        organization1 = Organization(
             key=test_organization_key,
-            name='test-org',
+            name='test-org1',
+            public=False
+        )
+
+        organization2 = Organization(
+            key=test_organization_key2,
+            name='test-org2',
             public=False
         )
 
@@ -44,17 +52,20 @@ def account_org_user_fixture(setup_schema):
                     active=True,
                     password="ohmyohmy")
 
-        account.organizations.append(organization)
+        organizations = [organization1, organization2]
+
         account.add_member(user, AccountRoles.owner)
         account.set_owner(user)
-        organization.add_member(user, OrganizationRoles.member)
         session.add(user)
-        session.add(organization)
+        for org in organizations:
+            account.organizations.append(org)
+            org.add_member(user, OrganizationRoles.member)
+            session.add(org)
         session.add(account)
 
         session.flush()
 
-    yield account, organization, user
+    yield account, organizations, user
 
     db.connection().execute("delete from analytics.accounts_organizations")
     db.connection().execute("delete from analytics.organization_members")
@@ -67,4 +78,3 @@ def account_org_user_fixture(setup_schema):
 @pytest.fixture()
 def cleanup():
     yield
-

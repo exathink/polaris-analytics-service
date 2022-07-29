@@ -133,6 +133,7 @@ class TestUpdateUser:
             try:
                 user, updated, account = api.update_user(update_user_input,
                                          join_this=session)
+                assert False
             except Exception as excinfo:
                 assert "Account with key" in excinfo.args[0]
 
@@ -162,6 +163,7 @@ class TestUpdateUser:
             try:
                 user, updated, account = api.update_user(update_user_input,
                                                          join_this=session)
+                assert False
             except Exception as excinfo:
                 assert "Organization with key" in excinfo.args[0]
 
@@ -197,5 +199,6 @@ class TestUpdateUser:
             try:
                 user, updated, account = api.update_user(update_user_input,
                                                          join_this=session)
+                assert False
             except Exception as excinfo:
                 assert "User with key" in excinfo.args[0]

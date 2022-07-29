@@ -13,8 +13,7 @@ from polaris.common import db
 from polaris.utils.exceptions import ProcessingException
 from polaris.auth.db.api import create_user
 from polaris.auth.db.model import User
-from polaris.analytics.db.model import Account, Organization, OrganizationMember, AccountMember
-from polaris.common.enums import AccountRoles, OrganizationRoles
+from polaris.analytics.db.model import Account, Organization
 
 
 def invite_user(email, first_name, last_name, account_key, organization_keys, join_this=None):
@@ -75,7 +74,7 @@ def update_user(update_user_input, join_this=None):
                         else:
                             raise ProcessingException(f'Organization with key {org_role.org_key} does not exist')
 
-                return user, updated,  account
+                return user, updated, account
             else:
                 raise ProcessingException(f'User with key {update_user_input.key} not found')
         else:

@@ -26,7 +26,7 @@ test_user_key = uuid.uuid4().hex
 
 
 @pytest.fixture()
-def account_org_user_fixture(setup_schema):
+def account_org_user_fixture(setup_schema, setup_auth_schema):
     with db.orm_session() as session:
         session.expire_on_commit = False
         account = Account(key=test_account_key,

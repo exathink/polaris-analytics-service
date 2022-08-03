@@ -135,6 +135,11 @@ class Account(Base):
             if member.user_key == user.key:
                 return True
 
+    def get_member(self, user):
+        for member in self.members:
+            if member.user_key == user.key:
+                return member
+
     def add_member(self, user, role=AccountRoles.member):
         if not self.is_member(user):
             self.members.append(
@@ -144,6 +149,10 @@ class Account(Base):
                 )
             )
             return True
+
+    def set_user_role(self, user, role):
+        member = self.get_member(user)
+        member.role = role
 
     def create_organization(self, name, key=None, profile=None, owner=None):
         organization = Organization.create(name, key, profile)
@@ -233,6 +242,9 @@ class Organization(Base):
             if member.user_key == user.key:
                 return True
 
+    def get_member(self, user):
+        return find(self.members, lambda member: member.user_key == user.key)
+
     def add_member(self, user, role=OrganizationRoles.member):
         if not self.is_member(user):
             self.members.append(
@@ -245,6 +257,23 @@ class Organization(Base):
 
     def set_owner(self, user):
         self.add_member(user, OrganizationRoles.owner)
+
+    def set_user_role(self, account, user, role):
+        if self.belongs_to_account(account):
+            member = self.get_member(user)
+            if member is not None:
+                member.update(role)
+            else:
+                self.members.append(
+                    OrganizationMember(
+                        user_key=user.key,
+                        role=role
+                    )
+                )
+        else:
+            raise ProcessingException(f'Organization with key {self.key} does not '
+                                      f'belong to account with account key {account.key}')
+        return True
 
     def add_or_update_project(self, name, project_key=None, properties=None, repositories=None):
         existing = find(self.projects, lambda project: project.name == name)
@@ -283,6 +312,9 @@ class OrganizationMember(Base):
     role = Column(String, nullable=False, server_default=OrganizationRoles.member.value)
 
     organization = relationship('Organization', back_populates='members')
+
+    def update(self, role_data):
+        self.role = role_data
 
 
 organization_members = OrganizationMember.__table__

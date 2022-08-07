@@ -7,13 +7,13 @@
 # confidential.
 
 # Author: Krishna Kumar
+import uuid
 
 from polaris.common import db
 from polaris.utils.exceptions import ProcessingException
 from polaris.auth.db.api import create_user
 from polaris.auth.db.model import User
-from polaris.analytics.db.model import Account, Organization, OrganizationMember, AccountMember
-from polaris.common.enums import AccountRoles, OrganizationRoles
+from polaris.analytics.db.model import Account, Organization
 
 
 def invite_user(email, first_name, last_name, account_key, organization_keys, join_this=None):
@@ -57,7 +57,6 @@ def update_user(update_user_input, join_this=None):
         updated = False
         account = Account.find_by_account_key(session, update_user_input.account_key)
         if account is not None:
-
             user = User.find_by_key(session, update_user_input.key)
             if user is not None:
                 user.update(update_user_input)
@@ -75,8 +74,8 @@ def update_user(update_user_input, join_this=None):
                         else:
                             raise ProcessingException(f'Organization with key {org_role.org_key} does not exist')
 
-                return user, updated,  account
+                return user, updated, account
             else:
-                raise ProcessingException(f'User with key {key} not found')
+                raise ProcessingException(f'User with key {update_user_input.key} not found')
         else:
-            raise ProcessingException(f'Account with key {account_key} not found')
+            raise ProcessingException(f'Account with key {update_user_input.account_key} not found')

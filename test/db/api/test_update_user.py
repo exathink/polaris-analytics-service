@@ -59,21 +59,22 @@ class TestUpdateUser:
 
         organization_roles = [org_role1, org_role2]
 
-        update_user_input = dict_to_object(dict(account_key=fixture.account.key,
-                                                key=fixture.user.key,
-                                                account_role="member",
-                                                first_name="Elizabeth",
-                                                last_name="Bennett",
-                                                email="Elizabeth.Bennett@janepausten.com",
-                                                active=True,
-                                                organization_roles=organization_roles
-                                                ))
+        update_user_input = Fixture(account_key=fixture.account.key,
+                                    key=fixture.user.key,
+                                    account_role="member",
+                                    first_name="Elizabeth",
+                                    last_name="Bennett",
+                                    email="Elizabeth.Bennett@janepausten.com",
+                                    active=True,
+                                    organization_roles=organization_roles
+                                    )
 
         with db.orm_session() as session:
             user, updated, account = api.update_user(update_user_input,
                                                      join_this=session)
 
         assert updated
+
 
     def it_updates_the_database(self, setup):
         fixture = setup
@@ -88,15 +89,15 @@ class TestUpdateUser:
 
         organization_roles = [org_role1, org_role2]
 
-        update_user_input = dict_to_object(dict(account_key=fixture.account.key,
-                                                key=fixture.user.key,
-                                                account_role="member",
-                                                first_name="Elizabeth",
-                                                last_name="Bennett",
-                                                email="Elizabeth.Bennett@janepausten.com",
-                                                active=True,
-                                                organization_roles=organization_roles
-                                                ))
+        update_user_input = Fixture(account_key=fixture.account.key,
+                                    key=fixture.user.key,
+                                    account_role="member",
+                                    first_name="Elizabeth",
+                                    last_name="Bennett",
+                                    email="Elizabeth.Bennett@janepausten.com",
+                                    active=True,
+                                    organization_roles=organization_roles
+                                    )
 
         with db.orm_session() as session:
             user, updated, account = api.update_user(update_user_input,
@@ -104,6 +105,7 @@ class TestUpdateUser:
 
         assert db.connection().execute(
             f"select id from auth.users where key='{fixture.user.key}' and first_name='Elizabeth'").scalar() is not None
+
 
     def it_throws_an_error_message_when_account_is_invalid(self, setup):
         fixture = setup
@@ -119,26 +121,27 @@ class TestUpdateUser:
 
         organization_roles = [org_role1, org_role2]
 
-        update_user_input = dict_to_object(dict(account_key=account_key,
-                                                key=fixture.user.key,
-                                                account_role="member",
-                                                first_name="Elizabeth",
-                                                last_name="Bennett",
-                                                email="Elizabeth.Bennett@janepausten.com",
-                                                active=True,
-                                                organization_roles=organization_roles
-                                                ))
+        update_user_input = Fixture(account_key=account_key,
+                                    key=fixture.user.key,
+                                    account_role="member",
+                                    first_name="Elizabeth",
+                                    last_name="Bennett",
+                                    email="Elizabeth.Bennett@janepausten.com",
+                                    active=True,
+                                    organization_roles=organization_roles
+                                    )
 
         with db.orm_session() as session:
             try:
                 user, updated, account = api.update_user(update_user_input,
-                                         join_this=session)
+                                                         join_this=session)
                 assert False
             except Exception as excinfo:
                 assert "Account with key" in excinfo.args[0]
 
         assert db.connection().execute(
             f"select id from auth.users where key='{fixture.user.key}' and first_name='Elizabeth'").scalar() is None
+
 
     def it_throws_an_error_message_when_organization_is_invalid(self, setup):
         fixture = setup
@@ -149,15 +152,15 @@ class TestUpdateUser:
 
         organization_roles = [org_role1]
 
-        update_user_input = dict_to_object(dict(account_key=fixture.account.key,
-                                                key=fixture.user.key,
-                                                account_role="member",
-                                                first_name="Elizabeth",
-                                                last_name="Bennett",
-                                                email="Elizabeth.Bennett@janepausten.com",
-                                                active=True,
-                                                organization_roles=organization_roles
-                                                ))
+        update_user_input = Fixture(account_key=fixture.account.key,
+                                    key=fixture.user.key,
+                                    account_role="member",
+                                    first_name="Elizabeth",
+                                    last_name="Bennett",
+                                    email="Elizabeth.Bennett@janepausten.com",
+                                    active=True,
+                                    organization_roles=organization_roles
+                                    )
 
         with db.orm_session() as session:
             try:
@@ -185,15 +188,15 @@ class TestUpdateUser:
 
         organization_roles = [org_role1, org_role2]
 
-        update_user_input = dict_to_object(dict(account_key=fixture.account.key,
-                                                key=user_key,
-                                                account_role="member",
-                                                first_name="Elizabeth",
-                                                last_name="Bennett",
-                                                email="Elizabeth.Bennett@janepausten.com",
-                                                active=True,
-                                                organization_roles=organization_roles
-                                                ))
+        update_user_input = Fixture(account_key=fixture.account.key,
+                                    key=user_key,
+                                    account_role="member",
+                                    first_name="Elizabeth",
+                                    last_name="Bennett",
+                                    email="Elizabeth.Bennett@janepausten.com",
+                                    active=True,
+                                    organization_roles=organization_roles
+                                    )
 
         with db.orm_session() as session:
             try:

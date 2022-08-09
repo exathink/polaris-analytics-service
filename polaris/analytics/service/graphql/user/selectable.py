@@ -12,7 +12,7 @@
 import graphene
 from sqlalchemy import select, bindparam, func
 from polaris.auth.db.model import users, roles, users_roles
-from polaris.analytics.db.model import organizations, organization_members, accounts, account_members
+from polaris.analytics.db.model import organizations, organization_members, accounts, account_members, accounts_organizations
 from polaris.graphql.interfaces import KeyIdNode, NamedNode
 from ..interfaces import UserInfo, UserRoles
 
@@ -61,6 +61,8 @@ class UserUserRoles:
     @staticmethod
     def selectable(user_nodes, **kwargs):
 
+        user_roles_args = kwargs.get('user_roles_args', {})
+
         select_system_roles = select([
             user_nodes.c.key,
             func.json_agg(
@@ -80,6 +82,19 @@ class UserUserRoles:
             user_nodes.c.key
         ).cte('system_roles')
 
+        user_organizations_rel = user_nodes.join(
+                organization_members, user_nodes.c.key == organization_members.c.user_key
+            ).join(
+                organizations, organization_members.c.organization_id == organizations.c.id
+            )
+
+        if user_roles_args.get('account_key'):
+            user_organizations_rel = user_organizations_rel.join(
+                accounts_organizations, accounts_organizations.c.organization_id == organizations.c.id
+            ).join(
+                accounts, accounts_organizations.c.account_id == accounts.c.id
+            )
+
         select_organization_roles = select([
             user_nodes.c.key,
             func.json_agg(
@@ -90,12 +105,15 @@ class UserUserRoles:
                 )
             ).label('organization_roles'),
         ]).select_from(
-            user_nodes.join(
-                organization_members, user_nodes.c.key == organization_members.c.user_key
-            ).join(
-                organizations, organization_members.c.organization_id == organizations.c.id
+            user_organizations_rel
+        )
+
+        if user_roles_args.get('account_key'):
+            select_organization_roles = select_organization_roles.where(
+                accounts.c.key == user_roles_args.get('account_key')
             )
-        ).group_by(
+
+        select_organization_roles = select_organization_roles.group_by(
             user_nodes.c.key
         ).cte('organization_roles')
 

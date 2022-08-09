@@ -427,6 +427,20 @@ class UserInfo(graphene.Interface):
     email = graphene.String(required=True)
 
 
+class ScopedRoleField(graphene.ObjectType):
+    class Meta:
+        interfaces = (ScopedRole, NamedNode)
+
+
+class UserRoles(graphene.Interface):
+    # this is to separate admin users from regular users
+    system_roles = graphene.List(graphene.String)
+    # this is to separate account owners and members for an account
+    account_roles = graphene.List(ScopedRoleField)
+    # this is to separate org owners and members for an org
+    organization_roles = graphene.List(ScopedRoleField)
+
+
 class OwnerInfo(graphene.Interface):
     owner_key = graphene.String(required=True)
 

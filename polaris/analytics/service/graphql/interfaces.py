@@ -93,7 +93,7 @@ class TeamNodeRef(graphene.Interface):
 
 class TeamNodeRefImpl(graphene.ObjectType):
     class Meta:
-        interfaces = (TeamNodeRef, )
+        interfaces = (TeamNodeRef,)
 
 
 class TeamNodeRefs(graphene.Interface):
@@ -343,6 +343,7 @@ class BranchRef(graphene.Interface):
 class Excluded(graphene.Interface):
     excluded = graphene.Boolean(required=False)
 
+
 class ImplementationCost(graphene.Interface):
     budget = graphene.Float(required=False, description="Total engineering days estimated as per budget")
     effort = graphene.Float(required=False, description="Total engineering days required")
@@ -414,6 +415,11 @@ class AccountInfo(graphene.Interface):
     updated = graphene.DateTime(required=False)
 
 
+class ScopedRole(graphene.Interface):
+    scope_key = graphene.String(required=True)
+    role = graphene.String(required=True)
+
+
 class UserInfo(graphene.Interface):
     name = graphene.String(required=True)
     first_name = graphene.String(required=True)
@@ -423,11 +429,6 @@ class UserInfo(graphene.Interface):
 
 class OwnerInfo(graphene.Interface):
     owner_key = graphene.String(required=True)
-
-
-class ScopedRole(graphene.Interface):
-    scope_key = graphene.String(required=True)
-    role = graphene.String(required=True)
 
 
 class ArchivedStatus(graphene.Interface):
@@ -493,9 +494,6 @@ class WorkItemStateMappings(graphene.Interface):
 class DevelopmentProgress(DeliveryCycleInfo):
     last_update = graphene.DateTime(required=False)
     elapsed = graphene.Float(required=False)
-
-
-
 
 
 class DeliveryCycleSpan(graphene.Interface):
@@ -749,8 +747,3 @@ class BacklogMeasurementImpl(TrendMeasurementImpl):
 
 class BacklogTrends(graphene.Interface):
     backlog_trends = graphene.List(BacklogMeasurementImpl, required=True)
-
-
-class ScopedRoleField(graphene.ObjectType):
-    class Meta:
-        interfaces = (ScopedRole, NamedNode)

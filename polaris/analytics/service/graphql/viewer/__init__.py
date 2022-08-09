@@ -14,17 +14,13 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 from polaris.common.enums import AccountRoles
 from ..account import Account
-from ..interfaces import ScopedRole
+from ..interfaces import ScopedRoleField
 from .selectables import ViewerAccountRoles, ViewerOrganizationRoles, \
     ViewerFeatureFlagsNodes
 
 from ..selectable_field_mixins import SelectablePropertyResolverMixin
 from ..feature_flag import FeatureFlagsConnectionMixin
 from ..feature_flag.selectable import ScopedFeatureFlagsNodes
-
-class ScopedRoleField(graphene.ObjectType):
-    class Meta:
-        interfaces = (ScopedRole, NamedNode)
 
 
 class Viewer (

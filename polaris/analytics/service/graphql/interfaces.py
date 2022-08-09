@@ -749,3 +749,8 @@ class BacklogMeasurementImpl(TrendMeasurementImpl):
 
 class BacklogTrends(graphene.Interface):
     backlog_trends = graphene.List(BacklogMeasurementImpl, required=True)
+
+
+class ScopedRoleField(graphene.ObjectType):
+    class Meta:
+        interfaces = (ScopedRole, NamedNode)

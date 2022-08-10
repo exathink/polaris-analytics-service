@@ -12,7 +12,8 @@
 import graphene
 from sqlalchemy import select, bindparam, func
 from polaris.auth.db.model import users, roles, users_roles
-from polaris.analytics.db.model import organizations, organization_members, accounts, account_members, accounts_organizations
+from polaris.analytics.db.model import organizations, organization_members, accounts, account_members, \
+    accounts_organizations
 from polaris.graphql.interfaces import KeyIdNode, NamedNode
 from ..interfaces import UserInfo, UserRoles
 
@@ -59,10 +60,7 @@ class UserUserRoles:
     interface = UserRoles
 
     @staticmethod
-    def selectable(user_nodes, **kwargs):
-
-        user_roles_args = kwargs.get('user_roles_args', {})
-
+    def get_system_roles_selector(user_nodes):
         select_system_roles = select([
             user_nodes.c.key,
             func.json_agg(
@@ -81,20 +79,21 @@ class UserUserRoles:
         ).group_by(
             user_nodes.c.key
         ).cte('system_roles')
+        return select_system_roles
 
+    @staticmethod
+    def get_organization_roles_selector(user_nodes, user_roles_args):
         user_organizations_rel = user_nodes.join(
-                organization_members, user_nodes.c.key == organization_members.c.user_key
-            ).join(
-                organizations, organization_members.c.organization_id == organizations.c.id
-            )
-
+            organization_members, user_nodes.c.key == organization_members.c.user_key
+        ).join(
+            organizations, organization_members.c.organization_id == organizations.c.id
+        )
         if user_roles_args.get('account_key'):
             user_organizations_rel = user_organizations_rel.join(
                 accounts_organizations, accounts_organizations.c.organization_id == organizations.c.id
             ).join(
                 accounts, accounts_organizations.c.account_id == accounts.c.id
             )
-
         select_organization_roles = select([
             user_nodes.c.key,
             func.json_agg(
@@ -107,34 +106,61 @@ class UserUserRoles:
         ]).select_from(
             user_organizations_rel
         )
-
         if user_roles_args.get('account_key'):
             select_organization_roles = select_organization_roles.where(
                 accounts.c.key == user_roles_args.get('account_key')
             )
-
         select_organization_roles = select_organization_roles.group_by(
             user_nodes.c.key
         ).cte('organization_roles')
+        return select_organization_roles
 
+    @staticmethod
+    def get_account_roles_selector(user_nodes, user_roles_args):
         select_account_roles = select([
             user_nodes.c.key,
-            func.json_agg(
-                func.json_build_object(
-                    'name', accounts.c.name,
-                    'scope_key', accounts.c.key,
-                    'role', account_members.c.role
-                )
-            ).label('account_roles')
+            accounts.c.name,
+            accounts.c.key.label('account_key'),
+            account_members.c.role
         ]).select_from(
             user_nodes.join(
                 account_members, user_nodes.c.key == account_members.c.user_key
             ).join(
                 accounts, account_members.c.account_id == accounts.c.id
             )
+        )
+        if user_roles_args.get('account_key'):
+            select_account_roles = select_account_roles.where(
+                accounts.c.key == user_roles_args.get('account_key')
+            )
+
+        select_account_roles = select_account_roles.alias('select_account_roles')
+
+        return select([
+            select_account_roles.c.key,
+            func.json_agg(
+                func.json_build_object(
+                    'name', select_account_roles.c.name,
+                    'scope_key', select_account_roles.c.account_key,
+                    'role', select_account_roles.c.role
+                )
+            ).label('account_roles')
+        ]).select_from(
+            select_account_roles
         ).group_by(
-            user_nodes.c.key
+            select_account_roles.c.key
         ).cte('account_roles')
+
+    @staticmethod
+    def selectable(user_nodes, **kwargs):
+
+        user_roles_args = kwargs.get('user_roles_args', {})
+
+        select_system_roles = UserUserRoles.get_system_roles_selector(user_nodes)
+
+        select_organization_roles = UserUserRoles.get_organization_roles_selector(user_nodes, user_roles_args)
+
+        select_account_roles = UserUserRoles.get_account_roles_selector(user_nodes, user_roles_args)
 
         select_stmt = select([
             user_nodes.c.key,

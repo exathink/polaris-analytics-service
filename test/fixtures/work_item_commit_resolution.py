@@ -85,6 +85,7 @@ def org_repo_fixture(setup_schema):
 @pytest.fixture()
 def commits_fixture(org_repo_fixture, cleanup):
     organization, projects, repositories = org_repo_fixture
+    test_contributor_key = str(uuid.uuid4())
 
     with db.create_session() as session:
         contributor_id = session.connection.execute(

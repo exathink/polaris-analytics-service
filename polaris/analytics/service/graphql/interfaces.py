@@ -93,7 +93,7 @@ class TeamNodeRef(graphene.Interface):
 
 class TeamNodeRefImpl(graphene.ObjectType):
     class Meta:
-        interfaces = (TeamNodeRef, )
+        interfaces = (TeamNodeRef,)
 
 
 class TeamNodeRefs(graphene.Interface):
@@ -343,6 +343,7 @@ class BranchRef(graphene.Interface):
 class Excluded(graphene.Interface):
     excluded = graphene.Boolean(required=False)
 
+
 class ImplementationCost(graphene.Interface):
     budget = graphene.Float(required=False, description="Total engineering days estimated as per budget")
     effort = graphene.Float(required=False, description="Total engineering days required")
@@ -414,6 +415,11 @@ class AccountInfo(graphene.Interface):
     updated = graphene.DateTime(required=False)
 
 
+class ScopedRole(graphene.Interface):
+    scope_key = graphene.String(required=True)
+    role = graphene.String(required=True)
+
+
 class UserInfo(graphene.Interface):
     name = graphene.String(required=True)
     first_name = graphene.String(required=True)
@@ -421,13 +427,22 @@ class UserInfo(graphene.Interface):
     email = graphene.String(required=True)
 
 
+class ScopedRoleField(graphene.ObjectType):
+    class Meta:
+        interfaces = (ScopedRole, NamedNode)
+
+
+class UserRoles(graphene.Interface):
+    # this is to separate admin users from regular users
+    system_roles = graphene.List(graphene.String)
+    # this is to separate account owners and members for an account
+    account_roles = graphene.List(ScopedRoleField)
+    # this is to separate org owners and members for an org
+    organization_roles = graphene.List(ScopedRoleField)
+
+
 class OwnerInfo(graphene.Interface):
     owner_key = graphene.String(required=True)
-
-
-class ScopedRole(graphene.Interface):
-    scope_key = graphene.String(required=True)
-    role = graphene.String(required=True)
 
 
 class ArchivedStatus(graphene.Interface):
@@ -493,9 +508,6 @@ class WorkItemStateMappings(graphene.Interface):
 class DevelopmentProgress(DeliveryCycleInfo):
     last_update = graphene.DateTime(required=False)
     elapsed = graphene.Float(required=False)
-
-
-
 
 
 class DeliveryCycleSpan(graphene.Interface):

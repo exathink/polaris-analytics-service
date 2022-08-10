@@ -1,4 +1,3 @@
-
 # Copyright: © Exathink, LLC (2019) All Rights Reserved
 
 # Unauthorized use or copying of this file and its contents, via any medium
@@ -14,7 +13,7 @@ from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable
 from polaris.common.enums import AccountRoles
 from ..account import Account
-from ..interfaces import ScopedRole
+from ..interfaces import ScopedRoleField
 from .selectables import ViewerAccountRoles, ViewerOrganizationRoles, \
     ViewerFeatureFlagsNodes
 
@@ -22,12 +21,8 @@ from ..selectable_field_mixins import SelectablePropertyResolverMixin
 from ..feature_flag import FeatureFlagsConnectionMixin
 from ..feature_flag.selectable import ScopedFeatureFlagsNodes
 
-class ScopedRoleField(graphene.ObjectType):
-    class Meta:
-        interfaces = (ScopedRole, NamedNode)
 
-
-class Viewer (
+class Viewer(
     # ConnectionMixins
     FeatureFlagsConnectionMixin,
 
@@ -36,7 +31,6 @@ class Viewer (
 
     graphene.ObjectType
 ):
-
     class Meta:
         description = """
         Viewer 
@@ -45,7 +39,7 @@ class Viewer (
         is used by the web application to fetch all information that is accessible
         to the user. 
                 """
-        interfaces = (NamedNode, )
+        interfaces = (NamedNode,)
 
         connection_node_resolvers = {
             'feature_flags': ScopedFeatureFlagsNodes
@@ -54,7 +48,6 @@ class Viewer (
             'account_roles': ViewerAccountRoles,
             'organization_roles': ViewerOrganizationRoles
         }
-
 
     # field definitions
     user_name = graphene.String()
@@ -75,7 +68,6 @@ class Viewer (
         self.key = user.key
         self.name = f'{user.first_name} {user.last_name}'
         self.current_user = user
-
 
     @classmethod
     def Field(cls):

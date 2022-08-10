@@ -254,3 +254,10 @@ class FunnelViewParameters(graphene.InputObjectType):
         description='Include subtasks in metrics calculated over closed items. Defaults to true',
         default_value=True
     )
+
+
+class UserRolesParameters(graphene.InputObjectType):
+    account_key = graphene.String(
+        required=False,
+        description="When fetching OrgRoles for the user, limit it to orgs from this account."
+    )

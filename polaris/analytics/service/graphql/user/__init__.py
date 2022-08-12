@@ -12,20 +12,23 @@ import graphene
 
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
-from ..interfaces import UserInfo, ScopedRole
-from ..interface_mixins import NamedNodeResolverMixin
-from .selectable import UserNode, UserUserInfo
+from ..interfaces import UserInfo, ScopedRole, UserRoles
+from ..arguments import UserRolesParameters
+from ..interface_mixins import NamedNodeResolverMixin, UserRolesResolverMixin
+from .selectable import UserNode, UserUserInfo, UserUserRoles
 
 
 class User(
     NamedNodeResolverMixin,
+    UserRolesResolverMixin,
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, UserInfo, ScopedRole)
+        interfaces = (NamedNode, UserInfo, ScopedRole, UserRoles)
         named_node_resolver = UserNode
         interface_resolvers = {
-            'UserInfo': UserUserInfo
+            'UserInfo': UserUserInfo,
+            'UserRoles': UserUserRoles
         }
         connection_class = lambda: Users
 
@@ -54,6 +57,11 @@ class UsersConnectionMixin(ConnectionResolverMixin):
                         "include only active users",
             default_value=True
         ),
+        user_roles_args=graphene.Argument(
+            UserRolesParameters,
+            required=False,
+            description="Parameters for filters user roles"
+        )
     )
 
     def resolve_users(self, info, **kwargs):

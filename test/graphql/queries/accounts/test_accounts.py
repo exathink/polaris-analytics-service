@@ -8,16 +8,13 @@
 
 # Author: Krishna Kumar
 
-import pytest
-
 from test.fixtures.graphql import *
-from test.constants import *
 from unittest.mock import patch
-from polaris.common import db
 from sqlalchemy import and_
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
 from polaris.analytics.db.model import Contributor, ContributorAlias, repositories_contributor_aliases
+
 
 
 class TestAccount:
@@ -740,3 +737,5 @@ class TestAccountContributorsConnection:
                             or
                             (c1['commitCount'] == 350 and c2['commitCount'] == 400)
                     )
+
+

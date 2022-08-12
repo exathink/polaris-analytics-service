@@ -14,7 +14,7 @@ from datetime import datetime
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
     WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
     ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl, \
-    ContributorAliasInfoImpl, FlowRateMeasurementImpl, BacklogMeasurementImpl, TeamNodeRefImpl, TeamSettingsImpl
+    ContributorAliasInfoImpl, FlowRateMeasurementImpl, BacklogMeasurementImpl, TeamNodeRefImpl, TeamSettingsImpl, ScopedRoleField
 
 
 class ContributorCountResolverMixin(KeyIdResolverMixin):
@@ -270,3 +270,28 @@ class BacklogTrendsResolverMixin(KeyIdResolverMixin):
             BacklogMeasurementImpl(**backlog_metrics)
             for backlog_metrics in self.backlog_trends or []
         ]
+
+
+class UserRolesResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.system_roles = []
+        self.organization_roles = []
+        self.account_roles = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_system_roles(self, info, **kwargs):
+        return self.system_roles or []
+
+    def resolve_organization_roles(self, info, **kwargs):
+        return [
+            ScopedRoleField(**scoped_roles)
+            for scoped_roles in self.organization_roles or []
+        ]
+
+    def resolve_account_roles(self, info, **kwargs):
+        return [
+            ScopedRoleField(**scoped_roles)
+            for scoped_roles in self.account_roles or []
+        ]
+

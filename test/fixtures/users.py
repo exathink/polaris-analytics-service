@@ -18,15 +18,13 @@ from polaris.auth.db.model import User
 from polaris.common import db
 from polaris.common.enums import AccountRoles, OrganizationRoles
 
-
-test_account_key = uuid.uuid4().hex
-test_organization_key = uuid.uuid4().hex
-test_organization_key2 = uuid.uuid4().hex
-test_user_key = uuid.uuid4().hex
-
-
 @pytest.fixture()
 def account_org_user_fixture(setup_schema, setup_auth_schema):
+    test_account_key = str(uuid.uuid4())
+    test_organization_key = str(uuid.uuid4())
+    test_organization_key2 = str(uuid.uuid4())
+    test_user_key = str(uuid.uuid4())
+
     with db.orm_session() as session:
         session.expire_on_commit = False
         account = Account(key=test_account_key,

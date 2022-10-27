@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import and_, cast, Text, func, case, select, or_, literal, Date
 
 from polaris.analytics.db.enums import WorkItemsStateType, FlowTypes, WorkItemTypesToFlowTypes
-from polaris.analytics.db.model import work_items, work_item_delivery_cycles
+from polaris.analytics.db.model import work_items, work_item_delivery_cycles, work_items_sources
 from polaris.analytics.service.graphql.utils import date_column_is_in_measurement_window, get_before_date
 from polaris.common.enums import JiraWorkItemType
 from polaris.graphql.base_classes import InterfaceResolver
@@ -59,6 +59,13 @@ def work_item_info_columns(work_items):
         work_items.c.budget
     ]
 
+
+def work_items_source_ref_info_columns(work_items_sources):
+    return [
+        work_items_sources.c.name.label('work_items_source_name'),
+        work_items_sources.c.key.label('work_items_source_key'),
+        work_items_sources.c.integration_type.label('work_tracking_integration_type')
+    ]
 
 def work_item_info_group_expr_columns(work_items):
     return [

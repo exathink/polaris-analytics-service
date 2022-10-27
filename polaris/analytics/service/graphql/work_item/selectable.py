@@ -31,7 +31,8 @@ from polaris.analytics.service.graphql.interfaces import \
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver
 from .sql_expressions import work_item_info_columns, work_item_event_columns, work_item_commit_info_columns, \
     work_item_events_connection_apply_time_window_filters, \
-    work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters
+    work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
+    work_items_source_ref_info_columns
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 from ..pull_request.sql_expressions import pull_request_info_columns
 
@@ -200,17 +201,20 @@ class WorkItemCommitNodes(ConnectionResolver):
 # a single work_item_delivery_cycle  accessed by its node id of the form work_item_key:commit_key
 
 class WorkItemDeliveryCycleNode(NamedNodeResolver):
-    interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo)
+    interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, WorkItemsSourceRef)
 
     @staticmethod
     def named_node_selector(**kwargs):
         return select([
             work_item_delivery_cycles.c.delivery_cycle_id.label('id'),
             *work_item_info_columns(work_items),
-            *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles)
+            *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles),
+            *work_items_source_ref_info_columns(work_items_sources)
         ]).select_from(
             work_items.join(
-                work_item_delivery_cycles
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            ).join(
+                work_items_sources, work_items.c.work_items_source_id == work_items_sources.c.id
             )
         ).where(
             and_(
@@ -221,17 +225,20 @@ class WorkItemDeliveryCycleNode(NamedNodeResolver):
 
 
 class WorkItemDeliveryCycleNodes(ConnectionResolver):
-    interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo)
+    interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, WorkItemsSourceRef)
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
         select_stmt = select([
             work_item_delivery_cycles.c.delivery_cycle_id.label('id'),
             *work_item_info_columns(work_items),
-            *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles)
+            *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles),
+            *work_items_source_ref_info_columns(work_items_sources)
         ]).select_from(
             work_items.join(
-                work_item_delivery_cycles
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id
+            ).join(
+                work_items_sources, work_items.c.work_items_source_id == work_items_sources.c.id
             )
         ).where(
             work_items.c.key == bindparam('key')
@@ -470,6 +477,28 @@ class WorkItemDeliveryCyclesTeamNodeRefs(InterfaceResolver):
                 work_items_teams, work_item_delivery_cycle_nodes.c.work_item_id == work_items_teams.c.work_item_id
             ).outerjoin(
                 teams, work_items_teams.c.team_id == teams.c.id
+            )
+        ).group_by(
+            work_item_delivery_cycle_nodes.c.id
+        )
+
+class WorkItemDeliveryCyclesWorkItemsSourceRef(InterfaceResolver):
+    interface = WorkItemsSourceRef
+
+    @staticmethod
+    def interface_selector(work_item_delivery_cycle_nodes, **kwargs):
+        return select([
+            work_item_delivery_cycle_nodes.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'work_items_source_name', teams.c.name,
+                    'work_items_source_key', teams.c.key,
+                    'work_tracking_integration_type',
+                )
+            ).label('work_items_source_refs')
+        ]).select_from(
+            work_item_delivery_cycle_nodes.outerjoin(
+                work_items_sources, work_item_delivery_cycle_nodes.c.work_items_source_id == work_items_sources.c.id
             )
         ).group_by(
             work_item_delivery_cycle_nodes.c.id

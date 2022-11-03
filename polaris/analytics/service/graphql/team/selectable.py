@@ -27,7 +27,7 @@ from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, Cycl
 
 from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, \
     work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase, work_items_connection_apply_filters, \
-    map_work_item_type_to_flow_type
+    map_work_item_type_to_flow_type, work_items_source_ref_info_columns
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 
@@ -106,7 +106,7 @@ class TeamWorkItemNodes(ConnectionResolver):
 
 
 class TeamWorkItemDeliveryCycleNodes(ConnectionResolver):
-    interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo)
+    interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, WorkItemsSourceRef)
 
     def connection_nodes_selector(**kwargs):
         if kwargs.get('active_only'):
@@ -118,6 +118,7 @@ class TeamWorkItemDeliveryCycleNodes(ConnectionResolver):
             work_item_delivery_cycles.c.delivery_cycle_id.label('id'),
             *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles),
             *work_item_info_columns(work_items),
+            *work_items_source_ref_info_columns(work_items_sources)
         ]).select_from(
             teams.join(
                 work_items_teams, work_items_teams.c.team_id == teams.c.id
@@ -125,6 +126,8 @@ class TeamWorkItemDeliveryCycleNodes(ConnectionResolver):
                 work_items, work_items_teams.c.work_item_id == work_items.c.id
             ).join(
                 work_item_delivery_cycles, delivery_cycles_join_clause
+            ).join(
+                work_items_sources, work_items.c.work_items_source_id == work_items_sources.c.id
             )
         ).where(
             teams.c.key == bindparam('key')

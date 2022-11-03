@@ -45,7 +45,7 @@ from ..work_item.sql_expressions import work_item_events_connection_apply_time_w
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
     work_item_info_group_expr_columns, apply_specs_only_filter, apply_defects_only_filter, CycleMetricsTrendsBase, \
-    map_work_item_type_to_flow_type
+    map_work_item_type_to_flow_type, work_items_source_ref_info_columns
 from ..utils import date_column_is_in_measurement_window, get_measurement_period, get_timeline_dates_for_trending
 from polaris.common import db
 
@@ -454,7 +454,7 @@ class ProjectWorkItemCommitNodes(ConnectionResolver):
 
 
 class ProjectWorkItemDeliveryCycleNodes(ConnectionResolver):
-    interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo)
+    interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, WorkItemsSourceRef)
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
@@ -467,6 +467,7 @@ class ProjectWorkItemDeliveryCycleNodes(ConnectionResolver):
             work_item_delivery_cycles.c.delivery_cycle_id.label('id'),
             *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles),
             *work_item_info_columns(work_items),
+            *work_items_source_ref_info_columns(work_items_sources)
         ]).select_from(
             projects.join(
                 work_items_sources, work_items_sources.c.project_id == projects.c.id

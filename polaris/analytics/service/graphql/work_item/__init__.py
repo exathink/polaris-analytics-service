@@ -152,7 +152,7 @@ class WorkItemDeliveryCycle(
     Selectable
 ):
     class Meta:
-        interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost, EpicNodeRef, TeamNodeRefs)
+        interfaces = (NamedNode, WorkItemInfo, DeliveryCycleInfo, CycleMetrics, ImplementationCost, EpicNodeRef, TeamNodeRefs, WorkItemsSourceRef)
         named_node_resolver = WorkItemDeliveryCycleNode
         interface_resolvers = {
             'CycleMetrics': WorkItemDeliveryCycleCycleMetrics,

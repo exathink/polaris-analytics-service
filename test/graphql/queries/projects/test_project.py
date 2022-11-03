@@ -1370,6 +1370,52 @@ class TestProjectWorkItemDeliveryCycles:
             assert node['createdAt']
             assert node['updatedAt']
 
+    def it_implements_the_work_items_source_ref_interface(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=f'Issue {i}',
+                display_id='1000',
+                state='backlog',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 3)
+        ]
+
+        api_helper.import_work_items(work_items)
+        client = Client(schema)
+        query = """
+                                query getProjectDeliveryCycles($project_key:String!) {
+                                    project(key: $project_key) {
+                                        workItemDeliveryCycles {
+                                            edges {
+                                                node {
+                                                    workItemsSourceName
+                                                    workItemsSourceKey
+                                                    workTrackingIntegrationType
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            """
+        result = client.execute(query, variable_values=dict(project_key=project.key))
+        assert result['data']
+        nodes = [edge['node'] for edge in result['data']['project']['workItemDeliveryCycles']['edges']]
+        assert len(nodes) == 3
+        for node in nodes:
+            assert node['workItemsSourceName']
+            assert node['workItemsSourceKey']
+            assert node['workTrackingIntegrationType']
+
+
     def it_implements_the_delivery_cycle_info_interface(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
         api_helper = WorkItemImportApiHelper(organization, work_items_source)

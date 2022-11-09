@@ -12,7 +12,7 @@ class WorkItemsStateType(Enum):
     unmapped = 'unmapped'
 
 
-class WorkItemSourceStateFlowType(Enum):
+class WorkItemsStateFlowType(Enum):
     active = 'active'
     waiting = 'waiting'
 

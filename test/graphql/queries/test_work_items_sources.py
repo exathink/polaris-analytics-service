@@ -14,7 +14,7 @@ from polaris.analytics.service.graphql import schema
 from polaris.utils.collections import dict_merge
 from test.fixtures.graphql import *
 
-
+from polaris.analytics.db.enums import WorkItemsStateFlowType
 class TestWorkItemsSourceInstance:
 
     def it_implements_named_node_interface(self, work_items_sources_fixture):
@@ -181,6 +181,22 @@ def work_items_sources_state_mapping_fixture(work_items_sources_fixture):
 
     yield work_items_sources['github'].key
 
+@pytest.fixture
+def work_items_sources_state_mapping_with_flow_types_fixture(work_items_sources_fixture):
+    _, work_items_sources = work_items_sources_fixture
+    with db.orm_session() as session:
+        session.add(work_items_sources['github'])
+        work_items_sources['github'].init_state_map([
+            dict(state='created', state_type=WorkItemsStateType.backlog.value, flow_type=WorkItemsStateFlowType.waiting.value),
+            dict(state='open', state_type=WorkItemsStateType.backlog.value, flow_type=WorkItemsStateFlowType.waiting.value),
+            dict(state='upnext', state_type=WorkItemsStateType.open.value, flow_type=WorkItemsStateFlowType.waiting.value),
+            dict(state='doing', state_type=WorkItemsStateType.wip.value, flow_type=WorkItemsStateFlowType.active.value),
+            dict(state='done', state_type=WorkItemsStateType.complete.value, flow_type=WorkItemsStateFlowType.active.value),
+            dict(state='closed', state_type=WorkItemsStateType.closed.value)
+        ])
+
+    yield work_items_sources['github'].key
+
 
 @pytest.fixture
 def work_items_sources_with_unmapped_states_fixture(work_items_sources_state_mapping_fixture):
@@ -271,6 +287,37 @@ class TestWorkItemsSourceWorkItemStateMappings:
                    ('closed', WorkItemsStateType.closed.value)
                }
 
+    def it_resolves_work_items_state_flow_types(self, work_items_sources_state_mapping_with_flow_types_fixture):
+        source_key = work_items_sources_state_mapping_with_flow_types_fixture
+
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key, interfaces: [WorkItemStateMappings]){
+                    workItemStateMappings {
+                        state
+                        stateType
+                        flowType
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=source_key))
+        assert 'data' in result
+        work_items_state_mapping = result['data']['workItemsSource']['workItemStateMappings']
+
+        assert {
+                   (mapping['state'], mapping['stateType'], mapping['flowType'])
+                   for mapping in work_items_state_mapping
+               } == {
+                   ('created', WorkItemsStateType.backlog.value, WorkItemsStateFlowType.waiting.value ),
+                   ('open', WorkItemsStateType.backlog.value, WorkItemsStateFlowType.waiting.value),
+                   ('upnext', WorkItemsStateType.open.value, WorkItemsStateFlowType.waiting.value ),
+                   ('doing', WorkItemsStateType.wip.value, WorkItemsStateFlowType.active.value),
+                   ('done', WorkItemsStateType.complete.value, WorkItemsStateFlowType.active.value),
+                   ('closed', WorkItemsStateType.closed.value, None)
+               }
+
     def it_resolves_unmapped_states(self, work_items_sources_with_unmapped_states_fixture):
         source_key = work_items_sources_with_unmapped_states_fixture
 
@@ -302,6 +349,40 @@ class TestWorkItemsSourceWorkItemStateMappings:
                    ('closed', WorkItemsStateType.closed.value),
                    ('Unmapped', WorkItemsStateType.unmapped.value),
                    ('Also Unmapped', WorkItemsStateType.unmapped.value)
+               }
+
+    def it_resolves_flow_types_when_they_have_not_been_initialized(self, work_items_sources_with_unmapped_states_fixture):
+        source_key = work_items_sources_with_unmapped_states_fixture
+
+        client = Client(schema)
+        query = """
+                    query getWorkItemsSource($key:String!) {
+                        workItemsSource(key: $key, interfaces: [WorkItemStateMappings]){
+                            workItemStateMappings {
+                                state
+                                stateType
+                                flowType
+                            }
+                        }
+                    }
+                """
+
+        result = client.execute(query, variable_values=dict(key=source_key))
+        assert 'data' in result
+        work_items_state_mapping = result['data']['workItemsSource']['workItemStateMappings']
+
+        assert {
+                   (mapping['state'], mapping['stateType'], mapping['flowType'])
+                   for mapping in work_items_state_mapping
+               } == {
+                   ('created', WorkItemsStateType.backlog.value, None),
+                   ('open', WorkItemsStateType.backlog.value, None),
+                   ('upnext', WorkItemsStateType.open.value, None),
+                   ('doing', WorkItemsStateType.wip.value, None),
+                   ('done', WorkItemsStateType.complete.value, None),
+                   ('closed', WorkItemsStateType.closed.value, None),
+                   ('Unmapped', WorkItemsStateType.unmapped.value, None),
+                   ('Also Unmapped', WorkItemsStateType.unmapped.value,None)
                }
 
     def it_resolves_work_items_state_mappings_when_there_are_no_mappings(self,

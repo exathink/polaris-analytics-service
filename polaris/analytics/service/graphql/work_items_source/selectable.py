@@ -11,7 +11,7 @@
 from polaris.common import db
 from polaris.analytics.db.enums import WorkItemsStateType
 
-from sqlalchemy import select, bindparam, func, case, union_all, literal_column, and_, Text
+from sqlalchemy import select, bindparam, func, case, union_all, literal_column, and_, Text, literal
 
 from polaris.analytics.db.model import work_items_sources, work_items, work_item_state_transitions, repositories, \
     commits, work_items_commits, work_items_source_state_map
@@ -129,7 +129,8 @@ class WorkItemsSourceWorkItemStateMappings(InterfaceResolver):
         current_state_mapping = select([
             work_items_source_nodes.c.id,
             work_items_source_state_map.c.state,
-            work_items_source_state_map.c.state_type
+            work_items_source_state_map.c.state_type,
+            work_items_source_state_map.c.flow_type
         ]).distinct().select_from(
             work_items_source_nodes.outerjoin(
                 work_items_source_state_map,
@@ -141,6 +142,7 @@ class WorkItemsSourceWorkItemStateMappings(InterfaceResolver):
             work_items_source_nodes.c.id,
             work_items.c.state,
             literal_column(f"'{WorkItemsStateType.unmapped.value}'").label('state_type'),
+            literal(None).label('flow_type'),
         ]).distinct().select_from(
             work_items_source_nodes.outerjoin(
                 work_items, work_items.c.work_items_source_id == work_items_source_nodes.c.id
@@ -163,7 +165,8 @@ class WorkItemsSourceWorkItemStateMappings(InterfaceResolver):
                         and_(state_mapping.c.id != None, state_mapping.c.state != None),
                         func.json_build_object(
                             'state', state_mapping.c.state,
-                            'state_type', state_mapping.c.state_type
+                            'state_type', state_mapping.c.state_type,
+                            'flow_type', state_mapping.c.flow_type
                         )
                     )
                 ], else_=None)

@@ -12,6 +12,11 @@ class WorkItemsStateType(Enum):
     unmapped = 'unmapped'
 
 
+class WorkItemsStateFlowType(Enum):
+    active = 'active'
+    waiting = 'waiting'
+
+
 class FeatureFlagScope(Enum):
     account = 'account'
     user = 'user'

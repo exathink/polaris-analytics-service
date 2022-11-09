@@ -959,8 +959,12 @@ class WorkItemsSourceStateMap(Base):
     __tablename__ = 'work_items_source_state_map'
 
     state = Column(String, primary_key=True)
+    # This is the mapping of the phase. For historical reasons we called this state_type here in the data model
+    # though it should be phase
     state_type = Column(String, nullable=False, server_default=WorkItemsStateType.open.value)
 
+    # This can be "active", "waiting" or null.
+    flow_type = Column(String, nullable=True)
     # Work Items Source relationship
     work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'), primary_key=True)
     work_items_source = relationship('WorkItemsSource', back_populates='state_maps')

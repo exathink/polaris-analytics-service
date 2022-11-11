@@ -527,6 +527,7 @@ class WorkItemsWorkItemStateDetails(InterfaceResolver):
                     func.json_build_object(
                         'state', work_item_delivery_cycle_durations.c.state,
                         'state_type', work_items_source_state_map.c.state_type,
+                        'flow_type', work_items_source_state_map.c.flow_type,
                         'days_in_state',
                         work_item_delivery_cycle_durations.c.cumulative_time_in_state / (1.0 * 3600 * 24)
                     )

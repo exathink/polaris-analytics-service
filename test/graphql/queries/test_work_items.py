@@ -299,6 +299,7 @@ class TestWorkItemInstance:
                                     currentDeliveryCycleDurations {
                                         state
                                         stateType
+                                        flowType
                                         daysInState
                                     }
                                 }
@@ -311,15 +312,17 @@ class TestWorkItemInstance:
             work_item_state_details = result['data']['workItem']['workItemStateDetails']
             assert work_item_state_details['currentStateTransition']['eventDate']
             assert {
-                       (record['state'], record['daysInState'])
+                       (record['state'],  record['stateType'], record['flowType'], record['daysInState'])
                        for record in work_item_state_details['currentDeliveryCycleDurations']
                    } == {
-                       ('created', 0.0),
-                       ('backlog', 1.0),
-                       ('upnext', 1.0),
-                       ('doing', 2.0),
-                       ('done', None)
+                       ('created', 'backlog', None, 0.0),
+                       ('backlog', 'backlog', 'waiting', 1.0),
+                       ('upnext', 'open', 'waiting', 1.0),
+                       ('doing', 'wip', 'active', 2.0),
+                       ('done', 'complete', 'waiting', None)
                    }
+
+
 
         def it_returns_null_state_types_when_there_are_unmapped_durations(self, api_work_items_import_fixture):
             organization, project, work_items_source, work_items_common = api_work_items_import_fixture

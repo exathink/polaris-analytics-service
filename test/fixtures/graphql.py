@@ -14,7 +14,7 @@ import pytest
 from sqlalchemy import true, false, and_
 from sqlalchemy.dialects.postgresql import insert
 
-from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.analytics.db.enums import WorkItemsStateType, WorkItemsStateFlowType
 
 from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \
@@ -1046,10 +1046,10 @@ def api_work_items_import_fixture(org_repo_fixture):
     )
     work_items_source.init_state_map(
         [
-            dict(state='backlog', state_type=WorkItemsStateType.backlog.value),
-            dict(state='upnext', state_type=WorkItemsStateType.open.value),
-            dict(state='doing', state_type=WorkItemsStateType.wip.value),
-            dict(state='done', state_type=WorkItemsStateType.complete.value),
+            dict(state='backlog', state_type=WorkItemsStateType.backlog.value, flow_type=WorkItemsStateFlowType.waiting.value),
+            dict(state='upnext', state_type=WorkItemsStateType.open.value, flow_type=WorkItemsStateFlowType.waiting.value),
+            dict(state='doing', state_type=WorkItemsStateType.wip.value, flow_type=WorkItemsStateFlowType.active.value),
+            dict(state='done', state_type=WorkItemsStateType.complete.value, flow_type=WorkItemsStateFlowType.waiting.value),
             dict(state='closed', state_type=WorkItemsStateType.closed.value),
         ]
     )

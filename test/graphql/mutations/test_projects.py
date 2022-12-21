@@ -16,7 +16,7 @@ from polaris.utils.collections import Fixture
 from test.fixtures.project_work_items import *
 from test.fixtures.project_work_items_commits import *
 
-from polaris.analytics.db.enums import WorkItemsStateFlowType
+from polaris.analytics.db.enums import WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
 
 class TestArchiveProject:
 
@@ -126,6 +126,53 @@ class TestUpdateProjectStateMaps:
 
         assert saved_map
 
+    def it_updates_project_work_items_release_status(self, setup_work_items_sources):
+        client = Client(schema)
+        project = setup_work_items_sources
+        project_key = str(project.key)
+        work_items_source_key = project.work_items_sources[0].key
+        response = client.execute("""
+            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                        success
+                    }
+                }
+        """, variable_values=dict(
+            updateProjectStateMapsInput=dict(
+                projectKey=project_key,
+                workItemsSourceStateMaps=[
+                    dict(
+                        workItemsSourceKey=work_items_source_key,
+                        stateMaps=[
+                            dict(state="created", stateType=WorkItemsStateType.backlog.value, releaseStatus=None),
+                            dict(state="todo", stateType=WorkItemsStateType.open.value, releaseStatus=None),
+                            dict(state="doing", stateType=WorkItemsStateType.wip.value, releaseStatus=None),
+                            dict(state="done", stateType=WorkItemsStateType.complete.value, releaseStatus=WorkItemsStateReleaseStatusType.releasable.value),
+                            dict(state="closed", stateType=WorkItemsStateType.closed.value, releaseStatus=WorkItemsStateReleaseStatusType.released.value)
+                        ]
+                    )
+                ]
+            )
+        )
+                                  )
+        assert 'data' in response
+        result = response['data']['updateProjectStateMaps']
+        assert result
+        assert result['success']
+        saved_map =  db.connection().execute(
+            f"select state, release_status from analytics.work_items_source_state_map "
+            f"inner join analytics.work_items_sources on work_items_sources.id = work_items_source_state_map.work_items_source_id where key='{work_items_source_key}'"
+        ).fetchall()
+        assert {
+            (row.state, row.release_status)
+            for row in saved_map
+        } == {
+            ('created', None),
+            ('todo', None),
+            ('doing', None),
+            ('done', WorkItemsStateReleaseStatusType.releasable.value),
+            ('closed', WorkItemsStateReleaseStatusType.released.value)
+        }
 
     def it_checks_if_project_exists(self, setup_work_items_sources):
         client = Client(schema)

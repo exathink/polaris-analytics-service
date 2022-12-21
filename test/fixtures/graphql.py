@@ -1049,8 +1049,8 @@ def api_work_items_import_fixture(org_repo_fixture):
             dict(state='backlog', state_type=WorkItemsStateType.backlog.value, flow_type=WorkItemsStateFlowType.waiting.value),
             dict(state='upnext', state_type=WorkItemsStateType.open.value, flow_type=WorkItemsStateFlowType.waiting.value),
             dict(state='doing', state_type=WorkItemsStateType.wip.value, flow_type=WorkItemsStateFlowType.active.value),
-            dict(state='done', state_type=WorkItemsStateType.complete.value, flow_type=WorkItemsStateFlowType.waiting.value, release_status=WorkItemsStateReleaseStatusType.releasable),
-            dict(state='closed', state_type=WorkItemsStateType.closed.value, release_status=WorkItemsStateReleaseStatusType.released),
+            dict(state='done', state_type=WorkItemsStateType.complete.value, flow_type=WorkItemsStateFlowType.waiting.value),
+            dict(state='closed', state_type=WorkItemsStateType.closed.value),
         ]
     )
 

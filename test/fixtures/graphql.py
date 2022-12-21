@@ -14,7 +14,7 @@ import pytest
 from sqlalchemy import true, false, and_
 from sqlalchemy.dialects.postgresql import insert
 
-from polaris.analytics.db.enums import WorkItemsStateType, WorkItemsStateFlowType
+from polaris.analytics.db.enums import WorkItemsStateType, WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
 
 from polaris.analytics.db import api
 from polaris.analytics.db.model import Account, Organization, Repository, Project, contributors, contributor_aliases, \

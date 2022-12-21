@@ -13,7 +13,7 @@ import logging
 from polaris.common import db
 from polaris.analytics.db import api as db_api
 from polaris.analytics import api
-from ..interfaces import WorkItemsStateType, WorkItemsStateFlowType
+from ..interfaces import WorkItemsStateType, WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
 from ..input_types import FlowMetricsSettingsInput, AnalysisPeriodsInput, WipInspectorSettingsInput
 from polaris.utils.exceptions import ProcessingException
 
@@ -43,6 +43,7 @@ class StateMapParams(graphene.InputObjectType):
     state = graphene.String(required=True)
     state_type = WorkItemsStateType(required=True)
     flow_type = WorkItemsStateFlowType(required=False)
+    release_status = WorkItemsStateReleaseStatusType(required=False)
 
 
 class WorkItemsSourceStateMap(graphene.InputObjectType):

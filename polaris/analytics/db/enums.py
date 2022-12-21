@@ -16,6 +16,12 @@ class WorkItemsStateFlowType(Enum):
     active = 'active'
     waiting = 'waiting'
 
+class WorkItemsStateReleaseStatusType(Enum):
+    deferred = 'deferred'
+    deployable = 'deployable'
+    deployed = 'deployed'
+    releasable = 'releasable'
+    released = 'released'
 
 class FeatureFlagScope(Enum):
     account = 'account'

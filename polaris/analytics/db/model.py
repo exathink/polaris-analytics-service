@@ -963,8 +963,12 @@ class WorkItemsSourceStateMap(Base):
     # though it should be phase
     state_type = Column(String, nullable=False, server_default=WorkItemsStateType.open.value)
 
-    # This can be "active", "waiting" or null.
+    # This can be one of the values in the enum polaris.analytics.db.enums.WorkItemsStateFlowType or null
     flow_type = Column(String, nullable=True)
+
+    # # This can be one of the values in the enum polaris.analytics.db.enums.WorkItemsReleaseStatusType or null
+    release_status = Column(String, nullable=True)
+
     # Work Items Source relationship
     work_items_source_id = Column(Integer, ForeignKey('work_items_sources.id'), primary_key=True)
     work_items_source = relationship('WorkItemsSource', back_populates='state_maps')

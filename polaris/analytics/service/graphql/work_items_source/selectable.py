@@ -130,7 +130,8 @@ class WorkItemsSourceWorkItemStateMappings(InterfaceResolver):
             work_items_source_nodes.c.id,
             work_items_source_state_map.c.state,
             work_items_source_state_map.c.state_type,
-            work_items_source_state_map.c.flow_type
+            work_items_source_state_map.c.flow_type,
+            work_items_source_state_map.c.release_status
         ]).distinct().select_from(
             work_items_source_nodes.outerjoin(
                 work_items_source_state_map,
@@ -143,6 +144,7 @@ class WorkItemsSourceWorkItemStateMappings(InterfaceResolver):
             work_items.c.state,
             literal_column(f"'{WorkItemsStateType.unmapped.value}'").label('state_type'),
             literal(None).label('flow_type'),
+            literal(None).label('release_status')
         ]).distinct().select_from(
             work_items_source_nodes.outerjoin(
                 work_items, work_items.c.work_items_source_id == work_items_source_nodes.c.id
@@ -166,7 +168,8 @@ class WorkItemsSourceWorkItemStateMappings(InterfaceResolver):
                         func.json_build_object(
                             'state', state_mapping.c.state,
                             'state_type', state_mapping.c.state_type,
-                            'flow_type', state_mapping.c.flow_type
+                            'flow_type', state_mapping.c.flow_type,
+                            'release_status', state_mapping.c.release_status
                         )
                     )
                 ], else_=None)

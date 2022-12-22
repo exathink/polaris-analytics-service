@@ -22,6 +22,7 @@ class WorkItemsStateReleaseStatusType(Enum):
     deployed = 'deployed'
     releasable = 'releasable'
     released = 'released'
+    abandoned = 'abandoned'
 
 class FeatureFlagScope(Enum):
     account = 'account'

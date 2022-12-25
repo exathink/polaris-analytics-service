@@ -182,6 +182,22 @@ def work_items_sources_state_mapping_fixture(work_items_sources_fixture):
     yield work_items_sources['github'].key
 
 @pytest.fixture
+def work_items_sources_state_mapping_with_release_status_fixture(work_items_sources_fixture):
+    _, work_items_sources = work_items_sources_fixture
+    with db.orm_session() as session:
+        session.add(work_items_sources['github'])
+        work_items_sources['github'].init_state_map([
+            dict(state='created', state_type=WorkItemsStateType.backlog.value, release_status=None),
+            dict(state='open', state_type=WorkItemsStateType.backlog.value, release_status=None ),
+            dict(state='upnext', state_type=WorkItemsStateType.open.value, release_status=None),
+            dict(state='doing', state_type=WorkItemsStateType.wip.value, release_status=None),
+            dict(state='done', state_type=WorkItemsStateType.complete.value, release_status=WorkItemsStateReleaseStatusType.releasable.value),
+            dict(state='closed', state_type=WorkItemsStateType.closed.value, release_status=WorkItemsStateReleaseStatusType.released.value)
+        ])
+
+    yield work_items_sources['github'].key
+
+@pytest.fixture
 def work_items_sources_state_mapping_with_flow_types_fixture(work_items_sources_fixture):
     _, work_items_sources = work_items_sources_fixture
     with db.orm_session() as session:
@@ -316,6 +332,37 @@ class TestWorkItemsSourceWorkItemStateMappings:
                    ('doing', WorkItemsStateType.wip.value, WorkItemsStateFlowType.active.value),
                    ('done', WorkItemsStateType.complete.value, WorkItemsStateFlowType.active.value),
                    ('closed', WorkItemsStateType.closed.value, None)
+               }
+
+    def it_resolves_work_items_state_release_status(self, work_items_sources_state_mapping_with_release_status_fixture):
+        source_key = work_items_sources_state_mapping_with_release_status_fixture
+
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key, interfaces: [WorkItemStateMappings]){
+                    workItemStateMappings {
+                        state
+                        stateType
+                        releaseStatus
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=source_key))
+        assert 'data' in result
+        work_items_state_mapping = result['data']['workItemsSource']['workItemStateMappings']
+
+        assert {
+                   (mapping['state'], mapping['stateType'], mapping['releaseStatus'])
+                   for mapping in work_items_state_mapping
+               } == {
+                   ('created', WorkItemsStateType.backlog.value, None ),
+                   ('open', WorkItemsStateType.backlog.value, None),
+                   ('upnext', WorkItemsStateType.open.value, None ),
+                   ('doing', WorkItemsStateType.wip.value, None),
+                   ('done', WorkItemsStateType.complete.value, WorkItemsStateReleaseStatusType.releasable.value),
+                   ('closed', WorkItemsStateType.closed.value, WorkItemsStateReleaseStatusType.released.value)
                }
 
     def it_resolves_unmapped_states(self, work_items_sources_with_unmapped_states_fixture):

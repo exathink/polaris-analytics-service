@@ -11,7 +11,7 @@
 import graphene
 from datetime import datetime
 
-from polaris.analytics.db.enums import WorkItemsStateType, WorkItemsStateFlowType
+from polaris.analytics.db.enums import WorkItemsStateType, WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
 from polaris.graphql.interfaces import NamedNode
 from .utils import parse_json_timestamp
 
@@ -20,6 +20,7 @@ from polaris.common.enums import WorkTrackingIntegrationType as _WorkTrackingInt
 WorkTrackingIntegrationType = graphene.Enum.from_enum(_WorkTrackingIntegrationType)
 WorkItemsStateType = graphene.Enum.from_enum(WorkItemsStateType)
 WorkItemsStateFlowType = graphene.Enum.from_enum(WorkItemsStateFlowType)
+WorkItemsStateReleaseStatusType = graphene.Enum.from_enum(WorkItemsStateReleaseStatusType)
 
 class FileTypesSummary(graphene.ObjectType):
     file_type = graphene.String(required=True)
@@ -501,6 +502,7 @@ class StateMapping(graphene.ObjectType):
     state = graphene.String(required=True)
     state_type = graphene.String(required=False)
     flow_type = graphene.String(required=False)
+    release_status = graphene.String(required=False)
 
 
 class WorkItemStateMappings(graphene.Interface):

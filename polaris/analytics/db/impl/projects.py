@@ -68,20 +68,19 @@ def get_existing_work_item_states_from_transitions(session, work_items_source):
 def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if work_items_source is not None:
-        current_unmapped_states = None
-        existing_work_item_states = get_existing_work_item_states_from_transitions(session, work_items_source)
-        if len(existing_work_item_states) > 0:
+        all_work_item_states = get_existing_work_item_states_from_transitions(session, work_items_source)
+        current_states_with_mapping = {source_state_map.state for source_state_map in work_items_source.state_maps}
 
-            current_unmapped_states = existing_work_item_states - {
-                source_state_map.state
-                for source_state_map in work_items_source.state_maps
-            }
+        current_unmapped_states = {}
+        if len(all_work_item_states) > 0:
+            current_unmapped_states = all_work_item_states - current_states_with_mapping
 
-        old_closed_states = {
+        current_closed_states = {
             source_state_map.state
             for source_state_map in work_items_source.state_maps
             if source_state_map.state_type == WorkItemsStateType.closed.value
         }
+
         new_closed_states = {
             source_state_map.state
             for source_state_map in state_mappings
@@ -98,7 +97,7 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         # If old closed state is not same as new closed state, or there were any unmapped states
         # before the new mapping was initialized, we need to recreate the delivery cycles.
 
-        if old_closed_states != new_closed_states or current_unmapped_states:
+        if current_closed_states != new_closed_states or len(current_unmapped_states) > 0:
             update_work_items_source_delivery_cycles(session, work_items_source.id)
 
         # Recompute cycle time as it is dependent on state type mapping

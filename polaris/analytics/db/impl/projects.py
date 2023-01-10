@@ -87,6 +87,8 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
             if source_state_map.state_type == WorkItemsStateType.closed.value
         }
 
+        rebuild_delivery_cycles = current_closed_states != new_closed_states or len(current_unmapped_states) > 0
+
         # Initialize the new state map
         work_items_source.init_state_map(state_mappings)
         session.flush()
@@ -94,13 +96,10 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         # update state type in work items based on new mapping
         update_work_items_computed_state_types(session, work_items_source.id)
 
-        # If old closed state is not same as new closed state, or there were any unmapped states
-        # before the new mapping was initialized, we need to recreate the delivery cycles.
-        rebuild = current_closed_states != new_closed_states or len(current_unmapped_states) > 0
-        recalculate_cycle_times(session, work_items_source_key, rebuild_delivery_cycles=rebuild)
+        recalculate_cycle_times_for_work_items_source(session, work_items_source_key, rebuild_delivery_cycles=rebuild_delivery_cycles)
+        return rebuild_delivery_cycles
 
-
-def recalculate_cycle_times(session, work_items_source_key, rebuild_delivery_cycles=False):
+def recalculate_cycle_times_for_work_items_source(session, work_items_source_key, rebuild_delivery_cycles=False):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if rebuild_delivery_cycles:
         rebuild_work_items_source_delivery_cycles(session, work_items_source.id)
@@ -130,6 +129,7 @@ def update_project_work_items(session, project_work_items):
 
 def update_project_work_items_source_state_mappings(session, project_state_maps):
     updated = []
+    should_rebuild_delivery_cycles=False
     # Check if project exists
     project = Project.find_by_project_key(session, project_state_maps.project_key)
     if project is not None:
@@ -139,9 +139,9 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
             work_items_source = find(project.work_items_sources,
                                      lambda work_item_source: str(work_item_source.key) == str(source_key))
             if work_items_source is not None:
-                update_work_items_source_state_mapping(session, source_key,
+                should_rebuild_delivery_cycles = update_work_items_source_state_mapping(session, source_key,
                                                        work_items_source_state_mapping.state_maps)
-                updated.append(source_key)
+                updated.append(dict(source_key=source_key, should_rebuild_delivery_cycles=should_rebuild_delivery_cycles))
             else:
                 raise ProcessingException(f'Work Items Source with key {source_key} does not belong to project')
     else:
@@ -149,7 +149,7 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
 
     return dict(
         project_key=project_state_maps.project_key,
-        work_items_sources=updated
+        work_items_sources=updated,
     )
 
 

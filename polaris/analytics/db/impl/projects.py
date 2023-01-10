@@ -17,7 +17,7 @@ from polaris.analytics.db.model import Project, WorkItemsSource, work_items, wor
 from polaris.utils.collections import find
 from polaris.utils.exceptions import ProcessingException
 
-from .delivery_cycle_tracking import update_work_items_source_delivery_cycles, \
+from .delivery_cycle_tracking import rebuild_work_items_source_delivery_cycles, \
     recompute_work_item_delivery_cycles_cycle_time
 
 logger = logging.getLogger('polaris.analytics.db.impl')
@@ -96,17 +96,16 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
 
         # If old closed state is not same as new closed state, or there were any unmapped states
         # before the new mapping was initialized, we need to recreate the delivery cycles.
+        rebuild = current_closed_states != new_closed_states or len(current_unmapped_states) > 0
+        recalculate_cycle_times(session, work_items_source_key, rebuild_delivery_cycles=rebuild)
 
-        if current_closed_states != new_closed_states or len(current_unmapped_states) > 0:
-            update_work_items_source_delivery_cycles(session, work_items_source.id)
 
-        # Recompute cycle time as it is dependent on state type mapping
-        # Directly impacted if mapping change includes state types: open, wip, complete
-        # Also needs to be recomputed is closed state type changes as delivery cycles are recreated then
-        # So need to recompute for all cases except when only state mapping is changed for 'backlog'
-        # That may be once in a while, so updating every time state map changes
-        recompute_work_item_delivery_cycles_cycle_time(session, work_items_source.id)
+def recalculate_cycle_times(session, work_items_source_key, rebuild_delivery_cycles=False):
+    work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+    if rebuild_delivery_cycles:
+        rebuild_work_items_source_delivery_cycles(session, work_items_source.id)
 
+    recompute_work_item_delivery_cycles_cycle_time(session, work_items_source.id)
 
 def update_project_work_items(session, project_work_items):
     updated = []

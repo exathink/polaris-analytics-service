@@ -1841,7 +1841,7 @@ def recreate_work_item_commits_delivery_cycles(session, work_items_source_id):
     )
 
 
-def update_work_items_source_delivery_cycles(session, work_items_source_id):
+def rebuild_work_items_source_delivery_cycles(session, work_items_source_id):
     # set current_delivery_cycle_id to none for work items in given source
     session.connection().execute(
         work_items.update().values(

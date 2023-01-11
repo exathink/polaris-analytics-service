@@ -47,6 +47,7 @@ class ResolveCommitsForWorkItems(graphene.Mutation):
                         is_bug=work_item.is_bug,
                         tags=work_item.tags,
                         state=work_item.state,
+                        source_priority=work_item.source_priority,
                         created_at=work_item.created_at,
                         updated_at=work_item.updated_at,
                         deleted_at=work_item.deleted_at,

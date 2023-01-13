@@ -1639,6 +1639,7 @@ def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id
             )
         )
     ).rowcount
+    return updated
 
 
 def recreate_work_items_source_delivery_cycles(session, work_items_source_id):

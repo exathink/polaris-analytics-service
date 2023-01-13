@@ -96,7 +96,6 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         # update state type in work items based on new mapping
         update_work_items_computed_state_types(session, work_items_source.id)
 
-        recalculate_cycle_times_for_work_items_source(session, work_items_source_key, rebuild_delivery_cycles=rebuild_delivery_cycles)
         return rebuild_delivery_cycles
 
 def recalculate_cycle_times_for_work_items_source(session, work_items_source_key, rebuild_delivery_cycles=False):
@@ -104,7 +103,9 @@ def recalculate_cycle_times_for_work_items_source(session, work_items_source_key
     if rebuild_delivery_cycles:
         rebuild_work_items_source_delivery_cycles(session, work_items_source.id)
 
-    recompute_work_item_delivery_cycles_cycle_time(session, work_items_source.id)
+    updated = recompute_work_item_delivery_cycles_cycle_time(session, work_items_source.id)
+    return dict(delivery_cycles_updated=updated)
+
 
 def update_project_work_items(session, project_work_items):
     updated = []

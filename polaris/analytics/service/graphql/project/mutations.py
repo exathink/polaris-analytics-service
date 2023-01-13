@@ -10,9 +10,13 @@
 
 import graphene
 import logging
+
+import polaris.analytics.db.commands
 from polaris.common import db
 from polaris.analytics.db import api as db_api
 from polaris.analytics import api
+from polaris.analytics import publish
+
 from ..interfaces import WorkItemsStateType, WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
 from ..input_types import FlowMetricsSettingsInput, AnalysisPeriodsInput, WipInspectorSettingsInput
 from polaris.utils.exceptions import ProcessingException
@@ -66,8 +70,19 @@ class UpdateProjectStateMaps(graphene.Mutation):
 
     def mutate(self, info, update_project_state_maps_input):
         logger.info('UpdateProjectStateMaps called')
-        result = db_api.update_project_work_items_source_state_mappings(update_project_state_maps_input)
-        return UpdateProjectStateMaps(success=result['success'], error_message=result.get('exception'))
+        with db.orm_session() as session:
+            update_state_maps_result = db_api.update_project_work_items_source_state_mappings(update_project_state_maps_input, join_this=session)
+            if update_state_maps_result['success']:
+                for updated_work_items_source in update_state_maps_result['work_items_sources']:
+                        publish.recalculate_cycle_times_for_work_items_source(
+                            update_project_state_maps_input.project_key,
+                            updated_work_items_source['source_key'],
+                            rebuild_delivery_cycles=updated_work_items_source['should_rebuild_delivery_cycles']
+                        )
+
+                return UpdateProjectStateMaps(success=True)
+            else:
+                return UpdateProjectStateMaps(success=False, error_message=update_state_maps_result.get('exception'))
 
 
 class WorkItemsInfo(graphene.InputObjectType):

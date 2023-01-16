@@ -354,48 +354,49 @@ class TestUpdateComputedWorkItemsStateTypes:
         project_key = str(project.key)
         work_items_source_key = project.work_items_sources[0].key
         work_item_key = project.work_items_sources[0].work_items[0].key
-        response = client.execute("""
-            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
-                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
-                        success
+        with patch('polaris.analytics.publish.publish'):
+            response = client.execute("""
+                mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                            success
+                        }
                     }
-                }
-        """, variable_values=dict(
-            updateProjectStateMapsInput=dict(
-                projectKey=project_key,
-                workItemsSourceStateMaps=[
-                    dict(
-                        workItemsSourceKey=work_items_source_key,
-                        stateMaps=[
-                            dict(state="todo", stateType=WorkItemsStateType.open.value),
-                            dict(state="doing", stateType=WorkItemsStateType.wip.value),
-                            dict(state="done", stateType=WorkItemsStateType.complete.value),
-                            dict(state="accepted", stateType=WorkItemsStateType.closed.value)
-                        ]
-                    )
-                ]
+            """, variable_values=dict(
+                updateProjectStateMapsInput=dict(
+                    projectKey=project_key,
+                    workItemsSourceStateMaps=[
+                        dict(
+                            workItemsSourceKey=work_items_source_key,
+                            stateMaps=[
+                                dict(state="todo", stateType=WorkItemsStateType.open.value),
+                                dict(state="doing", stateType=WorkItemsStateType.wip.value),
+                                dict(state="done", stateType=WorkItemsStateType.complete.value),
+                                dict(state="accepted", stateType=WorkItemsStateType.closed.value)
+                            ]
+                        )
+                    ]
+                )
             )
-        )
-                                  )
-        assert 'data' in response
-        result = response['data']['updateProjectStateMaps']
-        assert result
-        assert result['success']
+                                      )
+            assert 'data' in response
+            result = response['data']['updateProjectStateMaps']
+            assert result
+            assert result['success']
 
-        work_items_result = db.connection().execute(f"select state, state_type from analytics.work_items "
-                                                    f"inner join analytics.work_items_sources "
-                                                    f"on work_items.work_items_source_id = work_items_sources.id "
-                                                    f"where work_items_sources.key = '{work_items_source_key}'").fetchall()
+            work_items_result = db.connection().execute(f"select state, state_type from analytics.work_items "
+                                                        f"inner join analytics.work_items_sources "
+                                                        f"on work_items.work_items_source_id = work_items_sources.id "
+                                                        f"where work_items_sources.key = '{work_items_source_key}'").fetchall()
 
-        assert len(work_items_result) == 3
-        assert set([
-            (work_item.state, work_item.state_type)
-            for work_item in work_items_result
-        ]) == {
-                   ('todo', WorkItemsStateType.open.value),
-                   ('doing', WorkItemsStateType.wip.value),
-                   ('done', WorkItemsStateType.complete.value)
-               }
+            assert len(work_items_result) == 3
+            assert set([
+                (work_item.state, work_item.state_type)
+                for work_item in work_items_result
+            ]) == {
+                       ('todo', WorkItemsStateType.open.value),
+                       ('doing', WorkItemsStateType.wip.value),
+                       ('done', WorkItemsStateType.complete.value)
+                   }
 
     def it_updates_computed_state_types_after_initial_update(self, setup_work_items):
         client = Client(schema)
@@ -403,48 +404,49 @@ class TestUpdateComputedWorkItemsStateTypes:
         project_key = str(project.key)
         work_items_source_key = project.work_items_sources[0].key
         work_item_key = project.work_items_sources[0].work_items[0].key
-        response = client.execute("""
-            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
-                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
-                        success
+        with patch('polaris.analytics.publish.publish'):
+            response = client.execute("""
+                mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                            success
+                        }
                     }
-                }
-        """, variable_values=dict(
-            updateProjectStateMapsInput=dict(
-                projectKey=project_key,
-                workItemsSourceStateMaps=[
-                    dict(
-                        workItemsSourceKey=work_items_source_key,
-                        stateMaps=[
-                            # making a nonsensical assignment here to make sure the update takes
-                            dict(state="todo", stateType=WorkItemsStateType.wip.value),
-                            dict(state="doing", stateType=WorkItemsStateType.complete.value),
-                            dict(state="done", stateType=WorkItemsStateType.open.value)
-                        ]
-                    )
-                ]
+            """, variable_values=dict(
+                updateProjectStateMapsInput=dict(
+                    projectKey=project_key,
+                    workItemsSourceStateMaps=[
+                        dict(
+                            workItemsSourceKey=work_items_source_key,
+                            stateMaps=[
+                                # making a nonsensical assignment here to make sure the update takes
+                                dict(state="todo", stateType=WorkItemsStateType.wip.value),
+                                dict(state="doing", stateType=WorkItemsStateType.complete.value),
+                                dict(state="done", stateType=WorkItemsStateType.open.value)
+                            ]
+                        )
+                    ]
+                )
             )
-        )
-                                  )
-        assert 'data' in response
-        result = response['data']['updateProjectStateMaps']
-        assert result
-        assert result['success']
+                                      )
+            assert 'data' in response
+            result = response['data']['updateProjectStateMaps']
+            assert result
+            assert result['success']
 
-        work_items_result = db.connection().execute(f"select state, state_type from analytics.work_items "
-                                                    f"inner join analytics.work_items_sources "
-                                                    f"on work_items.work_items_source_id = work_items_sources.id "
-                                                    f"where work_items_sources.key = '{work_items_source_key}'").fetchall()
+            work_items_result = db.connection().execute(f"select state, state_type from analytics.work_items "
+                                                        f"inner join analytics.work_items_sources "
+                                                        f"on work_items.work_items_source_id = work_items_sources.id "
+                                                        f"where work_items_sources.key = '{work_items_source_key}'").fetchall()
 
-        assert len(work_items_result) == 3
-        assert set([
-            (work_item.state, work_item.state_type)
-            for work_item in work_items_result
-        ]) == {
-                   ('todo', WorkItemsStateType.wip.value),
-                   ('doing', WorkItemsStateType.complete.value),
-                   ('done', WorkItemsStateType.open.value)
-               }
+            assert len(work_items_result) == 3
+            assert set([
+                (work_item.state, work_item.state_type)
+                for work_item in work_items_result
+            ]) == {
+                       ('todo', WorkItemsStateType.wip.value),
+                       ('doing', WorkItemsStateType.complete.value),
+                       ('done', WorkItemsStateType.open.value)
+                   }
 
     def it_resets_unmapped_entries_to_null(self, setup_work_items):
         client = Client(schema)
@@ -452,47 +454,48 @@ class TestUpdateComputedWorkItemsStateTypes:
         project_key = str(project.key)
         work_items_source_key = project.work_items_sources[0].key
         work_item_key = project.work_items_sources[0].work_items[0].key
-        response = client.execute("""
-            mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
-                            updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
-                        success
+        with patch('polaris.analytics.publish.publish'):
+            response = client.execute("""
+                mutation updateProjectStateMaps($updateProjectStateMapsInput: UpdateProjectStateMapsInput!) {
+                                updateProjectStateMaps(updateProjectStateMapsInput:$updateProjectStateMapsInput) {
+                            success
+                        }
                     }
-                }
-        """, variable_values=dict(
-            updateProjectStateMapsInput=dict(
-                projectKey=project_key,
-                workItemsSourceStateMaps=[
-                    dict(
-                        workItemsSourceKey=work_items_source_key,
-                        stateMaps=[
-                            # Leaving out the doing state from the mapping
-                            dict(state="todo", stateType=WorkItemsStateType.open.value),
-                            dict(state="done", stateType=WorkItemsStateType.complete.value)
-                        ]
-                    )
-                ]
+            """, variable_values=dict(
+                updateProjectStateMapsInput=dict(
+                    projectKey=project_key,
+                    workItemsSourceStateMaps=[
+                        dict(
+                            workItemsSourceKey=work_items_source_key,
+                            stateMaps=[
+                                # Leaving out the doing state from the mapping
+                                dict(state="todo", stateType=WorkItemsStateType.open.value),
+                                dict(state="done", stateType=WorkItemsStateType.complete.value)
+                            ]
+                        )
+                    ]
+                )
             )
-        )
-                                  )
-        assert 'data' in response
-        result = response['data']['updateProjectStateMaps']
-        assert result
-        assert result['success']
+                                      )
+            assert 'data' in response
+            result = response['data']['updateProjectStateMaps']
+            assert result
+            assert result['success']
 
-        work_items_result = db.connection().execute(f"select state, state_type from analytics.work_items "
-                                                    f"inner join analytics.work_items_sources "
-                                                    f"on work_items.work_items_source_id = work_items_sources.id "
-                                                    f"where work_items_sources.key = '{work_items_source_key}'").fetchall()
+            work_items_result = db.connection().execute(f"select state, state_type from analytics.work_items "
+                                                        f"inner join analytics.work_items_sources "
+                                                        f"on work_items.work_items_source_id = work_items_sources.id "
+                                                        f"where work_items_sources.key = '{work_items_source_key}'").fetchall()
 
-        assert len(work_items_result) == 3
-        assert set([
-            (work_item.state, work_item.state_type)
-            for work_item in work_items_result
-        ]) == {
-                   ('todo', WorkItemsStateType.open.value),
-                   ('doing', None),
-                   ('done', WorkItemsStateType.complete.value)
-               }
+            assert len(work_items_result) == 3
+            assert set([
+                (work_item.state, work_item.state_type)
+                for work_item in work_items_result
+            ]) == {
+                       ('todo', WorkItemsStateType.open.value),
+                       ('doing', None),
+                       ('done', WorkItemsStateType.complete.value)
+                   }
 
 
 class TestUpdateDeliveryCyclesOnUpdateStateMaps:

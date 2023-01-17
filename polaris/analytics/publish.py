@@ -12,7 +12,7 @@
 from polaris.messaging.topics import AnalyticsTopic
 from polaris.messaging.utils import publish
 from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChanged
-from polaris.analytics.messaging.commands import ResolveCommitsForWorkItems, RecalculateCycleTimesForWorkItemSource
+from polaris.analytics.messaging.commands import ResolveCommitsForWorkItems, RecalculateCycleMetricsForWorkItemSource
 
 
 def contributor_team_assignments_changed(organization_key, contributor_team_assignments, channel=None):
@@ -45,8 +45,8 @@ def resolve_commits_for_work_items(organization_key, work_items_source_key, work
     )
     return message
 
-def recalculate_cycle_times_for_work_items_source(project_key, work_items_source_key, rebuild_delivery_cycles,  channel=None):
-    message = RecalculateCycleTimesForWorkItemSource(
+def recalculate_cycle_metrics_for_work_items_source(project_key, work_items_source_key, rebuild_delivery_cycles,  channel=None):
+    message = RecalculateCycleMetricsForWorkItemSource(
         send=dict(
             project_key=project_key,
             work_items_source_key=work_items_source_key,

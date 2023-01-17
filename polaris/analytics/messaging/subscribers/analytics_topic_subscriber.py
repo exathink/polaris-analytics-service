@@ -25,7 +25,7 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
     PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems, \
     ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests, \
-    ResolveWorkItemsForCommits, ResolveTeamsForWorkItems, RecalculateCycleTimesForWorkItemSource
+    ResolveWorkItemsForCommits, ResolveTeamsForWorkItems, RecalculateCycleMetricsForWorkItemSource
 
 
 from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChanged
@@ -326,8 +326,8 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         elif ContributorTeamAssignmentsChanged.message_type == message.message_type:
             return self.process_contributor_team_assignments_changed(channel, message)
 
-        elif RecalculateCycleTimesForWorkItemSource.message_type == message.message_type:
-            return self.process_recalculate_cycle_times_for_work_items_source(channel, message)
+        elif RecalculateCycleMetricsForWorkItemSource.message_type == message.message_type:
+            return self.process_recalculate_cycle_metrics_for_work_items_source(channel, message)
 
 
     @staticmethod
@@ -626,7 +626,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
 
     @staticmethod
-    def process_recalculate_cycle_times_for_work_items_source(channel, message):
+    def process_recalculate_cycle_metrics_for_work_items_source(channel, message):
         project_key = message['project_key']
         work_items_source_key = message['work_items_source_key']
         rebuild_delivery_cycles = message['rebuild_delivery_cycles']
@@ -636,7 +636,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
         return raise_on_failure(
             message,
-            commands.recalculate_cycle_times_for_work_items_source(
+            commands.recalculate_cycle_metrics_for_work_items_source(
                 work_items_source_key,
                 rebuild_delivery_cycles=rebuild_delivery_cycles
             )

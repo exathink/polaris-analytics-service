@@ -179,11 +179,11 @@ def resolve_teams_for_work_items(organization_key, work_items_commits):
         return db.failure_message('Resolve teams for work items failed', e)
 
 
-def recalculate_cycle_times_for_work_items_source(work_item_source_key, rebuild_delivery_cycles=True, join_this=None):
+def recalculate_cycle_metrics_for_work_items_source(work_item_source_key, rebuild_delivery_cycles=True, join_this=None):
     try:
         with db.orm_session(join_this) as session:
             return success(
-                impl.recalculate_cycle_times_for_work_items_source(
+                impl.recalculate_cycle_metrics_for_work_items_source(
                     session,
                     work_item_source_key,
                     rebuild_delivery_cycles=rebuild_delivery_cycles

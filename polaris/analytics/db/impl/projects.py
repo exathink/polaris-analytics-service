@@ -98,7 +98,7 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
 
         return rebuild_delivery_cycles
 
-def recalculate_cycle_times_for_work_items_source(session, work_items_source_key, rebuild_delivery_cycles=False):
+def recalculate_cycle_metrics_for_work_items_source(session, work_items_source_key, rebuild_delivery_cycles=False):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if rebuild_delivery_cycles:
         rebuild_work_items_source_delivery_cycles(session, work_items_source.id)

@@ -80,7 +80,7 @@ class UpdateProjectStateMaps(graphene.Mutation):
                         rebuild_delivery_cycles = updated_work_items_source['should_rebuild_delivery_cycles']
                         if rebuild_delivery_cycles:
                             number_of_rebuilt_delivery_cycles = number_of_rebuilt_delivery_cycles + 1
-                        publish.recalculate_cycle_times_for_work_items_source(
+                        publish.recalculate_cycle_metrics_for_work_items_source(
                             update_project_state_maps_input.project_key,
                             updated_work_items_source['source_key'],
                             rebuild_delivery_cycles=rebuild_delivery_cycles

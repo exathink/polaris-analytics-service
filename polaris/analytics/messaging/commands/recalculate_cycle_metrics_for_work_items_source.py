@@ -15,8 +15,8 @@ from polaris.messaging.messages import Command
 from polaris.messaging.types import CommitSummary
 
 
-class RecalculateCycleTimesForWorkItemSource(Command):
-    message_type = 'commands.recalculate_cycle_times_for_work_items_source'
+class RecalculateCycleMetricsForWorkItemSource(Command):
+    message_type = 'commands.recalculate_cycle_metrics_for_work_items_source'
 
     project_key = fields.String(required=True)
     work_items_source_key = fields.String(required=True)

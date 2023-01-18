@@ -231,9 +231,9 @@ def update_project_work_items(project_work_items):
         return db.failure_message("Update project work items failed", e)
 
 
-def update_project_work_items_source_state_mappings(project_state_mappings):
+def update_project_work_items_source_state_mappings(project_state_mappings, join_this=None):
     try:
-        with db.orm_session() as session:
+        with db.orm_session(join_this) as session:
             return success(
                 impl.update_project_work_items_source_state_mappings(
                     session,

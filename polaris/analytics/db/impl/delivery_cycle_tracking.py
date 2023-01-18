@@ -1639,6 +1639,7 @@ def recompute_work_item_delivery_cycles_cycle_time(session, work_items_source_id
             )
         )
     ).rowcount
+    return updated
 
 
 def recreate_work_items_source_delivery_cycles(session, work_items_source_id):
@@ -1841,7 +1842,8 @@ def recreate_work_item_commits_delivery_cycles(session, work_items_source_id):
     )
 
 
-def update_work_items_source_delivery_cycles(session, work_items_source_id):
+def rebuild_work_items_source_delivery_cycles(session, work_items_source_id):
+    logger.info("Rebuilding delivery cycles for work items source ")
     # set current_delivery_cycle_id to none for work items in given source
     session.connection().execute(
         work_items.update().values(
@@ -1938,5 +1940,7 @@ def update_work_items_source_delivery_cycles(session, work_items_source_id):
 
     # Repopulate work_item_source_file_changes
     populate_work_item_source_file_changes(session, commits_temp)
+
+    logger.info("Rebuild delivery cycles for work items source: completed ")
 
     return updated

@@ -177,3 +177,19 @@ def resolve_teams_for_work_items(organization_key, work_items_commits):
         return db.process_exception("Resolve teams  for work items failed", exc)
     except Exception as e:
         return db.failure_message('Resolve teams for work items failed', e)
+
+
+def recalculate_cycle_metrics_for_work_items_source(work_item_source_key, rebuild_delivery_cycles=True, join_this=None):
+    try:
+        with db.orm_session(join_this) as session:
+            return success(
+                impl.recalculate_cycle_metrics_for_work_items_source(
+                    session,
+                    work_item_source_key,
+                    rebuild_delivery_cycles=rebuild_delivery_cycles
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Recalculate cycle times for work items source failed", exc)
+    except Exception as e:
+        return db.failure_message('Recalculate cycle times for work items source failed', e)

@@ -16,6 +16,8 @@ from polaris.messaging.messages import \
     WorkItemsCommitsResolved, \
     ProjectsRepositoriesAdded, RepositoriesImported, PullRequestsCreated, PullRequestsUpdated
 
+
+
 from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries, \
     InferProjectsRepositoriesRelationships, ResolveWorkItemsSourcesForRepositories, \
     UpdateWorkItemsCommitsStats, ComputeImplementationComplexityMetricsForWorkItems, \
@@ -23,7 +25,7 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
     PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems, \
     ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests, \
-    ResolveWorkItemsForCommits, ResolveTeamsForWorkItems
+    ResolveWorkItemsForCommits, ResolveTeamsForWorkItems, RecalculateCycleMetricsForWorkItemSource
 
 
 from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChanged
@@ -65,6 +67,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 ResolvePullRequestsForWorkItems,
                 ResolveWorkItemsForCommits,
                 ResolveTeamsForWorkItems,
+                RecalculateCycleMetricsForWorkItemSource,
                 # Internal messages
                 ContributorTeamAssignmentsChanged
             ],
@@ -322,6 +325,10 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
 
         elif ContributorTeamAssignmentsChanged.message_type == message.message_type:
             return self.process_contributor_team_assignments_changed(channel, message)
+
+        elif RecalculateCycleMetricsForWorkItemSource.message_type == message.message_type:
+            return self.process_recalculate_cycle_metrics_for_work_items_source(channel, message)
+
 
     @staticmethod
     def process_register_source_file_versions(channel, message):
@@ -617,3 +624,21 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                     work_items_commits
                 )
             )
+
+    @staticmethod
+    def process_recalculate_cycle_metrics_for_work_items_source(channel, message):
+        project_key = message['project_key']
+        work_items_source_key = message['work_items_source_key']
+        rebuild_delivery_cycles = message['rebuild_delivery_cycles']
+        logger.info(
+            f'process recalculate cycle times for project {project_key} work items source {work_items_source_key} '
+        )
+
+        return raise_on_failure(
+            message,
+            commands.recalculate_cycle_metrics_for_work_items_source(
+                work_items_source_key,
+                rebuild_delivery_cycles=rebuild_delivery_cycles
+            )
+        )
+

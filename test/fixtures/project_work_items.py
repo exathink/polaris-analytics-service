@@ -213,6 +213,9 @@ def work_items_delivery_cycles_setup(setup_projects):
             WorkItemDeliveryCycle(work_items_source_id=work_items_source.id, **cycle)
             for cycle in delivery_cycles
         ])
+        session.flush()
+
+        work_items_source.work_items[0].current_delivery_cycle_id = work_items_source.work_items[0].delivery_cycles[0].delivery_cycle_id
 
         work_items_source.work_items[0].state_transitions.extend([
             WorkItemStateTransition(**transition)

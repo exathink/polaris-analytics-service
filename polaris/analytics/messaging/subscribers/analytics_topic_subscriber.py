@@ -67,7 +67,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 ResolvePullRequestsForWorkItems,
                 ResolveWorkItemsForCommits,
                 ResolveTeamsForWorkItems,
-                RecalculateCycleTimesForWorkItemSource,
+                RecalculateCycleMetricsForWorkItemSource,
                 # Internal messages
                 ContributorTeamAssignmentsChanged
             ],

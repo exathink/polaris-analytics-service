@@ -10,6 +10,8 @@ from .on_work_items_created import ResolveCommitsForWorkItems, ResolvePullReques
 from .on_pull_requests_created import ResolveWorkItemsForPullRequests
 
 from .resolve_work_items_sources_for_repositories import ResolveWorkItemsSourcesForRepositories
+from .recalculate_cycle_metrics_for_work_items_source import RecalculateCycleMetricsForWorkItemSource
+
 __exported__ = [
     ResolveWorkItemsForCommits,
     UpdateCommitsWorkItemsSummaries,
@@ -26,7 +28,8 @@ __exported__ = [
     ResolveCommitsForWorkItems,
     ResolvePullRequestsForWorkItems,
     ResolveWorkItemsForPullRequests,
-    ResolveTeamsForWorkItems
+    ResolveTeamsForWorkItems,
+    RecalculateCycleMetricsForWorkItemSource
 ]
 
 register_messages(__exported__)

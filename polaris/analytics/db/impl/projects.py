@@ -17,7 +17,7 @@ from polaris.analytics.db.model import Project, WorkItemsSource, work_items, wor
 from polaris.utils.collections import find
 from polaris.utils.exceptions import ProcessingException
 
-from .delivery_cycle_tracking import update_work_items_source_delivery_cycles, \
+from .delivery_cycle_tracking import rebuild_work_items_source_delivery_cycles, \
     recompute_work_item_delivery_cycles_cycle_time
 
 logger = logging.getLogger('polaris.analytics.db.impl')
@@ -68,25 +68,26 @@ def get_existing_work_item_states_from_transitions(session, work_items_source):
 def update_work_items_source_state_mapping(session, work_items_source_key, state_mappings):
     work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
     if work_items_source is not None:
-        current_unmapped_states = None
-        existing_work_item_states = get_existing_work_item_states_from_transitions(session, work_items_source)
-        if len(existing_work_item_states) > 0:
+        all_work_item_states = get_existing_work_item_states_from_transitions(session, work_items_source)
+        current_states_with_mapping = {source_state_map.state for source_state_map in work_items_source.state_maps}
 
-            current_unmapped_states = existing_work_item_states - {
-                source_state_map.state
-                for source_state_map in work_items_source.state_maps
-            }
+        current_unmapped_states = {}
+        if len(all_work_item_states) > 0:
+            current_unmapped_states = all_work_item_states - current_states_with_mapping
 
-        old_closed_states = {
+        current_closed_states = {
             source_state_map.state
             for source_state_map in work_items_source.state_maps
             if source_state_map.state_type == WorkItemsStateType.closed.value
         }
+
         new_closed_states = {
             source_state_map.state
             for source_state_map in state_mappings
             if source_state_map.state_type == WorkItemsStateType.closed.value
         }
+
+        rebuild_delivery_cycles = current_closed_states != new_closed_states or len(current_unmapped_states) > 0
 
         # Initialize the new state map
         work_items_source.init_state_map(state_mappings)
@@ -95,18 +96,15 @@ def update_work_items_source_state_mapping(session, work_items_source_key, state
         # update state type in work items based on new mapping
         update_work_items_computed_state_types(session, work_items_source.id)
 
-        # If old closed state is not same as new closed state, or there were any unmapped states
-        # before the new mapping was initialized, we need to recreate the delivery cycles.
+        return rebuild_delivery_cycles
 
-        if old_closed_states != new_closed_states or current_unmapped_states:
-            update_work_items_source_delivery_cycles(session, work_items_source.id)
+def recalculate_cycle_metrics_for_work_items_source(session, work_items_source_key, rebuild_delivery_cycles=False):
+    work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+    if rebuild_delivery_cycles:
+        rebuild_work_items_source_delivery_cycles(session, work_items_source.id)
 
-        # Recompute cycle time as it is dependent on state type mapping
-        # Directly impacted if mapping change includes state types: open, wip, complete
-        # Also needs to be recomputed is closed state type changes as delivery cycles are recreated then
-        # So need to recompute for all cases except when only state mapping is changed for 'backlog'
-        # That may be once in a while, so updating every time state map changes
-        recompute_work_item_delivery_cycles_cycle_time(session, work_items_source.id)
+    updated = recompute_work_item_delivery_cycles_cycle_time(session, work_items_source.id)
+    return dict(delivery_cycles_updated=updated)
 
 
 def update_project_work_items(session, project_work_items):
@@ -132,6 +130,7 @@ def update_project_work_items(session, project_work_items):
 
 def update_project_work_items_source_state_mappings(session, project_state_maps):
     updated = []
+    should_rebuild_delivery_cycles=False
     # Check if project exists
     project = Project.find_by_project_key(session, project_state_maps.project_key)
     if project is not None:
@@ -141,9 +140,9 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
             work_items_source = find(project.work_items_sources,
                                      lambda work_item_source: str(work_item_source.key) == str(source_key))
             if work_items_source is not None:
-                update_work_items_source_state_mapping(session, source_key,
+                should_rebuild_delivery_cycles = update_work_items_source_state_mapping(session, source_key,
                                                        work_items_source_state_mapping.state_maps)
-                updated.append(source_key)
+                updated.append(dict(source_key=source_key, should_rebuild_delivery_cycles=should_rebuild_delivery_cycles))
             else:
                 raise ProcessingException(f'Work Items Source with key {source_key} does not belong to project')
     else:
@@ -151,7 +150,7 @@ def update_project_work_items_source_state_mappings(session, project_state_maps)
 
     return dict(
         project_key=project_state_maps.project_key,
-        work_items_sources=updated
+        work_items_sources=updated,
     )
 
 

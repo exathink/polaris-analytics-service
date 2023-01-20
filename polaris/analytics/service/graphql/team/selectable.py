@@ -202,6 +202,21 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
                 "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
             )
 
+        if not kwargs.get('specsOnly'):
+            pull_requests_join_clause = team_timeline_dates.outerjoin(
+                teams_repositories,team_timeline_dates.c.id == teams_repositories.c.team_id
+            ).join(
+                repositories, repositories.c.id == teams_repositories.c.repository_id
+            ).join(pull_requests,pull_requests.c.repository_id == repositories.c.id)
+        else:
+            pull_requests_join_clause = team_timeline_dates.join(
+                work_items_teams, work_items_teams.c.team_id == teams.c.id
+            ).join(
+                work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items_teams.c.work_item_id
+            ).join(
+                pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
+            )
+
         pull_request_attributes = select([
             team_timeline_dates.c.id,
             team_timeline_dates.c.measurement_date,
@@ -211,13 +226,7 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
             (func.extract('epoch', pull_requests.c.end_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
                 'age'),
         ]).select_from(
-            team_timeline_dates.outerjoin(
-                teams_repositories, team_timeline_dates.c.id == teams_repositories.c.team_id
-            ).join(
-                repositories, repositories.c.id == teams_repositories.c.repository_id
-            ).join(
-                pull_requests, pull_requests.c.repository_id == repositories.c.id
-            )
+            pull_requests_join_clause
         ).where(
             and_(
                 pull_requests.c.end_date != None,
@@ -307,7 +316,7 @@ class TeamPullRequestNodes(ConnectionResolver):
             teams.join(
                 work_items_teams, work_items_teams.c.team_id == teams.c.id
             ).join(
-                work_items_pull_requests, work_items_pull_requests.c.work_item_id==work_items_teams.c.work_item_id
+                work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items_teams.c.work_item_id
             ).join(
                 pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
             )

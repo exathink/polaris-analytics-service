@@ -39,6 +39,7 @@ from polaris.analytics.db.enums import WorkItemsStateType
 
 from polaris.utils.exceptions import ProcessingException
 
+from polaris.common import db
 
 class TeamNode:
     interfaces = (NamedNode, TeamInfo)
@@ -202,7 +203,7 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
                 "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
             )
 
-        if not kwargs.get('specsOnly'):
+        if not pull_request_metrics_trends_args.get('specs_only'):
             pull_requests_join_clause = team_timeline_dates.outerjoin(
                 teams_repositories,team_timeline_dates.c.id == teams_repositories.c.team_id
             ).join(
@@ -210,7 +211,7 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
             ).join(pull_requests,pull_requests.c.repository_id == repositories.c.id)
         else:
             pull_requests_join_clause = team_timeline_dates.join(
-                work_items_teams, work_items_teams.c.team_id == teams.c.id
+                work_items_teams, team_timeline_dates.c.id == work_items_teams.c.team_id
             ).join(
                 work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items_teams.c.work_item_id
             ).join(

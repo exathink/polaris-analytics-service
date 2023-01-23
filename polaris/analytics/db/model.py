@@ -421,6 +421,9 @@ class Repository(Base):
     source_files = relationship('SourceFile', back_populates='repository')
     source_file_changes = relationship('WorkItemSourceFileChange', cascade='all, delete-orphan')
 
+    # repository teams relationship
+    teams = relationship('Team', secondary=teams_repositories, back_populates='repositories')
+
     @classmethod
     def find_by_repository_key(cls, session, repository_key):
         return session.query(cls).filter(cls.key == repository_key).first()
@@ -539,6 +542,9 @@ class Team(Base):
 
     # work items relationship
     work_items = relationship("WorkItem", secondary=work_items_teams, back_populates='teams')
+
+    # repositories relationship
+    repositories = relationship("Repository", secondary=teams_repositories, back_populates='teams')
 
     @classmethod
     def find_by_key(cls, session, key):

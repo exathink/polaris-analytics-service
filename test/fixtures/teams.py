@@ -14,7 +14,7 @@ from test.fixtures.graphql import org_repo_fixture
 from polaris.utils.collections import Fixture
 from polaris.common import db
 
-from polaris.analytics.db.model import Team, Contributor
+from polaris.analytics.db.model import Team, Contributor, WorkItem
 
 
 @pytest.fixture()
@@ -92,4 +92,10 @@ def cleanup_teams():
     yield
 
 
-
+# utilities
+def map_work_items_to_team(team, work_items):
+    with db.orm_session() as session:
+        team = Team.find_by_key(session, team['key'])
+        for wi in work_items:
+            work_item = WorkItem.find_by_work_item_key(session, wi['key'])
+            team.work_items.append(work_item)

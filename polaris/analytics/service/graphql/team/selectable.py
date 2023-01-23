@@ -16,7 +16,7 @@ from polaris.analytics.db.model import teams, contributors_teams, \
     work_item_delivery_cycles, work_items, work_items_teams, \
     work_items_source_state_map, work_item_delivery_cycle_durations, \
     work_items_commits, commits, repositories, contributor_aliases, work_items_sources, pull_requests, \
-    teams_repositories
+    teams_repositories, work_items_pull_requests
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
@@ -39,6 +39,7 @@ from polaris.analytics.db.enums import WorkItemsStateType
 
 from polaris.utils.exceptions import ProcessingException
 
+from polaris.common import db
 
 class TeamNode:
     interfaces = (NamedNode, TeamInfo)
@@ -202,6 +203,21 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
                 "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
             )
 
+        if not pull_request_metrics_trends_args.get('specs_only'):
+            pull_requests_join_clause = team_timeline_dates.outerjoin(
+                teams_repositories,team_timeline_dates.c.id == teams_repositories.c.team_id
+            ).join(
+                repositories, repositories.c.id == teams_repositories.c.repository_id
+            ).join(pull_requests,pull_requests.c.repository_id == repositories.c.id)
+        else:
+            pull_requests_join_clause = team_timeline_dates.join(
+                work_items_teams, team_timeline_dates.c.id == work_items_teams.c.team_id
+            ).join(
+                work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items_teams.c.work_item_id
+            ).join(
+                pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
+            )
+
         pull_request_attributes = select([
             team_timeline_dates.c.id,
             team_timeline_dates.c.measurement_date,
@@ -211,13 +227,7 @@ class TeamPullRequestMetricsTrends(InterfaceResolver):
             (func.extract('epoch', pull_requests.c.end_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
                 'age'),
         ]).select_from(
-            team_timeline_dates.outerjoin(
-                teams_repositories, team_timeline_dates.c.id == teams_repositories.c.team_id
-            ).join(
-                repositories, repositories.c.id == teams_repositories.c.repository_id
-            ).join(
-                pull_requests, pull_requests.c.repository_id == repositories.c.id
-            )
+            pull_requests_join_clause
         ).where(
             and_(
                 pull_requests.c.end_date != None,
@@ -287,28 +297,40 @@ class TeamPullRequestNodes(ConnectionResolver):
     interfaces = (NamedNode, PullRequestInfo)
 
     @staticmethod
-    def connection_nodes_selector(**kwargs):
-        select_pull_requests = select([
+    def all_pull_requests_for_team_repos(**kwargs):
+        return select([
             *pull_request_info_columns(pull_requests)
         ]).distinct().select_from(
             teams.join(
-                commits,
-                or_(
-                    commits.c.author_team_id == teams.c.id,
-                    commits.c.committer_team_id == teams.c.id
-                )
+                teams_repositories, teams_repositories.c.team_id == teams.c.id
             ).join(
-                repositories,
-                and_(
-                    commits.c.repository_id == repositories.c.id,
-                    repositories.c.organization_id == teams.c.organization_id
-                )
+                pull_requests, pull_requests.c.repository_id == teams_repositories.c.repository_id
+            )).where(
+            teams.c.key == bindparam('key')
+        )
+
+    @staticmethod
+    def pull_requests_traceable_to_team_cards(**kwargs):
+        return select([
+            *pull_request_info_columns(pull_requests)
+        ]).distinct().select_from(
+            teams.join(
+                work_items_teams, work_items_teams.c.team_id == teams.c.id
             ).join(
-                pull_requests, pull_requests.c.repository_id == repositories.c.id
+                work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items_teams.c.work_item_id
+            ).join(
+                pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
             )
         ).where(
             teams.c.key == bindparam('key')
         )
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        if not kwargs.get('specs_only'):
+            select_pull_requests = TeamPullRequestNodes.all_pull_requests_for_team_repos(**kwargs)
+        else:
+            select_pull_requests = TeamPullRequestNodes.pull_requests_traceable_to_team_cards(**kwargs)
 
         select_pull_requests = pull_requests_connection_apply_filters(select_pull_requests, **kwargs)
 

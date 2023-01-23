@@ -327,7 +327,7 @@ class TestProjectPullRequests:
                         assert result['data']
                         assert len(result['data']['project']['pullRequests']['edges']) == 0
 
-            class TestOnlyProjectPullRequestsAreReturned:
+            class TestSpecsVsAllPullRequests:
 
                 @pytest.fixture()
                 def setup(self, setup):
@@ -336,22 +336,62 @@ class TestProjectPullRequests:
 
                     # Import 2 PRs
                     api_helper.import_pull_requests(fixture.pull_requests, fixture.repositories['alpha'])
+                    # map one to work item in project
                     fixture.api_helper.map_pull_request_to_work_item(fixture.work_items[0]['key'],
                                                                      fixture.pull_requests[0]['key'])
+                    fixture.query = """
+                                query getProjectPullRequests($key:String!, $specsOnly: Boolean) {
+                                    project(key: $key){
+                                        pullRequests (specsOnly: $specsOnly) {
+                                            edges {
+                                                node {
+                                                    id
+                                                    name
+                                                    key
+                                                    age
+                                                    state
+                                                    createdAt
+                                                    endDate
+                                                }
+                                            }
+                                        }
+                                    }
+                                 }
+                                """
 
                     yield fixture
 
-                def it_returns_only_project_pull_requests(self, setup):
+                def it_returns_only_project_pull_requests_when_specs_only_is_true(self, setup):
                     fixture = setup
-
                     client = Client(schema)
-
                     result = client.execute(fixture.query, variable_values=dict(
-                        key=fixture.project.key
+                        key=fixture.project.key,
+                        specsOnly=True
                     ))
 
                     assert result['data']
                     assert len(result['data']['project']['pullRequests']['edges']) == 1
+
+                def it_returns_pull_requests_from_all_repos_in_the_project_when_specs_only_is_false(self, setup):
+                    fixture = setup
+                    client = Client(schema)
+                    result = client.execute(fixture.query, variable_values=dict(
+                        key=fixture.project.key,
+                        specsOnly=False
+                    ))
+
+                    assert result['data']
+                    assert len(result['data']['project']['pullRequests']['edges']) == 2
+
+                def it_returns_pull_requests_from_all_repos_in_the_project_when_specs_only_is_not_specified(self, setup):
+                    fixture = setup
+                    client = Client(schema)
+                    result = client.execute(fixture.query, variable_values=dict(
+                        key=fixture.project.key,
+                    ))
+
+                    assert result['data']
+                    assert len(result['data']['project']['pullRequests']['edges']) == 2
 
 
     class TestProjectPullRequestEventSpan:

@@ -10,13 +10,14 @@
 import uuid
 from test.fixtures.teams import *
 
+from datetime import datetime, timedelta
 from graphene.test import Client
 from polaris.analytics.service.graphql import schema
 from polaris.common import db
 from polaris.utils.collections import Fixture
 from polaris.analytics.db.model import Contributor, ContributorTeam, Team
-
-
+from test.fixtures.graphql import api_pull_requests_import_fixture, PullRequestImportApiHelper
+from test.fixtures.teams import *
 class TestTeamNode:
 
     @pytest.fixture
@@ -43,6 +44,200 @@ class TestTeamNode:
         assert result['data']
         assert result['data']['team']['key'] == str(fixture.team_a['key'])
 
+class TestTeamPullRequests:
+    @pytest.fixture
+    def setup_pull_requests_fixture(self, api_pull_requests_import_fixture):
+        organization, project, repositories, work_items_source, work_items_common, pull_requests_common = api_pull_requests_import_fixture
+        api_helper = PullRequestImportApiHelper(organization, repositories, work_items_source)
+
+        start_date = datetime.utcnow() - timedelta(days=10)
+
+        work_items = [
+            dict(
+                key=uuid.uuid4(),
+                name=f'Issue {i}',
+                display_id='1000',
+                state='open',
+                created_at=start_date,
+                updated_at=start_date,
+                **work_items_common
+            )
+            for i in range(0, 1)
+        ]
+
+        pull_requests = [
+            dict(
+                repository_id=repositories['alpha'].id,
+                key=uuid.uuid4(),
+                source_id=f'100{i}',
+                source_branch='1000',
+                source_repository_id=repositories['alpha'].id,
+                title="Another change. Fixes issue #1000",
+                created_at=start_date,
+                updated_at=start_date,
+                end_date=None,
+                **pull_requests_common
+            )
+            for i in range(0, 2)
+        ]
+
+        yield Fixture(
+            project=project,
+            api_helper=api_helper,
+            start_date=start_date,
+            work_items=work_items,
+            pull_requests=pull_requests,
+            repositories=repositories
+        )
+
+    @pytest.fixture
+    def setup(self, setup_teams, setup_pull_requests_fixture):
+
+        teams_fixture=setup_teams
+        pull_requests_fixture=setup_pull_requests_fixture
+
+        yield Fixture(
+            parent=setup_teams,
+            pull_requests_fixture=setup_pull_requests_fixture
+        )
+
+    class TestAllPullRequestsFromTeamRepos:
+        @pytest.fixture
+        def setup(self, setup):
+            fixture = setup
+            pull_requests_fixture = fixture.pull_requests_fixture
+
+            # add repository alpha to team_a
+            with db.orm_session() as session:
+                team_a = Team.find_by_key(session, fixture.team_a['key'])
+                team_a.repositories.append(pull_requests_fixture.repositories['alpha'])
+
+            # import some pull requests into the repository alpha
+            api_helper = pull_requests_fixture.api_helper
+            api_helper.import_pull_requests(pull_requests_fixture.pull_requests,
+                                            pull_requests_fixture.repositories['alpha'])
+
+            yield fixture
+
+        def it_returns_all_team_pull_requests(self, setup):
+            fixture = setup
+
+            query = """
+                query getTeamPullRequests($key: String!) {
+                    team(key: $key) {
+                        pullRequests {
+                            count
+                        }
+                    }
+                }
+            
+            """
+
+            client = Client(schema)
+            result = client.execute(query, variable_values=dict(key=fixture.team_a['key']))
+            assert result['data']['team']['pullRequests']['count'] == 2
+
+        def it_returns_all_team_pull_requests_when_specs_is_false(self, setup):
+            fixture = setup
+
+            query = """
+                query getTeamPullRequests($key: String!) {
+                    team(key: $key) {
+                        pullRequests(specsOnly: false) {
+                            count
+                        }
+                    }
+                }
+
+            """
+
+            client = Client(schema)
+            result = client.execute(query, variable_values=dict(key=fixture.team_a['key']))
+            assert result['data']['team']['pullRequests']['count'] == 2
+
+        def it_does_not_return_any_pull_requests_when_specs_is_true_and_there_are_no_specs(self, setup):
+            fixture = setup
+
+            query = """
+                query getTeamPullRequests($key: String!) {
+                    team(key: $key) {
+                        pullRequests(specsOnly: true) {
+                            count
+                        }
+                    }
+                }
+
+            """
+
+            client = Client(schema)
+            result = client.execute(query, variable_values=dict(key=fixture.team_a['key']))
+            assert result['data']['team']['pullRequests']['count'] == 0
+
+        class TestPullRequestsSpecsOnly:
+
+            @pytest.fixture
+            def setup(self, setup):
+                fixture = setup
+                pull_requests_fixture = fixture.pull_requests_fixture
+                api_helper = pull_requests_fixture.api_helper
+
+
+                # Import work items
+                api_helper.import_work_items(pull_requests_fixture.work_items)
+                yield fixture
+
+
+            def it_does_not_return_pull_requests_when_work_items_are_not_mapped_to_pull_requests_but_not_to_team(self, setup):
+                fixture = setup
+                pull_requests_fixture = fixture.pull_requests_fixture
+                api_helper = pull_requests_fixture.api_helper
+
+                # Map work items to pull request 1
+                for work_item in pull_requests_fixture.work_items:
+                    api_helper.map_pull_request_to_work_item(work_item['key'],
+                                                             pull_requests_fixture.pull_requests[0]['key'])
+
+                query = """
+                                query getTeamPullRequests($key: String!) {
+                                    team(key: $key) {
+                                        pullRequests(specsOnly: true) {
+                                            count
+                                        }
+                                    }
+                                }
+
+                            """
+
+                client = Client(schema)
+                result = client.execute(query, variable_values=dict(key=fixture.team_a['key']))
+                assert result['data']['team']['pullRequests']['count'] == 0
+
+            def it_returns_pull_requests_when_work_items_are_mapped_to_pull_requests_and_to_team(self, setup):
+                fixture = setup
+                pull_requests_fixture = fixture.pull_requests_fixture
+                api_helper = pull_requests_fixture.api_helper
+
+                # Map work items to pull request 1
+                for work_item in pull_requests_fixture.work_items:
+                    api_helper.map_pull_request_to_work_item(work_item['key'],
+                                                             pull_requests_fixture.pull_requests[0]['key'])
+                # map work_item 0 to team_a
+                map_work_items_to_team(fixture.team_a, [pull_requests_fixture.work_items[0]])
+
+                query = """
+                                query getTeamPullRequests($key: String!) {
+                                    team(key: $key) {
+                                        pullRequests(specsOnly: true) {
+                                            count
+                                        }
+                                    }
+                                }
+
+                            """
+
+                client = Client(schema)
+                result = client.execute(query, variable_values=dict(key=fixture.team_a['key']))
+                assert result['data']['team']['pullRequests']['count'] == 1
 
 class TestOrganizationTeams:
 

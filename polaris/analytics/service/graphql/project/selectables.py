@@ -49,6 +49,7 @@ from ..work_item.sql_expressions import work_item_events_connection_apply_time_w
 from ..utils import date_column_is_in_measurement_window, get_measurement_period, get_timeline_dates_for_trending
 from polaris.common import db
 
+
 class ProjectNode(NamedNodeResolver):
     interfaces = (NamedNode, ArchivedStatus, ProjectInfo)
 
@@ -1975,7 +1976,8 @@ class ProjectPullRequestMetricsTrends(InterfaceResolver):
                 measurement_window, project_timeline_dates, pull_request_attribute_cols)
         else:
             pull_request_attributes = ProjectPullRequestMetricsTrends.pull_request_attributes_all(measurement_window,
-                                                                                                  project_timeline_dates,                                                                                    pull_request_attribute_cols)
+                                                                                                  project_timeline_dates,
+                                                                                                  pull_request_attribute_cols)
         pull_request_metrics = select([
             project_timeline_dates.c.id,
             project_timeline_dates.c.measurement_date,
@@ -2025,27 +2027,46 @@ class ProjectPullRequestNodes(ConnectionResolver):
     interfaces = (NamedNode, PullRequestInfo)
 
     @staticmethod
+    def pull_requests_traceable_to_project():
+        return projects.join(
+            work_items_sources, work_items_sources.c.project_id == projects.c.id
+        ).join(
+            work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+        ).join(
+            work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items.c.id
+        ).join(
+            pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
+        ).join(
+            repositories, pull_requests.c.repository_id == repositories.c.id
+        ).join(
+            projects_repositories,
+            and_(
+                repositories.c.id == projects_repositories.c.repository_id,
+                projects.c.id == projects_repositories.c.project_id
+            )
+        )
+
+    @staticmethod
+    def all_pull_requests_for_project_repos():
+        return projects.join(
+            projects_repositories, projects_repositories.c.project_id == projects.c.id
+        ).join(
+            repositories, projects_repositories.c.repository_id == repositories.c.id
+        ).join(
+            pull_requests, pull_requests.c.repository_id == repositories.c.id
+        )
+
+    @staticmethod
     def connection_nodes_selector(**kwargs):
+        if kwargs.get('specs_only'):
+            pull_requests_join_clause = ProjectPullRequestNodes.pull_requests_traceable_to_project()
+        else:
+            pull_requests_join_clause = ProjectPullRequestNodes.all_pull_requests_for_project_repos()
+
         select_pull_requests = select([
             *pull_request_info_columns(pull_requests)
         ]).distinct().select_from(
-            projects.join(
-                work_items_sources, work_items_sources.c.project_id == projects.c.id
-            ).join(
-                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
-            ).join(
-                work_items_pull_requests, work_items_pull_requests.c.work_item_id == work_items.c.id
-            ).join(
-                pull_requests, work_items_pull_requests.c.pull_request_id == pull_requests.c.id
-            ).join(
-                repositories, pull_requests.c.repository_id == repositories.c.id
-            ).join(
-                projects_repositories,
-                and_(
-                    repositories.c.id == projects_repositories.c.repository_id,
-                    projects.c.id == projects_repositories.c.project_id
-                )
-            )
+            pull_requests_join_clause
         ).where(
             and_(
                 projects.c.key == bindparam('key'),
@@ -2054,6 +2075,8 @@ class ProjectPullRequestNodes(ConnectionResolver):
         )
 
         return pull_requests_connection_apply_filters(select_pull_requests, **kwargs)
+
+
 
     @staticmethod
     def sort_order(pull_request_nodes, **kwargs):

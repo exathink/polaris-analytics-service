@@ -189,6 +189,7 @@ class TestProjectFunnelViewAggregateMetrics:
         yield Fixture(
             project=project,
             work_items=work_items,
+            work_items_source=work_items_source,
             api_helper=api_helper,
             work_items_common=work_items_common
 
@@ -529,3 +530,64 @@ class TestProjectFunnelViewAggregateMetrics:
         assert total_effort_by_state['complete'] == None
         assert total_effort_by_state['closed'] == 6
         assert total_effort_by_state['unmapped'] == 1
+
+    def it_excludes_deferred_items_in_any_phase(self, setup):
+        fixture = setup
+        api_helper = fixture.api_helper
+
+        # Change all the states to deferred
+        with db.orm_session() as session:
+            session.add(fixture.work_items_source)
+            for state_map in fixture.work_items_source.state_maps:
+                state_map.release_status = WorkItemsStateReleaseStatusType.deferred.value
+
+        client = Client(schema)
+        query = """
+                query getProjectWorkItemsStateTypeAggregates($project_key:String!) {
+                    project(
+                        key: $project_key,
+                        interfaces: [FunnelViewAggregateMetrics],
+                        specsOnly: false,
+                        closedWithinDays: 30
+                        funnelViewArgs: {
+                          includeSubTasksInClosedState: true
+                          includeSubTasksInNonClosedState: true
+                        }
+                        )
+                        {
+                            workItemStateTypeCounts {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                            }
+                            totalEffortByStateType {
+                              backlog
+                              open
+                              wip
+                              complete
+                              closed
+                              unmapped
+                        }
+                    }
+                }
+            """
+
+        result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
+        assert 'data' in result
+        work_item_state_type_counts = result['data']['project']['workItemStateTypeCounts']
+        total_effort_by_state = result['data']['project']['totalEffortByStateType']
+        assert work_item_state_type_counts['backlog'] is None
+        assert work_item_state_type_counts['open'] is None
+        assert work_item_state_type_counts['wip'] is None
+        assert work_item_state_type_counts['complete'] is None
+        assert work_item_state_type_counts['closed'] is None
+        assert work_item_state_type_counts['unmapped'] is None
+        assert total_effort_by_state['backlog'] is None
+        assert total_effort_by_state['open'] is None
+        assert total_effort_by_state['wip'] is None
+        assert total_effort_by_state['complete'] is None
+        assert total_effort_by_state['closed'] is None
+

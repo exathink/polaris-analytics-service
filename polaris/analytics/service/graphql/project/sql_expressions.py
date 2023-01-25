@@ -90,7 +90,7 @@ def select_closed_work_items(project_nodes, select_columns, **kwargs):
         work_item_state_transitions.c.state.label('state'),
         literal('closed').label('state_type'),
     ]
-    closed_work_items = select(closed_work_items_columns).distinct().select_from(
+    closed_work_items = select(closed_work_items_columns).select_from(
         project_nodes.join(
             work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
         ).join(
@@ -113,12 +113,8 @@ def select_closed_work_items(project_nodes, select_columns, **kwargs):
             work_items_source_state_map,
             and_(
                 work_items_source_state_map.c.work_items_source_id == work_items_sources.c.id,
-                or_(
-                    # we need to have this clause in here so that unmapped items are not dropped
-                    # during this join.
-                    work_items.c.state_type == None,
-                    work_items_source_state_map.c.state == work_items.c.state
-                )
+                # here we are filtering out any delivery cycle whose current state is deferred
+                work_items_source_state_map.c.state == work_item_state_transitions.c.state
             )
         )
     ).where(

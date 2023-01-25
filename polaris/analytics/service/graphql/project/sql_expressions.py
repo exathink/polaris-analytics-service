@@ -8,7 +8,7 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, func, literal, union_all, and_
+from sqlalchemy import select, func, literal, union_all, and_, or_
 from polaris.analytics.db.enums import WorkItemsStateReleaseStatusType
 from polaris.analytics.db.model import work_items, work_items_sources, work_item_delivery_cycles, \
     work_item_state_transitions, work_items_source_state_map
@@ -25,7 +25,7 @@ def select_non_closed_work_items(project_nodes, select_columns, **kwargs):
         func.coalesce(work_items.c.state_type, 'unmapped').label('state_type')
     ]
 
-    non_closed_work_items = select(non_closed_work_items_columns).select_from(
+    non_closed_work_items = select(non_closed_work_items_columns).distinct().select_from(
         project_nodes.join(
             work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
         ).join(
@@ -38,7 +38,14 @@ def select_non_closed_work_items(project_nodes, select_columns, **kwargs):
             work_items_source_state_map,
             and_(
                 work_items_source_state_map.c.work_items_source_id == work_items_sources.c.id,
-                work_items_source_state_map.c.state == work_items.c.state
+                or_(
+                    # we need to have this clause in here so that unmapped items are not dropped
+                    # during this join. Note that since this causes multiple rows from the mapping
+                    # to match for unmapped items we need to use a distinct() clause in the select
+                    # to eliminate the duplicates
+                    work_items.c.state_type == None,
+                    work_items_source_state_map.c.state == work_items.c.state
+                )
             )
         )
     ).where(
@@ -106,6 +113,7 @@ def select_closed_work_items(project_nodes, select_columns, **kwargs):
             work_items_source_state_map,
             and_(
                 work_items_source_state_map.c.work_items_source_id == work_items_sources.c.id,
+                # here we are filtering out any delivery cycle whose current state is deferred
                 work_items_source_state_map.c.state == work_item_state_transitions.c.state
             )
         )

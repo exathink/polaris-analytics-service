@@ -121,7 +121,7 @@ class TestPullRequestInstance:
                 assert pull_request['key'] == str(fixture.pull_requests[0]['key'])
                 assert pull_request['state'] == 'open'
                 assert pull_request['createdAt'] == fixture.start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
-                assert int(pull_request['age']) == 10
+                assert round(pull_request['age']) == 10
                 assert pull_request['endDate'] == None
 
     class TestBranchRefInterface:

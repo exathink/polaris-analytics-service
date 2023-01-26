@@ -13,7 +13,7 @@ from polaris.graphql.utils import nulls_to_zero, is_paging
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 from polaris.analytics.db.model import repositories, organizations, contributors, commits, \
-    repositories_contributor_aliases, contributor_aliases, pull_requests, work_items_commits
+    repositories_contributor_aliases, contributor_aliases, pull_requests, work_items_commits, work_items_pull_requests
 from ..interfaces import CommitSummary, ContributorCount, OrganizationRef, CommitInfo, CumulativeCommitCount, \
     CommitCount, WeeklyContributorCount, PullRequestInfo, PullRequestMetricsTrends, TraceabilityTrends, Excluded
 
@@ -68,13 +68,22 @@ class RepositoryPullRequestNodes(ConnectionResolver):
 
     @classmethod
     def connection_nodes_selector(cls, **kwargs):
+
+        if kwargs.get('specs_only'):
+            pull_requests_join_clause = repositories.join(
+                pull_requests, pull_requests.c.repository_id == repositories.c.id
+            ).join(
+                work_items_pull_requests, pull_requests.c.id == work_items_pull_requests.c.pull_request_id
+            )
+        else:
+            pull_requests_join_clause = repositories.join(
+                pull_requests, pull_requests.c.repository_id == repositories.c.id
+            )
+
         select_stmt = select([
             *pull_request_info_columns(pull_requests)
         ]).select_from(
-            repositories.join(
-                pull_requests,
-                pull_requests.c.repository_id == repositories.c.id
-            )
+            pull_requests_join_clause
         ).where(
             repositories.c.key == bindparam('key')
         )
@@ -302,6 +311,17 @@ class RepositoriesPullRequestMetricsTrends(InterfaceResolver):
                 "'measurement_window' must be specified when calculating ProjectPullRequestMetricsTrends"
             )
 
+        if pull_request_metrics_trends_args.get('specs_only'):
+            pull_requests_join_clause = repositories_timeline_dates.outerjoin(
+                pull_requests, pull_requests.c.repository_id == repositories_timeline_dates.c.id
+            ).join(
+                work_items_pull_requests, pull_requests.c.id == work_items_pull_requests.c.pull_request_id
+            )
+        else:
+            pull_requests_join_clause = repositories_timeline_dates.outerjoin(
+                pull_requests, pull_requests.c.repository_id == repositories_timeline_dates.c.id
+            )
+
         pull_request_attributes = select([
             repositories_timeline_dates.c.id,
             repositories_timeline_dates.c.measurement_date,
@@ -311,9 +331,7 @@ class RepositoriesPullRequestMetricsTrends(InterfaceResolver):
             (func.extract('epoch', pull_requests.c.end_date - pull_requests.c.created_at) / (1.0 * 3600 * 24)).label(
                 'age'),
         ]).select_from(
-            repositories_timeline_dates.outerjoin(
-                pull_requests, pull_requests.c.repository_id == repositories_timeline_dates.c.id
-            )
+            pull_requests_join_clause
         ).where(
             and_(
                 pull_requests.c.end_date != None,

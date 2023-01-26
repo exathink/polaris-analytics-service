@@ -8,10 +8,13 @@
 
 # Author: Krishna Kumar
 
-from sqlalchemy import select, func, literal, union_all, and_
-
-from polaris.analytics.db.model import work_items, work_items_sources, work_item_delivery_cycles, work_item_state_transitions
-from ..work_item.sql_expressions import apply_specs_only_filter, work_items_connection_apply_filters, work_item_delivery_cycles_connection_apply_filters
+from sqlalchemy import select, func, literal, union_all, and_, or_
+from polaris.analytics.db.enums import WorkItemsStateReleaseStatusType
+from polaris.analytics.db.model import work_items, work_items_sources, work_item_delivery_cycles, \
+    work_item_state_transitions, work_items_source_state_map
+from ..work_item.sql_expressions import apply_specs_only_filter, work_items_connection_apply_filters, \
+    work_item_delivery_cycles_connection_apply_filters
+from polaris.common import db
 
 
 def select_non_closed_work_items(project_nodes, select_columns, **kwargs):
@@ -22,7 +25,7 @@ def select_non_closed_work_items(project_nodes, select_columns, **kwargs):
         func.coalesce(work_items.c.state_type, 'unmapped').label('state_type')
     ]
 
-    non_closed_work_items = select(non_closed_work_items_columns).select_from(
+    non_closed_work_items = select(non_closed_work_items_columns).distinct().select_from(
         project_nodes.join(
             work_items_sources, work_items_sources.c.project_id == project_nodes.c.id,
         ).join(
@@ -31,9 +34,26 @@ def select_non_closed_work_items(project_nodes, select_columns, **kwargs):
             # here we only include the current delivery cycles.
             work_item_delivery_cycles,
             work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+        ).join(
+            work_items_source_state_map,
+            and_(
+                work_items_source_state_map.c.work_items_source_id == work_items_sources.c.id,
+                or_(
+                    # we need to have this clause in here so that unmapped items are not dropped
+                    # during this join. Note that since this causes multiple rows from the mapping
+                    # to match for unmapped items we need to use a distinct() clause in the select
+                    # to eliminate the duplicates
+                    work_items.c.state_type == None,
+                    work_items_source_state_map.c.state == work_items.c.state
+                )
+            )
         )
     ).where(
-        work_item_delivery_cycles.c.end_date == None
+        and_(
+            work_item_delivery_cycles.c.end_date == None,
+            func.coalesce(work_items_source_state_map.c.release_status,
+                          '') != WorkItemsStateReleaseStatusType.deferred.value
+        )
     )
     # Check for specific filters for non closed items
     if kwargs.get('funnel_view_args') is not None:
@@ -89,9 +109,19 @@ def select_closed_work_items(project_nodes, select_columns, **kwargs):
                 work_item_state_transitions.c.work_item_id == work_item_delivery_cycles.c.work_item_id,
                 work_item_state_transitions.c.seq_no == work_item_delivery_cycles.c.end_seq_no
             )
+        ).join(
+            work_items_source_state_map,
+            and_(
+                work_items_source_state_map.c.work_items_source_id == work_items_sources.c.id,
+                # here we are filtering out any delivery cycle whose current state is deferred
+                work_items_source_state_map.c.state == work_item_state_transitions.c.state
+            )
         )
     ).where(
-        work_item_delivery_cycles.c.end_date != None
+        and_(
+            work_item_delivery_cycles.c.end_date != None,
+            func.coalesce(work_items_source_state_map.c.release_status,'') != WorkItemsStateReleaseStatusType.deferred.value
+        )
     )
     # Check for specific filters for closed items
     if kwargs.get('funnel_view_args') is not None:

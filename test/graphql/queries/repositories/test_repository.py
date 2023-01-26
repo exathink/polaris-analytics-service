@@ -185,7 +185,7 @@ class TestRepositoryPullRequests:
             # update one of the PRs to be merged in the last day
             merged_pr = fixture.pull_requests[0]
             merged_pr['state'] = 'merged'
-            merged_pr['end_date'] = datetime.utcnow() - timedelta(hours=12)
+            merged_pr['end_date'] = datetime.utcnow() - timedelta(days=1)
 
             api_helper.import_pull_requests(fixture.pull_requests, fixture.repository)
 
@@ -216,7 +216,7 @@ class TestRepositoryPullRequests:
 
             result = client.execute(query, variable_values=dict(
                 key=fixture.repository.key,
-                days=1
+                days=2
             ))
 
             assert not 'errors' in result

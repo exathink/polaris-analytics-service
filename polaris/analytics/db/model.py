@@ -335,6 +335,7 @@ class Project(Base):
     organization = relationship('Organization', back_populates='projects')
     repositories_rel = relationship("ProjectsRepositories",  back_populates='project')
     work_items_sources = relationship('WorkItemsSource')
+    value_streams = relationship('ValueStream')
 
     @classmethod
     def find_by_project_key(cls, session, project_key):
@@ -389,6 +390,19 @@ class Project(Base):
         ])
 
 projects = Project.__table__
+
+class ValueStream(Base):
+    __tablename__ = 'value_streams'
+
+    id = Column(Integer, primary_key=True)
+    key = Column(UUID(as_uuid=True), unique=True, nullable=False)
+    name = Column(String(256), nullable=False)
+    description = Column(Text, nullable=True)
+
+    project_id = Column(Integer, ForeignKey('projects.id'), index=True, nullable=False)
+    project = relationship('Project', back_populates='value_streams')
+
+    work_items_selectors = Column(ARRAY(String), nullable=False, server_default='{}')
 
 
 class Repository(Base):

@@ -13,6 +13,7 @@ import graphene
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.selectable import Selectable, ConnectionResolverMixin
 
+from ..interfaces import ValueStreamInfo
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -34,6 +35,7 @@ Project: A NamedNode representing a value stream.
         interfaces = (
             # ----Implicit Interfaces ------- #
             NamedNode,
+            ValueStreamInfo
 
         )
         named_node_resolver = ValueStreamNode

@@ -17,11 +17,11 @@ from polaris.analytics.db.model import value_streams
 
 from polaris.graphql.interfaces import KeyIdNode, NamedNode
 from polaris.graphql.base_classes import NamedNodeResolver
-from ..interfaces import UserInfo, UserRoles
+from ..interfaces import ValueStreamInfo
 
 
 class ValueStreamNode(NamedNodeResolver):
-    interfaces = (NamedNode,)
+    interfaces = (NamedNode, ValueStreamInfo)
 
     @staticmethod
     def named_node_selector(**kwargs):

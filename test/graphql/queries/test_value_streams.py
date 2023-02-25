@@ -68,3 +68,25 @@ class TestValueStreams(OrgRepoTest):
             assert result['data']
             assert not result.get('errors')
             assert result['data']['valueStream']
+
+        def it_supports_the_value_stream_info_interface(self, setup):
+            fixture = setup
+            client = Client(schema)
+            query = """
+                query getValueStream($key: String!){
+                    valueStream(key: $key) {
+                        id
+                        name
+                        key
+                        workItemSelectors 
+                    }
+                }
+            """
+
+            result = client.execute(query, variable_values=dict(
+                key=fixture.value_streams.enhancements.key
+            ))
+
+            assert result['data']
+            assert not result.get('errors')
+            assert len(result['data']['valueStream']['workItemSelectors']) == 2

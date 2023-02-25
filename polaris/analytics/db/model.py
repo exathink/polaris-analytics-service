@@ -404,6 +404,7 @@ class ValueStream(Base):
 
     work_items_selectors = Column(ARRAY(String), nullable=False, server_default='{}')
 
+value_streams = ValueStream.__table__
 
 class Repository(Base):
     __tablename__ = 'repositories'

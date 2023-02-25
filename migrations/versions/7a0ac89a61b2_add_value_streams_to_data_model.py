@@ -24,7 +24,7 @@ def upgrade():
     sa.Column('name', sa.String(length=256), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
     sa.Column('project_id', sa.Integer(), nullable=False),
-    sa.Column('work_items_selectors', postgresql.ARRAY(sa.String()), server_default='{}', nullable=False),
+    sa.Column('work_item_selectors', postgresql.ARRAY(sa.String()), server_default='{}', nullable=False),
     sa.ForeignKeyConstraint(['project_id'], ['analytics.projects.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('key'),

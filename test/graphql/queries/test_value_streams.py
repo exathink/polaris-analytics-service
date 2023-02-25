@@ -22,12 +22,12 @@ class TestValueStreams(OrgRepoTest):
             enhancements = ValueStream(
                 name='Product Enhancements',
                 key=uuid.uuid4(),
-                work_items_selectors=['enhancements', 'features']
+                work_item_selectors=['enhancements', 'features']
             )
             production_defects = ValueStream(
                 name='Production Defects',
                 key=uuid.uuid4(),
-                work_items_selectors=['production_bug']
+                work_item_selectors=['production_bug']
             )
             project_mercury = fixture.projects['mercury']
 
@@ -66,4 +66,5 @@ class TestValueStreams(OrgRepoTest):
             ))
 
             assert result['data']
+            assert not result.get('errors')
             assert result['data']['valueStream']

@@ -402,7 +402,7 @@ class ValueStream(Base):
     project_id = Column(Integer, ForeignKey('projects.id'), index=True, nullable=False)
     project = relationship('Project', back_populates='value_streams')
 
-    work_items_selectors = Column(ARRAY(String), nullable=False, server_default='{}')
+    work_item_selectors = Column(ARRAY(String), nullable=False, server_default='{}')
 
 value_streams = ValueStream.__table__
 

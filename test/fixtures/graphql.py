@@ -110,6 +110,7 @@ def org_repo_fixture(setup_schema):
     db.connection().execute("delete from analytics.work_items_commits")
     db.connection().execute("delete from analytics.work_items_teams")
     db.connection().execute("delete from analytics.work_items")
+    db.connection().execute("delete from analytics.value_streams")
 
     db.connection().execute("delete from analytics.work_items_sources")
     db.connection().execute("delete from analytics.commits")
@@ -121,6 +122,15 @@ def org_repo_fixture(setup_schema):
     db.connection().execute("delete from analytics.organizations")
     db.connection().execute("delete from analytics.accounts")
 
+class OrgRepoTest:
+    @pytest.fixture()
+    def setup(self, org_repo_fixture):
+        organization, projects, repositories = org_repo_fixture
+        yield Fixture(
+            organization=organization,
+            projects=projects,
+            reposoitories=repositories
+        )
 
 @pytest.fixture()
 def user_fixture(setup_auth_schema, org_repo_fixture):

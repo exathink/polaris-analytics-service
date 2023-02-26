@@ -19,7 +19,7 @@ from polaris.analytics.db.model import projects, projects_repositories, organiza
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
     work_items, work_item_state_transitions, work_items_commits, work_item_delivery_cycles, work_items_source_state_map, \
-    work_item_delivery_cycle_durations, pull_requests, work_items_pull_requests
+    work_item_delivery_cycle_durations, pull_requests, work_items_pull_requests, value_streams
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
     SelectableFieldResolver
 from polaris.graphql.interfaces import NamedNode
@@ -38,7 +38,7 @@ from ..interfaces import \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends, \
-    BacklogTrends
+    BacklogTrends, ValueStreamInfo
 from ..pull_request.sql_expressions import pull_request_info_columns, pull_requests_connection_apply_filters
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -66,6 +66,23 @@ class ProjectNode(NamedNodeResolver):
             projects
         ).where(projects.c.key == bindparam('key'))
 
+class ProjectValueStreamNodes(ConnectionResolver):
+    interfaces = (NamedNode, ValueStreamInfo)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        select_stmt = select([
+            value_streams.c.id,
+            value_streams.c.key,
+            value_streams.c.name,
+            value_streams.c.work_item_selectors
+        ]).select_from(
+            projects.join(
+                value_streams,
+                value_streams.c.project_id == projects.c.id
+            )
+        ).where(projects.c.key == bindparam('key'))
+        return select_stmt
 
 class ProjectRepositoriesNodes(ConnectionResolver):
     interface = NamedNode

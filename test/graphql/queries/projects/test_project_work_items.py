@@ -241,6 +241,11 @@ class TestProjectWorkItemsParameters(WorkItemApiImportTest):
             assert 'data' in result
             assert len(result['data']['project']['workItems']['edges']) == 1
 
+
+
+
+class TestProjectMovedWorkItems(WorkItemApiImportTest):
+    class TestMovedWorkItems:
         def it_does_not_return_the_work_items_moved_from_source(self, setup):
             fixture = setup
             api_helper = WorkItemImportApiHelper(fixture.organization, fixture.work_items_source)
@@ -331,7 +336,6 @@ class TestProjectWorkItemsParameters(WorkItemApiImportTest):
             result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
             assert 'data' in result
             assert len(result['data']['project']['workItems']['edges']) == 3
-
 
 class TestProjectEpicWorkItems(WorkItemApiImportTest):
 

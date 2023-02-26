@@ -357,6 +357,12 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             description='Exclude items which have been moved from current source',
             default_value=True
         ),
+        tags=graphene.List(
+            graphene.String,
+            required=False,
+            description='Provide a list of tags to filter work_items by',
+            default_value=None
+        )
     )
 
     def resolve_work_items(self, info, **kwargs):

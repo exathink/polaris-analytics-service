@@ -9,8 +9,10 @@
 # Author: Krishna Kumar
 import abc
 from datetime import datetime, timedelta
+from io import StringIO
 
 from sqlalchemy import and_, cast, Text, func, case, select, or_, literal, Date
+from sqlalchemy.dialects.postgresql import ARRAY, array
 
 from polaris.analytics.db.enums import WorkItemsStateType, FlowTypes, WorkItemTypesToFlowTypes
 from polaris.analytics.db.model import work_items, work_item_delivery_cycles, work_items_sources
@@ -168,6 +170,30 @@ def apply_active_only_filter(select_stmt, work_items, **kwargs):
         )
         return select_stmt
 
+def literal_postgres_string_array(string_array):
+    # TODO:
+    # we need this hack due to some obscure type conversions issues in
+    # the ancient version of sqlalchemy we are using.
+    # revert to using builtin functions when we upgrade
+    output = StringIO()
+    output.write("{")
+    count = 0
+    for item in string_array:
+        if count > 0:
+            output.write(",")
+
+        output.write(f"\"{item}\"")
+        count = count + 1
+
+    output.write("}")
+    return output.getvalue()
+
+def apply_tags_filter(select_stmt, work_items, **kwargs):
+    if 'tags' in kwargs:
+        select_stmt = select_stmt.where(
+            work_items.c.tags.contains(literal_postgres_string_array(kwargs['tags']))
+        )
+        return select_stmt
 
 def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
     select_stmt = work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
@@ -183,6 +209,9 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
 
     if 'active_only' in kwargs:
         select_stmt = apply_active_only_filter(select_stmt, work_items, **kwargs)
+
+    if 'tags' in kwargs:
+        select_stmt = apply_tags_filter(select_stmt, work_items, **kwargs)
 
     if 'suppress_moved_items' not in kwargs or kwargs.get('suppress_moved_items') == True:
         select_stmt = select_stmt.where(work_items.c.is_moved_from_current_source != True)

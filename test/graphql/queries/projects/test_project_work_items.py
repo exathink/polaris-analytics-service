@@ -242,6 +242,168 @@ class TestProjectWorkItemsParameters(WorkItemApiImportTest):
             assert len(result['data']['project']['workItems']['edges']) == 1
 
 
+class TestProjectWorkItemFilteringByTags(WorkItemApiImportTest):
+
+    class TestWorkItemTagFiltering:
+        @pytest.fixture()
+        def setup(self, setup):
+            fixture = setup
+
+            common_fields = dict(
+                work_item_type='issue',
+                url='http://foo.com',
+                description='foo',
+                source_id=str(uuid.uuid4()),
+                is_epic=False,
+                parent_id=None,
+                is_bug=True,
+                state='upnext',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+            )
+
+            api.import_new_work_items(
+                organization_key=fixture.organization.key,
+                work_item_source_key=fixture.work_items_source.key,
+                work_item_summaries=[
+                    dict(
+                        key=uuid.uuid4().hex,
+                        name='Issue 1',
+                        display_id='1000',
+                        tags=['enhancement', 'feature1'],
+                        **common_fields
+                    ),
+                    dict(
+                        key=uuid.uuid4().hex,
+                        name='Issue 2',
+                        display_id='1001',
+                        tags=[],
+                        **common_fields
+                    ),
+                    dict(
+                        key=uuid.uuid4().hex,
+                        name='Issue 3',
+                        display_id='1002',
+                        tags=['escaped', 'feature2'],
+                        **common_fields
+                    ),
+                    dict(
+                        key=uuid.uuid4().hex,
+                        name='Issue 4',
+                        display_id='1004',
+                        tags=['new_feature'],
+                        **common_fields
+                    ),
+                    dict(
+                        key=uuid.uuid4().hex,
+                        name='Issue 5',
+                        display_id='1005',
+                        tags=['enhancement', 'feature2'],
+                        **common_fields
+                    ),
+                    dict(
+                        key=uuid.uuid4().hex,
+                        name='Issue 6',
+                        display_id='1006',
+                        tags=['escaped', 'feature2'],
+                        **common_fields
+                    ),
+
+                ]
+            )
+
+            query = """
+                    query getProjectWorkItemsByTag($project_key:String!, $tags:[String]!) {
+                        project(key: $project_key) {
+                            workItems(tags: $tags){
+                                edges {
+                                    node {
+                                      id
+                                      name
+                                      key
+                                    }
+                                }
+                            }
+                        }
+                    }
+            """
+            yield Fixture(
+                parent=fixture,
+                query=query
+            )
+
+        def it_filters_work_items_by_a_single_tag(self, setup):
+            fixture = setup
+
+            client = Client(schema)
+            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['enhancement']))
+            assert not result.get('errors')
+            assert result['data']
+            edges = result['data']['project']['workItems']['edges']
+            assert len(edges) == 2
+
+            assert {
+                edge['node']['name']
+                for edge in edges
+            } == {
+                'Issue 1',
+                'Issue 5'
+            }
+
+
+        def it_filters_work_items_by_a_multiple_tags(self, setup):
+            fixture = setup
+
+            client = Client(schema)
+            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['enhancement', 'feature1']))
+            assert not result.get('errors')
+            assert result['data']
+            edges = result['data']['project']['workItems']['edges']
+            assert len(edges) == 1
+            assert {
+                       edge['node']['name']
+                       for edge in edges
+                   } == {
+                       'Issue 1',
+                   }
+
+        def it_returns_multiple_matches_for_multiple_tags(self, setup):
+            fixture = setup
+
+            client = Client(schema)
+            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['escaped', 'feature2']))
+            assert not result.get('errors')
+            assert result['data']
+            edges = result['data']['project']['workItems']['edges']
+            assert len(edges) == 2
+            assert {
+                       edge['node']['name']
+                       for edge in edges
+                   } == {
+                        'Issue 3',
+                        'Issue 6'
+                   }
+
+        def it_returns_all_items_if_the_tag_list_is_empty(self, setup):
+            fixture = setup
+
+            client = Client(schema)
+            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=[]))
+            assert not result.get('errors')
+            assert result['data']
+            edges = result['data']['project']['workItems']['edges']
+            assert len(edges) == 6
+
+        def it_returns_no_items_if_there_are_no_matches(self, setup):
+            fixture = setup
+
+            client = Client(schema)
+            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['random string']))
+            assert not result.get('errors')
+            assert result['data']
+            edges = result['data']['project']['workItems']['edges']
+            assert len(edges) == 0
+
 
 
 class TestProjectMovedWorkItems(WorkItemApiImportTest):

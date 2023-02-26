@@ -279,6 +279,8 @@ class ProjectSettingsImpl(graphene.ObjectType):
 class ProjectInfo(graphene.Interface):
     settings = graphene.Field(ProjectSettingsImpl, required=False)
 
+class ValueStreamInfo(graphene.Interface):
+    work_item_selectors = graphene.List(graphene.String, required=True)
 
 class ProjectSetupInfo(graphene.Interface):
     work_stream_count = graphene.Int(required=False)

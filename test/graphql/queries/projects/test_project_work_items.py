@@ -505,7 +505,7 @@ class TestProjectEpicWorkItems(WorkItemApiImportTest):
         @pytest.fixture()
         def setup(self, setup):
             fixture = setup
-            api_helper = WorkItemImportApiHelper(fixture.organization, fixture.work_items_source)
+            api_helper = fixture.api_helper
             start_date = datetime.utcnow() - timedelta(days=10)
 
             work_items = [
@@ -563,7 +563,6 @@ class TestProjectEpicWorkItems(WorkItemApiImportTest):
             yield Fixture(
                 parent=fixture,
                 work_items=work_items,
-                api_helper=api_helper,
                 contributors=contributor_info,
                 start_date=start_date,
                 epic=epic

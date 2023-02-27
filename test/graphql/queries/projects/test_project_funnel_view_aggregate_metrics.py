@@ -7,7 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
-
+import pytest
 from graphene.test import Client
 
 from polaris.analytics.service.graphql import schema
@@ -35,7 +35,7 @@ class TestProjectFunnelViewAggregateMetrics(WorkItemApiImportTest):
                     updated_at=get_date("2018-12-03"),
                     **dict_merge(
                         work_items_common_fields,
-                        dict(is_bug=False, work_item_type='issue')
+                        dict(is_bug=False, work_item_type='issue', tags=['enhancements'])
                     )
                 ),
                 dict(
@@ -47,7 +47,7 @@ class TestProjectFunnelViewAggregateMetrics(WorkItemApiImportTest):
                     updated_at=get_date("2018-12-03"),
                     **dict_merge(
                         work_items_common_fields,
-                        dict(is_bug=False, work_item_type='issue')
+                        dict(is_bug=False, work_item_type='issue', tags=['enhancements', 'feature1'])
                     )
                 ),
                 dict(
@@ -60,7 +60,7 @@ class TestProjectFunnelViewAggregateMetrics(WorkItemApiImportTest):
                     updated_at=get_date("2018-12-03"),
                     **dict_merge(
                         work_items_common_fields,
-                        dict(is_bug=False, work_item_type='issue')
+                        dict(is_bug=False, work_item_type='issue', tags=['enhancements', 'feature2'])
                     )
                 ),
                 dict(
@@ -73,7 +73,7 @@ class TestProjectFunnelViewAggregateMetrics(WorkItemApiImportTest):
                     updated_at=get_date("2018-12-03"),
                     **dict_merge(
                         work_items_common_fields,
-                        dict(is_bug=False, work_item_type='issue')
+                        dict(is_bug=False, work_item_type='issue', tags=['enhancements', 'feature1'])
                     )
                 ),
                 dict(
@@ -85,7 +85,7 @@ class TestProjectFunnelViewAggregateMetrics(WorkItemApiImportTest):
                     updated_at=get_date("2018-12-03"),
                     **dict_merge(
                         work_items_common_fields,
-                        dict(is_bug=True, work_item_type='bug')
+                        dict(is_bug=True, work_item_type='bug', tags=['feature2'])
                     )
                 ),
                 dict(
@@ -591,3 +591,87 @@ class TestProjectFunnelViewAggregateMetrics(WorkItemApiImportTest):
             assert total_effort_by_state['complete'] is None
             assert total_effort_by_state['closed'] is None
 
+        class TestFilterWorkItemsByTag:
+
+            @pytest.fixture()
+            def setup(self, setup):
+                fixture = setup
+                query = """
+                            query getProjectWorkItemsStateTypeAggregates($project_key:String!, $tags:[String]!) {
+                                project(
+                                    key: $project_key,
+                                    interfaces: [FunnelViewAggregateMetrics],
+                                    specsOnly: false,
+                                    closedWithinDays: 30,
+                                    tags: $tags,
+                                    funnelViewArgs: {
+                                        includeSubTasksInClosedState: true
+                                        includeSubTasksInNonClosedState: true
+                                    }
+                                    )
+                                    {
+                                        workItemStateTypeCounts {
+                                          backlog
+                                          open
+                                          wip
+                                          complete
+                                          closed
+                                          unmapped
+                                        }
+                                        totalEffortByStateType {
+                                          backlog
+                                          open
+                                          wip
+                                          complete
+                                          closed
+                                          unmapped
+                                    }
+                                }
+                            }
+                        """
+                yield Fixture(
+                    parent=fixture,
+                    query=query
+                )
+
+            def it_returns_all_work_items_when_tags_are_not_specified(self, setup):
+                fixture = setup
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=[]))
+                assert 'data' in result
+                work_item_state_type_counts = result['data']['project']['workItemStateTypeCounts']
+                total_effort_by_state = result['data']['project']['totalEffortByStateType']
+                assert work_item_state_type_counts['backlog'] == 3
+                assert work_item_state_type_counts['open'] == 3
+                assert work_item_state_type_counts['wip'] == 3
+                assert work_item_state_type_counts['complete'] == None
+                assert work_item_state_type_counts['closed'] == 3
+                assert work_item_state_type_counts['unmapped'] == None
+                assert total_effort_by_state['backlog'] == 0
+                assert total_effort_by_state['open'] == 0
+                assert total_effort_by_state['wip'] == 3
+                assert total_effort_by_state['complete'] == None
+                assert total_effort_by_state['closed'] == 6
+                assert total_effort_by_state['unmapped'] == None
+
+            def it_filters_work_items_when_tags_are_specified(self, setup):
+                fixture = setup
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['enhancements']))
+                assert 'data' in result
+                work_item_state_type_counts = result['data']['project']['workItemStateTypeCounts']
+                total_effort_by_state = result['data']['project']['totalEffortByStateType']
+                assert work_item_state_type_counts['backlog'] == 1
+                assert work_item_state_type_counts['open'] == 1
+                assert work_item_state_type_counts['wip'] == 1
+                assert work_item_state_type_counts['complete'] == None
+                assert work_item_state_type_counts['closed'] == 1
+                assert work_item_state_type_counts['unmapped'] == None
+                assert total_effort_by_state['backlog'] == 0
+                assert total_effort_by_state['open'] == 0
+                assert total_effort_by_state['wip'] == 1
+                assert total_effort_by_state['complete'] == None
+                assert total_effort_by_state['closed'] == 2
+                assert total_effort_by_state['unmapped'] == None

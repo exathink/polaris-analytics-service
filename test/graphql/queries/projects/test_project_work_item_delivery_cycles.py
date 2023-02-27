@@ -23,8 +23,17 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
             organization = fixture.organization
             project = fixture.project
             work_items_source = fixture.work_items_source
-            work_items_common = fixture.work_items_common
             api_helper = WorkItemImportApiHelper(organization, work_items_source)
+
+            work_items_common = dict(
+                is_bug=True,
+                is_epic=False,
+                parent_id=None,
+                work_item_type='issue',
+                url='http://foo.com',
+                description='foo',
+                source_id=str(uuid.uuid4()),
+            )
 
             work_items = [
                 dict(
@@ -34,6 +43,7 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
                     state='backlog',
                     created_at=get_date("2018-12-02"),
                     updated_at=get_date("2018-12-03"),
+                    tags=['enhancement'],
                     **work_items_common
                 ),
                 dict(
@@ -43,6 +53,7 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
                     state='upnext',
                     created_at=get_date("2018-12-02"),
                     updated_at=get_date("2018-12-03"),
+                    tags=['escaped', 'feature1'],
                     **work_items_common
                 ),
                 dict(
@@ -52,6 +63,7 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
                     state='upnext',
                     created_at=get_date("2018-12-02"),
                     updated_at=get_date("2018-12-03"),
+                    tags=['escaped', 'feature2'],
                     **work_items_common
                 ),
                 dict(
@@ -61,6 +73,7 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
                     state='upnext',
                     created_at=get_date("2018-12-02"),
                     updated_at=get_date("2018-12-03"),
+                    tags=['enhancement', 'feature1'],
                     **work_items_common
                 ),
                 dict(
@@ -70,6 +83,7 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
                     state='upnext',
                     created_at=get_date("2018-12-02"),
                     updated_at=get_date("2018-12-03"),
+                    tags=['feature3'],
                     **work_items_common
                 ),
                 dict(
@@ -79,6 +93,7 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
                     state='closed',
                     created_at=get_date("2018-12-02"),
                     updated_at=get_date("2018-12-03"),
+                    tags=['escaped', 'feature1'],
                     **work_items_common
                 ),
 
@@ -515,3 +530,101 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
             assert 'data' in result
             delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
             assert len(delivery_cycles) == 1
+
+        class TestFilteringByTags:
+
+            @pytest.fixture()
+            def setup(self, setup):
+                fixture = setup
+                query = """
+                        query getProjectWorkItemDeliveryCycles($project_key:String!, $tags: [String]!) {
+                            project(key: $project_key) {
+                                workItemDeliveryCycles(tags: $tags) {
+                                    edges { 
+                                        node {
+                                            name
+                                            displayId
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                """
+                yield Fixture(
+                    parent=fixture,
+                    query=query
+                )
+
+
+            def it_returns_all_the_items_when_the_tag_list_is_empty(self, setup):
+                fixture = setup
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=[]))
+                assert 'data' in result
+                delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
+                assert len(delivery_cycles) == 6
+
+            def it_filters_by_a_single_tag(self, setup):
+                fixture = setup
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['enhancement']))
+                assert 'data' in result
+                delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
+                assert len(delivery_cycles) == 2
+                assert {
+                    cycle['node']['name']
+                    for cycle in delivery_cycles
+                } == {
+                    'Issue 1',
+                    'Issue 4'
+                }
+
+            def it_filters_by_a_multiple_tags(self, setup):
+                fixture = setup
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['enhancement', 'feature1']))
+                assert 'data' in result
+                delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
+                assert len(delivery_cycles) == 1
+                assert {
+                    cycle['node']['name']
+                    for cycle in delivery_cycles
+                } == {
+
+                    'Issue 4'
+                }
+
+            def it_returns_multiple_delivery_cycles_after_filtering(self, setup):
+                fixture = setup
+
+                fixture.api_helper.update_work_items(
+                    [
+                        # close # 4
+                        (4, 'closed', datetime.utcnow() - timedelta(days=3)),
+                    ]
+                )
+
+                # now re-open it so that we have two delivery cycles for this item.
+
+                fixture.api_helper.update_work_items(
+                    [
+                        # close # 4
+                        (4, 'upnext', datetime.utcnow() - timedelta(days=2)),
+                    ]
+                )
+
+                client = Client(schema)
+
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['feature3']))
+                assert 'data' in result
+                delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
+                assert len(delivery_cycles) == 2
+
+                assert {
+                           cycle['node']['name']
+                           for cycle in delivery_cycles
+                       } == {
+
+                           'Issue 5'
+                       }
+

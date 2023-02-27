@@ -7,6 +7,7 @@
 # confidential.
 
 # Author: Krishna Kumar
+import logging
 import uuid
 from datetime import datetime, timedelta
 
@@ -576,6 +577,18 @@ def commit_summary_fixture(commits_fixture):
     create_work_item_commits(work_item_key, map(lambda commit: commit['key'], test_commits))
     yield work_item_key, test_commit_key, new_work_items, project
 
+class CommitSummaryFixtureTest:
+    @pytest.fixture()
+    def setup(self, commit_summary_fixture):
+        work_item_key, test_commits_key, new_work_items, project = commit_summary_fixture
+        yield Fixture(
+            work_item_key = work_item_key,
+            work_items_common=work_items_common,
+            test_commits_key = test_commits_key,
+            new_work_items = new_work_items,
+            project = project
+        )
+
 
 @pytest.fixture
 def setup_work_item_transitions(work_items_fixture):
@@ -1098,18 +1111,20 @@ class WorkItemImportApiHelper:
 
     def import_work_items(self, work_items):
         self.work_items = work_items
-        api.import_new_work_items(
+        result = api.import_new_work_items(
             organization_key=self.organization.key,
             work_item_source_key=self.work_items_source.key,
             work_item_summaries=work_items
         )
+        assert result['success']
 
     def update_work_items(self, updates):
         for index, state, updated in updates:
             self.work_items[index]['state'] = state
             self.work_items[index]['updated_at'] = updated
 
-        api.update_work_items(self.organization.key, self.work_items_source.key, self.work_items)
+        result = api.update_work_items(self.organization.key, self.work_items_source.key, self.work_items)
+        assert result['success']
 
     def update_work_item_attributes(self, index, updates, join_this=None):
         with db.orm_session(join_this) as session:
@@ -1171,6 +1186,18 @@ class WorkItemImportApiHelper:
                 )
                 session.connection().execute(stmt)
 
+class WorkItemApiImportTest:
+    @pytest.fixture()
+    def setup(self, api_work_items_import_fixture):
+        organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
+        yield Fixture(
+            organization=organization,
+            project=project,
+            work_items_source=work_items_source,
+            work_items_common=work_items_common,
+            api_helper=api_helper
+        )
 
 @pytest.fixture
 def api_pull_requests_import_fixture(org_repo_fixture):

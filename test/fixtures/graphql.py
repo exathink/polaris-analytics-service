@@ -1190,11 +1190,13 @@ class WorkItemApiImportTest:
     @pytest.fixture()
     def setup(self, api_work_items_import_fixture):
         organization, project, work_items_source, work_items_common = api_work_items_import_fixture
+        api_helper = WorkItemImportApiHelper(organization, work_items_source)
         yield Fixture(
             organization=organization,
             project=project,
             work_items_source=work_items_source,
-            work_items_common=work_items_common
+            work_items_common=work_items_common,
+            api_helper=api_helper
         )
 
 @pytest.fixture

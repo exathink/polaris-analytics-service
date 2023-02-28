@@ -2,7 +2,7 @@ from graphene.test import Client
 from datetime import timedelta
 from polaris.analytics.service.graphql import schema
 from test.fixtures.graphql import *
-
+from polaris.utils.collections import  dict_merge
 
 class TestProjectCycleMetricsTrends(WorkItemApiImportTest):
 
@@ -1792,3 +1792,330 @@ class TestProjectCycleMetricsTrends(WorkItemApiImportTest):
                         assert measurement['avgCycleTime'] == 3.0
                     else:
                         assert not measurement['workItemsInScope']
+
+    class TestFilterWorkItemsByTag:
+
+        @pytest.fixture()
+        def setup(self, setup):
+            fixture = setup
+
+            api_helper = fixture.api_helper
+            work_items_common_fields = fixture.work_items_common
+
+            start_date = datetime.utcnow() - timedelta(days=30)
+
+            work_items = [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name=f'Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **dict_merge(work_items_common_fields, dict(tags=['enhancements', 'feature2']))
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name=f'Issue 2',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **dict_merge(work_items_common_fields, dict(tags=['new_feature', 'feature1']))
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name=f'Issue 3',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **dict_merge(work_items_common_fields, dict(tags=['enhancements', 'feature2']))
+                )
+            ]
+
+            api_helper.import_work_items(work_items)
+
+
+            # closed T+10
+            api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=1))])
+            api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=10))])
+
+            # closed T+20
+            api_helper.update_work_items([(1, 'upnext', start_date + timedelta(days=1))])
+            api_helper.update_work_items([(1, 'closed', start_date + timedelta(days=20))])
+
+            # closed T+25
+            api_helper.update_work_items([(2, 'upnext', start_date + timedelta(days=1))])
+            api_helper.update_work_items([(2, 'closed', start_date + timedelta(days=25))])
+
+            yield fixture
+
+        class TestTagPassedAtProjectLevel:
+            @pytest.fixture()
+            def setup(self, setup):
+                fixture = setup
+
+                query = query = """
+                            query getProjectCycleMetricsTrends(
+                                $project_key:String!, 
+                                $days: Int!, 
+                                $window: Int!,
+                                $sample: Int,
+                                $percentile: Float,
+                                $tags: [String]
+                            ) {
+                                project(
+                                    key: $project_key, 
+                                    interfaces: [CycleMetricsTrends], 
+                                    tags: $tags,
+                                    cycleMetricsTrendsArgs: {
+                                        days: $days,
+                                        measurementWindow: $window,
+                                        samplingFrequency: $sample,
+                                        metrics: [
+                                            min_lead_time,
+                                            avg_lead_time,
+                                            max_lead_time,
+                                            percentile_lead_time,
+                                            min_cycle_time,
+                                            avg_cycle_time,
+                                            max_cycle_time,
+                                            percentile_cycle_time,
+                                            work_items_in_scope,
+                                            work_items_with_null_cycle_time
+        
+                                        ],
+                                        leadTimeTargetPercentile: $percentile,
+                                        cycleTimeTargetPercentile: $percentile
+                                    }
+        
+                                ) {
+                                    cycleMetricsTrends {
+                                        measurementDate
+                                        measurementWindow
+                                        minLeadTime
+                                        avgLeadTime
+                                        maxLeadTime
+                                        minCycleTime
+                                        avgCycleTime
+                                        maxCycleTime
+                                        percentileLeadTime
+                                        percentileCycleTime
+                                        leadTimeTargetPercentile
+                                        cycleTimeTargetPercentile
+                                        workItemsWithNullCycleTime
+                                        earliestClosedDate
+                                        latestClosedDate
+                                        workItemsInScope
+                                    }
+                                }
+                            }
+                        """
+                yield Fixture(
+                    parent=fixture,
+                    query=query
+                )
+
+            def it_returns_all_items_when_tags_is_empty(self, setup):
+                fixture = setup
+                project = fixture.project
+                query = fixture.query
+                client = Client(schema)
+
+                result = client.execute(query, variable_values=dict(
+                    project_key=project.key,
+                    days=30,
+                    window=15,
+                    sample=1,
+                    percentile=0.70,
+                    tags=[]
+                ))
+                assert not result.get('error')
+
+                assert result['data']
+                project = result['data']['project']
+                # we expect one measurement for each point in the window including the end points.
+                assert len(project['cycleMetricsTrends']) == 31
+
+                for index, measurement in enumerate(project['cycleMetricsTrends']):
+                    if index < 6:
+                        assert measurement['minLeadTime'] == 20.0
+                        assert measurement['avgLeadTime'] == 22.5
+                        assert measurement['maxLeadTime'] == 25.0
+                        assert measurement['percentileLeadTime']
+                        assert measurement['minCycleTime'] == 19.0
+                        assert measurement['avgCycleTime'] == 21.5
+                        assert measurement['maxCycleTime'] == 24.0
+                        assert measurement['percentileCycleTime'] == 24.0
+                        assert measurement['earliestClosedDate']
+                        assert measurement['latestClosedDate']
+                        assert measurement['workItemsInScope'] == 2
+                        assert measurement['workItemsWithNullCycleTime'] == 0
+
+                    elif index < 11:
+                        assert measurement['minLeadTime'] == 10.0
+                        assert measurement['avgLeadTime'] == 15.0
+                        assert measurement['maxLeadTime'] == 20.0
+                        assert measurement['percentileLeadTime']
+                        assert measurement['minCycleTime'] == 9.0
+                        assert measurement['avgCycleTime'] == 14.0
+                        assert measurement['maxCycleTime'] == 19.0
+                        assert measurement['percentileCycleTime'] == 19.0
+                        assert measurement['earliestClosedDate']
+                        assert measurement['latestClosedDate']
+                        assert measurement['workItemsInScope'] == 2
+                        assert measurement['workItemsWithNullCycleTime'] == 0
+                    elif index < 21:
+                        assert measurement['minLeadTime'] == 10.0
+                        assert measurement['avgLeadTime'] == 10.0
+                        assert measurement['maxLeadTime'] == 10.0
+                        assert measurement['percentileLeadTime']
+                        assert measurement['minCycleTime'] == 9.0
+                        assert measurement['avgCycleTime'] == 9.0
+                        assert measurement['maxCycleTime'] == 9.0
+                        assert measurement['percentileCycleTime'] == 9.0
+                        assert measurement['earliestClosedDate']
+                        assert measurement['latestClosedDate']
+                        assert measurement['workItemsInScope'] == 1
+                        assert measurement['workItemsWithNullCycleTime'] == 0
+                    else:
+                        assert not measurement['minLeadTime']
+                        assert not measurement['avgLeadTime']
+                        assert not measurement['maxLeadTime']
+                        assert not measurement['percentileLeadTime']
+                        assert not measurement['minCycleTime']
+                        assert not measurement['avgCycleTime']
+                        assert not measurement['maxCycleTime']
+                        assert not measurement['percentileCycleTime']
+                        assert not measurement['earliestClosedDate']
+                        assert not measurement['latestClosedDate']
+                        assert measurement['workItemsInScope'] == 0
+                        assert measurement['workItemsWithNullCycleTime'] == 0
+
+            def it_filters_work_items_by_a_single_tag(self, setup):
+                fixture = setup
+                project = fixture.project
+                query = fixture.query
+                client = Client(schema)
+
+                result = client.execute(query, variable_values=dict(
+                    project_key=project.key,
+                    days=30,
+                    window=15,
+                    sample=1,
+                    percentile=0.70,
+                    tags=['feature1']
+                ))
+                assert not result.get('error')
+
+                assert result['data']
+                project = result['data']['project']
+                # we expect one measurement for each point in the window including the end points.
+                assert len(project['cycleMetricsTrends']) == 31
+
+                for index, measurement in enumerate(project['cycleMetricsTrends']):
+                    if index < 6:
+                        assert measurement['minLeadTime'] == 20.0
+                        assert measurement['avgLeadTime'] == 20.0
+                        assert measurement['maxLeadTime'] == 20.0
+                        assert measurement['percentileLeadTime']
+                        assert measurement['minCycleTime'] == 19.0
+                        assert measurement['avgCycleTime'] == 19.0
+                        assert measurement['maxCycleTime'] == 19.0
+                        assert measurement['percentileCycleTime'] == 19.0
+                        assert measurement['earliestClosedDate']
+                        assert measurement['latestClosedDate']
+                        assert measurement['workItemsInScope'] == 1
+                        assert measurement['workItemsWithNullCycleTime'] == 0
+
+                    elif index < 11:
+                        assert measurement['minLeadTime'] == 20.0
+                        assert measurement['avgLeadTime'] == 20.0
+                        assert measurement['maxLeadTime'] == 20.0
+                        assert measurement['percentileLeadTime']
+                        assert measurement['minCycleTime'] == 19.0
+                        assert measurement['avgCycleTime'] == 19.0
+                        assert measurement['maxCycleTime'] == 19.0
+                        assert measurement['percentileCycleTime'] == 19.0
+                        assert measurement['earliestClosedDate']
+                        assert measurement['latestClosedDate']
+                        assert measurement['workItemsInScope'] == 1
+                        assert measurement['workItemsWithNullCycleTime'] == 0
+
+                    else:
+                        assert not measurement['minLeadTime']
+                        assert not measurement['avgLeadTime']
+                        assert not measurement['maxLeadTime']
+                        assert not measurement['percentileLeadTime']
+                        assert not measurement['minCycleTime']
+                        assert not measurement['avgCycleTime']
+                        assert not measurement['maxCycleTime']
+                        assert not measurement['percentileCycleTime']
+                        assert not measurement['earliestClosedDate']
+                        assert not measurement['latestClosedDate']
+                        assert measurement['workItemsInScope'] == 0
+                        assert measurement['workItemsWithNullCycleTime'] == 0
+
+            def it_filters_work_items_by_multiple_tags(self, setup):
+                fixture = setup
+                project = fixture.project
+                query = fixture.query
+                client = Client(schema)
+
+                result = client.execute(query, variable_values=dict(
+                    project_key=project.key,
+                    days=30,
+                    window=15,
+                    sample=1,
+                    percentile=0.70,
+                    tags=['enhancements', 'feature2']
+                ))
+                assert not result.get('error')
+
+                assert result['data']
+                project = result['data']['project']
+                # we expect one measurement for each point in the window including the end points.
+                assert len(project['cycleMetricsTrends']) == 31
+
+                for index, measurement in enumerate(project['cycleMetricsTrends']):
+                    if index < 6:
+                        assert measurement['minLeadTime'] == 25.0
+                        assert measurement['avgLeadTime'] == 25.0
+                        assert measurement['maxLeadTime'] == 25.0
+                        assert measurement['percentileLeadTime']
+                        assert measurement['minCycleTime'] == 24.0
+                        assert measurement['avgCycleTime'] == 24.0
+                        assert measurement['maxCycleTime'] == 24.0
+                        assert measurement['percentileCycleTime'] == 24.0
+                        assert measurement['earliestClosedDate']
+                        assert measurement['latestClosedDate']
+                        assert measurement['workItemsInScope'] == 1
+                        assert measurement['workItemsWithNullCycleTime'] == 0
+
+                    elif index < 21:
+                        assert measurement['minLeadTime'] == 10.0
+                        assert measurement['avgLeadTime'] == 10.0
+                        assert measurement['maxLeadTime'] == 10.0
+                        assert measurement['percentileLeadTime']
+                        assert measurement['minCycleTime'] == 9.0
+                        assert measurement['avgCycleTime'] == 9.0
+                        assert measurement['maxCycleTime'] == 9.0
+                        assert measurement['percentileCycleTime'] == 9.0
+                        assert measurement['earliestClosedDate']
+                        assert measurement['latestClosedDate']
+                        assert measurement['workItemsInScope'] == 1
+                        assert measurement['workItemsWithNullCycleTime'] == 0
+                    else:
+                        assert not measurement['minLeadTime']
+                        assert not measurement['avgLeadTime']
+                        assert not measurement['maxLeadTime']
+                        assert not measurement['percentileLeadTime']
+                        assert not measurement['minCycleTime']
+                        assert not measurement['avgCycleTime']
+                        assert not measurement['maxCycleTime']
+                        assert not measurement['percentileCycleTime']
+                        assert not measurement['earliestClosedDate']
+                        assert not measurement['latestClosedDate']
+                        assert measurement['workItemsInScope'] == 0
+                        assert measurement['workItemsWithNullCycleTime'] == 0

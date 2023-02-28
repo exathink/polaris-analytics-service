@@ -23,10 +23,13 @@ from .user.mutations import UseMutationsMixin
 from .commit import Commit
 from .organization import Organization
 from .project import Project
-from .value_stream import ValueStream
+
 
 from .project.mutations import ProjectMutationsMixin
 from .feature_flag.mutations import FeatureFlagMutationsMixin
+
+from .value_stream import ValueStream
+from .value_stream.mutations import ValueStreamMutationsMixin
 
 from .repository import Repository
 from .contributor import Contributor, ContributorMutationsMixin
@@ -119,6 +122,7 @@ class Mutations(
     ViewerMutationsMixin,
     UseMutationsMixin,
     ProjectMutationsMixin,
+    ValueStreamMutationsMixin,
     FeatureFlagMutationsMixin,
     TeamMutationsMixin,
     WorkItemsMutationsMixin

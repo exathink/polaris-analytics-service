@@ -993,7 +993,7 @@ class ProjectCycleMetricsTrends(CycleMetricsTrendsBase):
                 work_items,
                 and_(
                     work_items.c.work_items_source_id == work_items_sources.c.id,
-                    *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args)
+                    *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args, kwargs)
                 )
             ).outerjoin(
                 # outer join here because we want to report timelines dates even
@@ -1059,7 +1059,7 @@ class ProjectPipelineCycleMetrics(CycleMetricsTrendsBase):
     interface = PipelineCycleMetrics
 
     @classmethod
-    def get_delivery_cycle_relation_for_pipeline(cls, cycle_metrics_trends_args, measurement_date, project_nodes):
+    def get_delivery_cycle_relation_for_pipeline(cls, kwargs, cycle_metrics_trends_args, measurement_date, project_nodes):
         # This query provides a relation with a column interface similar to
         # work_item_delivery_cycles, but with cycle time and lead time calculated dynamically
         # for work items in the current pipeline. Since cycle_time and lead_time are cached once
@@ -1146,7 +1146,7 @@ class ProjectPipelineCycleMetrics(CycleMetricsTrendsBase):
                 # lead time to get cycle time
                 # work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
                 # add any other work item filters that the caller specifies.
-                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args),
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args, kwargs),
                 # add delivery cycle related filters that the caller specifies
                 *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                     cycle_metrics_trends_args
@@ -1164,7 +1164,7 @@ class ProjectPipelineCycleMetrics(CycleMetricsTrendsBase):
         measurement_date = datetime.utcnow()
 
         cycle_times = cls.get_delivery_cycle_relation_for_pipeline(
-            cycle_metrics_trends_args, measurement_date, project_nodes)
+            kwargs, cycle_metrics_trends_args, measurement_date, project_nodes)
 
         metrics_map = ProjectCycleMetricsTrends.get_metrics_map(
             cycle_metrics_trends_args,
@@ -1404,7 +1404,7 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
                     measurement_date=projects_timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 ),
-                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(response_time_confidence_trends_args),
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(response_time_confidence_trends_args, kwargs),
                 *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                     response_time_confidence_trends_args
                 )
@@ -1543,7 +1543,7 @@ class ProjectsFlowMixTrends(InterfaceResolver):
                     measurement_date=projects_timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 ),
-                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(flow_mix_trends_args),
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(flow_mix_trends_args, kwargs),
                 *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                     flow_mix_trends_args
                 )

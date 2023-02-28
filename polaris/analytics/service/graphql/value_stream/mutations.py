@@ -12,6 +12,8 @@
 import graphene
 
 from ..value_stream import ValueStream
+from polaris.analytics.db import api as db_api
+
 
 class CreateValueStreamInput(graphene.InputObjectType):
     project_key = graphene.String(required=True)
@@ -30,9 +32,12 @@ class CreateValueStream(graphene.Mutation):
 
     def mutate(self, info, create_value_stream_input):
 
+        result = db_api.create_value_stream(create_value_stream_input.project_key, create_value_stream_input.name, create_value_stream_input.description, create_value_stream_input.work_item_selectors)
+
         return CreateValueStream(
-            success=False,
-            value_stream=None
+            success= result['success'],
+            errorMessage=result.get('exception'),
+            value_stream=ValueStream.resolve_field(self,info, value_stream_key=result['key'])
         )
 
 

@@ -385,3 +385,21 @@ def create_team(organization_key, name):
         return db.process_exception("Create Team failed", exc)
     except Exception as e:
         return db.failure_message('Create Team failed', e)
+
+def create_value_stream(project_key, name,  description, work_item_selectors):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.create_value_stream(
+                    session,
+                    project_key,
+                    name,
+                    description,
+                    work_item_selectors
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Create Value Stream failed", exc)
+    except Exception as e:
+        return db.failure_message('Create Value Stream failed', e)
+

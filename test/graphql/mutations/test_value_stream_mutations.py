@@ -51,3 +51,4 @@ class TestValueStreamMutations(WorkItemApiImportTest):
             ))
             assert not result.get('errors')
             assert result['data']['createValueStream']['success']
+            assert result['data']['createValueStream']['valueStream']['key'] is not None

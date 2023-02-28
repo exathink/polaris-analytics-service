@@ -48,7 +48,7 @@ Project: A NamedNode representing a value stream.
         connection_class = lambda: ValueStreams
 
     @classmethod
-    def Field(cls, key_is_required=True, **kwargs):
+    def Field(cls, key_is_required=False, **kwargs):
         return super().Field(
             key_is_required,
             **kwargs

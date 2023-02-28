@@ -217,8 +217,8 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
             description='Include delivery cycles for work items which are sub-tasks. Defaults to true',
             default_value=True
         ),
-        tags=graphene.List(
-            graphene.String,
+        tags=graphene.Argument(
+            graphene.List(graphene.String),
             required=False,
             description='Provide a list of tags to filter work_items by',
             default_value=None
@@ -363,8 +363,8 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             description='Exclude items which have been moved from current source',
             default_value=True
         ),
-        tags=graphene.List(
-            graphene.String,
+        tags=graphene.Argument(
+            graphene.List(graphene.String),
             required=False,
             description='Provide a list of tags to filter work_items by',
             default_value=None

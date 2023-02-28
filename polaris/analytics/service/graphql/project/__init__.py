@@ -306,6 +306,12 @@ Implicit Interfaces: ArchivedStatus
                 required=False,
                 description="Required when calculating metrics over both closed and non closed items"
             ),
+            tags=graphene.Argument(
+                graphene.List(graphene.String),
+                required=False,
+                description='Provide a list of tags to filter work_items by',
+                default_value=None
+            ),
 
             **kwargs
         )

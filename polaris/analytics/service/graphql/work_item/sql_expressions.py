@@ -188,12 +188,16 @@ def literal_postgres_string_array(string_array):
     output.write("}")
     return output.getvalue()
 
+def apply_tags_clause(tags):
+    return work_items.c.tags.contains(literal_postgres_string_array(tags))
+
 def apply_tags_filter(select_stmt, work_items, **kwargs):
     if 'tags' in kwargs:
         select_stmt = select_stmt.where(
-            work_items.c.tags.contains(literal_postgres_string_array(kwargs['tags']))
+            apply_tags_clause(kwargs['tags'])
         )
-        return select_stmt
+
+    return select_stmt
 
 def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
     select_stmt = work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
@@ -520,29 +524,34 @@ class CycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
         return columns
 
     @staticmethod
-    def get_work_item_filter_clauses(cycle_metrics_trends_args):
+    def get_work_item_filter_clauses(interface_args, kwargs):
 
-        columns = []
+        clauses = []
         excluded_types = []
 
-        if not cycle_metrics_trends_args.include_sub_tasks:
+        if not interface_args.include_sub_tasks:
             # include subtasks is true by default, so this needs to be explicity overriden
             # if it is not to be added.
             excluded_types.append(JiraWorkItemType.sub_task.value)
 
-        columns.append(
+        clauses.append(
             work_items.c.work_item_type.notin_(excluded_types)
         )
 
-        if not cycle_metrics_trends_args.include_epics:
+        if not interface_args.include_epics:
             # include_epics is false by default so this will normally be added
-            columns.append(work_items.c.is_epic == False)
+            clauses.append(work_items.c.is_epic == False)
 
-        if cycle_metrics_trends_args.defects_only:
-            columns.append(
+        if interface_args.defects_only:
+            clauses.append(
                 work_items.c.is_bug == True
             )
-        return columns
+
+        tags = kwargs.get('tags') or interface_args.get('tags')
+        if tags:
+            clauses.append(apply_tags_clause(tags))
+
+        return clauses
 
     @staticmethod
     def get_work_item_delivery_cycle_filter_clauses(cycle_metrics_trends_args):

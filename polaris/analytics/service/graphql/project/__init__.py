@@ -42,6 +42,7 @@ from ..work_items_source import WorkItemsSourcesConnectionMixin
 from ..work_item import WorkItemsConnectionMixin, WorkItemEventsConnectionMixin, WorkItemCommitsConnectionMixin, \
     WorkItemDeliveryCyclesConnectionMixin, RecentlyActiveWorkItemsConnectionMixin
 from ..pull_request import PullRequestsConnectionMixin
+from ..value_stream import ValueStreamsConnectionMixin
 
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
@@ -54,15 +55,17 @@ from .selectables import ProjectNode, \
     ProjectContributorNodes, \
     ProjectCommitNodes, \
     ProjectWorkItemsSourceNodes, \
+    ProjectRecentlyActiveWorkItemsNodes, \
+    ProjectRecentlyActiveRepositoriesNodes, \
+    ProjectRecentlyActiveContributorNodes, \
+    ProjectPullRequestNodes,  \
+    ProjectValueStreamNodes, \
     ProjectsContributorCount, \
     ProjectsDeliveryCycleSpan, \
     ProjectsCommitSummary, \
     ProjectsRepositoryCount, \
     ProjectsOrganizationRef, \
     ProjectsArchivedStatus, \
-    ProjectRecentlyActiveWorkItemsNodes, \
-    ProjectRecentlyActiveRepositoriesNodes, \
-    ProjectRecentlyActiveContributorNodes, \
     ProjectCumulativeCommitCount, \
     ProjectWeeklyContributorCount, \
     ProjectCycleMetricsTrends, \
@@ -81,7 +84,6 @@ from .selectables import ProjectNode, \
     ProjectsCapacityTrends, \
     ProjectPipelinePullRequestMetrics, \
     ProjectPullRequestMetricsTrends, \
-    ProjectPullRequestNodes, \
     ProjectFlowRateTrends, \
     ProjectBacklogTrends, \
     ProjectsProjectSetupInfo
@@ -119,6 +121,7 @@ class Project(
     WorkItemCommitsConnectionMixin,
     WorkItemDeliveryCyclesConnectionMixin,
     PullRequestsConnectionMixin,
+    ValueStreamsConnectionMixin,
     # field mixins
     CumulativeCommitCountResolverMixin,
     WeeklyContributorCountsResolverMixin,
@@ -195,7 +198,8 @@ Implicit Interfaces: ArchivedStatus
             'work_item_events': ProjectWorkItemEventNodes,
             'work_item_commits': ProjectWorkItemCommitNodes,
             'work_item_delivery_cycles': ProjectWorkItemDeliveryCycleNodes,
-            'pull_requests': ProjectPullRequestNodes
+            'pull_requests': ProjectPullRequestNodes,
+            'value_streams': ProjectValueStreamNodes,
         }
         selectable_field_resolvers = {
             'cumulative_commit_count': ProjectCumulativeCommitCount,
@@ -301,6 +305,12 @@ Implicit Interfaces: ArchivedStatus
                 FunnelViewParameters,
                 required=False,
                 description="Required when calculating metrics over both closed and non closed items"
+            ),
+            tags=graphene.Argument(
+                graphene.List(graphene.String),
+                required=False,
+                description='Provide a list of tags to filter work_items by',
+                default_value=None
             ),
 
             **kwargs

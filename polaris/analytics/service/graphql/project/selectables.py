@@ -19,7 +19,7 @@ from polaris.analytics.db.model import projects, projects_repositories, organiza
     repositories, contributors, \
     contributor_aliases, repositories_contributor_aliases, commits, work_items_sources, \
     work_items, work_item_state_transitions, work_items_commits, work_item_delivery_cycles, work_items_source_state_map, \
-    work_item_delivery_cycle_durations, pull_requests, work_items_pull_requests
+    work_item_delivery_cycle_durations, pull_requests, work_items_pull_requests, value_streams
 from polaris.graphql.base_classes import NamedNodeResolver, InterfaceResolver, ConnectionResolver, \
     SelectableFieldResolver
 from polaris.graphql.interfaces import NamedNode
@@ -38,7 +38,7 @@ from ..interfaces import \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends, \
-    BacklogTrends
+    BacklogTrends, ValueStreamInfo
 from ..pull_request.sql_expressions import pull_request_info_columns, pull_requests_connection_apply_filters
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -66,6 +66,23 @@ class ProjectNode(NamedNodeResolver):
             projects
         ).where(projects.c.key == bindparam('key'))
 
+class ProjectValueStreamNodes(ConnectionResolver):
+    interfaces = (NamedNode, ValueStreamInfo)
+
+    @staticmethod
+    def connection_nodes_selector(**kwargs):
+        select_stmt = select([
+            value_streams.c.id,
+            value_streams.c.key,
+            value_streams.c.name,
+            value_streams.c.work_item_selectors
+        ]).select_from(
+            projects.join(
+                value_streams,
+                value_streams.c.project_id == projects.c.id
+            )
+        ).where(projects.c.key == bindparam('key'))
+        return select_stmt
 
 class ProjectRepositoriesNodes(ConnectionResolver):
     interface = NamedNode
@@ -976,7 +993,7 @@ class ProjectCycleMetricsTrends(CycleMetricsTrendsBase):
                 work_items,
                 and_(
                     work_items.c.work_items_source_id == work_items_sources.c.id,
-                    *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args)
+                    *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args, kwargs)
                 )
             ).outerjoin(
                 # outer join here because we want to report timelines dates even
@@ -1042,7 +1059,7 @@ class ProjectPipelineCycleMetrics(CycleMetricsTrendsBase):
     interface = PipelineCycleMetrics
 
     @classmethod
-    def get_delivery_cycle_relation_for_pipeline(cls, cycle_metrics_trends_args, measurement_date, project_nodes):
+    def get_delivery_cycle_relation_for_pipeline(cls, kwargs, cycle_metrics_trends_args, measurement_date, project_nodes):
         # This query provides a relation with a column interface similar to
         # work_item_delivery_cycles, but with cycle time and lead time calculated dynamically
         # for work items in the current pipeline. Since cycle_time and lead_time are cached once
@@ -1129,7 +1146,7 @@ class ProjectPipelineCycleMetrics(CycleMetricsTrendsBase):
                 # lead time to get cycle time
                 # work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
                 # add any other work item filters that the caller specifies.
-                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args),
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args, kwargs),
                 # add delivery cycle related filters that the caller specifies
                 *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                     cycle_metrics_trends_args
@@ -1147,7 +1164,7 @@ class ProjectPipelineCycleMetrics(CycleMetricsTrendsBase):
         measurement_date = datetime.utcnow()
 
         cycle_times = cls.get_delivery_cycle_relation_for_pipeline(
-            cycle_metrics_trends_args, measurement_date, project_nodes)
+            kwargs, cycle_metrics_trends_args, measurement_date, project_nodes)
 
         metrics_map = ProjectCycleMetricsTrends.get_metrics_map(
             cycle_metrics_trends_args,
@@ -1387,7 +1404,7 @@ class ProjectResponseTimeConfidenceTrends(InterfaceResolver):
                     measurement_date=projects_timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 ),
-                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(response_time_confidence_trends_args),
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(response_time_confidence_trends_args, kwargs),
                 *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                     response_time_confidence_trends_args
                 )
@@ -1526,7 +1543,7 @@ class ProjectsFlowMixTrends(InterfaceResolver):
                     measurement_date=projects_timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 ),
-                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(flow_mix_trends_args),
+                *ProjectCycleMetricsTrends.get_work_item_filter_clauses(flow_mix_trends_args, kwargs),
                 *ProjectCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                     flow_mix_trends_args
                 )

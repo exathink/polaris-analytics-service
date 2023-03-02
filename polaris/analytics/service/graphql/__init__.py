@@ -23,8 +23,13 @@ from .user.mutations import UseMutationsMixin
 from .commit import Commit
 from .organization import Organization
 from .project import Project
+
+
 from .project.mutations import ProjectMutationsMixin
 from .feature_flag.mutations import FeatureFlagMutationsMixin
+
+from .value_stream import ValueStream
+from .value_stream.mutations import ValueStreamMutationsMixin
 
 from .repository import Repository
 from .contributor import Contributor, ContributorMutationsMixin
@@ -48,6 +53,7 @@ class Query(graphene.ObjectType):
     commit = Commit.Field()
     organization = Organization.Field()
     project = Project.Field()
+    value_stream = ValueStream.Field()
     repository = Repository.Field()
     contributor = Contributor.Field()
     public = Public.Field()
@@ -74,6 +80,9 @@ class Query(graphene.ObjectType):
 
     def resolve_project(self, info, key, **kwargs):
         return Project.resolve_field(self, info, key, **kwargs)
+
+    def resolve_value_stream(self, info, key, **kwargs):
+        return ValueStream.resolve_field(self, info, key, **kwargs)
 
     def resolve_repository(self, info, key, **kwargs):
         return Repository.resolve_field(self, info, key, **kwargs)
@@ -113,6 +122,7 @@ class Mutations(
     ViewerMutationsMixin,
     UseMutationsMixin,
     ProjectMutationsMixin,
+    ValueStreamMutationsMixin,
     FeatureFlagMutationsMixin,
     TeamMutationsMixin,
     WorkItemsMutationsMixin

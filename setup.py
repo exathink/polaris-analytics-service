@@ -47,6 +47,7 @@ setup(
         'polaris.analytics.service.graphql.commit',
         'polaris.analytics.service.graphql.organization',
         'polaris.analytics.service.graphql.project',
+        'polaris.analytics.service.graphql.value_stream',
         'polaris.analytics.service.graphql.repository',
         'polaris.analytics.service.graphql.public',
         'polaris.analytics.service.graphql.contributor',

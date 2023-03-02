@@ -454,7 +454,7 @@ class TeamCycleMetricsTrends(CycleMetricsTrendsBase):
                 work_items,
                 and_(
                     work_items_teams.c.work_item_id == work_items.c.id,
-                    *TeamCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args)
+                    *TeamCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args, kwargs)
                 )
             ).outerjoin(
                 # outer join here because we want to report timelines dates even
@@ -520,7 +520,7 @@ class TeamPipelineCycleMetrics(CycleMetricsTrendsBase):
     interface = PipelineCycleMetrics
 
     @classmethod
-    def get_delivery_cycle_relation_for_pipeline(cls, cycle_metrics_trends_args, measurement_date, team_nodes):
+    def get_delivery_cycle_relation_for_pipeline(cls, kwargs, cycle_metrics_trends_args, measurement_date, team_nodes):
         # This query provides a relation with a column interface similar to
         # work_item_delivery_cycles, but with cycle time and lead time calculated dynamically
         # for work items in the current pipeline. Since cycle_time and lead_time are cached once
@@ -607,7 +607,7 @@ class TeamPipelineCycleMetrics(CycleMetricsTrendsBase):
                 # lead time to get cycle time
                 # work_items_source_state_map.c.state_type == WorkItemsStateType.backlog.value,
                 # add any other work item filters that the caller specifies.
-                *TeamCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args),
+                *TeamCycleMetricsTrends.get_work_item_filter_clauses(cycle_metrics_trends_args, kwargs),
                 # add delivery cycle related filters that the caller specifies
                 *TeamCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                     cycle_metrics_trends_args
@@ -625,7 +625,7 @@ class TeamPipelineCycleMetrics(CycleMetricsTrendsBase):
         measurement_date = datetime.utcnow()
 
         cycle_times = cls.get_delivery_cycle_relation_for_pipeline(
-            cycle_metrics_trends_args, measurement_date, team_nodes)
+            kwargs, cycle_metrics_trends_args, measurement_date, team_nodes)
 
         metrics_map = TeamCycleMetricsTrends.get_metrics_map(
             cycle_metrics_trends_args,
@@ -730,7 +730,7 @@ class TeamFlowMixTrends(InterfaceResolver):
                     measurement_date=teams_timeline_dates.c.measurement_date,
                     measurement_window=measurement_window
                 ),
-                *TeamCycleMetricsTrends.get_work_item_filter_clauses(flow_mix_trends_args),
+                *TeamCycleMetricsTrends.get_work_item_filter_clauses(flow_mix_trends_args, kwargs),
                 *TeamCycleMetricsTrends.get_work_item_delivery_cycle_filter_clauses(
                     flow_mix_trends_args
                 )

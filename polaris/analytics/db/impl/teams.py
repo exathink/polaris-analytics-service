@@ -40,4 +40,4 @@ def update_team_settings(session, update_team_settings_input):
             key=team.key
         )
     else:
-        raise ProcessingException(f'Could not find project with key: {update_team_settings_input.key}')
+        raise ProcessingException(f'Could not find team with key: {update_team_settings_input.key}')

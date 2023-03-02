@@ -19,98 +19,100 @@ from polaris.common import db
 from polaris.analytics.db.model import Team
 
 
-class TestCreateTeam:
+class TestCreateTeam(OrgRepoTest):
 
-    @pytest.fixture()
-    def setup(self, org_repo_fixture, cleanup_teams):
-        organization, projects, repositories = org_repo_fixture
+    class TestCreate:
+        @pytest.fixture()
+        def setup(self, setup, cleanup_teams):
+            fixture = setup
+            organization = fixture.organization
 
-        mutation = """
-            mutation createTeam($organizationKey: String!, $name: String!) {
-                createTeam(createTeamInput: {
-                    organizationKey: $organizationKey,
-                    name: $name
-                }) {
-                    team {
-                        id
-                        name
-                        key
+            mutation = """
+                mutation createTeam($organizationKey: String!, $name: String!) {
+                    createTeam(createTeamInput: {
+                        organizationKey: $organizationKey,
+                        name: $name
+                    }) {
+                        team {
+                            id
+                            name
+                            key
+                        }
+                        success
+                        errorMessage
                     }
-                    success
-                    errorMessage
                 }
-            }
-        """
+            """
 
-        yield Fixture(
-            organization=organization,
-            mutation=mutation
-        )
-
-    def it_creates_a_team_in_an_organization(self, setup):
-        fixture = setup
-
-        client = Client(schema)
-        result = client.execute(
-            fixture.mutation,
-            variable_values=dict(
-                organizationKey=fixture.organization.key,
-                name="Team Buffalo"
+            yield Fixture(
+                organization=organization,
+                mutation=mutation
             )
-        )
-        assert 'errors' not in result
-        assert result['data']['createTeam']['success']
 
-    def it_returns_the_key_of_the_created_team(self, setup):
-        fixture = setup
+        def it_creates_a_team_in_an_organization(self, setup):
+            fixture = setup
 
-        client = Client(schema)
-        result = client.execute(
-            fixture.mutation,
-            variable_values=dict(
-                organizationKey=fixture.organization.key,
-                name="Team Buffalo"
+            client = Client(schema)
+            result = client.execute(
+                fixture.mutation,
+                variable_values=dict(
+                    organizationKey=fixture.organization.key,
+                    name="Team Buffalo"
+                )
             )
-        )
-        assert 'errors' not in result
-        assert result['data']['createTeam']['team']['key'] is not None
+            assert 'errors' not in result
+            assert result['data']['createTeam']['success']
 
-    def it_creates_the_team_in_the_database(self, setup):
-        fixture = setup
+        def it_returns_the_key_of_the_created_team(self, setup):
+            fixture = setup
 
-        client = Client(schema)
-        result = client.execute(
-            fixture.mutation,
-            variable_values=dict(
-                organizationKey=fixture.organization.key,
-                name="Team Buffalo"
+            client = Client(schema)
+            result = client.execute(
+                fixture.mutation,
+                variable_values=dict(
+                    organizationKey=fixture.organization.key,
+                    name="Team Buffalo"
+                )
             )
-        )
-        assert 'errors' not in result
-        key = result['data']['createTeam']['team']['key']
+            assert 'errors' not in result
+            assert result['data']['createTeam']['team']['key'] is not None
 
-        assert db.connection().execute(f"select id from analytics.teams where key='{key}'").scalar() is not None
+        def it_creates_the_team_in_the_database(self, setup):
+            fixture = setup
 
-    def it_raises_an_error_if_the_organization_is_not_valid(self, setup):
-        fixture = setup
-
-        client = Client(schema)
-        result = client.execute(
-            fixture.mutation,
-            variable_values=dict(
-                organizationKey=str(uuid.uuid4()),
-                name="Team Buffalo"
+            client = Client(schema)
+            result = client.execute(
+                fixture.mutation,
+                variable_values=dict(
+                    organizationKey=fixture.organization.key,
+                    name="Team Buffalo"
+                )
             )
-        )
-        assert 'errors' not in result
-        assert not result['data']['createTeam']['success']
-        assert result['data']['createTeam']['errorMessage']
+            assert 'errors' not in result
+            key = result['data']['createTeam']['team']['key']
+
+            assert db.connection().execute(f"select id from analytics.teams where key='{key}'").scalar() is not None
+
+        def it_raises_an_error_if_the_organization_is_not_valid(self, setup):
+            fixture = setup
+
+            client = Client(schema)
+            result = client.execute(
+                fixture.mutation,
+                variable_values=dict(
+                    organizationKey=str(uuid.uuid4()),
+                    name="Team Buffalo"
+                )
+            )
+            assert 'errors' not in result
+            assert not result['data']['createTeam']['success']
+            assert result['data']['createTeam']['errorMessage']
 
 
 class TestUpdateTeamSettings(OrgRepoTest):
     class TestUpdateSettings:
         @pytest.fixture()
-        def setup(self, setup):
+        def setup(self, setup, cleanup_teams):
             fixture = setup
             organization = fixture.organization
             team_key = uuid.uuid4()

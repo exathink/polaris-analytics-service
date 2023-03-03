@@ -566,6 +566,8 @@ class Team(Base):
         return session.query(cls).filter(cls.key == key).first()
 
     def update_settings(self, update_team_settings_input):
+        if update_team_settings_input.name is not None:
+            self.name = update_team_settings_input.name
         # we have to make a deep copy here since sqlalchemy does not recognize in place modifications
         # to the dict in the jsonb field
         current = copy.deepcopy(self.settings) if self.settings is not None else dict()

@@ -548,7 +548,7 @@ class CycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
             )
 
         tags = kwargs.get('tags') or interface_args.get('tags')
-        if tags:
+        if tags and len(tags) > 0:
             clauses.append(apply_tags_clause(tags))
 
         return clauses

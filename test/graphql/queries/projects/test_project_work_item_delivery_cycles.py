@@ -579,19 +579,22 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
                     'Issue 4'
                 }
 
-            def it_filters_by_a_multiple_tags(self, setup):
+            def it_returns_items_that_match_any_of_the_provided_tags(self, setup):
                 fixture = setup
                 client = Client(schema)
                 result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['enhancement', 'feature1']))
                 assert 'data' in result
                 delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
-                assert len(delivery_cycles) == 1
+                assert len(delivery_cycles) == 4
                 assert {
                     cycle['node']['name']
                     for cycle in delivery_cycles
                 } == {
 
-                    'Issue 4'
+                    'Issue 4',
+                    'Issue 1',
+                    'Issue 6',
+                    'Issue 2'
                 }
 
             def it_returns_multiple_delivery_cycles_after_filtering(self, setup):

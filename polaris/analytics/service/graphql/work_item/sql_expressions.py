@@ -189,10 +189,10 @@ def literal_postgres_string_array(string_array):
     return output.getvalue()
 
 def apply_tags_clause(tags):
-    return work_items.c.tags.contains(literal_postgres_string_array(tags))
+    return work_items.c.tags.op("&&")(literal_postgres_string_array(tags))
 
 def apply_tags_filter(select_stmt, work_items, **kwargs):
-    if 'tags' in kwargs:
+    if 'tags' in kwargs and len(kwargs['tags']) > 0:
         select_stmt = select_stmt.where(
             apply_tags_clause(kwargs['tags'])
         )

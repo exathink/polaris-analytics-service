@@ -18,7 +18,6 @@ from test.fixtures.graphql import WorkItemImportApiHelper
 
 
 class TestProjectWorkItemsInterfaces(CommitSummaryFixtureTest):
-
     class TestInterfaces:
         def it_implements_the_work_item_info_interface(self, setup):
             fixture = setup
@@ -84,7 +83,7 @@ class TestProjectWorkItemsInterfaces(CommitSummaryFixtureTest):
             assert 'data' in result
             edges = result['data']['project']['workItems']['edges']
             assert len(edges) == 1
-            work_items_common=fixture.work_items_common
+            work_items_common = fixture.work_items_common
             for node in map(lambda edge: edge['node'], edges):
                 assert node['description'] == work_items_common['description']
                 assert node['displayId'] == "1001"
@@ -97,7 +96,6 @@ class TestProjectWorkItemsInterfaces(CommitSummaryFixtureTest):
 
 
 class TestProjectWorkItemsParameters(WorkItemApiImportTest):
-
     class TestParameters:
 
         def it_respects_the_defects_only_parameter(self, setup):
@@ -243,7 +241,6 @@ class TestProjectWorkItemsParameters(WorkItemApiImportTest):
 
 
 class TestProjectWorkItemFilteringByTags(WorkItemApiImportTest):
-
     class TestWorkItemTagFiltering:
         @pytest.fixture()
         def setup(self, setup):
@@ -305,7 +302,7 @@ class TestProjectWorkItemFilteringByTags(WorkItemApiImportTest):
                         key=uuid.uuid4().hex,
                         name='Issue 6',
                         display_id='1006',
-                        tags=['escaped', 'feature2'],
+                        tags=['escaped', 'feature1'],
                         **common_fields
                     ),
 
@@ -336,52 +333,57 @@ class TestProjectWorkItemFilteringByTags(WorkItemApiImportTest):
             fixture = setup
 
             client = Client(schema)
-            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['enhancement']))
+            result = client.execute(fixture.query,
+                                    variable_values=dict(project_key=fixture.project.key, tags=['enhancement']))
             assert not result.get('errors')
             assert result['data']
             edges = result['data']['project']['workItems']['edges']
             assert len(edges) == 2
 
             assert {
-                edge['node']['name']
-                for edge in edges
-            } == {
-                'Issue 1',
-                'Issue 5'
-            }
-
+                       edge['node']['name']
+                       for edge in edges
+                   } == {
+                       'Issue 1',
+                       'Issue 5'
+                   }
 
         def it_filters_work_items_by_a_multiple_tags(self, setup):
             fixture = setup
 
             client = Client(schema)
-            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['enhancement', 'feature1']))
+            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key,
+                                                                        tags=['enhancement', 'feature1']))
             assert not result.get('errors')
             assert result['data']
             edges = result['data']['project']['workItems']['edges']
-            assert len(edges) == 1
+            assert len(edges) == 3
             assert {
                        edge['node']['name']
                        for edge in edges
                    } == {
                        'Issue 1',
+                       'Issue 5',
+                       'Issue 6'
                    }
 
         def it_returns_multiple_matches_for_multiple_tags(self, setup):
             fixture = setup
 
             client = Client(schema)
-            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['escaped', 'feature2']))
+            result = client.execute(fixture.query,
+                                    variable_values=dict(project_key=fixture.project.key, tags=['escaped', 'feature2']))
             assert not result.get('errors')
             assert result['data']
             edges = result['data']['project']['workItems']['edges']
-            assert len(edges) == 2
+            assert len(edges) == 3
             assert {
                        edge['node']['name']
                        for edge in edges
                    } == {
-                        'Issue 3',
-                        'Issue 6'
+                       'Issue 3',
+                       'Issue 5',
+                       'Issue 6'
                    }
 
         def it_returns_all_items_if_the_tag_list_is_empty(self, setup):
@@ -398,12 +400,12 @@ class TestProjectWorkItemFilteringByTags(WorkItemApiImportTest):
             fixture = setup
 
             client = Client(schema)
-            result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project.key, tags=['random string']))
+            result = client.execute(fixture.query,
+                                    variable_values=dict(project_key=fixture.project.key, tags=['random string']))
             assert not result.get('errors')
             assert result['data']
             edges = result['data']['project']['workItems']['edges']
             assert len(edges) == 0
-
 
 
 class TestProjectMovedWorkItems(WorkItemApiImportTest):
@@ -411,7 +413,6 @@ class TestProjectMovedWorkItems(WorkItemApiImportTest):
         def it_does_not_return_the_work_items_moved_from_source(self, setup):
             fixture = setup
             api_helper = WorkItemImportApiHelper(fixture.organization, fixture.work_items_source)
-
 
             start_date = datetime.utcnow() - timedelta(days=10)
             work_items = [
@@ -499,8 +500,8 @@ class TestProjectMovedWorkItems(WorkItemApiImportTest):
             assert 'data' in result
             assert len(result['data']['project']['workItems']['edges']) == 3
 
-class TestProjectEpicWorkItems(WorkItemApiImportTest):
 
+class TestProjectEpicWorkItems(WorkItemApiImportTest):
     class TestEpicWorkItems:
         @pytest.fixture()
         def setup(self, setup):
@@ -862,7 +863,8 @@ class TestProjectEpicWorkItems(WorkItemApiImportTest):
                     fixture = setup
 
                     client = Client(schema)
-                    result = client.execute(fixture.noepics_query, variable_values=dict(project_key=fixture.project.key))
+                    result = client.execute(fixture.noepics_query,
+                                            variable_values=dict(project_key=fixture.project.key))
 
                     assert result['data']
                     all_work_items = result['data']['project']['workItems']['edges']
@@ -1012,7 +1014,8 @@ class TestProjectEpicWorkItems(WorkItemApiImportTest):
                     assert result['data']
                     all_work_items = result['data']['project']['workItems']['edges']
                     assert len(all_work_items) == 3
-                    assert str(uuid.UUID(fixture.work_items[1]['key'])) not in [wi['node']['key'] for wi in all_work_items]
+                    assert str(uuid.UUID(fixture.work_items[1]['key'])) not in [wi['node']['key'] for wi in
+                                                                                all_work_items]
                     for wi in all_work_items:
                         # Details for parent epic still are unaffected
                         if wi['node']['key'] == str(fixture.epic.key):

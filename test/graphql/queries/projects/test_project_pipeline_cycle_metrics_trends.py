@@ -1233,7 +1233,7 @@ class TestProjectPipelineCycleMetricsCurrentPipeline(WorkItemApiImportTest):
                     state='backlog',
                     created_at=start_date,
                     updated_at=start_date,
-                    **dict_merge(work_items_common_fields, dict(tags=['enhancements', 'feature2']))
+                    **dict_merge(work_items_common_fields, dict(tags=['enhancements', 'feature1']))
                 ),
                 dict(
                     key=uuid.uuid4().hex,
@@ -1242,7 +1242,7 @@ class TestProjectPipelineCycleMetricsCurrentPipeline(WorkItemApiImportTest):
                     state='backlog',
                     created_at=start_date,
                     updated_at=start_date,
-                    **dict_merge(work_items_common_fields, dict(tags=['new_feature', 'feature1']))
+                    **dict_merge(work_items_common_fields, dict(tags=['new_feature', 'feature2']))
                 ),
                 dict(
                     key=uuid.uuid4().hex,
@@ -1416,10 +1416,10 @@ class TestProjectPipelineCycleMetricsCurrentPipeline(WorkItemApiImportTest):
                 assert 0 < measurement['maxLeadTime'] - 30.0 < 1
                 assert 0 < measurement['percentileLeadTime'] - 30.0 < 1
                 assert 0 < measurement['minCycleTime'] - 5.0 < 1
-                assert 0 < measurement['avgCycleTime'] - 12.5 < 1
+                assert 0 < measurement['avgCycleTime'] - 11.6 < 1
                 assert 0 < measurement['maxCycleTime'] - 20.0 < 1
                 assert 0 < measurement['percentileCycleTime'] - 20.0 < 1
                 assert not measurement['earliestClosedDate']
                 assert not measurement['latestClosedDate']
-                assert measurement['workItemsInScope'] == 2
+                assert measurement['workItemsInScope'] == 3
                 assert measurement['workItemsWithNullCycleTime'] == 0

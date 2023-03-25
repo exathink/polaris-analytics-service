@@ -136,6 +136,7 @@ class UpdateProjectWorkItems(graphene.Mutation):
 
 class UpdateProjectSettingsInput(graphene.InputObjectType):
     key = graphene.String(required=True)
+    name = graphene.String(required=False)
     flow_metrics_settings = graphene.Field(FlowMetricsSettingsInput, required=False)
     analysis_periods = graphene.Field(AnalysisPeriodsInput, required=False)
     wip_inspector_settings = graphene.Field(WipInspectorSettingsInput, required=False)

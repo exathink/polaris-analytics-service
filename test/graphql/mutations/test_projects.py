@@ -790,6 +790,23 @@ class TestUpdateProjectSettings:
             query=query
         )
 
+    def it_updates_the_project_name(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                name='New name'
+            )
+        ))
+
+        assert response['data']['updateProjectSettings']['success']
+        with db.orm_session() as session:
+            project = Project.find_by_project_key(session, test_projects[0]['key'])
+            assert project.name == 'New name'
+
+
     def it_updates_the_flow_metrics_settings(self, setup):
         fixture = setup
 

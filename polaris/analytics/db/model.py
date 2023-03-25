@@ -363,6 +363,8 @@ class Project(Base):
                 self.add_repositories(repo)
 
     def update_settings(self, update_project_settings_input):
+        if update_project_settings_input.name is not None:
+            self.name = update_project_settings_input.name
         # we have to make a deep copy here since sqlalchemy does not recognize in place modifications
         # to the dict in the jsonb field
         current = copy.deepcopy(self.settings) if self.settings is not None else dict()

@@ -103,6 +103,13 @@ class Team(
                 required=False,
                 description='Required when resolving CapacityTrends Interface'
             ),
+            tags=graphene.Argument(
+                graphene.List(graphene.String),
+                required=False,
+                description='Provide a list of tags to filter work_items by - this is currently only supported'
+                            'for interface compatibility. Not implemented',
+                default_value=None
+            ),
             **kwargs
         )
 

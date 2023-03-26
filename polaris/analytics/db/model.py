@@ -363,7 +363,7 @@ class Project(Base):
                 self.add_repositories(repo)
 
     def update_settings(self, update_project_settings_input):
-        if hasattr(update_project_settings_input, 'name'):
+        if getattr(update_project_settings_input, 'name', None) is not None:
             self.name = update_project_settings_input.name
         # we have to make a deep copy here since sqlalchemy does not recognize in place modifications
         # to the dict in the jsonb field

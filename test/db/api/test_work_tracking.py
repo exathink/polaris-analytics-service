@@ -14,6 +14,7 @@ from test.fixtures.work_items import *
 from polaris.analytics.db import api, model
 from polaris.common import db
 from polaris.common.enums import WorkTrackingIntegrationType
+from polaris.analytics.db.enums import WorkItemType
 from polaris.utils.collections import dict_merge, Fixture
 
 
@@ -1881,3 +1882,234 @@ class TestDeleteWorkItem:
         assert result
         assert db.connection().execute(
             f"select count(id) from analytics.work_items where key='{work_item['key']}' and deleted_at='{work_item['deleted_at']}'").scalar() == 1
+
+
+class TestWorkTracking(WorkItemsTest):
+    class TestCustomTypeMapping:
+
+        @pytest.fixture()
+        def setup(self, setup):
+            fixture = setup
+
+            # update the work_items_source with a custom type map
+            with db.orm_session() as session:
+                work_items_source = WorkItemsSource.find_by_work_items_source_key(session,
+                                                                                  fixture.work_items_source_key)
+                work_items_source.update_custom_type_mappings([
+                    dict(
+                        labels=['custom_type:Feature'],
+                        work_item_type=WorkItemType.epic.value
+                    ),
+                    dict(
+                        labels=['tech-debt', 'performance-optimization'],
+                        work_item_type=WorkItemType.task.value
+                    ),
+                    dict(
+                        labels=['defect', 'CVE'],
+                        work_item_type=WorkItemType.bug.value
+                    )
+                ])
+                session.flush()
+
+            yield fixture
+
+        def it_updates_the_work_item_types_using_the_custom_type_mapping_on_import(self, setup):
+            fixture = setup
+
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            work_items_common = fixture.work_items_common
+
+            test_work_items = [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Test Work Items',
+                    display_id='PP-431',
+                    **dict_merge(
+                        work_items_common,
+                        dict(
+                            work_item_type=WorkItemType.story.value,
+                            is_bug=False,
+                            is_epic=False,
+                            tags=['custom_type:Feature']
+                        )
+                    )
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Test Work Items2',
+                    display_id='PP-431-1',
+                    **dict_merge(
+                        work_items_common,
+                        dict(
+                            work_item_type=WorkItemType.story.value,
+                            is_bug=False,
+                            is_epic=False,
+                            tags=['tech-debt']
+                        )
+                    )
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Test Work Items3',
+                    display_id='PP-431-2',
+                    **dict_merge(
+                        work_items_common,
+                        dict(
+                            work_item_type=WorkItemType.story.value,
+                            is_bug=False,
+                            is_epic=False,
+                            tags=['random-tag']
+                        )
+                    )
+                )
+
+            ]
+
+
+            result = api.import_new_work_items(organization_key, work_items_source_key, test_work_items)
+            assert result['success']
+            with db.orm_session() as session:
+                # this tests the single label case in the mapping
+                work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[0]['key'])
+                assert work_item.work_item_type == WorkItemType.epic.value
+
+
+                # this tests the multiple label case in the mapping
+                work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[1]['key'])
+                assert work_item.work_item_type == WorkItemType.task.value
+
+                # this tests the case where the label does not match in the mapping
+                work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[2]['key'])
+                assert work_item.work_item_type == WorkItemType.story.value
+
+
+
+        def it_sets_the_is_epic_flag_when_the_custom_type_maps_to_an_epic(self, setup):
+            fixture = setup
+
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            work_items_common = fixture.work_items_common
+
+            test_work_items = [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Test Work Items',
+                    display_id='PP-431',
+                    **dict_merge(
+                        work_items_common,
+                        dict(
+                            work_item_type=WorkItemType.story.value,
+                            is_bug=False,
+                            is_epic=False,
+                            tags=['custom_type:Feature']
+                        )
+                    )
+                )
+            ]
+
+            result = api.import_new_work_items(organization_key, work_items_source_key, test_work_items)
+            assert result['success']
+            with db.orm_session() as session:
+                # this tests the single label case in the mapping
+                work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[0]['key'])
+                assert work_item.is_epic
+
+        def it_sets_the_is_bug_flag_when_the_custom_type_maps_to_a_bug(self, setup):
+            fixture = setup
+
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            work_items_common = fixture.work_items_common
+
+            test_work_items = [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Test Work Items',
+                    display_id='PP-431',
+                    **dict_merge(
+                        work_items_common,
+                        dict(
+                            work_item_type=WorkItemType.story.value,
+                            is_bug=False,
+                            is_epic=False,
+                            tags=['CVE']
+                        )
+                    )
+                )
+            ]
+
+            result = api.import_new_work_items(organization_key, work_items_source_key, test_work_items)
+            assert result['success']
+            with db.orm_session() as session:
+                # this tests the single label case in the mapping
+                work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[0]['key'])
+                assert work_item.is_bug
+
+        def it_chooses_the_first_matching_label_when_there_are_multiple_matches(self, setup):
+            fixture = setup
+
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            work_items_common = fixture.work_items_common
+
+            test_work_items = [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Test Work Items',
+                    display_id='PP-431',
+                    **dict_merge(
+                        work_items_common,
+                        dict(
+                            work_item_type=WorkItemType.story.value,
+                            is_bug=False,
+                            is_epic=False,
+                            tags=['custom_type:Feature', 'CVE']
+                        )
+                    )
+                )
+            ]
+
+            result = api.import_new_work_items(organization_key, work_items_source_key, test_work_items)
+            assert result['success']
+            with db.orm_session() as session:
+                # this tests the single label case in the mapping
+                work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[0]['key'])
+                assert work_item.work_item_type ==  WorkItemType.epic.value
+
+
+        def it_sets_the_custom_map_for_work_items_on_updates(self, setup):
+            fixture = setup
+
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            work_items_common = fixture.work_items_common
+
+            test_work_items = [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Test Work Items',
+                    display_id='PP-431',
+                    **dict_merge(
+                        work_items_common,
+                        dict(
+                            work_item_type=WorkItemType.story.value,
+                            is_bug=False,
+                            is_epic=False,
+                            tags=['custom_type:Feature']
+                        )
+                    )
+                )
+            ]
+            # first import the work item
+            result = api.import_new_work_items(organization_key, work_items_source_key, test_work_items)
+            # now change the custom type and see if it gets remapped on update
+            test_work_items[0]['tags'] = ['CVE']
+            result = api.update_work_items(organization_key, work_items_source_key, test_work_items)
+
+            assert result['success']
+            with db.orm_session() as session:
+                # this tests the single label case in the mapping
+                work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[0]['key'])
+                assert work_item.work_item_type == WorkItemType.bug.value

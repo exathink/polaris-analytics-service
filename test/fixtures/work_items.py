@@ -22,7 +22,7 @@ from test.fixtures.repo_org import *
 from polaris.common import db
 from polaris.analytics.db.model import WorkItemsSource
 from datetime import datetime, timedelta
-
+from polaris.utils.collections import Fixture
 
 def work_items_common():
     return dict(
@@ -100,6 +100,17 @@ def work_items_setup(setup_repo_org):
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")
 
+class WorkItemsTest:
+
+    @pytest.fixture
+    def setup(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+
+        yield Fixture(
+            organization_key=organization_key,
+            work_items_source_key=work_items_source_key,
+            work_items_common=work_items_common()
+        )
 
 @pytest.fixture
 def update_work_items_setup(work_items_setup):

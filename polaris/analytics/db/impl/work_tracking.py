@@ -20,7 +20,7 @@ from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindpa
     union
 from sqlalchemy.dialects.postgresql import UUID, insert, array
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
-from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.analytics.db.enums import WorkItemsStateType, WorkItemType
 
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
@@ -114,6 +114,27 @@ def register_work_items_source(session, organization_key, work_items_source_summ
         work_items_source=work_items_source_summary
     )
 
+def map_custom_type(work_items_source, work_item_summary):
+    custom_type_mappings = work_items_source.custom_type_mappings
+    for mapping in custom_type_mappings:
+        for label in mapping['labels']:
+            if label in work_item_summary['tags']:
+                work_item_summary['work_item_type'] = mapping['work_item_type']
+                if mapping['work_item_type'] == WorkItemType.epic.value:
+                    work_item_summary['is_epic'] = True
+                if mapping['work_item_type'] == WorkItemType.bug.value:
+                    work_item_summary['is_bug'] = True
+                # this breaks out of the nested loop once a custom mapping is found
+                return work_item_summary
+
+    # this is the default return in case no custom mapping were found
+    return work_item_summary
+
+def update_work_item_custom_type(work_items_source, work_item_summaries):
+    return [
+        map_custom_type(work_items_source, work_item_summary)
+        for work_item_summary in work_item_summaries
+    ]
 
 def import_new_work_items(session, work_items_source_key, work_item_summaries):
     updated = 0
@@ -136,6 +157,9 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
 
             # Update the completed at date for each work item based on the state map of the work_items_source
             work_item_summaries = update_work_item_calculated_fields(work_items_source, work_item_summaries)
+
+            # update the work item type of the work item using a custom type mapping if provided.
+            work_item_summaries = update_work_item_custom_type(work_items_source, work_item_summaries)
 
             session.connection().execute(
                 insert(work_items_temp).values([
@@ -900,7 +924,11 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
             )
             work_items_temp.create(session.connection(), checkfirst=True)
 
+
             work_item_summaries = update_work_item_calculated_fields(work_items_source, work_item_summaries)
+
+            # update the work item type of the work item using a custom type mapping if provided.
+            work_item_summaries = update_work_item_custom_type(work_items_source, work_item_summaries)
 
             session.connection().execute(
                 insert(work_items_temp).values([

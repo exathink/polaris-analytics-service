@@ -1149,6 +1149,8 @@ class TestUpdateCustomTypeMapping:
         ))
 
         assert not response.get('errors')
+        assert not response['data']['updateProjectCustomTypeMappings']['errorMessage']
+
         with db.orm_session() as session:
             work_items_source = WorkItemsSource.find_by_work_items_source_key(session, fixture.work_items_source.key)
             assert work_items_source.custom_type_mappings == [

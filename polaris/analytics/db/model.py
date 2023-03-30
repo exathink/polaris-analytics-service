@@ -855,6 +855,8 @@ class WorkItemsSource(Base):
         if state_map is not None:
             return state_map.state_type
 
+    def update_custom_type_mappings(self, custom_type_mappings):
+        self.custom_type_mappings = custom_type_mappings
 
 work_items_sources = WorkItemsSource.__table__
 Index('ix_analytics_work_items_sources_commit_mapping_scope',

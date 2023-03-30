@@ -774,6 +774,9 @@ class WorkItemsSource(Base):
     description = Column(String, nullable=True)
     # the id of the external source from which this work item source was imported.
     source_id = Column(String, nullable=True)
+
+    custom_type_mappings = Column(JSONB, nullable=True, server_default='[]')
+
     # Commit mapping scope specifies the repositories that are mapped to this
     # work item source. The valid values are ('organization', 'project', 'repository')
     # Given the commit mapping scope key, commits originating from all repositories

@@ -1151,22 +1151,21 @@ class TestUpdateCustomTypeMapping:
         assert not response.get('errors')
         with db.orm_session() as session:
             work_items_source = WorkItemsSource.find_by_work_items_source_key(session, fixture.work_items_source.key)
-            custom_type_mapping = work_items_source.custom_type_mapping
-            assert custom_type_mapping.custom_type_mapping == [
+            assert work_items_source.custom_type_mappings == [
                 dict(
                     labels=["Epic"],
-                    type="epic"
+                    work_item_type="epic"
                 ),
                 dict(
                     labels=["Story"],
-                    type="story"
+                    work_item_type="story"
                 ),
                 dict(
                     labels=["Task"],
-                    type="task"
+                    work_item_type="task"
                 ),
                 dict(
                     labels=["Bug"],
-                    type="bug"
+                    work_item_type="bug"
                 ),
             ]

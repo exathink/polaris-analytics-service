@@ -1171,3 +1171,82 @@ class TestUpdateCustomTypeMapping:
                     work_item_type="bug"
                 ),
             ]
+
+    def it_returns_error_message_when_project_key_is_incorrect(self, setup):
+
+        fixture = setup
+
+        client = Client(schema)
+        new_test_project_key = uuid.uuid4()
+
+        response = client.execute("""
+            mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
+                updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
+                    success
+                    errorMessage
+                }
+            }
+        """, variable_values=dict(
+            updateProjectCustomTypeMappingsInput=dict(
+                projectKey=str(new_test_project_key),
+                workItemsSourceKeys=[str(fixture.work_items_source.key)],
+                customTypeMappings=[]
+            )
+        ))
+
+        assert not response.get('errors')
+        assert response['data']['updateProjectCustomTypeMappings']['errorMessage'] == f"Could not find project with key: {new_test_project_key}"
+
+    def it_returns_error_message_when_work_items_source_key_is_incorrect(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+        new_test_work_items_source_key = uuid.uuid4()
+
+        response = client.execute("""
+            mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
+                updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
+                    success
+                    errorMessage
+                }
+            }
+        """, variable_values=dict(
+            updateProjectCustomTypeMappingsInput=dict(
+                projectKey=str(fixture.project.key),
+                workItemsSourceKeys=[str(new_test_work_items_source_key)],
+                customTypeMappings=[]
+            )
+        ))
+
+        assert not response.get('errors')
+        assert response['data']['updateProjectCustomTypeMappings']['errorMessage'] == f"Could not find work items source with key {new_test_work_items_source_key} in this project"
+
+    def it_returns_error_message_when_custom_type_mapping_is_incorrect(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+        response = client.execute("""
+            mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
+                updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
+                    success
+                    errorMessage
+                }
+            }
+        """, variable_values=dict(
+            updateProjectCustomTypeMappingsInput=dict(
+                projectKey=str(fixture.project.key),
+                workItemsSourceKeys=[str(fixture.work_items_source.key)],
+                customTypeMappings=[
+                    dict(
+                        labels=["Epic"],
+                        workItemType="feature"
+                    ),
+                    dict(
+                        labels=["Bug"],
+                        workItemType="bug"
+                    ),
+                ]
+            )
+        ))
+
+        assert 'Expected type "WorkItemType", found "feature"' in response.get('errors')[0]['message']

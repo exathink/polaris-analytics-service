@@ -246,6 +246,20 @@ def update_project_work_items_source_state_mappings(project_state_mappings, join
         return db.failure_message('Update project work items source state mappings failed', e)
 
 
+def update_project_custom_type_mappings(update_project_custom_type_mappings_input, join_this=None):
+    try:
+        with db.orm_session(join_this) as session:
+            return success(
+                impl.update_project_custom_type_mappings(
+                    session,
+                    update_project_custom_type_mappings_input
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Update project custom type mappings failed", exc)
+    except Exception as e:
+        return db.failure_message('Update project custom type mappings failed', e)
+
 def import_repositories(organization_key, repository_summaries):
     try:
         with db.orm_session() as session:

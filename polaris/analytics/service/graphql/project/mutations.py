@@ -17,7 +17,7 @@ from polaris.analytics.db import api as db_api
 from polaris.analytics import api
 from polaris.analytics import publish
 
-from ..interfaces import WorkItemsStateType, WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
+from ..interfaces import WorkItemType, WorkItemsStateType, WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
 from ..input_types import FlowMetricsSettingsInput, AnalysisPeriodsInput, WipInspectorSettingsInput
 from polaris.utils.exceptions import ProcessingException
 
@@ -178,9 +178,32 @@ class UpdateProjectExcludedRepositories(graphene.Mutation):
         return UpdateProjectExcludedRepositories(success=result['success'], error_message=result.get('exception'))
 
 
+class CustomTypeMappingInput(graphene.InputObjectType):
+    labels = graphene.List(graphene.String, required=True)
+    work_item_type = WorkItemType(required=True)
+
+class UpdateProjectCustomTypeMappingsInput(graphene.InputObjectType):
+    project_key = graphene.String(required=True)
+    work_items_source_keys = graphene.List(graphene.String, required=True)
+    custom_type_mappings = graphene.List(CustomTypeMappingInput, required=True)
+
+class UpdateProjectCustomTypeMappings(graphene.Mutation):
+    class Arguments:
+        update_project_custom_type_mappings_input = UpdateProjectCustomTypeMappingsInput(required=True)
+
+    success = graphene.Boolean()
+    error_message = graphene.String()
+
+    def mutate(self, info, update_project_custom_type_mappings_input):
+        logger.info('UpdateProject Custom Type Mappings called')
+
+        result = db_api.update_project_custom_type_mappings(update_project_custom_type_mappings_input)
+        return UpdateProjectCustomTypeMappings(success=result.get('success'), error_message=result.get('exception'))
+
 class ProjectMutationsMixin:
     archive_project = ArchiveProject.Field()
     update_project_state_maps = UpdateProjectStateMaps.Field()
     update_project_settings = UpdateProjectSettings.Field()
     update_project_work_items = UpdateProjectWorkItems.Field()
     update_project_excluded_repositories = UpdateProjectExcludedRepositories.Field()
+    update_project_custom_type_mappings = UpdateProjectCustomTypeMappings.Field()

@@ -2,6 +2,13 @@ from enum import Enum
 from polaris.common.enums import GithubWorkItemType, PivotalTrackerWorkItemType, JiraWorkItemType, \
     GitlabWorkItemType
 
+class WorkItemType(Enum):
+    story = 'story'
+    bug = 'bug'
+    task = 'task'
+    sub_task = 'subtask'
+    epic = 'epic'
+
 
 class WorkItemsStateType(Enum):
     open = 'open'

@@ -134,6 +134,7 @@ class TestProjectResponseTimePredictabilityTrends:
             )
 
         class WhenThereNoWorkItems:
+
             def it_returns_a_confidence_value_of_zero_for_each_measurement(self, setup):
                 fixture = setup
 

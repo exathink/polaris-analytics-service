@@ -18,6 +18,7 @@ from test.fixtures.project_work_items_commits import *
 
 from polaris.analytics.db.enums import WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
 
+
 class TestArchiveProject:
 
     def it_archives_a_project(self, setup_projects):
@@ -96,10 +97,14 @@ class TestUpdateProjectStateMaps:
                         dict(
                             workItemsSourceKey=work_items_source_key,
                             stateMaps=[
-                                dict(state="created", stateType=WorkItemsStateType.backlog.value, flowType=WorkItemsStateFlowType.waiting.value),
-                                dict(state="todo", stateType=WorkItemsStateType.open.value, flowType=WorkItemsStateFlowType.waiting.value),
-                                dict(state="doing", stateType=WorkItemsStateType.wip.value, flowType=WorkItemsStateFlowType.active.value),
-                                dict(state="done", stateType=WorkItemsStateType.complete.value, flowType=WorkItemsStateFlowType.waiting.value),
+                                dict(state="created", stateType=WorkItemsStateType.backlog.value,
+                                     flowType=WorkItemsStateFlowType.waiting.value),
+                                dict(state="todo", stateType=WorkItemsStateType.open.value,
+                                     flowType=WorkItemsStateFlowType.waiting.value),
+                                dict(state="doing", stateType=WorkItemsStateType.wip.value,
+                                     flowType=WorkItemsStateFlowType.active.value),
+                                dict(state="done", stateType=WorkItemsStateType.complete.value,
+                                     flowType=WorkItemsStateFlowType.waiting.value),
                                 dict(state="closed", stateType=WorkItemsStateType.closed.value, flowType=None)
                             ]
                         )
@@ -111,20 +116,20 @@ class TestUpdateProjectStateMaps:
             result = response['data']['updateProjectStateMaps']
             assert result
             assert result['success']
-            saved_map =  db.connection().execute(
+            saved_map = db.connection().execute(
                 f"select state, flow_type from analytics.work_items_source_state_map "
                 f"inner join analytics.work_items_sources on work_items_sources.id = work_items_source_state_map.work_items_source_id where key='{work_items_source_key}'"
             ).fetchall()
             assert {
-                (row.state, row.flow_type)
-                for row in saved_map
-            } == {
-                ('created', WorkItemsStateFlowType.waiting.value),
-                ('todo', WorkItemsStateFlowType.waiting.value),
-                ('doing', WorkItemsStateFlowType.active.value),
-                ('done', WorkItemsStateFlowType.waiting.value),
-                ('closed', None)
-            }
+                       (row.state, row.flow_type)
+                       for row in saved_map
+                   } == {
+                       ('created', WorkItemsStateFlowType.waiting.value),
+                       ('todo', WorkItemsStateFlowType.waiting.value),
+                       ('doing', WorkItemsStateFlowType.active.value),
+                       ('done', WorkItemsStateFlowType.waiting.value),
+                       ('closed', None)
+                   }
 
             assert saved_map
 
@@ -150,8 +155,10 @@ class TestUpdateProjectStateMaps:
                                 dict(state="created", stateType=WorkItemsStateType.backlog.value, releaseStatus=None),
                                 dict(state="todo", stateType=WorkItemsStateType.open.value, releaseStatus=None),
                                 dict(state="doing", stateType=WorkItemsStateType.wip.value, releaseStatus=None),
-                                dict(state="done", stateType=WorkItemsStateType.complete.value, releaseStatus=WorkItemsStateReleaseStatusType.releasable.value),
-                                dict(state="closed", stateType=WorkItemsStateType.closed.value, releaseStatus=WorkItemsStateReleaseStatusType.released.value)
+                                dict(state="done", stateType=WorkItemsStateType.complete.value,
+                                     releaseStatus=WorkItemsStateReleaseStatusType.releasable.value),
+                                dict(state="closed", stateType=WorkItemsStateType.closed.value,
+                                     releaseStatus=WorkItemsStateReleaseStatusType.released.value)
                             ]
                         )
                     ]
@@ -162,20 +169,20 @@ class TestUpdateProjectStateMaps:
             result = response['data']['updateProjectStateMaps']
             assert result
             assert result['success']
-            saved_map =  db.connection().execute(
+            saved_map = db.connection().execute(
                 f"select state, release_status from analytics.work_items_source_state_map "
                 f"inner join analytics.work_items_sources on work_items_sources.id = work_items_source_state_map.work_items_source_id where key='{work_items_source_key}'"
             ).fetchall()
             assert {
-                (row.state, row.release_status)
-                for row in saved_map
-            } == {
-                ('created', None),
-                ('todo', None),
-                ('doing', None),
-                ('done', WorkItemsStateReleaseStatusType.releasable.value),
-                ('closed', WorkItemsStateReleaseStatusType.released.value)
-            }
+                       (row.state, row.release_status)
+                       for row in saved_map
+                   } == {
+                       ('created', None),
+                       ('todo', None),
+                       ('doing', None),
+                       ('done', WorkItemsStateReleaseStatusType.releasable.value),
+                       ('closed', WorkItemsStateReleaseStatusType.released.value)
+                   }
 
     def it_checks_if_project_exists(self, setup_work_items_sources):
         client = Client(schema)
@@ -532,13 +539,12 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
                     ]
                 )
             )
-                                  )
+                                      )
         assert 'data' in response
         result = response['data']['updateProjectStateMaps']
         assert result
         assert result['success']
         assert result.get('deliveryCyclesRebuilt') == 1
-
 
     def it_updates_delivery_cycles_when_an_existing_non_mapped_state_mapping_changes(self,
                                                                                      work_items_delivery_cycles_setup):
@@ -624,7 +630,6 @@ class TestUpdateDeliveryCyclesOnUpdateStateMaps:
             assert result['success']
             # new delivery cycle created
             assert result.get('deliveryCyclesRebuilt') == 1
-
 
     def it_updates_delivery_cycles_at_first_closed_state_transition_when_mapping_changes(self,
                                                                                          work_items_delivery_cycles_setup):
@@ -805,7 +810,6 @@ class TestUpdateProjectSettings:
         with db.orm_session() as session:
             project = Project.find_by_project_key(session, test_projects[0]['key'])
             assert project.name == 'New name'
-
 
     def it_updates_the_flow_metrics_settings(self, setup):
         fixture = setup
@@ -1096,3 +1100,73 @@ class TestUpdateWorkItems:
         assert not response['data']['updateProjectWorkItems']['updateStatus']['success']
         assert response['data']['updateProjectWorkItems']['updateStatus'][
                    'exception'] == "Could not update project work items"
+
+
+class TestUpdateCustomTypeMapping:
+
+    @pytest.fixture
+    def setup(self, setup_work_items):
+        project = setup_work_items
+        yield Fixture(
+            project=project,
+            work_items_source=project.work_items_sources[0]
+        )
+
+    def it_updates_custom_type_mapping(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+        response = client.execute("""
+            mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
+                updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
+                    success
+                    errorMessage
+                }
+            }
+        """, variable_values=dict(
+            updateProjectCustomTypeMappingsInput=dict(
+                projectKey=str(fixture.project.key),
+                workItemsSourceKeys=[str(fixture.work_items_source.key)],
+                customTypeMappings=[
+                    dict(
+                        labels=["Epic"],
+                        workItemType="epic"
+                    ),
+                    dict(
+                        labels=["Story"],
+                        workItemType="story"
+                    ),
+                    dict(
+                        labels=["Task"],
+                        workItemType="task"
+                    ),
+                    dict(
+                        labels=["Bug"],
+                        workItemType="bug"
+                    ),
+                ]
+            )
+        ))
+
+        assert not response.get('errors')
+        with db.orm_session() as session:
+            work_items_source = WorkItemsSource.find_by_work_items_source_key(session, fixture.work_items_source.key)
+            custom_type_mapping = work_items_source.custom_type_mapping
+            assert custom_type_mapping.custom_type_mapping == [
+                dict(
+                    labels=["Epic"],
+                    type="epic"
+                ),
+                dict(
+                    labels=["Story"],
+                    type="story"
+                ),
+                dict(
+                    labels=["Task"],
+                    type="task"
+                ),
+                dict(
+                    labels=["Bug"],
+                    type="bug"
+                ),
+            ]

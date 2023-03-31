@@ -181,13 +181,13 @@ def update_project_excluded_repositories(session, update_project_excluded_reposi
     else:
         raise ProcessingException(f'Could not find project with key: {update_project_excluded_repositories_input.project_key}')
 
-def update_project_custom_type_mappings(session, update_project_custom_type_mappings_input):
-    project = Project.find_by_project_key(session, update_project_custom_type_mappings_input.project_key)
+def update_project_custom_type_mappings(session, project_key, work_items_source_keys, custom_type_mappings):
+    project = Project.find_by_project_key(session, project_key)
     if project is not None:
-        for work_items_source_key in update_project_custom_type_mappings_input.work_items_source_keys:
+        for work_items_source_key in work_items_source_keys:
             work_items_source = find(project.work_items_sources, lambda source: str(source.key) == work_items_source_key)
             if work_items_source is not None:
-                work_items_source.update_custom_type_mappings(update_project_custom_type_mappings_input.custom_type_mappings)
+                work_items_source.update_custom_type_mappings(custom_type_mappings)
             else:
                 raise ProcessingException(f"Could not find work items source with key {work_items_source_key} in this project")
 
@@ -195,4 +195,4 @@ def update_project_custom_type_mappings(session, update_project_custom_type_mapp
             key=project.key
         )
     else:
-        raise ProcessingException(f'Could not find project with key: {update_project_custom_type_mappings_input.project_key}')
+        raise ProcessingException(f'Could not find project with key: {project_key}')

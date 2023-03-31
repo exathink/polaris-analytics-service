@@ -196,9 +196,19 @@ class UpdateProjectCustomTypeMappings(graphene.Mutation):
 
     def mutate(self, info, update_project_custom_type_mappings_input):
         logger.info('UpdateProject Custom Type Mappings called')
+        project_key = update_project_custom_type_mappings_input.project_key
+        work_items_source_keys = update_project_custom_type_mappings_input.work_items_source_keys
+        custom_type_mappings = update_project_custom_type_mappings_input.custom_type_mappings
 
-        result = db_api.update_project_custom_type_mappings(update_project_custom_type_mappings_input)
-        return UpdateProjectCustomTypeMappings(success=result.get('success'), error_message=result.get('exception'))
+        with db.orm_session() as session:
+            result = db_api.update_project_custom_type_mappings(
+                project_key=project_key,
+                work_items_source_keys=work_items_source_keys,
+                custom_type_mappings=custom_type_mappings
+            )
+
+
+            return UpdateProjectCustomTypeMappings(success=result.get('success'), error_message=result.get('exception'))
 
 class ProjectMutationsMixin:
     archive_project = ArchiveProject.Field()

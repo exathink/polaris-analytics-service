@@ -134,6 +134,7 @@ class TestProjectResponseTimePredictabilityTrends:
             )
 
         class WhenThereNoWorkItems:
+
             def it_returns_a_confidence_value_of_zero_for_each_measurement(self, setup):
                 fixture = setup
 
@@ -263,8 +264,8 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
-                           dict(l=0.666666666666667, c=0),
-                           dict(l=0, c=0)
+                           dict(l=0.6666666666666666, c=0.0),
+                           dict(l=0.0, c=0.0)
 
                        ]
 
@@ -289,8 +290,8 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
-                           dict(l=0.666666666666667, c=0),
-                           dict(l=0, c=0)
+                           dict(l=0.6666666666666666, c=0),
+                           dict(l=0.0, c=0.0)
                        ]
 
         class CaseWorkItemsWithLeadTimesAndCycleTimes:
@@ -391,8 +392,8 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
-                           dict(l=1, c=0.333333333333333),
-                           dict(l=0, c=0),
+                           dict(l=1.0, c=0.3333333333333333),
+                           dict(l=0.0, c=0.0),
 
                        ]
 
@@ -418,8 +419,8 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
-                           dict(l=1, c=0.666666666666667),
-                           dict(l=0, c=0),
+                           dict(l=1.0, c=0.6666666666666666),
+                           dict(l=0.0, c=0.0),
 
                        ]
 
@@ -445,8 +446,8 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
-                           dict(l=1, c=0.666666666666667),
-                           dict(l=0, c=0),
+                           dict(l=1.0, c=0.6666666666666666),
+                           dict(l=0.0, c=0.0),
 
                        ]
 
@@ -802,7 +803,7 @@ class TestProjectResponseTimePredictabilityTrends:
                            dict(l=measurement['leadTimeConfidence'], c=measurement['cycleTimeConfidence'])
                            for measurement in project['responseTimeConfidenceTrends']
                        ] == [
-                           dict(l=1, c=0.333333333333333),
+                           dict(l=1.0, c=0.3333333333333333),
 
-                           dict(l=0, c=0)
+                           dict(l=0.0, c=0.0)
                        ]

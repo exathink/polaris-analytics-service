@@ -11,12 +11,13 @@
 import graphene
 from datetime import datetime
 
-from polaris.analytics.db.enums import WorkItemsStateType, WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
+from polaris.analytics.db.enums import  WorkItemType, WorkItemsStateType, WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
 from polaris.graphql.interfaces import NamedNode
 from .utils import parse_json_timestamp
 
 from polaris.common.enums import WorkTrackingIntegrationType as _WorkTrackingIntegrationType
 
+WorkItemType = graphene.Enum.from_enum(WorkItemType)
 WorkTrackingIntegrationType = graphene.Enum.from_enum(_WorkTrackingIntegrationType)
 WorkItemsStateType = graphene.Enum.from_enum(WorkItemsStateType)
 WorkItemsStateFlowType = graphene.Enum.from_enum(WorkItemsStateFlowType)

@@ -363,6 +363,8 @@ class Project(Base):
                 self.add_repositories(repo)
 
     def update_settings(self, update_project_settings_input):
+        if getattr(update_project_settings_input, 'name', None) is not None:
+            self.name = update_project_settings_input.name
         # we have to make a deep copy here since sqlalchemy does not recognize in place modifications
         # to the dict in the jsonb field
         current = copy.deepcopy(self.settings) if self.settings is not None else dict()
@@ -772,6 +774,9 @@ class WorkItemsSource(Base):
     description = Column(String, nullable=True)
     # the id of the external source from which this work item source was imported.
     source_id = Column(String, nullable=True)
+
+    custom_type_mappings = Column(JSONB, nullable=True, server_default='[]')
+
     # Commit mapping scope specifies the repositories that are mapped to this
     # work item source. The valid values are ('organization', 'project', 'repository')
     # Given the commit mapping scope key, commits originating from all repositories
@@ -850,6 +855,8 @@ class WorkItemsSource(Base):
         if state_map is not None:
             return state_map.state_type
 
+    def update_custom_type_mappings(self, custom_type_mappings):
+        self.custom_type_mappings = custom_type_mappings
 
 work_items_sources = WorkItemsSource.__table__
 Index('ix_analytics_work_items_sources_commit_mapping_scope',

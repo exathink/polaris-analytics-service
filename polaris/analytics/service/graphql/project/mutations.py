@@ -206,7 +206,12 @@ class UpdateProjectCustomTypeMappings(graphene.Mutation):
                 work_items_source_keys=work_items_source_keys,
                 custom_type_mappings=custom_type_mappings
             )
-
+            if result.get('success'):
+                publish.project_custom_type_mappings_changed(
+                    project_key=project_key,
+                    work_items_source_keys=work_items_source_keys,
+                    custom_type_mappings=custom_type_mappings
+                )
 
             return UpdateProjectCustomTypeMappings(success=result.get('success'), error_message=result.get('exception'))
 

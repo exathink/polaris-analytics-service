@@ -25,7 +25,7 @@ from polaris.analytics.messaging.commands import UpdateCommitsWorkItemsSummaries
     ComputeContributorMetricsForCommits, ComputeContributorMetricsForWorkItems, \
     PopulateWorkItemSourceFileChangesForCommits, PopulateWorkItemSourceFileChangesForWorkItems, \
     ResolveCommitsForWorkItems, ResolvePullRequestsForWorkItems, ResolveWorkItemsForPullRequests, \
-    ResolveWorkItemsForCommits, ResolveTeamsForWorkItems, RecalculateCycleMetricsForWorkItemSource
+    ResolveWorkItemsForCommits, ResolveTeamsForWorkItems, RecalculateCycleMetricsForWorkItemSource, ProjectCustomTypeMappingsChanged
 
 
 from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChanged
@@ -68,6 +68,7 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
                 ResolveWorkItemsForCommits,
                 ResolveTeamsForWorkItems,
                 RecalculateCycleMetricsForWorkItemSource,
+                ProjectCustomTypeMappingsChanged,
                 # Internal messages
                 ContributorTeamAssignmentsChanged
             ],
@@ -329,6 +330,8 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
         elif RecalculateCycleMetricsForWorkItemSource.message_type == message.message_type:
             return self.process_recalculate_cycle_metrics_for_work_items_source(channel, message)
 
+        elif ProjectCustomTypeMappingsChanged.message_type == message.message_type:
+            return self.process_project_custom_type_mappings_changed(channel, message)
 
     @staticmethod
     def process_register_source_file_versions(channel, message):
@@ -642,3 +645,16 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             )
         )
 
+    @staticmethod
+    def process_project_custom_type_mappings_changed(channel, message):
+        project_key = message['project_key']
+        work_items_source_keys = message['work_items_source_keys']
+        logger.info(f'process_project_custom_type_mappings_changed for project {project_key} ')
+
+        return raise_on_failure(
+            message,
+            commands.update_work_item_types_from_custom_type_mapping(
+                project_key,
+                work_items_source_keys,
+            )
+        )

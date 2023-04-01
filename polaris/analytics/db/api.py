@@ -246,13 +246,15 @@ def update_project_work_items_source_state_mappings(project_state_mappings, join
         return db.failure_message('Update project work items source state mappings failed', e)
 
 
-def update_project_custom_type_mappings(update_project_custom_type_mappings_input, join_this=None):
+def update_project_custom_type_mappings(project_key, work_items_source_keys, custom_type_mappings, join_this=None):
     try:
         with db.orm_session(join_this) as session:
             return success(
                 impl.update_project_custom_type_mappings(
                     session,
-                    update_project_custom_type_mappings_input
+                    project_key,
+                    work_items_source_keys,
+                    custom_type_mappings
                 )
             )
     except SQLAlchemyError as exc:

@@ -8,6 +8,7 @@
 
 # Author: Krishna Kumar
 
+from polaris.utils.collections import Fixture
 from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem, WorkItemDeliveryCycle, \
     WorkItemStateTransition
 from polaris.analytics.db.enums import WorkItemsStateType
@@ -60,6 +61,36 @@ def setup_work_items_sources(setup_projects):
             )
         )
     yield project
+
+
+class ProjectWorkItemsTest:
+
+    @pytest.fixture()
+    def setup(self, setup_work_items_sources):
+        with db.orm_session() as session:
+            project = setup_work_items_sources
+            session.add(project)
+
+            organization=project.organization
+            work_items_source = project.work_items_sources[0]
+            work_items_common = dict(
+                state='doing',
+                created_at=get_date("2018-12-02"),
+                updated_at=get_date("2018-12-03"),
+                is_bug=True,
+                work_item_type='issue',
+                url='http://foo.com',
+                tags=['ares2'],
+                description='foo',
+                source_id=str(uuid.uuid4()),
+            )
+
+        yield Fixture(
+            organization=organization,
+            project=project,
+            work_items_source=work_items_source,
+            work_items_common=work_items_common
+        )
 
 
 @pytest.fixture()

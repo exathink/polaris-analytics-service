@@ -193,3 +193,19 @@ def recalculate_cycle_metrics_for_work_items_source(work_item_source_key, rebuil
         return db.process_exception("Recalculate cycle times for work items source failed", exc)
     except Exception as e:
         return db.failure_message('Recalculate cycle times for work items source failed', e)
+
+
+def update_work_item_types_from_custom_type_mapping(project_key, work_items_source_keys, join_this=None):
+    try:
+        with db.orm_session(join_this) as session:
+            return success(
+                impl.update_work_item_types_from_custom_type_mapping(
+                    session,
+                    project_key,
+                    work_items_source_keys,
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Update work items custom types from mapping failed", exc)
+    except Exception as e:
+        return db.failure_message('Update work items custom types from mapping failed', e)

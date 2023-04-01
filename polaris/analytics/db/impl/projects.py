@@ -11,9 +11,11 @@ import logging
 
 from sqlalchemy.sql.expression import and_, select, distinct, bindparam, update
 
-from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.analytics.db.enums import WorkItemsStateType, WorkItemType
 from polaris.analytics.db.model import Project, WorkItemsSource, work_items, work_items_source_state_map, \
     work_item_state_transitions, projects_repositories
+from polaris.analytics.db.utils import literal_postgres_string_array
+
 from polaris.utils.collections import find
 from polaris.utils.exceptions import ProcessingException
 
@@ -196,3 +198,60 @@ def update_project_custom_type_mappings(session, project_key, work_items_source_
         )
     else:
         raise ProcessingException(f'Could not find project with key: {project_key}')
+
+
+def update_work_item_types_for_work_items_source_from_custom_type_mapping(session, work_items_source):
+    updated = 0
+    for custom_type_mapping in work_items_source.custom_type_mappings:
+        if custom_type_mapping['work_item_type'] == WorkItemType.epic.value:
+            update_stmt = work_items.update().values(
+                work_item_type=custom_type_mapping['work_item_type'],
+                is_epic=True
+            ).where(
+                and_(
+                    work_items.c.work_items_source_id==work_items_source.id,
+                    work_items.c.tags.op("&&")(literal_postgres_string_array(custom_type_mapping['labels']))
+                )
+            )
+        elif custom_type_mapping['work_item_type'] == WorkItemType.bug.value:
+            update_stmt = work_items.update().values(
+                work_item_type=custom_type_mapping['work_item_type'],
+                is_bug=True
+            ).where(
+                and_(
+                    work_items.c.work_items_source_id == work_items_source.id,
+                    work_items.c.tags.op("&&")(literal_postgres_string_array(custom_type_mapping['labels']))
+                )
+            )
+        else:
+            update_stmt = work_items.update().values(
+                work_item_type=custom_type_mapping['work_item_type']
+            ).where(
+                and_(
+                    work_items.c.work_items_source_id == work_items_source.id,
+                    work_items.c.tags.op("&&")(literal_postgres_string_array(custom_type_mapping['labels']))
+                )
+            )
+
+        updated = updated + session.execute(update_stmt).rowcount
+
+    return updated
+
+def update_work_item_types_from_custom_type_mapping(session, project_key, work_items_source_keys):
+    logger.info(f"Updating work item custom types from mapping for project with key {project_key}")
+
+    updated = 0
+    project = Project.find_by_project_key(session, project_key)
+    if project is not None:
+        for work_items_source_key in work_items_source_keys:
+            work_items_source = find(project.work_items_sources, lambda wis: str(wis.key) == work_items_source_key)
+            if work_items_source is not None:
+                updated = updated + update_work_item_types_for_work_items_source_from_custom_type_mapping(session, work_items_source)
+            else:
+                logger.error(f"Work items source with key {work_items_source_key} is not a member of the project {project.name}. Custom type updates will be ignored")
+    else:
+        raise ProcessingException(f"Could not find project with key {project_key}")
+
+    return dict(
+        updated=updated
+    )

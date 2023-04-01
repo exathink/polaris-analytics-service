@@ -22,4 +22,4 @@ class ProjectCustomTypeMappingsChanged(Message):
     message_type = 'project.custom_type_mappings_changed'
 
     project_key = fields.String(required=True)
-    work_items_source_keys = fields.String(many=True, required=True)
+    work_items_source_keys = fields.List(fields.String(),  required=True)

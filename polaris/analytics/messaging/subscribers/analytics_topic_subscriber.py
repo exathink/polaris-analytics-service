@@ -649,7 +649,6 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
     def process_project_custom_type_mappings_changed(channel, message):
         project_key = message['project_key']
         work_items_source_keys = message['work_items_source_keys']
-        custom_type_mappings = message['custom_type_mappings']
         logger.info(f'process_project_custom_type_mappings_changed for project {project_key} ')
 
         return raise_on_failure(
@@ -657,6 +656,5 @@ class AnalyticsTopicSubscriber(TopicSubscriber):
             commands.update_work_item_types_from_custom_type_mapping(
                 project_key,
                 work_items_source_keys,
-                custom_type_mappings,
             )
         )

@@ -12,7 +12,7 @@ from .on_pull_requests_created import ResolveWorkItemsForPullRequests
 from .resolve_work_items_sources_for_repositories import ResolveWorkItemsSourcesForRepositories
 from .recalculate_cycle_metrics_for_work_items_source import RecalculateCycleMetricsForWorkItemSource
 
-from .on_project_custom_type_mapping_changed import ProjectCustomTypeMappingChanged
+from .on_project_custom_type_mapping_changed import ProjectCustomTypeMappingsChanged
 
 __exported__ = [
     ResolveWorkItemsForCommits,
@@ -32,7 +32,7 @@ __exported__ = [
     ResolveWorkItemsForPullRequests,
     ResolveTeamsForWorkItems,
     RecalculateCycleMetricsForWorkItemSource,
-    ProjectCustomTypeMappingChanged
+    ProjectCustomTypeMappingsChanged
 ]
 
 register_messages(__exported__)

@@ -12,7 +12,7 @@
 from polaris.messaging.topics import AnalyticsTopic
 from polaris.messaging.utils import publish
 from polaris.analytics.messaging.messages import ContributorTeamAssignmentsChanged
-from polaris.analytics.messaging.commands import ResolveCommitsForWorkItems, RecalculateCycleMetricsForWorkItemSource, ProjectCustomTypeMappingChanged
+from polaris.analytics.messaging.commands import ResolveCommitsForWorkItems, RecalculateCycleMetricsForWorkItemSource, ProjectCustomTypeMappingsChanged
 
 
 def contributor_team_assignments_changed(organization_key, contributor_team_assignments, channel=None):
@@ -60,12 +60,11 @@ def recalculate_cycle_metrics_for_work_items_source(project_key, work_items_sour
     )
     return message
 
-def project_custom_type_mappings_changed(project_key, work_items_source_keys, custom_type_mappings, channel=None):
-    message = ProjectCustomTypeMappingChanged(
+def project_custom_type_mappings_changed(project_key, work_items_source_keys, channel=None):
+    message = ProjectCustomTypeMappingsChanged(
         send=dict(
             project_key=project_key,
-            work_items_sources_keys=work_items_source_keys,
-            custom_type_mappings=custom_type_mappings
+            work_items_source_keys=work_items_source_keys
         )
     )
     publish(

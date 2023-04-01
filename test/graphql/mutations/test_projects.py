@@ -20,7 +20,7 @@ from polaris.analytics.db.enums import WorkItemsStateFlowType, WorkItemsStateRel
 
 from polaris.messaging.topics import AnalyticsTopic
 from polaris.messaging.test_utils import assert_topic_and_message
-from polaris.analytics.messaging import ProjectCustomTypeMappingChanged
+from polaris.analytics.messaging import ProjectCustomTypeMappingsChanged
 
 
 class TestArchiveProject:
@@ -1298,7 +1298,7 @@ class TestUpdateCustomTypeMapping:
             assert not response.get('errors')
             assert not response['data']['updateProjectCustomTypeMappings']['errorMessage']
 
-            assert_topic_and_message(publish, AnalyticsTopic, ProjectCustomTypeMappingChanged)
+            assert_topic_and_message(publish, AnalyticsTopic, ProjectCustomTypeMappingsChanged)
 
 
     def it_does_not_publish_the_message_when_the_update_fails(self, setup):

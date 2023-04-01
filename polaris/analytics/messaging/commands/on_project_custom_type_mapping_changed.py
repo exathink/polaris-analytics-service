@@ -15,15 +15,11 @@ from marshmallow import fields, Schema
 from polaris.messaging.messages import Message
 
 
-class CustomTypeMapping(Schema):
-   labels = fields.String(many=True, required=False)
-   work_item_type = fields.String(required=True)
 
 
 
-class ProjectCustomTypeMappingChanged(Message):
-    message_type = 'project.custom_type_mapping_changed'
+class ProjectCustomTypeMappingsChanged(Message):
+    message_type = 'project.custom_type_mappings_changed'
 
     project_key = fields.String(required=True)
-    work_items_sources_keys = fields.String(many=True, required=True)
-    custom_type_mappings = fields.Nested(CustomTypeMapping, many=True, allow_none=False)
+    work_items_source_keys = fields.String(many=True, required=True)

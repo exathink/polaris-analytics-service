@@ -9,6 +9,8 @@
 # Author: Krishna Kumar
 
 import uuid
+from io import StringIO
+
 from polaris.common import db
 from polaris.analytics.db.model import Account, Organization, FeatureFlag, FeatureFlagEnablement
 
@@ -66,3 +68,20 @@ def delete_feature_flag(feature_flag_name, join_this=None):
             session.delete(feature_flag)
 
 
+def literal_postgres_string_array(string_array):
+    # TODO:
+    # we need this hack due to some obscure type conversions issues in
+    # the ancient version of sqlalchemy we are using.
+    # revert to using builtin functions when we upgrade
+    output = StringIO()
+    output.write("{")
+    count = 0
+    for item in string_array:
+        if count > 0:
+            output.write(",")
+
+        output.write(f"\"{item}\"")
+        count = count + 1
+
+    output.write("}")
+    return output.getvalue()

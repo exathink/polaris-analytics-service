@@ -1885,7 +1885,7 @@ class TestDeleteWorkItem:
 
 
 class TestWorkTracking(WorkItemsTest):
-    class TestCustomTypeMapping:
+    class TestSetCustomTypeMappingOnWorkItemImportAndUpdate:
 
         @pytest.fixture()
         def setup(self, setup):

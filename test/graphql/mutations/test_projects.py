@@ -18,6 +18,10 @@ from test.fixtures.project_work_items_commits import *
 
 from polaris.analytics.db.enums import WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
 
+from polaris.messaging.topics import AnalyticsTopic
+from polaris.messaging.test_utils import assert_topic_and_message
+from polaris.analytics.messaging import ProjectCustomTypeMappingsChanged
+
 
 class TestArchiveProject:
 
@@ -1116,37 +1120,38 @@ class TestUpdateCustomTypeMapping:
         fixture = setup
 
         client = Client(schema)
-        response = client.execute("""
-            mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
-                updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
-                    success
-                    errorMessage
+        with patch('polaris.analytics.publish.publish'):
+            response = client.execute("""
+                mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
+                    updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
+                        success
+                        errorMessage
+                    }
                 }
-            }
-        """, variable_values=dict(
-            updateProjectCustomTypeMappingsInput=dict(
-                projectKey=str(fixture.project.key),
-                workItemsSourceKeys=[str(fixture.work_items_source.key)],
-                customTypeMappings=[
-                    dict(
-                        labels=["Epic"],
-                        workItemType="epic"
-                    ),
-                    dict(
-                        labels=["Story"],
-                        workItemType="story"
-                    ),
-                    dict(
-                        labels=["Task"],
-                        workItemType="task"
-                    ),
-                    dict(
-                        labels=["Bug"],
-                        workItemType="bug"
-                    ),
-                ]
-            )
-        ))
+            """, variable_values=dict(
+                updateProjectCustomTypeMappingsInput=dict(
+                    projectKey=str(fixture.project.key),
+                    workItemsSourceKeys=[str(fixture.work_items_source.key)],
+                    customTypeMappings=[
+                        dict(
+                            labels=["Epic"],
+                            workItemType="epic"
+                        ),
+                        dict(
+                            labels=["Story"],
+                            workItemType="story"
+                        ),
+                        dict(
+                            labels=["Task"],
+                            workItemType="task"
+                        ),
+                        dict(
+                            labels=["Bug"],
+                            workItemType="bug"
+                        ),
+                    ]
+                )
+            ))
 
         assert not response.get('errors')
         assert not response['data']['updateProjectCustomTypeMappings']['errorMessage']
@@ -1173,13 +1178,13 @@ class TestUpdateCustomTypeMapping:
             ]
 
     def it_returns_error_message_when_project_key_is_incorrect(self, setup):
-
         fixture = setup
 
         client = Client(schema)
         new_test_project_key = uuid.uuid4()
 
-        response = client.execute("""
+        with patch('polaris.analytics.publish.publish'):
+            response = client.execute("""
             mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
                 updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
                     success
@@ -1187,15 +1192,16 @@ class TestUpdateCustomTypeMapping:
                 }
             }
         """, variable_values=dict(
-            updateProjectCustomTypeMappingsInput=dict(
-                projectKey=str(new_test_project_key),
-                workItemsSourceKeys=[str(fixture.work_items_source.key)],
-                customTypeMappings=[]
-            )
-        ))
+                updateProjectCustomTypeMappingsInput=dict(
+                    projectKey=str(new_test_project_key),
+                    workItemsSourceKeys=[str(fixture.work_items_source.key)],
+                    customTypeMappings=[]
+                )
+            ))
 
         assert not response.get('errors')
-        assert response['data']['updateProjectCustomTypeMappings']['errorMessage'] == f"Could not find project with key: {new_test_project_key}"
+        assert response['data']['updateProjectCustomTypeMappings'][
+                   'errorMessage'] == f"Could not find project with key: {new_test_project_key}"
 
     def it_returns_error_message_when_work_items_source_key_is_incorrect(self, setup):
         fixture = setup
@@ -1203,23 +1209,25 @@ class TestUpdateCustomTypeMapping:
         client = Client(schema)
         new_test_work_items_source_key = uuid.uuid4()
 
-        response = client.execute("""
-            mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
-                updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
-                    success
-                    errorMessage
+        with patch('polaris.analytics.publish.publish'):
+            response = client.execute("""
+                mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
+                    updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
+                        success
+                        errorMessage
+                    }
                 }
-            }
-        """, variable_values=dict(
-            updateProjectCustomTypeMappingsInput=dict(
-                projectKey=str(fixture.project.key),
-                workItemsSourceKeys=[str(new_test_work_items_source_key)],
-                customTypeMappings=[]
-            )
-        ))
+            """, variable_values=dict(
+                updateProjectCustomTypeMappingsInput=dict(
+                    projectKey=str(fixture.project.key),
+                    workItemsSourceKeys=[str(new_test_work_items_source_key)],
+                    customTypeMappings=[]
+                )
+            ))
 
         assert not response.get('errors')
-        assert response['data']['updateProjectCustomTypeMappings']['errorMessage'] == f"Could not find work items source with key {new_test_work_items_source_key} in this project"
+        assert response['data']['updateProjectCustomTypeMappings'][
+                   'errorMessage'] == f"Could not find work items source with key {new_test_work_items_source_key} in this project"
 
     def it_returns_error_message_when_custom_type_mapping_is_incorrect(self, setup):
         fixture = setup
@@ -1250,3 +1258,72 @@ class TestUpdateCustomTypeMapping:
         ))
 
         assert 'Expected type "WorkItemType", found "feature"' in response.get('errors')[0]['message']
+
+    def it_publishes_the_project_custom_type_mapping_updated_message_on_success(self, setup):
+        fixture = setup
+        client = Client(schema)
+        with patch('polaris.analytics.publish.publish') as publish:
+            response = client.execute("""
+                mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
+                    updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
+                        success
+                        errorMessage
+                    }
+                }
+            """, variable_values=dict(
+                updateProjectCustomTypeMappingsInput=dict(
+                    projectKey=str(fixture.project.key),
+                    workItemsSourceKeys=[str(fixture.work_items_source.key)],
+                    customTypeMappings=[
+                        dict(
+                            labels=["Epic"],
+                            workItemType="epic"
+                        ),
+                        dict(
+                            labels=["Story"],
+                            workItemType="story"
+                        ),
+                        dict(
+                            labels=["Task"],
+                            workItemType="task"
+                        ),
+                        dict(
+                            labels=["Bug"],
+                            workItemType="bug"
+                        ),
+                    ]
+                )
+            ))
+
+            assert not response.get('errors')
+            assert not response['data']['updateProjectCustomTypeMappings']['errorMessage']
+
+            assert_topic_and_message(publish, AnalyticsTopic, ProjectCustomTypeMappingsChanged)
+
+
+    def it_does_not_publish_the_message_when_the_update_fails(self, setup):
+        fixture = setup
+        client = Client(schema)
+        new_test_project_key = uuid.uuid4()
+
+        with patch('polaris.analytics.publish.publish') as publish:
+            response = client.execute("""
+                    mutation updateProjectCustomTypeMappings($updateProjectCustomTypeMappingsInput: UpdateProjectCustomTypeMappingsInput!) {
+                        updateProjectCustomTypeMappings(updateProjectCustomTypeMappingsInput: $updateProjectCustomTypeMappingsInput) {
+                            success
+                            errorMessage
+                        }
+                    }
+                """, variable_values=dict(
+                updateProjectCustomTypeMappingsInput=dict(
+                    projectKey=str(new_test_project_key),
+                    workItemsSourceKeys=[str(fixture.work_items_source.key)],
+                    customTypeMappings=[]
+                )
+            ))
+
+        assert not response.get('errors')
+        assert response['data']['updateProjectCustomTypeMappings'][
+                   'errorMessage'] == f"Could not find project with key: {new_test_project_key}"
+
+        assert publish.assert_not_called

@@ -9,13 +9,12 @@
 # Author: Krishna Kumar
 import abc
 from datetime import datetime, timedelta
-from io import StringIO
 
-from sqlalchemy import and_, cast, Text, func, case, select, or_, literal, Date
-from sqlalchemy.dialects.postgresql import ARRAY, array
+from sqlalchemy import and_, cast, Text, func, case, select, or_, Date
 
 from polaris.analytics.db.enums import WorkItemsStateType, FlowTypes, WorkItemTypesToFlowTypes
-from polaris.analytics.db.model import work_items, work_item_delivery_cycles, work_items_sources
+from polaris.analytics.db.model import work_items, work_item_delivery_cycles
+from polaris.analytics.db.utils import literal_postgres_string_array
 from polaris.analytics.service.graphql.utils import date_column_is_in_measurement_window, get_before_date
 from polaris.common.enums import JiraWorkItemType
 from polaris.graphql.base_classes import InterfaceResolver
@@ -170,23 +169,6 @@ def apply_active_only_filter(select_stmt, work_items, **kwargs):
         )
         return select_stmt
 
-def literal_postgres_string_array(string_array):
-    # TODO:
-    # we need this hack due to some obscure type conversions issues in
-    # the ancient version of sqlalchemy we are using.
-    # revert to using builtin functions when we upgrade
-    output = StringIO()
-    output.write("{")
-    count = 0
-    for item in string_array:
-        if count > 0:
-            output.write(",")
-
-        output.write(f"\"{item}\"")
-        count = count + 1
-
-    output.write("}")
-    return output.getvalue()
 
 def apply_tags_clause(tags):
     return work_items.c.tags.op("&&")(literal_postgres_string_array(tags))

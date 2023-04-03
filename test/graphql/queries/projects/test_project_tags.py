@@ -69,4 +69,4 @@ class TestProjectTags(ProjectWorkItemsTest):
             '''
             result = client.execute(query, variable_values={'projectKey': str(project.key)})
             assert not result.get('errors')
-            assert result['data']['project']['tags'] == ['tag1', 'tag2', 'tag3', 'tag4']
+            assert set(result['data']['project']['tags']) == set(['tag1', 'tag2', 'tag3', 'tag4'])

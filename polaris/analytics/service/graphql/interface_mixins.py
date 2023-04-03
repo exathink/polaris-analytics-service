@@ -295,3 +295,11 @@ class UserRolesResolverMixin(KeyIdResolverMixin):
             for scoped_roles in self.account_roles or []
         ]
 
+class TagsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.tags = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_tags(self, info, **kwargs):
+        return self.tags or []

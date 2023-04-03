@@ -500,6 +500,8 @@ class FunnelViewAggregateMetrics(graphene.Interface):
 
     total_effort_by_state_type = graphene.Field(StateTypeAggregateMeasure, required=False)
 
+class Tags(graphene.Interface):
+    tags = graphene.List(graphene.String, required=False)
 
 class StateMapping(graphene.ObjectType):
     state = graphene.String(required=True)

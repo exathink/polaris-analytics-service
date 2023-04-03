@@ -17,14 +17,14 @@ from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, FunnelViewAggregateMetrics, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
-    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, BacklogTrends, ProjectSetupInfo
+    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, BacklogTrends, ProjectSetupInfo, Tags
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
     TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin, \
     ProjectInfoResolverMixin, FlowMixTrendsResolverMixin, CapacityTrendsResolverMixin, \
     PipelinePullRequestMetricsResolverMixin, PullRequestMetricsTrendsResolverMixin, FlowRateTrendsResolverMixin, \
-    BacklogTrendsResolverMixin
+    BacklogTrendsResolverMixin, TagsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -86,7 +86,8 @@ from .selectables import ProjectNode, \
     ProjectPullRequestMetricsTrends, \
     ProjectFlowRateTrends, \
     ProjectBacklogTrends, \
-    ProjectsProjectSetupInfo
+    ProjectsProjectSetupInfo, \
+    ProjectTags
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -107,6 +108,7 @@ class Project(
     PullRequestMetricsTrendsResolverMixin,
     FlowRateTrendsResolverMixin,
     BacklogTrendsResolverMixin,
+    TagsResolverMixin,
 
     # Connection Mixins
     RepositoriesConnectionMixin,
@@ -161,7 +163,8 @@ Implicit Interfaces: ArchivedStatus
             PipelinePullRequestMetrics,
             PullRequestMetricsTrends,
             FlowRateTrends,
-            BacklogTrends
+            BacklogTrends,
+            Tags
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -184,7 +187,8 @@ Implicit Interfaces: ArchivedStatus
             'PipelinePullRequestMetrics': ProjectPipelinePullRequestMetrics,
             'PullRequestMetricsTrends': ProjectPullRequestMetricsTrends,
             'FlowRateTrends': ProjectFlowRateTrends,
-            'BacklogTrends': ProjectBacklogTrends
+            'BacklogTrends': ProjectBacklogTrends,
+            'Tags': ProjectTags
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -200,6 +204,7 @@ Implicit Interfaces: ArchivedStatus
             'work_item_delivery_cycles': ProjectWorkItemDeliveryCycleNodes,
             'pull_requests': ProjectPullRequestNodes,
             'value_streams': ProjectValueStreamNodes,
+
         }
         selectable_field_resolvers = {
             'cumulative_commit_count': ProjectCumulativeCommitCount,

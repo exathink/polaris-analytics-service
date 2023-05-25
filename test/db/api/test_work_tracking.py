@@ -342,7 +342,7 @@ class TestImportWorkItems(WorkItemsTest):
                 ),
 
             ])
-            assert result['success']
+            assert not result.get('exception')
             assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
             with db.orm_session() as session:
                 cross_project = model.WorkItemsSource.find_by_work_items_source_key(session, cross_project_key)
@@ -380,8 +380,73 @@ class TestImportWorkItems(WorkItemsTest):
                 primary = model.WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
                 assert len(primary.work_items) == 1
 
+        def it_resolves_parent_keys_across_work_items_sources_when_parent_precedes_child(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
 
-class TestUpdateWorkItems:
+            item_keys = [uuid.uuid4(), uuid.uuid4()]
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    ** work_items_common()
+                ),
+
+            ])
+            assert result['success']
+            assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
+            with db.orm_session() as session:
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[1])
+                assert child.parent is not None
+                assert child.parent.key == item_keys[0]
+
+        def it_resolves_parent_keys_across_work_items_sources_when_child_precedes_parent(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            item_keys = [uuid.uuid4(), uuid.uuid4()]
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    ** work_items_common()
+                ),
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                )
+
+            ])
+            assert result['success']
+            assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
+            with db.orm_session() as session:
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[1])
+                assert child.parent is not None
+                assert child.parent.key == item_keys[0]
+
+
+class TestUpdateWorkItems(WorkItemsTest):
 
     def it_updates_name(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -599,6 +664,70 @@ class TestUpdateWorkItems:
         assert len(result['new_work_items']) == 1
         assert result['new_work_items'][0] == work_items[0]['key']
 
+    class TestMultipleSourceUpdate:
+
+        @pytest.fixture
+        def setup(self, setup):
+            fixture = setup
+            with db.orm_session() as session:
+                organization = model.Organization.find_by_organization_key(session, fixture.organization_key)
+                cross_project_key = uuid.uuid4()
+                cross_project = create_work_items_source(organization.id, work_items_source_key=cross_project_key)
+                session. add(cross_project)
+
+            yield Fixture(
+                parent=fixture,
+                cross_project_key=cross_project_key
+            )
+
+        def it_updates_work_items_in_different_work_items_sources(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            # first import work items
+            item_keys = [uuid.uuid4().hex, uuid.uuid4().hex]
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0],
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1],
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    ** work_items_common()
+                ),
+
+            ])
+            assert result['success']
+
+
+            result = api.update_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0],
+                    name="10001-1",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1],
+                    name="10002-1",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    **work_items_common()
+                ),
+
+            ])
+            assert result['success']
+            assert  result['update_count'] == 2
+            assert len(result['new_work_items']) == 0
 
 class TestStateTransitionSequence:
 

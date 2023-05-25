@@ -73,7 +73,7 @@ class TestRegisterWorkItemsSource:
         ).scalar() == 1
 
 
-class TestImportWorkItems:
+class TestImportWorkItems(WorkItemsTest):
 
     def it_imports_new_work_items(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -302,6 +302,83 @@ class TestImportWorkItems:
         # Work item should have epic id updated
         assert db.connection().execute(
             f"select count(id) from analytics.work_items where parent_id='{parent_id}'").scalar() == 1
+
+    class TestMultipleSourceImport:
+
+        @pytest.fixture
+        def setup(self, setup):
+            fixture = setup
+            with db.orm_session() as session:
+                organization = model.Organization.find_by_organization_key(session, fixture.organization_key)
+                cross_project_key = uuid.uuid4()
+                cross_project = create_work_items_source(organization.id, work_items_source_key=cross_project_key)
+                session. add(cross_project)
+
+            yield Fixture(
+                parent=fixture,
+                cross_project_key=cross_project_key
+            )
+
+        def it_imports_work_items_from_different_work_items_sources(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    ** work_items_common()
+                ),
+
+            ])
+            assert result['success']
+            assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
+            with db.orm_session() as session:
+                cross_project = model.WorkItemsSource.find_by_work_items_source_key(session, cross_project_key)
+                assert len(cross_project.work_items) == 1
+
+        def it_imports_using_the_primary_work_item_source_key_if_one_is_not_provided_in_the_summary(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=cross_project_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name="10002",
+                    display_id="10002",
+                    # we are not providing a work item source key here. Should use primary
+                    ** work_items_common()
+                ),
+
+            ])
+            assert result['success']
+            assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
+            with db.orm_session() as session:
+                cross_project = model.WorkItemsSource.find_by_work_items_source_key(session, cross_project_key)
+                assert len(cross_project.work_items) == 1
+
+                primary = model.WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+                assert len(primary.work_items) == 1
 
 
 class TestUpdateWorkItems:

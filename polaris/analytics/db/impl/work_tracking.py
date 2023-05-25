@@ -136,7 +136,30 @@ def update_work_item_custom_type(work_items_source, work_item_summaries):
         for work_item_summary in work_item_summaries
     ]
 
+def partition_by_work_items_source(work_items_source_key, work_item_summaries):
+    partitions = dict()
+    for work_item in work_item_summaries:
+        key = work_item.get('work_items_source_key', work_items_source_key)
+        partition = partitions.get(key, [])
+        if len(partition) == 0:
+            partitions[key] = partition
+
+        partition.append(work_item)
+    return partitions
+
 def import_new_work_items(session, work_items_source_key, work_item_summaries):
+    result = dict(
+        insert_count=0,
+        updated=0
+    )
+    for work_items_source_key, work_item_summaries in partition_by_work_items_source(work_items_source_key, work_item_summaries).items():
+        changes = import_new_work_items_into_source(session, work_items_source_key,work_item_summaries)
+        result['insert_count'] = result['insert_count'] +  changes['insert_count']
+        result['updated'] = result['updated'] + changes['updated']
+
+    return result
+
+def import_new_work_items_into_source(session, work_items_source_key, work_item_summaries):
     updated = 0
     inserted = 0
     if len(work_item_summaries) > 0:

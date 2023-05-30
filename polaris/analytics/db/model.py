@@ -406,6 +406,10 @@ class ValueStream(Base):
 
     work_item_selectors = Column(ARRAY(String), nullable=False, server_default='{}')
 
+    @classmethod
+    def find_by_key(cls, session, key):
+        return session.query(cls).filter(cls.key == key).first()
+
 value_streams = ValueStream.__table__
 
 class Repository(Base):

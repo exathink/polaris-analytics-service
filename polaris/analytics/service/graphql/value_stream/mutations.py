@@ -40,6 +40,39 @@ class CreateValueStream(graphene.Mutation):
             value_stream=ValueStream.resolve_field(self,info, value_stream_key=result['key'])
         )
 
+class EditValueStreamInput(graphene.InputObjectType):
+    project_key = graphene.String(required=True)
+    value_stream_key = graphene.String(required=True)
+    name = graphene.String (required=False)
+    description = graphene.String(required=False)
+
+    work_item_selectors = graphene.List(graphene.String, required=False)
+
+class EditValueStream(graphene.Mutation):
+    class Arguments:
+        edit_value_stream_input = EditValueStreamInput(required=True)
+
+    value_stream = ValueStream.Field()
+    success = graphene.Boolean()
+    errorMessage = graphene.String()
+
+    def mutate(self, info, edit_value_stream_input):
+
+            result = db_api.edit_value_stream(
+                edit_value_stream_input.project_key,
+                edit_value_stream_input.value_stream_key,
+                edit_value_stream_input.name,
+                edit_value_stream_input.description,
+                edit_value_stream_input.work_item_selectors
+            )
+
+            return EditValueStream(
+                success= result['success'],
+                errorMessage=result.get('exception'),
+                value_stream=ValueStream.resolve_field(self,info, value_stream_key=result.get('key')) if result['success'] else None
+            )
+
 
 class ValueStreamMutationsMixin:
     create_value_stream = CreateValueStream.Field()
+    edit_value_stream = EditValueStream.Field()

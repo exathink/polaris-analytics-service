@@ -419,3 +419,20 @@ def create_value_stream(project_key, name,  description, work_item_selectors):
     except Exception as e:
         return db.failure_message('Create Value Stream failed', e)
 
+def edit_value_stream(project_key, value_stream_key, name, description, work_item_selectors):
+    try:
+        with db.orm_session() as session:
+            return success(
+                impl.edit_value_stream(
+                    session,
+                    project_key,
+                    value_stream_key,
+                    name,
+                    description,
+                    work_item_selectors
+                )
+            )
+    except SQLAlchemyError as exc:
+        return db.process_exception("Edit Value Stream failed", exc)
+    except Exception as e:
+        return db.failure_message('Edit Value Stream failed', e)

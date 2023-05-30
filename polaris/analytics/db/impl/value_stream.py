@@ -32,3 +32,22 @@ def create_value_stream(session, project_key, name, description, work_item_selec
         )
     else:
         raise ProcessingException(f"Could not find project with key {project_key}")
+
+def edit_value_stream(session, project_key, value_stream_key, name, description, work_item_selectors):
+    project = Project.find_by_project_key(session, project_key)
+    if project is not None:
+        value_stream = ValueStream.find_by_key(session, value_stream_key)
+        if value_stream is not None:
+            if name is not None:
+                value_stream.name = name
+            if description is not None:
+                value_stream.description = description
+            if work_item_selectors is not None:
+                value_stream.work_item_selectors = work_item_selectors
+            return dict(
+                key=value_stream_key
+            )
+        else:
+            raise ProcessingException(f"Could not find value stream with key {value_stream_key}")
+    else:
+        raise ProcessingException(f"Could not find project with key {project_key}")

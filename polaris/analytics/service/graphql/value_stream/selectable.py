@@ -29,6 +29,7 @@ class ValueStreamNode(NamedNodeResolver):
             value_streams.c.id,
             value_streams.c.key,
             value_streams.c.name,
+            value_streams.c.description,
             value_streams.c.work_item_selectors
         ]).where(
             value_streams.c.key == bindparam('key')

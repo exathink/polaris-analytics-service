@@ -891,6 +891,7 @@ class WorkItem(Base):
     is_epic = Column(Boolean, nullable=False, default=False, server_default='FALSE')
     parent_id = Column(Integer, ForeignKey('work_items.id'), nullable=True)
     parent = relationship('WorkItem', remote_side='WorkItem.id')
+    parent_key = Column(UUID(as_uuid=True), nullable=True)
 
     # calculated fields
 

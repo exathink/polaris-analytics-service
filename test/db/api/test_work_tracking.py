@@ -73,7 +73,7 @@ class TestRegisterWorkItemsSource:
         ).scalar() == 1
 
 
-class TestImportWorkItems:
+class TestImportWorkItems(WorkItemsTest):
 
     def it_imports_new_work_items(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -303,8 +303,225 @@ class TestImportWorkItems:
         assert db.connection().execute(
             f"select count(id) from analytics.work_items where parent_id='{parent_id}'").scalar() == 1
 
+    class TestMultipleSourceImport:
 
-class TestUpdateWorkItems:
+        @pytest.fixture
+        def setup(self, setup):
+            fixture = setup
+            with db.orm_session() as session:
+                organization = model.Organization.find_by_organization_key(session, fixture.organization_key)
+                cross_project_key = uuid.uuid4()
+                cross_project = create_work_items_source(organization.id, work_items_source_key=cross_project_key)
+                session. add(cross_project)
+
+            yield Fixture(
+                parent=fixture,
+                cross_project_key=cross_project_key
+            )
+
+        def it_imports_work_items_from_different_work_items_sources(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    ** work_items_common()
+                ),
+
+            ])
+            assert not result.get('exception')
+            assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
+            with db.orm_session() as session:
+                cross_project = model.WorkItemsSource.find_by_work_items_source_key(session, cross_project_key)
+                assert len(cross_project.work_items) == 1
+
+        def it_imports_using_the_primary_work_item_source_key_if_one_is_not_provided_in_the_summary(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=cross_project_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name="10002",
+                    display_id="10002",
+                    # we are not providing a work item source key here. Should use primary
+                    ** work_items_common()
+                ),
+
+            ])
+            assert result['success']
+            assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
+            with db.orm_session() as session:
+                cross_project = model.WorkItemsSource.find_by_work_items_source_key(session, cross_project_key)
+                assert len(cross_project.work_items) == 1
+
+                primary = model.WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+                assert len(primary.work_items) == 1
+
+        def it_resolves_parent_keys_across_work_items_sources_when_parent_precedes_child(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            item_keys = [uuid.uuid4(), uuid.uuid4()]
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    ** work_items_common()
+                ),
+
+            ])
+            assert result['success']
+            assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
+            with db.orm_session() as session:
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[1])
+                assert child.parent is not None
+                assert child.parent.key == item_keys[0]
+
+        def it_resolves_parent_keys_across_work_items_sources_when_child_precedes_parent(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            item_keys = [uuid.uuid4(), uuid.uuid4()]
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    ** work_items_common()
+                ),
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                )
+
+            ])
+            assert result['success']
+            assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
+            with db.orm_session() as session:
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[1])
+                assert child.parent is not None
+                assert child.parent.key == item_keys[0]
+
+        def it_resolves_parent_keys_across_work_items_sources_when_parent_arrives_after_child(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            item_keys = [uuid.uuid4(), uuid.uuid4()]
+
+            api.import_new_work_items(organization_key, work_items_source_key, [
+
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    ** work_items_common()
+                ),
+
+            ])
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                )
+
+            ])
+            assert result['success']
+            assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
+            with db.orm_session() as session:
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[1])
+                assert child.parent is not None
+                assert child.parent.key == item_keys[0]
+
+        def it_resolves_parent_keys_across_work_items_sources_when_parent_arrives_before_child(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            item_keys = [uuid.uuid4(), uuid.uuid4()]
+
+            api.import_new_work_items(organization_key, work_items_source_key, [
+
+                dict(
+                    key=item_keys[0].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=None,
+                    ** work_items_common()
+                ),
+
+            ])
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[1].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    parent_key=item_keys[0].hex,
+                    **work_items_common()
+                )
+
+            ])
+            assert result['success']
+            assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 2
+            with db.orm_session() as session:
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[1])
+                assert child.parent is not None
+                assert child.parent.key == item_keys[0]
+
+
+class TestUpdateWorkItems(WorkItemsTest):
 
     def it_updates_name(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -521,6 +738,345 @@ class TestUpdateWorkItems:
         assert db.connection().execute("select count(id) from analytics.work_items where name='foo'").scalar() == 1
         assert len(result['new_work_items']) == 1
         assert result['new_work_items'][0] == work_items[0]['key']
+
+    class TestMultipleSourceUpdate:
+
+        @pytest.fixture
+        def setup(self, setup):
+            fixture = setup
+            with db.orm_session() as session:
+                organization = model.Organization.find_by_organization_key(session, fixture.organization_key)
+                cross_project_key = uuid.uuid4()
+                cross_project = create_work_items_source(organization.id, work_items_source_key=cross_project_key)
+                session. add(cross_project)
+
+            yield Fixture(
+                parent=fixture,
+                cross_project_key=cross_project_key
+            )
+
+        def it_updates_work_items_in_different_work_items_sources(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            # first import work items
+            item_keys = [uuid.uuid4().hex, uuid.uuid4().hex]
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0],
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1],
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    ** work_items_common()
+                ),
+
+            ])
+            assert result['success']
+
+
+            result = api.update_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0],
+                    name="10001-1",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1],
+                    name="10002-1",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    **work_items_common()
+                ),
+
+            ])
+            assert result['success']
+            assert  result['update_count'] == 2
+            assert len(result['new_work_items']) == 0
+
+            assert db.connection().execute(f"select name from analytics.work_items where display_id='10001'").scalar() == "10001-1"
+            assert db.connection().execute(f"select name from analytics.work_items where display_id='10002'").scalar() == "10002-1"
+
+        def it_updates_parents_across_work_items_sources_from_cross_to_same(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            # first import work items
+            item_keys = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[2].hex,
+                    name="10003",
+                    display_id="10003",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[1].hex,
+                    **work_items_common()
+                ),
+
+            ])
+            assert result['success']
+
+
+            result = api.update_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[2].hex,
+                    name="10003",
+                    display_id="10003",
+                    work_items_source_key=cross_project_key,
+                    #change this parent
+                    parent_key=item_keys[0].hex,
+                    **work_items_common()
+                )
+
+            ])
+            assert result['success']
+            assert  result['update_count'] == 3
+            assert len(result['new_work_items']) == 0
+
+            with db.orm_session() as session:
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[2])
+                assert child.parent is not None
+                assert child.parent.key == item_keys[0]
+
+        def it_updates_parents_across_work_items_sources_from_cross_to_same(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            # first import work items
+            item_keys = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[2].hex,
+                    name="10003",
+                    display_id="10003",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[1].hex,
+                    **work_items_common()
+                ),
+
+            ])
+            assert result['success']
+
+
+            result = api.update_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[2].hex,
+                    name="10003",
+                    display_id="10003",
+                    work_items_source_key=cross_project_key,
+                    #change this parent
+                    parent_key=item_keys[0].hex,
+                    **work_items_common()
+                )
+
+            ])
+            assert result['success']
+            assert  result['update_count'] == 3
+            assert len(result['new_work_items']) == 0
+
+            with db.orm_session() as session:
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[2])
+                assert child.parent is not None
+                assert child.parent.key == item_keys[0]
+
+        def it_updates_parents_to_null(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            # first import work items
+            item_keys = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    **work_items_common()
+                ),
+
+            ])
+            assert result['success']
+
+            with db.orm_session() as session:
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[1])
+                assert child.parent is not None
+
+            result = api.update_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=None,
+                    **work_items_common()
+                )
+
+            ])
+            assert result['success']
+            assert  result['update_count'] == 2
+            assert len(result['new_work_items']) == 0
+
+            with db.orm_session() as session:
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[1])
+                assert child.parent is None
+
+
+        def it_does_not_add_new_work_items_found_during_updates(self, setup):
+            fixture = setup
+            organization_key = fixture.organization_key
+            work_items_source_key = fixture.work_items_source_key
+            cross_project_key = fixture.cross_project_key
+
+            # first import work items
+            item_keys = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
+            result = api.import_new_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    **work_items_common()
+                )
+            ])
+            assert result['success']
+
+
+            result = api.update_work_items(organization_key, work_items_source_key, [
+                dict(
+                    key=item_keys[0].hex,
+                    name="10001",
+                    display_id="10001",
+                    work_items_source_key=work_items_source_key,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[1].hex,
+                    name="10002",
+                    display_id="10002",
+                    work_items_source_key=cross_project_key,
+                    parent_key=item_keys[0].hex,
+                    **work_items_common()
+                ),
+                dict(
+                    key=item_keys[2].hex,
+                    name="10003",
+                    display_id="10003",
+                    work_items_source_key=cross_project_key,
+                    #change this parent from cross parent back to same work item source
+                    parent_key=item_keys[1].hex,
+                    **work_items_common()
+                )
+
+            ])
+            assert result['success']
+            assert  result['update_count'] == 2
+            with db.orm_session() as session:
+                # new items found during update are not added.
+                child = model.WorkItem.find_by_work_item_key(session, item_keys[2])
+                assert child is None
+
+            assert len(result['new_work_items']) == 1
+
+
 
 
 class TestStateTransitionSequence:

@@ -152,16 +152,16 @@ def import_new_work_items(session, work_items_source_key, work_item_summaries):
         insert_count=0,
         updated=0
     )
-    temp_tables = []
+
     for work_items_source_key, work_item_summaries in partition_by_work_items_source(work_items_source_key, work_item_summaries).items():
         changes = import_new_work_items_into_source(session, work_items_source_key,work_item_summaries)
-        temp_tables.append(select([changes['temp_table']]))
+
 
         result['insert_count'] = result['insert_count'] +  changes['insert_count']
         result['updated'] = result['updated'] + changes['updated']
 
-    union_temp_tables = union_all(*temp_tables).alias('all_temp_tables')
-    resolve_parent_child_relationships(session, union_temp_tables)
+
+    resolve_parent_child_relationships(session, work_items_source_key)
 
     return result
 
@@ -179,7 +179,6 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                 ],
                 extra_columns=[
                     Column('work_item_id', Integer),
-                    Column('parent_key', UUID)
                 ]
             )
             work_items_temp.create(session.connection(), checkfirst=True)
@@ -249,6 +248,7 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                         'work_items_source_id',
                         'source_id',
                         'parent_id',
+                        'parent_key',
                         'next_state_seq_no',
                         'commit_identifiers'
                     ],
@@ -271,6 +271,7 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                             work_items_temp.c.work_items_source_id,
                             work_items_temp.c.source_id,
                             work_items_temp.c.parent_id,
+                            work_items_temp.c.parent_key,
                             # We initialize the next state seq no as 2 since
                             # the seq_no 0 and 1 will be taken up by the initial states which
                             # we create below. Subsequent state changes will use
@@ -358,31 +359,47 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
     return dict(
         insert_count=inserted,
         updated=updated,
-        temp_table=work_items_temp
     )
 
 
-def resolve_parent_child_relationships(session, work_items_temp):
+def resolve_parent_child_relationships(session, work_items_source_key):
     # Get parent id for work items with non null parent_key
-    parent_work_items = work_items.alias('parent_work_items')
-    work_item_parent_id_map = select([
-        work_items.c.id,
-        parent_work_items.c.id.label('parent_id')
-    ]).select_from(
-        work_items_temp.join(
-            work_items, work_items_temp.c.key == work_items.c.key
-        ).join(
-            parent_work_items, work_items_temp.c.parent_key == parent_work_items.c.key
-        )
-    ).cte('work_item_parent_id_map')
-    # update parent id
-    session.connection().execute(
-        work_items.update().values(
-            parent_id=work_item_parent_id_map.c.parent_id
+
+    work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+    if work_items_source is not None:
+        parents = work_items.alias()
+
+        # we search for any parent child relationships that can now be resolved
+        # with parents or children that have been inserted into the work items tables
+        # in the previous phases.
+        newly_resolved_parents = select([
+            work_items.c.id,
+            parents.c.id.label('parent_id')
+        ]).select_from(
+            work_items.join(
+                work_items_sources, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                organizations, work_items_sources.c.organization_id == organizations.c.id
+            ).join(
+                parents, work_items.c.parent_key == parents.c.key
+            )
         ).where(
-            work_items.c.id == work_item_parent_id_map.c.id
+            and_(
+                organizations.c.key == work_items_source.organization_key,
+                or_(
+                    work_items.c.parent_id != parents.c.id,
+                    work_items.c.parent_id == None
+                )
+            )
+        ).cte()
+
+        session.connection().execute(
+            work_items.update().values(
+                parent_id=newly_resolved_parents.c.parent_id
+            ).where(
+                work_items.c.id == newly_resolved_parents.c.id
+            )
         )
-    )
 
 
 def update_work_item_calculated_fields(work_items_source, work_item_summaries):
@@ -948,6 +965,7 @@ def update_work_items(session, work_items_source_key, work_item_summaries):
         result['state_changes'].extend(changes['state_changes'])
         result['new_work_items'].extend(changes['new_work_items'])
 
+    resolve_parent_child_relationships(session, work_items_source_key)
     return result
 
 def update_work_items_for_source(session, work_items_source_key, work_item_summaries):
@@ -965,9 +983,6 @@ def update_work_items_for_source(session, work_items_source_key, work_item_summa
                 exclude_columns=[
                     work_items.c.id,
                     work_items.c.work_items_source_id
-                ],
-                extra_columns=[
-                    Column('parent_key', UUID)
                 ]
             )
             work_items_temp.create(session.connection(), checkfirst=True)
@@ -1012,13 +1027,7 @@ def update_work_items_for_source(session, work_items_source_key, work_item_summa
                 )
             ).fetchall()
 
-            session.connection().execute(
-                work_items_temp.update().where(
-                    work_items.c.key == work_items_temp.c.parent_key
-                ).values(
-                    parent_id=work_items.c.id
-                )
-            )
+
 
             state_changes = db.row_proxies_to_dict(
                 session.connection().execute(
@@ -1107,6 +1116,7 @@ def update_work_items_for_source(session, work_items_source_key, work_item_summa
                     state_type=work_items_temp.c.state_type,
                     updated_at=work_items_temp.c.updated_at,
                     parent_id=work_items_temp.c.parent_id,
+                    parent_key=work_items_temp.c.parent_key,
                     commit_identifiers=work_items_temp.c.commit_identifiers
                 ).where(
                     work_items_temp.c.key == work_items.c.key,

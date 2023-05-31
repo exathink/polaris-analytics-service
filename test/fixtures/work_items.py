@@ -56,9 +56,9 @@ def work_items_closed():
     )
 
 
-def work_item_source_common():
+def work_item_source_common(work_items_source_key=rails_work_items_source_key):
     return dict(
-        key=rails_work_items_source_key.hex,
+        key=work_items_source_key.hex,
         name='Rails Project',
         integration_type='github',
         work_items_source_type='repository_issues',
@@ -72,20 +72,7 @@ def work_item_source_common():
 def work_items_setup(setup_repo_org):
     _, organization_id = setup_repo_org
     with db.orm_session() as session:
-        work_items_source = WorkItemsSource(
-            organization_id=organization_id,
-            organization_key=rails_organization_key,
-            **work_item_source_common()
-        )
-        state_map_entries = [
-            dict(state='created', state_type=WorkItemsStateType.backlog.value),
-            dict(state='open', state_type=WorkItemsStateType.open.value),
-            dict(state='wip', state_type=WorkItemsStateType.wip.value),
-            dict(state='complete', state_type=WorkItemsStateType.complete.value),
-            dict(state='closed', state_type=WorkItemsStateType.closed.value),
-            dict(state='done', state_type=WorkItemsStateType.closed.value)
-        ]
-        work_items_source.init_state_map(state_map_entries)
+        work_items_source = create_work_items_source(organization_id)
         session.add(
             work_items_source
         )
@@ -99,6 +86,25 @@ def work_items_setup(setup_repo_org):
     db.connection().execute("delete from analytics.work_item_state_transitions")
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")
+
+
+def create_work_items_source(organization_id, work_items_source_key=rails_work_items_source_key):
+    work_items_source = WorkItemsSource(
+        organization_id=organization_id,
+        organization_key=rails_organization_key,
+        **work_item_source_common(work_items_source_key)
+    )
+    state_map_entries = [
+        dict(state='created', state_type=WorkItemsStateType.backlog.value),
+        dict(state='open', state_type=WorkItemsStateType.open.value),
+        dict(state='wip', state_type=WorkItemsStateType.wip.value),
+        dict(state='complete', state_type=WorkItemsStateType.complete.value),
+        dict(state='closed', state_type=WorkItemsStateType.closed.value),
+        dict(state='done', state_type=WorkItemsStateType.closed.value)
+    ]
+    work_items_source.init_state_map(state_map_entries)
+    return work_items_source
+
 
 class WorkItemsTest:
 

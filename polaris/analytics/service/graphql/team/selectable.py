@@ -23,7 +23,7 @@ from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
 
 from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, CycleMetricsTrends, \
     PipelineCycleMetrics, CommitInfo, WorkItemsSourceRef, PullRequestInfo, CommitSummary, FlowMixTrends, \
-    PullRequestMetricsTrends, CapacityTrends, TeamInfo
+    PullRequestMetricsTrends, CapacityTrends, TeamInfo, TraceabilityTrends
 
 from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, \
     work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase, work_items_connection_apply_filters, \
@@ -982,3 +982,13 @@ class TeamCapacityTrends(InterfaceResolver):
             )
         else:
             return cls.get_aggregate_capacity_trends(measurement_window, team_nodes, timeline_dates)
+
+class TeamTraceabilityTrends(InterfaceResolver):
+    interface = TraceabilityTrends
+
+
+    @classmethod
+    def interface_selector(cls, team_nodes, **kwargs):
+        capacity_trends_args = kwargs.get('traceability_trends_args')
+
+        return None

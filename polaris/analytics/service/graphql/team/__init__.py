@@ -13,18 +13,19 @@ import graphene
 from polaris.graphql.selectable import Selectable, CountableConnection, ConnectionResolverMixin
 from polaris.graphql.interfaces import NamedNode
 from ..interfaces import ContributorCount, PipelineCycleMetrics, CycleMetricsTrends, CommitSummary, FlowMixTrends,\
-    PullRequestMetricsTrends, CapacityTrends, TeamInfo
+    PullRequestMetricsTrends, CapacityTrends, TeamInfo, TraceabilityTrends
 
 from ..interface_mixins import NamedNodeResolverMixin, CycleMetricsTrendsResolverMixin, \
     PipelineCycleMetricsResolverMixin, FlowMixTrendsResolverMixin, PullRequestMetricsTrendsResolverMixin, \
-    CapacityTrendsResolverMixin, TeamInfoResolverMixin
+    CapacityTrendsResolverMixin, TeamInfoResolverMixin, TraceabilityTrendsResolverMixin
 
 from .selectable import TeamNode, TeamContributorCount, TeamWorkItemDeliveryCycleNodes, \
     TeamCycleMetricsTrends, TeamPipelineCycleMetrics, TeamCommitNodes, TeamWorkItemNodes, \
-    TeamPullRequestNodes, TeamCommitSummary, TeamFlowMixTrends, TeamPullRequestMetricsTrends, TeamCapacityTrends
+    TeamPullRequestNodes, TeamCommitSummary, TeamFlowMixTrends, TeamPullRequestMetricsTrends, TeamCapacityTrends, \
+    TeamTraceabilityTrends
 
 from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, FlowMixTrendsParameters, \
-    PullRequestMetricsTrendsParameters, CapacityTrendsParameters
+    PullRequestMetricsTrendsParameters, CapacityTrendsParameters, TraceabilityMetricsTrendsParameters
 
 from ..work_item import WorkItemDeliveryCyclesConnectionMixin, WorkItemsConnectionMixin
 from ..commit import CommitsConnectionMixin
@@ -43,11 +44,12 @@ class Team(
     PullRequestMetricsTrendsResolverMixin,
     CapacityTrendsResolverMixin,
     TeamInfoResolverMixin,
+    TraceabilityTrendsResolverMixin,
     Selectable
 ):
     class Meta:
         interfaces = (NamedNode, TeamInfo, ContributorCount, CycleMetricsTrends, PipelineCycleMetrics, CommitSummary,
-                      FlowMixTrends, PullRequestMetricsTrends, CapacityTrends)
+                      FlowMixTrends, PullRequestMetricsTrends, CapacityTrends, TraceabilityTrends)
         named_node_resolver = TeamNode
 
         interface_resolvers = {
@@ -57,7 +59,8 @@ class Team(
             'CommitSummary': TeamCommitSummary,
             'FlowMixTrends': TeamFlowMixTrends,
             'PullRequestMetricsTrends': TeamPullRequestMetricsTrends,
-            'CapacityTrends': TeamCapacityTrends
+            'CapacityTrends': TeamCapacityTrends,
+            'TraceabilityTrends': TeamTraceabilityTrends
         }
 
         connection_node_resolvers = {
@@ -100,6 +103,11 @@ class Team(
             ),
             capacity_trends_args=graphene.Argument(
                 CapacityTrendsParameters,
+                required=False,
+                description='Required when resolving CapacityTrends Interface'
+            ),
+            traceability_trends_args=graphene.Argument(
+                TraceabilityMetricsTrendsParameters,
                 required=False,
                 description='Required when resolving CapacityTrends Interface'
             ),

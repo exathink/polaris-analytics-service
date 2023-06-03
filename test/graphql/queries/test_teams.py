@@ -44,6 +44,52 @@ class TestTeamNode:
         assert result['data']
         assert result['data']['team']['key'] == str(fixture.team_a['key'])
 
+class TestTeamTraceability:
+
+    @pytest.fixture
+    def setup(self, setup_teams):
+        fixture = setup_teams
+
+        yield fixture
+
+
+    def it_resolves_team_nodes(self, setup):
+        fixture = setup
+
+        query = """
+                query getTeamTraceability($key: String!, $days: Int!, $window: Int!, $sample: Int!, $exclude_merges: Boolean) {
+                    team(key: $key, 
+                    interfaces:[TraceabilityTrends],
+                    traceabilityTrendsArgs: {
+                        days: $days,
+                        measurementWindow: $window,
+                        samplingFrequency: $sample,
+                        excludeMerges: $exclude_merges
+                    }){
+                        id
+                        name
+                        key
+                        traceabilityTrends {
+                            measurementDate
+                            measurementWindow
+                            traceability
+                            nospecCount
+                            specCount
+                            totalCommits
+                        }
+                    }
+                }
+                """
+        client = Client(schema)
+        result = client.execute(query, variable_values=dict(
+            key=fixture.team_a['key'],
+            days=30,
+            window=30,
+            sample=30,
+            exclude_merges=True
+        ))
+        assert not result.get('errors')
+        assert result['data']['team']['key'] == str(fixture.team_a['key'])
 class TestTeamPullRequests:
     @pytest.fixture
     def setup_pull_requests_fixture(self, api_pull_requests_import_fixture):

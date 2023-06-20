@@ -214,6 +214,17 @@ def work_items_sources_state_mapping_with_flow_types_fixture(work_items_sources_
     yield work_items_sources['github'].key
 
 
+
+
+@pytest.fixture
+def empty_work_items_sources_state_mapping_fixture(work_items_sources_fixture):
+    _, work_items_sources = work_items_sources_fixture
+    with db.orm_session() as session:
+        session.add(work_items_sources['jira'])
+
+    yield work_items_sources['jira'].key
+
+
 @pytest.fixture
 def work_items_sources_with_unmapped_states_fixture(work_items_sources_state_mapping_fixture):
     work_items_source_key = work_items_sources_state_mapping_fixture
@@ -263,18 +274,76 @@ def work_items_sources_with_unmapped_states_fixture(work_items_sources_state_map
     yield work_items_source_key
 
 @pytest.fixture
-def empty_work_items_sources_state_mapping_fixture(work_items_sources_fixture):
-    _, work_items_sources = work_items_sources_fixture
+def work_items_sources_with_inconsistent_states_fixture(work_items_sources_state_mapping_fixture):
+    work_items_source_key = work_items_sources_state_mapping_fixture
+    work_items_common = dict(
+        is_bug=True,
+        is_epic=False,
+        parent_id=None,
+        work_item_type='issue',
+        url='http://foo.com',
+        tags=['ares2'],
+        description='foo',
+        source_id=str(uuid.uuid4()),
+        next_state_seq_no=2,
+    )
+
     with db.orm_session() as session:
-        session.add(work_items_sources['jira'])
+        work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
 
-    yield work_items_sources['jira'].key
+        # this is a work item with a mappable state but with state_type is null
+        # this should normally never happen, but for some reason it does seem to happen.
+        # when it does, we want the source mapping to not show duplicate mappings for the state
+        # that has both mapped items and unmapped items.
+        work_items_source.work_items.extend([
+            WorkItem(
+                key=uuid.uuid4(),
+                name="issue 1",
+                display_id='PO-1',
+                state="doing",
+                state_type=None,
+                **work_items_common,
+            ),
 
+            ]
+        )
+
+    yield work_items_source_key
 
 class TestWorkItemsSourceWorkItemStateMappings:
 
     def it_resolves_work_items_state_mappings(self, work_items_sources_state_mapping_fixture):
         source_key = work_items_sources_state_mapping_fixture
+
+        client = Client(schema)
+        query = """
+            query getWorkItemsSource($key:String!) {
+                workItemsSource(key: $key, interfaces: [WorkItemStateMappings]){
+                    workItemStateMappings {
+                        state
+                        stateType
+                    }
+                }
+            }
+        """
+        result = client.execute(query, variable_values=dict(key=source_key))
+        assert 'data' in result
+        work_items_state_mapping = result['data']['workItemsSource']['workItemStateMappings']
+
+        assert {
+                   (mapping['state'], mapping['stateType'])
+                   for mapping in work_items_state_mapping
+               } == {
+                   ('created', WorkItemsStateType.backlog.value),
+                   ('open', WorkItemsStateType.backlog.value),
+                   ('upnext', WorkItemsStateType.open.value),
+                   ('doing', WorkItemsStateType.wip.value),
+                   ('done', WorkItemsStateType.complete.value),
+                   ('closed', WorkItemsStateType.closed.value)
+               }
+
+    def it_does_not_return_duplicate_mappings_even_when_the_data_is_inconsistent(self, work_items_sources_with_inconsistent_states_fixture):
+        source_key = work_items_sources_with_inconsistent_states_fixture
 
         client = Client(schema)
         query = """

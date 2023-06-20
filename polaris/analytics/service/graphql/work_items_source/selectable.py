@@ -148,9 +148,15 @@ class WorkItemsSourceWorkItemStateMappings(InterfaceResolver):
         ]).distinct().select_from(
             work_items_source_nodes.outerjoin(
                 work_items, work_items.c.work_items_source_id == work_items_source_nodes.c.id
+            ).outerjoin(
+                work_items_source_state_map,
+                and_(
+                    work_items_source_state_map.c.work_items_source_id == work_items_source_nodes.c.id,
+                    work_items.c.state == work_items_source_state_map.c.state
+                )
             )
         ).where(
-            work_items.c.state_type == None
+            work_items_source_state_map.c.state == None
         )
 
         state_mapping = union_all(

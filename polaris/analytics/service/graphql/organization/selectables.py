@@ -173,7 +173,8 @@ class OrganizationContributorNodes(ConnectionResolver):
         select_stmt = select([
             contributors.c.id,
             contributors.c.key,
-            contributors.c.name
+            contributors.c.name,
+            repositories_contributor_aliases.c.repository_id
         ]).select_from(
             contributors.join(
                 # use denormalized relationship
@@ -189,28 +190,8 @@ class OrganizationContributorNodes(ConnectionResolver):
                 repositories_contributor_aliases.c.robot == False,
             )
         ).distinct()
-        filtered_contributors = contributors_connection_apply_filters(select_stmt, **kwargs).alias()
-        repository_contributors_nodes = select([
-            filtered_contributors.c.id,
-            filtered_contributors.c.key,
-            filtered_contributors.c.name,
-            repositories_contributor_aliases.c.repository_id
-        ]).select_from(
-            filtered_contributors.join(
-                repositories_contributor_aliases,
-                filtered_contributors.c.id == repositories_contributor_aliases.c.contributor_id
-            ).join(
-                repositories
-            ).join(
-                organizations
-            )
-        ).where(
-            and_(
-                organizations.c.key == bindparam('key'),
-                repositories_contributor_aliases.c.robot == False,
-            )
-        ).distinct()
-        return repository_contributors_nodes
+        return contributors_connection_apply_filters(select_stmt, **kwargs)
+
 
     @staticmethod
     def apply_distinct_columns(**kwargs):

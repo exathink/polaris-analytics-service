@@ -43,6 +43,9 @@ def setup_teams(org_repo_fixture, cleanup_teams):
 
     yield Fixture(
         organization=organization,
+        projects=projects,
+        repositories=repositories,
+
         team_a=team_a,
         team_b=team_b,
         team_c=team_c,

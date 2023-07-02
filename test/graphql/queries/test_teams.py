@@ -47,7 +47,7 @@ class TestTeamNode:
 class TestTeamTraceability:
 
     @pytest.fixture
-    def setup(self, setup_teams):
+    def setup(self, setup_team_assignments):
         fixture = setup_teams
 
         yield fixture
@@ -90,6 +90,8 @@ class TestTeamTraceability:
         ))
         assert not result.get('errors')
         assert result['data']['team']['key'] == str(fixture.team_a['key'])
+
+
 class TestTeamPullRequests:
     @pytest.fixture
     def setup_pull_requests_fixture(self, api_pull_requests_import_fixture):

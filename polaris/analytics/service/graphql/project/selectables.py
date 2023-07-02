@@ -29,7 +29,8 @@ from polaris.utils.datetime_utils import time_window
 from polaris.utils.exceptions import ProcessingException
 from .sql_expressions import select_funnel_work_items
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
-from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter
+from ..contributor.sql_expressions import contributor_count_apply_contributor_days_filter, \
+    contributors_connection_apply_filters
 from ..interfaces import \
     ProjectSetupInfo, CommitSummary, ContributorCount, RepositoryCount, OrganizationRef, CommitCount, \
     CumulativeCommitCount, CommitInfo, WeeklyContributorCount, ArchivedStatus, \
@@ -275,7 +276,7 @@ class ProjectContributorNodes(ConnectionResolver):
 
     @staticmethod
     def connection_nodes_selector(**kwargs):
-        return select([
+        select_stmt =  select([
             contributors.c.id,
             contributors.c.key,
             contributors.c.name,
@@ -297,6 +298,7 @@ class ProjectContributorNodes(ConnectionResolver):
                 projects_repositories.c.excluded == False
             )
         ).distinct()
+        return  contributors_connection_apply_filters(select_stmt, **kwargs)
 
 
 class ProjectRecentlyActiveContributorNodes(ConnectionResolver):

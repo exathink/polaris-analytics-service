@@ -68,7 +68,7 @@ class TestWorkItemInstance:
         assert work_item['url'] == work_items_common['url']
         assert work_item['stateType'] == work_items_common['state_type']
         assert work_item['isBug'] == work_items_common['is_bug']
-        assert work_item['tags'] == 'ares2 custom_type:feature'
+        assert work_item['tags'] == 'ares2;;custom_type:feature'
 
     def it_implements_work_items_source_ref_interface(self, work_items_fixture):
         work_item_key, _, _ = work_items_fixture

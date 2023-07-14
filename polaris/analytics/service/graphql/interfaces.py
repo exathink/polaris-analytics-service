@@ -319,6 +319,7 @@ class WorkItemInfo(graphene.Interface):
     updated_at = graphene.DateTime(required=True)
     is_bug = graphene.Boolean(required=True)
     state_type = graphene.String(required=False)
+    tags = graphene.String(required=False)
 
 
 class WorkItemStateTransition(graphene.Interface):

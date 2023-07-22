@@ -53,7 +53,8 @@ def work_items_closed():
         updated_at=datetime.utcnow(),
         state='closed',
         source_id=str(uuid.uuid4()),
-        parent_id=None
+        parent_id=None,
+        priority='Medium'
     )
 
 

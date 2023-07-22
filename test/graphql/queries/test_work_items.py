@@ -52,12 +52,14 @@ class TestWorkItemInstance:
                     url
                     stateType
                     isBug
+                    tags
                 }
             } 
         """
         result = client.execute(query, variable_values=dict(key=work_item_key))
-        assert 'data' in result
+        assert 'errors' not in result
         work_item = result['data']['workItem']
+        assert work_item
         assert work_item['displayId'] == '1000'
         assert work_item['description'] == work_items_common['description']
         assert work_item['state'] == work_items_common['state']
@@ -66,6 +68,7 @@ class TestWorkItemInstance:
         assert work_item['url'] == work_items_common['url']
         assert work_item['stateType'] == work_items_common['state_type']
         assert work_item['isBug'] == work_items_common['is_bug']
+        assert work_item['tags'] == 'ares2;;custom_type:feature'
 
     def it_implements_work_items_source_ref_interface(self, work_items_fixture):
         work_item_key, _, _ = work_items_fixture
@@ -161,7 +164,8 @@ class TestWorkItemInstance:
                         } 
                     """
             result = client.execute(query, variable_values=dict(key=work_item_key))
-            assert 'data' in result
+            assert 'errors' not in result
+            assert result['data']['workItem'] is not None
             edges = result['data']['workItem']['workItemEvents']['edges']
             assert len(edges) == 2
             # unique event id test

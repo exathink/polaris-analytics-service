@@ -883,6 +883,7 @@ class WorkItem(Base):
     tags = Column(ARRAY(String), nullable=False, default=[], server_default='{}')
     state = Column(String, nullable=True)
     url = Column(String, nullable=True)
+    priority = Column(String, nullable=True)
     current_delivery_cycle_id = Column(Integer, nullable=True)
     # The id of the entity in a remote system that this is mapped to.
     source_id = Column(String, nullable=True)

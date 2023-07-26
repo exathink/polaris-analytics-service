@@ -56,7 +56,8 @@ class ResolveCommitsForWorkItems(graphene.Mutation):
                         parent_key=work_item.parent.key if work_item.parent else None,
                         parent_source_display_id=work_item.parent.display_id if work_item.parent else None,
                         commit_identifiers=work_item.commit_identifiers,
-                        is_moved_from_current_source=work_item.is_moved_from_current_source
+                        is_moved_from_current_source=work_item.is_moved_from_current_source,
+                        priority=work_item.priority
                     )
                 )
 

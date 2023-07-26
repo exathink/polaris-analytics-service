@@ -90,6 +90,36 @@ class TestImportWorkItems(WorkItemsTest):
         assert result['success']
         assert db.connection().execute('select count(id) from analytics.work_items').scalar() == 10
 
+    def it_imports_all_fields_for_new_item(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        new_work_item = dict(
+                key=uuid.uuid4().hex,
+                name='Issue 100',
+                display_id='100',
+                **work_items_common()
+            )
+        result = api.import_new_work_items(organization_key, work_items_source_key, [new_work_item])
+        assert result['success']
+        result_set =  db.connection().execute('select * from analytics.work_items')
+        for row in result_set:
+            assert row.name == new_work_item['name']
+            assert row.display_id == new_work_item['display_id']
+            assert row.work_item_type == new_work_item['work_item_type']
+            assert row.is_bug == new_work_item['is_bug']
+            assert row.is_epic == new_work_item['is_epic']
+            assert row.url == new_work_item['url']
+            assert row.tags == new_work_item['tags']
+            assert row.description == new_work_item['description']
+            assert row.created_at == new_work_item['created_at']
+            assert row.updated_at == new_work_item['updated_at']
+            assert row.state == new_work_item['state']
+            assert row.source_id == new_work_item['source_id']
+            assert row.parent_id == new_work_item['parent_id']
+            assert row.priority == new_work_item['priority']
+
+
+
+
     def it_is_idempotent(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_items = [
@@ -631,6 +661,18 @@ class TestUpdateWorkItems(WorkItemsTest):
         assert result['success']
         assert db.connection().execute(
             "select count(id) from analytics.work_items where completed_at is not null").scalar() == 2
+
+    def it_updates_priority(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        new_work_item = dict(work_items[0])
+        new_work_item['priority'] = 'High'
+        result = api.update_work_items(organization_key, work_items_source_key,
+            [new_work_item
+        ])
+        assert result['success']
+        assert db.connection().execute(
+            "select count(id) from analytics.work_items where priority='High'").scalar() == 1
+
 
     def it_does_not_update_completed_at_when_state_transitions_from_closed_to_closed(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup

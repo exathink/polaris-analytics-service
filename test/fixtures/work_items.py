@@ -36,7 +36,8 @@ def work_items_common():
         updated_at=datetime.utcnow() - timedelta(days=6),
         state='open',
         source_id=str(uuid.uuid4()),
-        parent_id=None
+        parent_id=None,
+        priority='Medium'
     )
 
 
@@ -52,7 +53,8 @@ def work_items_closed():
         updated_at=datetime.utcnow(),
         state='closed',
         source_id=str(uuid.uuid4()),
-        parent_id=None
+        parent_id=None,
+        priority='Medium'
     )
 
 

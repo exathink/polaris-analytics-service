@@ -320,6 +320,7 @@ class WorkItemInfo(graphene.Interface):
     is_bug = graphene.Boolean(required=True)
     state_type = graphene.String(required=False)
     tags = graphene.String(required=False)
+    priority=graphene.String(required=False)
 
 
 class WorkItemStateTransition(graphene.Interface):

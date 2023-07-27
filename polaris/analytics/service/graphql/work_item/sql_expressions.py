@@ -58,7 +58,8 @@ def work_item_info_columns(work_items):
         work_items.c.updated_at,
         work_items.c.is_bug,
         work_items.c.budget,
-        func.array_to_string(work_items.c.tags, ';;').label('tags')
+        func.array_to_string(work_items.c.tags, ';;').label('tags'),
+        work_items.c.priority
     ]
 
 
@@ -102,7 +103,8 @@ def work_item_event_columns(work_items, work_item_state_transitions):
         work_item_state_transitions.c.created_at.label('event_date'),
         work_item_state_transitions.c.previous_state,
         work_item_state_transitions.c.state.label('new_state'),
-        func.array_to_string(work_items.c.tags, ';;').label('tags')
+        func.array_to_string(work_items.c.tags, ';;').label('tags'),
+        work_items.c.priority
     ]
 
 

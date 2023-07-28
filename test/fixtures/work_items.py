@@ -37,7 +37,9 @@ def work_items_common():
         state='open',
         source_id=str(uuid.uuid4()),
         parent_id=None,
-        priority='Medium'
+        priority='Medium',
+        releases=['a','b'],
+        story_points=98
     )
 
 
@@ -54,7 +56,9 @@ def work_items_closed():
         state='closed',
         source_id=str(uuid.uuid4()),
         parent_id=None,
-        priority='Medium'
+        priority='Medium',
+        releases=[],
+        story_points=None
     )
 
 

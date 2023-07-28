@@ -409,6 +409,10 @@ work_items_common = dict(
     source_id=str(uuid.uuid4()),
     state_type='open',
     next_state_seq_no=2,
+    priority='Medium',
+    releases= ["{'self': 'https://exathinkdev.atlassian.net/rest/api/2/version/10003', 'id': '10003', 'description': '', 'name': 'V1', 'archived': False, 'released': False, 'releaseDate': '2023-08-03'}"],
+    story_points=99
+
 )
 
 

@@ -885,7 +885,7 @@ class WorkItem(Base):
     url = Column(String, nullable=True)
     priority = Column(String, nullable=True)
     current_delivery_cycle_id = Column(Integer, nullable=True)
-    releases = Column(ARRAY(String), nullable=True, default=[], server_default='{}')
+    releases = Column(JSONB, nullable=True, default=[], server_default='[]')
     story_points = Column(Integer, nullable=True)
     # The id of the entity in a remote system that this is mapped to.
     source_id = Column(String, nullable=True)

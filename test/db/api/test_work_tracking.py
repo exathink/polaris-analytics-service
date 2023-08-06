@@ -116,9 +116,8 @@ class TestImportWorkItems(WorkItemsTest):
             assert row.source_id == new_work_item['source_id']
             assert row.parent_id == new_work_item['parent_id']
             assert row.priority == new_work_item['priority']
-
-
-
+            assert row.releases == new_work_item['releases']
+            assert row.story_points == new_work_item['story_points']
 
     def it_is_idempotent(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -673,6 +672,28 @@ class TestUpdateWorkItems(WorkItemsTest):
         assert db.connection().execute(
             "select count(id) from analytics.work_items where priority='High'").scalar() == 1
 
+    def it_updates_releases(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        new_work_item = dict(work_items[0])
+        new_work_item['releases'] = ['{}']
+        result = api.update_work_items(organization_key, work_items_source_key,
+            [new_work_item
+        ])
+        assert result['success']
+        with db.orm_session() as session:
+            # this tests the single label case in the mapping
+            work_item = model.WorkItem.find_by_work_item_key(session, new_work_item['key'])
+            assert work_item.releases == ['{}']
+    def it_updates_story_points(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        new_work_item = dict(work_items[0])
+        new_work_item['story_points'] = 99
+        result = api.update_work_items(organization_key, work_items_source_key,
+                                       [new_work_item
+                                        ])
+        assert result['success']
+        assert db.connection().execute(
+            "select count(id) from analytics.work_items where story_points=99").scalar() == 1
 
     def it_does_not_update_completed_at_when_state_transitions_from_closed_to_closed(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup

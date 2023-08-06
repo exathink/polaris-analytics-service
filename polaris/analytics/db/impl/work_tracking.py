@@ -211,7 +211,10 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                             'source_id',
                             'parent_key',
                             'commit_identifiers',
-                            'priority'
+                            'priority',
+                            'releases',
+                            'story_points',
+
                         ])
                     )
                     for work_item in work_item_summaries
@@ -252,7 +255,10 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                         'parent_key',
                         'next_state_seq_no',
                         'commit_identifiers',
-                        'priority'
+                        'priority',
+                        'releases',
+                        'story_points'
+
                     ],
                     select(
                         [
@@ -280,7 +286,10 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                             # the current value of the next_state_seq_no to set its sequence number.
                             literal('2').label('next_state_sequence_no'),
                             work_items_temp.c.commit_identifiers,
-                            work_items_temp.c.priority
+                            work_items_temp.c.priority,
+                            work_items_temp.c.releases,
+                            work_items_temp.c.story_points
+
                         ]
                     ).where(
                         work_items_temp.c.work_item_id == None
@@ -1014,7 +1023,9 @@ def update_work_items_for_source(session, work_items_source_key, work_item_summa
                             'completed_at',
                             'parent_key',
                             'commit_identifiers',
-                            'priority'
+                            'priority',
+                            'releases',
+                            'story_points'
                         ]
                     )
                     for work_item in work_item_summaries
@@ -1122,7 +1133,9 @@ def update_work_items_for_source(session, work_items_source_key, work_item_summa
                     parent_id=work_items_temp.c.parent_id,
                     parent_key=work_items_temp.c.parent_key,
                     commit_identifiers=work_items_temp.c.commit_identifiers,
-                    priority=work_items_temp.c.priority
+                    priority=work_items_temp.c.priority,
+                    releases=work_items_temp.c.releases,
+                    story_points=work_items_temp.c.story_points
                 ).where(
                     work_items_temp.c.key == work_items.c.key,
                 )

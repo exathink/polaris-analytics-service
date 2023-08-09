@@ -190,6 +190,16 @@ def apply_tags_filter(select_stmt, work_items, **kwargs):
 
     return select_stmt
 
+def apply_releases_clause(work_items, release):
+    return work_items.c.releases.op("@>")(literal_postgres_string_array([release]))
+def apply_releases_filter(select_stmt, work_items, **kwargs):
+    if 'release' in kwargs and kwargs['release'] is not None:
+        select_stmt = select_stmt.where(
+            apply_releases_clause(work_items, kwargs['release'])
+        )
+
+    return select_stmt
+
 def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
     select_stmt = work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
 
@@ -207,6 +217,9 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
 
     if 'tags' in kwargs:
         select_stmt = apply_tags_filter(select_stmt, work_items, **kwargs)
+
+    if 'release' in kwargs:
+        select_stmt = apply_releases_filter(select_stmt, work_items, **kwargs)
 
     if 'suppress_moved_items' not in kwargs or kwargs.get('suppress_moved_items') == True:
         select_stmt = select_stmt.where(work_items.c.is_moved_from_current_source != True)

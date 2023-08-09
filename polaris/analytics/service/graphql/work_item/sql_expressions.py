@@ -555,6 +555,10 @@ class CycleMetricsTrendsBase(InterfaceResolver, abc.ABC):
         if tags and len(tags) > 0:
             clauses.append(apply_tags_clause(tags))
 
+        release = kwargs.get('release') or interface_args.get('release')
+        if release is not None:
+            clauses.append(apply_releases_clause(work_items,release))
+
         return clauses
 
     @staticmethod

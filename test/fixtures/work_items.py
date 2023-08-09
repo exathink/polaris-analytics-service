@@ -39,7 +39,8 @@ def work_items_common():
         parent_id=None,
         priority='Medium',
         releases=['a','b'],
-        story_points=98
+        story_points=98,
+        sprints=['Sprint 1', 'Sprint 2']
     )
 
 
@@ -58,7 +59,8 @@ def work_items_closed():
         parent_id=None,
         priority='Medium',
         releases=[],
-        story_points=None
+        story_points=None,
+        sprints=None
     )
 
 

@@ -61,7 +61,8 @@ def work_item_info_columns(work_items):
         func.array_to_string(work_items.c.tags, ';;').label('tags'),
         work_items.c.priority,
         work_items.c.releases,
-        work_items.c.story_points
+        work_items.c.story_points,
+        work_items.c.sprints
     ]
 
 
@@ -108,7 +109,8 @@ def work_item_event_columns(work_items, work_item_state_transitions):
         func.array_to_string(work_items.c.tags, ';;').label('tags'),
         work_items.c.priority,
         work_items.c.releases,
-        work_items.c.story_points
+        work_items.c.story_points,
+        work_items.c.sprints
 
     ]
 

@@ -1443,8 +1443,7 @@ class TestProjectPipelineCycleMetricsCurrentPipeline(WorkItemApiImportTest):
                     state='backlog',
                     created_at=start_date,
                     updated_at=start_date,
-                    releases=['1.0.1', '1.0.2'],
-                    **work_items_common_fields
+                    **dict_merge(work_items_common_fields, dict(releases=['1.0.1', '1.0.2']))
                 ),
                 dict(
                     key=uuid.uuid4().hex,
@@ -1453,8 +1452,7 @@ class TestProjectPipelineCycleMetricsCurrentPipeline(WorkItemApiImportTest):
                     state='backlog',
                     created_at=start_date,
                     updated_at=start_date,
-                    releases=['1.0.1'],
-                    **work_items_common_fields
+                    **dict_merge(work_items_common_fields, dict(releases=['1.0.1']))
                 ),
                 dict(
                     key=uuid.uuid4().hex,
@@ -1463,8 +1461,7 @@ class TestProjectPipelineCycleMetricsCurrentPipeline(WorkItemApiImportTest):
                     state='backlog',
                     created_at=start_date,
                     updated_at=start_date,
-                    releases=['1.0.2'],
-                    **work_items_common_fields
+                    **dict_merge(work_items_common_fields, dict(releases=['1.0.2']))
                 )
             ]
 

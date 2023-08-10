@@ -39,7 +39,8 @@ from ..interfaces import \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends, \
-    BacklogTrends, ValueStreamInfo, Tags
+    BacklogTrends, ValueStreamInfo, Tags,Releases
+
 from ..pull_request.sql_expressions import pull_request_info_columns, pull_requests_connection_apply_filters
 from ..work_item import sql_expressions
 from ..work_item.sql_expressions import work_item_events_connection_apply_time_window_filters, work_item_event_columns, \
@@ -2352,4 +2353,28 @@ class ProjectTags(InterfaceResolver):
             project_tags
         ).group_by(
             project_tags.c.id
+        )
+
+class ProjectReleases(InterfaceResolver):
+    interface = Releases
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        project_releases = select([
+            project_nodes.c.id,
+            func.unnest(work_items.c.releases).label('release')
+        ]).distinct().select_from(
+            project_nodes.join(
+                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            )
+        ).cte()
+        return select([
+            project_releases.c.id,
+            func.array_agg(project_releases.c.release).label('releases')
+        ]).select_from(
+            project_releases
+        ).group_by(
+            project_releases.c.id
         )

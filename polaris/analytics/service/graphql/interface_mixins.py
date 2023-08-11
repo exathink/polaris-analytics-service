@@ -311,4 +311,4 @@ class ReleasesResolverMixin(KeyIdResolverMixin):
         super().__init__(*args, **kwargs)
 
     def resolve_releases(self, info, **kwargs):
-        return self.releases or []
+        return sorted(self.releases, reverse=True) if self.releases else  []

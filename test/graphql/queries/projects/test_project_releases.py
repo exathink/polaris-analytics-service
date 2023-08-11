@@ -68,6 +68,54 @@ class TestProjectReleases(ProjectWorkItemsTest):
             assert len(releases) == 4
             assert set(result['data']['project']['releases']) == set(['release1', 'release2', 'release3', 'release4'])
 
+        def it_sorts_releases_in_descending_order_by_name(self, setup):
+            fixture = setup
+
+            organization = fixture.organization
+            work_items_source = fixture.work_items_source
+            work_items_common = fixture.work_items_common
+            result = api.import_new_work_items(organization.key, work_items_source.key, [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 1',
+                    display_id='ISSUE-1',
+                    **dict_merge(
+                        work_items_common,
+                        dict(
+                            releases=['release1', 'release2', 'release3'],
+                        )
+                    )
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name='Issue 2',
+                    display_id='ISSUE-2',
+                    **dict_merge(
+                        work_items_common,
+                        dict(
+                            releases=['release1', 'release2', 'release4'],
+                        )
+                    )
+                )
+            ]
+                                               )
+            assert not result.get('exception')
+            project = fixture.project
+
+            client = Client(schema)
+            query = '''
+            query getProjectReleases($projectKey: String!) {
+                project(key: $projectKey, interfaces: [Releases]) {
+                    releases 
+                }
+            }
+            '''
+            result = client.execute(query, variable_values={'projectKey': str(project.key)})
+            assert not result.get('errors')
+            releases = result['data']['project']['releases']
+            assert len(releases) == 4
+            assert releases == ['release4', 'release3', 'release2', 'release1']
+
         def it_supports_the_active_within_days_flag(self, setup):
             fixture = setup
 

@@ -2360,16 +2360,36 @@ class ProjectReleases(InterfaceResolver):
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
-        project_releases = select([
-            project_nodes.c.id,
-            func.unnest(work_items.c.releases).label('release')
-        ]).distinct().select_from(
-            project_nodes.join(
-                work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
-            ).join(
-                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
-            )
-        ).cte()
+        releases_active_within_days = kwargs.get('releases_active_within_days')
+        if releases_active_within_days is None:
+            project_releases = select([
+                project_nodes.c.id,
+                func.unnest(work_items.c.releases).label('release')
+            ]).distinct().select_from(
+                project_nodes.join(
+                    work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
+                ).join(
+                    work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+                )
+            ).cte()
+        else:
+            project_releases = select([
+                project_nodes.c.id,
+                func.unnest(work_items.c.releases).label('release')
+            ]).distinct().select_from(
+                project_nodes.join(
+                    work_items_sources, work_items_sources.c.project_id == project_nodes.c.id
+                ).join(
+                    work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+                ).join(
+                    work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
+                )
+            ).where(
+                work_item_state_transitions.c.created_at >= datetime.utcnow() - timedelta(days=releases_active_within_days)
+            ).cte()
+
+
+
         return select([
             project_releases.c.id,
             func.array_agg(project_releases.c.release).label('releases')

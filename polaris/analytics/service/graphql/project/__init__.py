@@ -327,6 +327,14 @@ Implicit Interfaces: ArchivedStatus
                 description='Provide a release to filter work_items by',
                 default_value=None
             ),
+            releases_active_within_days=graphene.Argument(
+                graphene.Int,
+                required=False,
+                description='When fetching releases for a project include only releases where there'
+                            'was a work item transition that occurred within the specified number of days. When None '
+                            'all releases will be returned, so it is highly recommended that you provided a value here.',
+                default_value=None
+            ),
 
             **kwargs
         )

@@ -17,14 +17,14 @@ from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, FunnelViewAggregateMetrics, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
-    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, BacklogTrends, ProjectSetupInfo, Tags
+    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, BacklogTrends, ProjectSetupInfo, Tags, Releases
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
     TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin, \
     ProjectInfoResolverMixin, FlowMixTrendsResolverMixin, CapacityTrendsResolverMixin, \
     PipelinePullRequestMetricsResolverMixin, PullRequestMetricsTrendsResolverMixin, FlowRateTrendsResolverMixin, \
-    BacklogTrendsResolverMixin, TagsResolverMixin
+    BacklogTrendsResolverMixin, TagsResolverMixin, ReleasesResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -87,7 +87,8 @@ from .selectables import ProjectNode, \
     ProjectFlowRateTrends, \
     ProjectBacklogTrends, \
     ProjectsProjectSetupInfo, \
-    ProjectTags
+    ProjectTags, \
+    ProjectReleases
 
 from polaris.graphql.connection_utils import CountableConnection
 
@@ -109,6 +110,7 @@ class Project(
     FlowRateTrendsResolverMixin,
     BacklogTrendsResolverMixin,
     TagsResolverMixin,
+    ReleasesResolverMixin,
 
     # Connection Mixins
     RepositoriesConnectionMixin,
@@ -164,7 +166,8 @@ Implicit Interfaces: ArchivedStatus
             PullRequestMetricsTrends,
             FlowRateTrends,
             BacklogTrends,
-            Tags
+            Tags,
+            Releases
         )
         named_node_resolver = ProjectNode
         interface_resolvers = {
@@ -188,7 +191,8 @@ Implicit Interfaces: ArchivedStatus
             'PullRequestMetricsTrends': ProjectPullRequestMetricsTrends,
             'FlowRateTrends': ProjectFlowRateTrends,
             'BacklogTrends': ProjectBacklogTrends,
-            'Tags': ProjectTags
+            'Tags': ProjectTags,
+            'Releases': ProjectReleases
         }
         connection_node_resolvers = {
             'repositories': ProjectRepositoriesNodes,
@@ -315,6 +319,20 @@ Implicit Interfaces: ArchivedStatus
                 graphene.List(graphene.String),
                 required=False,
                 description='Provide a list of tags to filter work_items by',
+                default_value=None
+            ),
+            release=graphene.Argument(
+                graphene.String,
+                required=False,
+                description='Provide a release to filter work_items by',
+                default_value=None
+            ),
+            releases_active_within_days=graphene.Argument(
+                graphene.Int,
+                required=False,
+                description='When fetching releases for a project include only releases where there'
+                            'was a work item transition that occurred within the specified number of days. When None '
+                            'all releases will be returned, so it is highly recommended that you provided a value here.',
                 default_value=None
             ),
 

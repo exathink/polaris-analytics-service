@@ -368,6 +368,12 @@ class WorkItemsConnectionMixin(KeyIdResolverMixin, ConnectionResolverMixin):
             required=False,
             description='Provide a list of tags to filter work_items by',
             default_value=None
+        ),
+        release=graphene.Argument(
+            graphene.String,
+            required=False,
+            description='Provide a  release name to filter work_items by',
+            default_value=None
         )
     )
 

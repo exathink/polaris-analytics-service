@@ -1092,6 +1092,7 @@ def api_work_items_import_fixture(org_repo_fixture):
         work_item_type='issue',
         url='http://foo.com',
         tags=['ares2'],
+        releases=[],
         description='foo',
         source_id=str(uuid.uuid4()),
     )

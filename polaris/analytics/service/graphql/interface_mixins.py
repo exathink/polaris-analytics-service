@@ -303,3 +303,12 @@ class TagsResolverMixin(KeyIdResolverMixin):
 
     def resolve_tags(self, info, **kwargs):
         return self.tags or []
+
+class ReleasesResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.releases = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_releases(self, info, **kwargs):
+        return sorted(self.releases, reverse=True) if self.releases else  []

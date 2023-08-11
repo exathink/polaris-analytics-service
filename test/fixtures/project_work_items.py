@@ -12,7 +12,7 @@ from polaris.utils.collections import Fixture
 from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem, WorkItemDeliveryCycle, \
     WorkItemStateTransition
 from polaris.analytics.db.enums import WorkItemsStateType
-from test.fixtures.graphql import get_date
+from test.fixtures.graphql import get_date, WorkItemImportApiHelper
 
 from test.fixtures.repo_org import *
 from test.constants import *
@@ -90,7 +90,7 @@ class ProjectWorkItemsTest:
             organization=organization,
             project=project,
             work_items_source=work_items_source,
-            work_items_common=work_items_common
+            work_items_common=work_items_common,
         )
 
 

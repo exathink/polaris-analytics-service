@@ -1423,3 +1423,171 @@ class TestProjectPipelineCycleMetricsCurrentPipeline(WorkItemApiImportTest):
                 assert not measurement['latestClosedDate']
                 assert measurement['workItemsInScope'] == 3
                 assert measurement['workItemsWithNullCycleTime'] == 0
+
+    class TestFilterWorkItemsByRelease:
+
+        @pytest.fixture()
+        def setup(self, setup):
+            fixture = setup
+
+            api_helper = fixture.api_helper
+            work_items_common_fields = fixture.work_items_common
+
+            start_date = datetime.utcnow() - timedelta(days=30)
+
+            work_items = [
+                dict(
+                    key=uuid.uuid4().hex,
+                    name=f'Issue 1',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **dict_merge(work_items_common_fields, dict(releases=['1.0.1', '1.0.2']))
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name=f'Issue 2',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **dict_merge(work_items_common_fields, dict(releases=['1.0.1']))
+                ),
+                dict(
+                    key=uuid.uuid4().hex,
+                    name=f'Issue 3',
+                    display_id='1000',
+                    state='backlog',
+                    created_at=start_date,
+                    updated_at=start_date,
+                    **dict_merge(work_items_common_fields, dict(releases=['1.0.2']))
+                )
+            ]
+
+            api_helper.import_work_items(work_items)
+
+            # active T+10
+            api_helper.update_work_items([(0, 'upnext', start_date + timedelta(days=10))])
+
+            #  T+20
+            api_helper.update_work_items([(1, 'upnext', start_date + timedelta(days=20))])
+
+            # closed T+25
+            api_helper.update_work_items([(2, 'upnext', start_date + timedelta(days=25))])
+
+            yield fixture
+
+        class TestReleasePassedAtProjectLevel:
+            @pytest.fixture()
+            def setup(self, setup):
+                fixture = setup
+
+                query = """
+                           query getProjectPipelineCycleMetrics(
+                               $project_key:String!, 
+                               $percentile: Float,
+                               $release: String
+                           ) {
+                               project(
+                                   key: $project_key, 
+                                   interfaces: [PipelineCycleMetrics], 
+                                   release:$release,
+                                   pipelineCycleMetricsArgs: {
+                                       metrics: [
+                                           min_lead_time,
+                                           avg_lead_time,
+                                           max_lead_time,
+                                           percentile_lead_time,
+                                           min_cycle_time,
+                                           avg_cycle_time,
+                                           max_cycle_time,
+                                           percentile_cycle_time,
+                                           work_items_in_scope,
+                                           work_items_with_null_cycle_time
+
+                                       ],
+                                       leadTimeTargetPercentile: $percentile,
+                                       cycleTimeTargetPercentile: $percentile
+                                   }
+
+                               ) {
+                                   pipelineCycleMetrics {
+                                       measurementDate
+                                       measurementWindow
+                                       minLeadTime
+                                       avgLeadTime
+                                       maxLeadTime
+                                       minCycleTime
+                                       avgCycleTime
+                                       maxCycleTime
+                                       percentileLeadTime
+                                       percentileCycleTime
+                                       leadTimeTargetPercentile
+                                       cycleTimeTargetPercentile
+                                       workItemsWithNullCycleTime
+                                       earliestClosedDate
+                                       latestClosedDate
+                                       workItemsInScope
+                                   }
+                               }
+                           }
+                       """
+                yield Fixture(
+                    parent=fixture,
+                    query=query
+                )
+
+            def it_returns_all_items_when_tag_list_is_empty(self, setup):
+                fixture = setup
+
+                project = fixture.project
+                query = fixture.query
+
+                client = Client(schema)
+
+                result = client.execute(query, variable_values=dict(
+                    project_key=project.key,
+                    percentile=0.70,
+                    release=None,
+                ))
+
+                assert not result.get('errors')
+                project = result['data']['project']
+                # we expect one measurement for each point in the window including the end points.
+                assert project['pipelineCycleMetrics']
+                measurement = project['pipelineCycleMetrics']
+                assert 0 < measurement['minLeadTime'] - 30.0 < 1
+                assert 0 < measurement['avgLeadTime'] - 30.0 < 1
+                assert 0 < measurement['maxLeadTime'] - 30.0 < 1
+                assert 0 < measurement['percentileLeadTime'] - 30.0 < 1
+                assert 0 < measurement['minCycleTime'] - 5.0 < 1
+                assert 0 < measurement['avgCycleTime'] - 11.0 < 1
+                assert 0 < measurement['maxCycleTime'] - 20.0 < 1
+                assert 0 < measurement['percentileCycleTime'] - 20.0 < 1
+                assert not measurement['earliestClosedDate']
+                assert not measurement['latestClosedDate']
+                assert measurement['workItemsInScope'] == 3
+                assert measurement['workItemsWithNullCycleTime'] == 0
+
+            def it_filters_by_a_single_release(self, setup):
+                fixture = setup
+
+                project = fixture.project
+                query = fixture.query
+
+                client = Client(schema)
+
+                result = client.execute(query, variable_values=dict(
+                    project_key=project.key,
+                    percentile=0.70,
+                    release='1.0.1'
+                ))
+
+                assert not result.get('errors')
+                project = result['data']['project']
+                # we expect one measurement for each point in the window including the end points.
+                assert project['pipelineCycleMetrics']
+                measurement = project['pipelineCycleMetrics']
+                assert measurement['workItemsInScope'] == 2
+

@@ -508,6 +508,9 @@ class FunnelViewAggregateMetrics(graphene.Interface):
 class Tags(graphene.Interface):
     tags = graphene.List(graphene.String, required=False)
 
+class Releases(graphene.Interface):
+    releases = graphene.List(graphene.String, required=False)
+
 class StateMapping(graphene.ObjectType):
     state = graphene.String(required=True)
     state_type = graphene.String(required=False)

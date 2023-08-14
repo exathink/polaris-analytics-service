@@ -201,6 +201,25 @@ class TestUpdateTeamSettings(OrgRepoTest):
                 dict(key=str(fixture.team_key))
             ).scalar() == 'new name'
 
+        def it_updates_the_team_work_item_selectors_if_passed(self, setup):
+            fixture = setup
+
+            client = Client(schema)
+            result = client.execute(fixture.mutation, variable_values=dict(
+                updateTeamSettingsInput=dict(
+                    key=str(fixture.team_key),
+                    workItemSelectors=['team:Buffalo']
+                )
+            ))
+            assert not result.get('errors')
+            update = result['data']['updateTeamSettings']
+            assert update['success']
+
+            assert db.connection().execute(
+                f"select work_item_selectors from analytics.teams where key='{fixture.team_key}'",
+                dict(key=str(fixture.team_key))
+            ).fetchone()[0] == ['team:Buffalo']
+
 
         def it_leaves_the_other_settings_alone(self, setup):
             fixture = setup

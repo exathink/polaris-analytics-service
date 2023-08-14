@@ -552,6 +552,8 @@ class Team(Base):
 
     name = Column(String, nullable=False)
 
+    work_item_selectors = Column(ARRAY(String), nullable=True, default=[], server_default='{}')
+
     settings = Column(JSONB, server_default=text("'{}'"), nullable=True)
 
     # parent
@@ -574,6 +576,10 @@ class Team(Base):
     def update_settings(self, update_team_settings_input):
         if update_team_settings_input.name is not None:
             self.name = update_team_settings_input.name
+
+        if update_team_settings_input.work_item_selectors is not None:
+            self.work_item_selectors = update_team_settings_input.work_item_selectors
+
         # we have to make a deep copy here since sqlalchemy does not recognize in place modifications
         # to the dict in the jsonb field
         current = copy.deepcopy(self.settings) if self.settings is not None else dict()

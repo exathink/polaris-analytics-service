@@ -11,12 +11,12 @@
 
 import graphene
 from datetime import datetime, timedelta
-from sqlalchemy import select, bindparam, func, distinct, true, and_, case, cast, Date, or_, union_all, literal
+from sqlalchemy import select, bindparam, func, distinct, true, and_, case, cast, Date, or_, literal, union
 from polaris.analytics.db.model import teams, contributors_teams, \
     work_item_delivery_cycles, work_items, work_items_teams, \
     work_items_source_state_map, work_item_delivery_cycle_durations, \
     work_items_commits, commits, repositories, contributor_aliases, work_items_sources, pull_requests, \
-    teams_repositories, work_items_pull_requests
+    teams_repositories, work_items_pull_requests, organizations
 
 from polaris.graphql.interfaces import NamedNode
 from polaris.graphql.base_classes import InterfaceResolver, ConnectionResolver
@@ -27,7 +27,7 @@ from ..interfaces import ContributorCount, WorkItemInfo, DeliveryCycleInfo, Cycl
 
 from ..work_item.sql_expressions import work_item_info_columns, work_item_delivery_cycle_info_columns, \
     work_item_delivery_cycles_connection_apply_filters, CycleMetricsTrendsBase, work_items_connection_apply_filters, \
-    map_work_item_type_to_flow_type, work_items_source_ref_info_columns
+    map_work_item_type_to_flow_type, work_items_source_ref_info_columns, apply_tags_clause
 
 from ..commit.sql_expressions import commit_info_columns, commits_connection_apply_filters, commit_day
 
@@ -63,7 +63,7 @@ class TeamWorkItemNodes(ConnectionResolver):
 
     @classmethod
     def default_connection_nodes_selector(cls, work_items_connection_columns, **kwargs):
-        select_stmt = select(
+        select_from_work_items_teams = select(
             work_items_connection_columns
         ).select_from(
             teams.join(
@@ -80,9 +80,37 @@ class TeamWorkItemNodes(ConnectionResolver):
         ).where(
             teams.c.key == bindparam('key')
         )
-        select_stmt = work_items_connection_apply_filters(select_stmt, work_items, **kwargs)
-        return work_item_delivery_cycles_connection_apply_filters(select_stmt, work_items, work_item_delivery_cycles,
+        select_from_work_items_teams = work_item_delivery_cycles_connection_apply_filters(select_from_work_items_teams, work_items, work_item_delivery_cycles,
                                                                   **kwargs)
+
+        select_using_work_item_selectors = select(
+            work_items_connection_columns
+        ).select_from(
+            teams.join(
+                organizations, teams.c.organization_id == organizations.c.id
+            ).join(
+                work_items_sources,
+                work_items_sources.c.organization_id == organizations.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_delivery_cycles,
+                work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+            )
+        ).where(
+            and_(
+                teams.c.key == bindparam('key'),
+                work_items.c.tags.op("&&")(teams.c.work_item_selectors)
+            )
+        )
+        select_using_work_item_selectors = work_item_delivery_cycles_connection_apply_filters(select_using_work_item_selectors, work_items, work_item_delivery_cycles,
+                                                                  **kwargs)
+
+        return union(
+            select_from_work_items_teams,
+            select_using_work_item_selectors
+        )
+
 
     @classmethod
     def connection_nodes_selector(cls, **kwargs):

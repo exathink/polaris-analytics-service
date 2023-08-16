@@ -59,7 +59,8 @@ class ResolveCommitsForWorkItems(graphene.Mutation):
                         is_moved_from_current_source=work_item.is_moved_from_current_source,
                         priority=work_item.priority,
                         releases=work_item.releases,
-                        story_points=work_item.story_points
+                        story_points=work_item.story_points,
+                        sprints=work_item.sprints
                     )
                 )
 

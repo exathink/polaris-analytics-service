@@ -411,7 +411,8 @@ work_items_common = dict(
     next_state_seq_no=2,
     priority='Medium',
     releases= ["V1", "V1.1"],
-    story_points=99
+    story_points=99,
+    sprints= ['Sprint 1', 'Sprint 2']
 
 )
 

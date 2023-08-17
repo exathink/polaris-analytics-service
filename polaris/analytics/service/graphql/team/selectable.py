@@ -143,7 +143,7 @@ class TeamWorkItemDeliveryCycleNodes(ConnectionResolver):
         else:
             delivery_cycles_join_clause = work_item_delivery_cycles.c.work_item_id == work_items.c.id
 
-        select_stmt = select([
+        select_from_work_items_teams = select([
             work_item_delivery_cycles.c.delivery_cycle_id.label('id'),
             *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles),
             *work_item_info_columns(work_items),
@@ -161,8 +161,40 @@ class TeamWorkItemDeliveryCycleNodes(ConnectionResolver):
         ).where(
             teams.c.key == bindparam('key')
         )
-        return work_item_delivery_cycles_connection_apply_filters(
-            select_stmt, work_items, work_item_delivery_cycles, **kwargs
+        select_from_work_items_teams =  work_item_delivery_cycles_connection_apply_filters(
+            select_from_work_items_teams, work_items, work_item_delivery_cycles, **kwargs
+        )
+
+        select_using_work_item_selectors = select([
+            work_item_delivery_cycles.c.delivery_cycle_id.label('id'),
+            *work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles),
+            *work_item_info_columns(work_items),
+            *work_items_source_ref_info_columns(work_items_sources)
+        ]).select_from(
+            teams.join(
+                organizations, teams.c.organization_id == organizations.c.id
+            ).join(
+                work_items_sources,
+                work_items_sources.c.organization_id == organizations.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_delivery_cycles,
+                work_items.c.current_delivery_cycle_id == work_item_delivery_cycles.c.delivery_cycle_id
+            )
+        ).where(
+            and_(
+                teams.c.key == bindparam('key'),
+                work_items.c.tags.op("&&")(teams.c.work_item_selectors)
+            )
+        )
+        select_using_work_item_selectors = work_item_delivery_cycles_connection_apply_filters(
+            select_using_work_item_selectors, work_items, work_item_delivery_cycles,
+            **kwargs)
+
+        return union(
+            select_from_work_items_teams,
+            select_using_work_item_selectors
         )
 
     @staticmethod

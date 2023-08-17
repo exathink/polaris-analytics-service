@@ -8,6 +8,9 @@
 
 # Author: Krishna Kumar
 import uuid
+
+import pytest
+
 from test.fixtures.teams import *
 
 from datetime import datetime, timedelta
@@ -44,16 +47,17 @@ class TestTeamNode:
         assert result['data']
         assert result['data']['team']['key'] == str(fixture.team_a['key'])
 
+def update_team_selectors(team, selectors):
+    with db.orm_session() as session:
+        team = Team.find_by_key(session, team['key'])
+        team.work_item_selectors = selectors
+        assert True
+
+    assert True
+
 class TestTeamWorkItems(WorkItemApiImportTest):
-    class TestWorkItems:
+    class TestWorkItemsConnection:
 
-        def update_team_selectors(self, team, selectors):
-            with db.orm_session() as session:
-                team = Team.find_by_key(session, team['key'])
-                team.work_item_selectors = selectors
-                assert True
-
-            assert True
         @pytest.fixture
         def setup(self, setup, setup_teams):
             fixture = Fixture.merge(setup, setup_teams)
@@ -141,7 +145,7 @@ class TestTeamWorkItems(WorkItemApiImportTest):
             ]
             api_helper.import_work_items(work_items_with_selectors)
             # The team needs to specify the selectors for the team
-            self.update_team_selectors(fixture.team_a, ['team:Team_A'])
+            update_team_selectors(fixture.team_a, ['team:Team_A'])
 
             query = """
                            query getTeamWorkItems($key: String!) {
@@ -212,7 +216,7 @@ class TestTeamWorkItems(WorkItemApiImportTest):
             ]
             api_helper.import_work_items(work_items_with_selectors)
             # The team needs to specify the selectors for the team
-            self.update_team_selectors(fixture.team_a, ['team:Team_A'])
+            update_team_selectors(fixture.team_a, ['team:Team_A'])
 
             query = """
                            query getTeamWorkItems($key: String!) {
@@ -282,7 +286,7 @@ class TestTeamWorkItems(WorkItemApiImportTest):
             ]
             api_helper.import_work_items(work_items_with_selectors)
             # The team needs to specify the selectors for the team
-            self.update_team_selectors(fixture.team_a, ['team:Team_A'])
+            update_team_selectors(fixture.team_a, ['team:Team_A'])
 
             query = """
                            query getTeamWorkItems($key: String!) {
@@ -304,6 +308,265 @@ class TestTeamWorkItems(WorkItemApiImportTest):
             assert result['data']['team']['workItems']['count'] == 2
             assert set([edge['node']['key'] for edge in result['data']['team']['workItems']['edges']]) == set(
                 [str(work_items[0]['key']), str(work_items_with_selectors[0]['key'])])
+
+    class TestWorkItemsDeliveryCyclesConnection:
+
+        @pytest.fixture
+        def setup(self, setup, setup_teams):
+            fixture = Fixture.merge(setup, setup_teams)
+
+            yield Fixture(
+                parent=fixture
+            )
+
+
+
+        def it_returns_the_inferred_delivery_cycles(self, setup):
+            fixture = setup
+            api_helper = fixture.api_helper
+            work_items_common = dict_merge(
+                fixture.work_items_common,
+                dict(created_at=datetime.utcnow(), updated_at=datetime.utcnow())
+            )
+
+            work_items = [
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue {i}',
+                    display_id='1000',
+                    state='open',
+                    **work_items_common
+                )
+                for i in range(0, 5)
+            ]
+            api_helper.import_work_items(work_items)
+            map_work_items_to_team(fixture.team_a, work_items[0:3])
+
+            query = """
+                    query getTeamWorkItemDeliveryCycles($key: String!) {
+                        team(key: $key) {
+                            workItemDeliveryCycles {
+                                count
+                                edges {
+                                    node {
+                                        workItemKey
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    """
+
+            client = Client(schema)
+            result = client.execute(query, variable_values=dict(key=fixture.team_a['key']))
+            assert result.get('errors') is None
+            assert result['data']['team']['workItemDeliveryCycles']['count'] == 3
+            assert set([edge['node']['workItemKey'] for edge in result['data']['team']['workItemDeliveryCycles']['edges']]) == set([str(wi['key']) for wi in work_items[0:3]])
+
+
+        def it_returns_the_work_items_based_on_selectors(self, setup):
+            fixture = setup
+            api_helper = fixture.api_helper
+            work_items_common = dict_merge(
+                fixture.work_items_common,
+                dict(created_at=datetime.utcnow(), updated_at=datetime.utcnow())
+            )
+
+
+            # The tags on these work items identify the teams they belong to
+            work_items_with_selectors = [
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue S A 1',
+                    display_id='S-A 1',
+                    state='open',
+                    **dict_merge(work_items_common, dict(tags=['team:Team_A']))
+                ),
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue S A - 2',
+                    display_id='S-A-2',
+                    state='open',
+                    **dict_merge(work_items_common, dict(tags=['team:Team_A']))
+                ),
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue S A - 2',
+                    display_id='S-A-2',
+                    state='open',
+                    **dict_merge(work_items_common, dict(tags=[]))
+                ),
+            ]
+            api_helper.import_work_items(work_items_with_selectors)
+            # The team needs to specify the selectors for the team
+            update_team_selectors(fixture.team_a, ['team:Team_A'])
+
+            query = """
+                                query getTeamWorkItemDeliveryCycles($key: String!) {
+                                    team(key: $key) {
+                                        workItemDeliveryCycles {
+                                            count
+                                            edges {
+                                                node {
+                                                    workItemKey
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                """
+
+            client = Client(schema)
+            result = client.execute(query, variable_values=dict(key=fixture.team_a['key']))
+            assert result.get('errors') is None
+            assert result['data']['team']['workItemDeliveryCycles']['count'] == 2
+            assert set([edge['node']['workItemKey'] for edge in result['data']['team']['workItemDeliveryCycles']['edges']]) == set(
+                [str(wi['key']) for wi in work_items_with_selectors[0:2]])
+
+
+        def it_returns_members_of_both_sets(self, setup):
+            fixture = setup
+            api_helper = fixture.api_helper
+            work_items_common = dict_merge(
+                fixture.work_items_common,
+                dict(created_at=datetime.utcnow(), updated_at=datetime.utcnow())
+            )
+
+            work_items = [
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue {i}',
+                    display_id='1000',
+                    state='open',
+                    **work_items_common
+                )
+                for i in range(0, 5)
+            ]
+            api_helper.import_work_items(work_items)
+            map_work_items_to_team(fixture.team_a, work_items[0:3])
+
+            # The tags on these work items identify the teams they belong to
+            work_items_with_selectors = [
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue S A 1',
+                    display_id='S-A 1',
+                    state='open',
+                    **dict_merge(work_items_common, dict(tags=['team:Team_A']))
+                ),
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue S A - 2',
+                    display_id='S-A-2',
+                    state='open',
+                    **dict_merge(work_items_common, dict(tags=['team:Team_A']))
+                ),
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue S A - 2',
+                    display_id='S-A-2',
+                    state='open',
+                    **dict_merge(work_items_common, dict(tags=[]))
+                ),
+            ]
+            api_helper.import_work_items(work_items_with_selectors)
+            # The team needs to specify the selectors for the team
+            update_team_selectors(fixture.team_a, ['team:Team_A'])
+
+            query = """
+                    query getTeamWorkItemDeliveryCycles($key: String!) {
+                        team(key: $key) {
+                            workItemDeliveryCycles {
+                                count
+                                edges {
+                                    node {
+                                        workItemKey
+                                    }
+                                }
+                            }
+                        }
+                    }
+                                            """
+
+            client = Client(schema)
+            result = client.execute(query, variable_values=dict(key=fixture.team_a['key']))
+            assert result['data']['team']['workItemDeliveryCycles']['count'] == 5
+            assert set([edge['node']['workItemKey'] for edge in result['data']['team']['workItemDeliveryCycles']['edges']]) == set(
+                [str(wi['key']) for wi in work_items_with_selectors[0:2]]).union([str(wi['key']) for wi in work_items[0:3]])
+
+
+        def it_returns_the_union_of_both_sets(self, setup):
+            fixture = setup
+            api_helper = fixture.api_helper
+            work_items_common = dict_merge(
+                fixture.work_items_common,
+                dict(created_at=datetime.utcnow(), updated_at=datetime.utcnow())
+            )
+            common_work_item_key = uuid.uuid4()
+            work_items = [
+                dict(
+                    key=common_work_item_key,
+                    name=f'Issue A',
+                    display_id='1000',
+                    state='open',
+                    **dict_merge(work_items_common, dict(tags=['team:Team_A']))
+                ),
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue B',
+                    display_id='1000',
+                    state='open',
+                    **work_items_common
+                )
+
+            ]
+            api_helper.import_work_items(work_items)
+            map_work_items_to_team(fixture.team_a, work_items[0:1])
+
+            # The tags on these work items identify the teams they belong to
+            work_items_with_selectors = [
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue S A - 2',
+                    display_id='S-A-2',
+                    state='open',
+                    **dict_merge(work_items_common, dict(tags=['team:Team_A']))
+                ),
+                dict(
+                    key=uuid.uuid4(),
+                    name=f'Issue S A - 2',
+                    display_id='S-A-2',
+                    state='open',
+                    **dict_merge(work_items_common, dict(tags=[]))
+                ),
+            ]
+            api_helper.import_work_items(work_items_with_selectors)
+            # The team needs to specify the selectors for the team
+            update_team_selectors(fixture.team_a, ['team:Team_A'])
+
+            query = query = """
+                            query getTeamWorkItemDeliveryCycles($key: String!) {
+                                team(key: $key) {
+                                    workItemDeliveryCycles {
+                                        count
+                                        edges {
+                                            node {
+                                                workItemKey
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                                """
+
+            client = Client(schema)
+            result = client.execute(query, variable_values=dict(key=fixture.team_a['key']))
+            assert result['data']['team']['workItemDeliveryCycles']['count'] == 2
+            assert set([edge['node']['workItemKey'] for edge in result['data']['team']['workItemDeliveryCycles']['edges']]) == set(
+                [str(work_items[0]['key']), str(work_items_with_selectors[0]['key'])])
+
+
+
 class TestTeamPullRequests:
     @pytest.fixture
     def setup_pull_requests_fixture(self, api_pull_requests_import_fixture):
@@ -319,7 +582,7 @@ class TestTeamPullRequests:
                 display_id='1000',
                 state='open',
                 created_at=start_date,
-                updated_at=start_date,9
+                updated_at=start_date,
                 **work_items_common
             )
             for i in range(0, 1)

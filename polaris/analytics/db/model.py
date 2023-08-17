@@ -893,6 +893,8 @@ class WorkItem(Base):
     current_delivery_cycle_id = Column(Integer, nullable=True)
     releases = Column(ARRAY(String), nullable=True, default=[], server_default='{}')
     story_points = Column(Integer, nullable=True)
+    sprints = Column(ARRAY(String), nullable=True, default=[], server_default='{}')
+
     # The id of the entity in a remote system that this is mapped to.
     source_id = Column(String, nullable=True)
     created_at = Column(DateTime)

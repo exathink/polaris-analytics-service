@@ -323,6 +323,7 @@ class WorkItemInfo(graphene.Interface):
     priority = graphene.String(required=False)
     releases = graphene.List(graphene.String, required=False)
     story_points = graphene.Int(required=False)
+    sprints = graphene.List(graphene.String, required=False)
 
 
 class WorkItemStateTransition(graphene.Interface):

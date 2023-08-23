@@ -222,6 +222,12 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
             required=False,
             description='Provide a list of tags to filter work_items by',
             default_value=None
+        ),
+        release=graphene.Argument(
+            graphene.String,
+            required=False,
+            description='Provide a release to filter work_items by',
+            default_value=None
         )
     )
 

@@ -631,3 +631,144 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
                            'Issue 5'
                        }
 
+        class TestFilteringByReleases(WorkItemApiImportTest):
+            class TestWorkItemReleaseFiltering:
+                @pytest.fixture()
+                def setup(self, setup):
+                    fixture = setup
+
+                    common_fields = dict(
+                        work_item_type='issue',
+                        url='http://foo.com',
+                        description='foo',
+                        source_id=str(uuid.uuid4()),
+                        is_epic=False,
+                        parent_id=None,
+                        is_bug=True,
+                        state='upnext',
+                        created_at=get_date("2018-12-02"),
+                        updated_at=get_date("2018-12-03"),
+                    )
+
+                    result = api.import_new_work_items(
+                        organization_key=fixture.organization.key,
+                        work_item_source_key=fixture.work_items_source.key,
+                        work_item_summaries=[
+                            dict(
+                                key=uuid.uuid4().hex,
+                                name='Issue 1',
+                                display_id='1000',
+                                tags=[],
+                                releases=['1.0.1', '1.0.2'],
+                                **common_fields
+                            ),
+                            dict(
+                                key=uuid.uuid4().hex,
+                                name='Issue 2',
+                                display_id='1001',
+                                releases=[],
+                                tags=[],
+                                **common_fields
+                            ),
+                            dict(
+                                key=uuid.uuid4().hex,
+                                name='Issue 3',
+                                display_id='1002',
+                                releases=['1.0.1'],
+                                tags=[],
+                                **common_fields
+                            ),
+                            dict(
+                                key=uuid.uuid4().hex,
+                                name='Issue 4',
+                                display_id='1004',
+                                releases=['1.0.2'],
+                                tags=[],
+                                **common_fields
+                            ),
+                            dict(
+                                key=uuid.uuid4().hex,
+                                name='Issue 5',
+                                display_id='1005',
+                                releases=['1.0.3'],
+                                tags=[],
+                                **common_fields
+                            ),
+                            dict(
+                                key=uuid.uuid4().hex,
+                                name='Issue 6',
+                                display_id='1006',
+                                releases=['1.0.3'],
+                                tags=[],
+                                **common_fields
+                            ),
+
+                        ]
+                    )
+                    assert result.get('success')
+
+                    query = """
+                            query getProjectWorkItemsByRelease($project_key:String!, $release:String) {
+                                project(key: $project_key) {
+                                    workItemDeliveryCycles(release: $release){
+                                        edges {
+                                            node {
+                                              id
+                                              workItemKey
+                                              name
+                                              
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                    """
+                    yield Fixture(
+                        parent=fixture,
+                        query=query
+                    )
+
+                def it_filters_delivery_cycles_by_a_single_release(self, setup):
+                    fixture = setup
+
+                    client = Client(schema)
+                    result = client.execute(fixture.query,
+                                            variable_values=dict(project_key=fixture.project.key, release='1.0.1'))
+                    assert not result.get('errors')
+                    assert result['data']
+                    edges = result['data']['project']['workItemDeliveryCycles']['edges']
+                    assert len(edges) == 2
+
+                    assert {
+                               edge['node']['name']
+                               for edge in edges
+                           } == {
+                               'Issue 1',
+                               'Issue 3'
+                           }
+
+
+                def it_returns_all_delivery_cycles_if_releases_is_empty(self, setup):
+                    fixture = setup
+
+                    client = Client(schema)
+                    result = client.execute(fixture.query,
+                                            variable_values=dict(project_key=fixture.project.key, release=None))
+                    assert not result.get('errors')
+                    assert result['data']
+                    edges = result['data']['project']['workItemDeliveryCycles']['edges']
+                    assert len(edges) == 6
+
+
+                def it_returns_no_delivery_cycles_if_there_are_no_matches(self, setup):
+                    fixture = setup
+
+                    client = Client(schema)
+                    result = client.execute(fixture.query,
+                                            variable_values=dict(project_key=fixture.project.key,
+                                                                 release='random string'))
+                    assert not result.get('errors')
+                    assert result['data']
+                    edges = result['data']['project']['workItemDeliveryCycles']['edges']
+                    assert len(edges) == 0
+

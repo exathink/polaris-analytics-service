@@ -18,7 +18,7 @@ from polaris.analytics import api
 from polaris.analytics import publish
 
 from ..interfaces import WorkItemType, WorkItemsStateType, WorkItemsStateFlowType, WorkItemsStateReleaseStatusType
-from ..input_types import FlowMetricsSettingsInput, AnalysisPeriodsInput, WipInspectorSettingsInput
+from ..input_types import FlowMetricsSettingsInput, AnalysisPeriodsInput, WipInspectorSettingsInput, ReleasesSettingsInput
 from polaris.utils.exceptions import ProcessingException
 
 logger = logging.getLogger('polaris.analytics.mutations')
@@ -140,7 +140,7 @@ class UpdateProjectSettingsInput(graphene.InputObjectType):
     flow_metrics_settings = graphene.Field(FlowMetricsSettingsInput, required=False)
     analysis_periods = graphene.Field(AnalysisPeriodsInput, required=False)
     wip_inspector_settings = graphene.Field(WipInspectorSettingsInput, required=False)
-
+    releases_settings = graphene.Field(ReleasesSettingsInput, required=False)
 
 class UpdateProjectSettings(graphene.Mutation):
     class Arguments:

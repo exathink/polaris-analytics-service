@@ -1322,6 +1322,9 @@ class Settings:
 
             releases_settings = current['releases_settings']
 
+            if releases_input.enable_releases is not None:
+                releases_settings['enable_releases'] = releases_input.enable_releases
+
     @staticmethod
     def update_custom_phase_mapping(current, update_settings_input):
         if getattr(update_settings_input, 'custom_phase_mapping', None) is not None:
@@ -1330,7 +1333,7 @@ class Settings:
             if 'custom_phase_mapping' not in current:
                 current['custom_phase_mapping'] = dict()
 
-            custom_phase_mapping = current['current_custom_phase_mapping']
+            custom_phase_mapping = current['custom_phase_mapping']
 
             for phase in ['backlog', 'open', 'wip', 'complete', 'closed']:
-                custom_phase_mapping[phase] = custom_phase_mapping_input.get('phase')
+                custom_phase_mapping[phase] = custom_phase_mapping_input.get(phase)

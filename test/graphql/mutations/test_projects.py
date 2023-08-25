@@ -1022,6 +1022,35 @@ class TestUpdateProjectSettings:
                 enable_releases=True
             )
 
+    def it_updates_the_custom_phase_mappings(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                customPhaseMapping=dict(
+                    backlog="Product Management",
+                    open="Open",
+                    wip="Engineering",
+                    complete="QA/Release",
+                    closed="Delivered"
+                )
+            )
+        ))
+        assert response.get('errors') is None
+        assert response['data']['updateProjectSettings']['success']
+        with db.orm_session() as session:
+            project = Project.find_by_project_key(session, test_projects[0]['key'])
+            assert project.settings['custom_phase_mapping'] == dict(
+                    backlog="Product Management",
+                    open="Open",
+                    wip="Engineering",
+                    complete="QA/Release",
+                    closed="Delivered"
+                )
+
 
     def it_modifies_only_the_release_settings_that_were_passed(self, setup):
         fixture = setup

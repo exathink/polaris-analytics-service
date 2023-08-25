@@ -1000,7 +1000,6 @@ class TestUpdateProjectSettings:
                 include_sub_tasks=False
             )
 
-
     def it_updates_the_releases_settings(self, setup):
         fixture = setup
 
@@ -1021,7 +1020,6 @@ class TestUpdateProjectSettings:
             assert project.settings['releases_settings'] == dict(
                 enable_releases=True
             )
-
 
     def it_modifies_only_the_release_settings_that_were_passed(self, setup):
         fixture = setup
@@ -1070,6 +1068,96 @@ class TestUpdateProjectSettings:
             assert project.settings['releases_settings'] == dict(
                 enable_releases=False
             )
+
+    def it_updates_the_custom_phase_mappings(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                customPhaseMapping=dict(
+                    backlog="Product Management",
+                    open="Open",
+                    wip="Engineering",
+                    complete="QA/Release",
+                    closed="Delivered"
+                )
+            )
+        ))
+        assert response.get('errors') is None
+        assert response['data']['updateProjectSettings']['success']
+        with db.orm_session() as session:
+            project = Project.find_by_project_key(session, test_projects[0]['key'])
+            assert project.settings['custom_phase_mapping'] == dict(
+                    backlog="Product Management",
+                    open="Open",
+                    wip="Engineering",
+                    complete="QA/Release",
+                    closed="Delivered"
+                )
+
+    def it_modifies_only_the_custom_phase_mappings_that_were_passed(self, setup):
+        fixture = setup
+
+        client = Client(schema)
+
+        # update once
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                flowMetricsSettings=dict(
+                    cycleTimeTarget=7,
+                    leadTimeTarget=14,
+                    responseTimeConfidenceTarget=0.7,
+                    leadTimeConfidenceTarget=0.8,
+                    cycleTimeConfidenceTarget=0.9,
+                    includeSubTasks=False
+                ),
+                releasesSettings=dict(
+                    enableReleases=True
+                ),
+                customPhaseMapping=dict(
+                    backlog="Product Management",
+                    open="Open",
+                    wip="Engineering",
+                    complete="QA/Release",
+                    closed="Delivered"
+                )
+            )
+        ))
+
+        # update again
+        response = client.execute(fixture.query, variable_values=dict(
+            updateProjectSettingsInput=dict(
+                key=str(test_projects[0]['key']),
+                customPhaseMapping=dict(
+                    open="Between Silos",
+                )
+            )
+        ))
+        assert response['data']['updateProjectSettings']['success']
+        with db.orm_session() as session:
+            project = Project.find_by_project_key(session, test_projects[0]['key'])
+            assert project.settings['flow_metrics_settings'] == dict(
+                cycle_time_target=7,
+                lead_time_target=14,
+                response_time_confidence_target=0.7,
+                lead_time_confidence_target=0.8,
+                cycle_time_confidence_target=0.9,
+                include_sub_tasks=False
+            )
+            assert project.settings['releases_settings'] == dict(
+                enable_releases=True
+            )
+            assert project.settings['custom_phase_mapping'] == dict(
+                    backlog="Product Management",
+                    open="Between Silos",
+                    wip="Engineering",
+                    complete="QA/Release",
+                    closed="Delivered"
+                )
 
 class TestUpdateWorkItems:
 

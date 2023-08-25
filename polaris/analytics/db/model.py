@@ -1336,4 +1336,5 @@ class Settings:
             custom_phase_mapping = current['custom_phase_mapping']
 
             for phase in ['backlog', 'open', 'wip', 'complete', 'closed']:
-                custom_phase_mapping[phase] = custom_phase_mapping_input.get(phase)
+                if phase in custom_phase_mapping_input:
+                    custom_phase_mapping[phase] = custom_phase_mapping_input.get(phase)

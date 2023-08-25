@@ -110,6 +110,13 @@ class Team(
                             'for interface compatibility. Not implemented',
                 default_value=None
             ),
+            release=graphene.Argument(
+                graphene.String,
+                required=False,
+                description='Provide a release to filter work_items by - this is currently only supported'
+                            'for interface compatibility. Not implemented',
+                default_value=None
+            ),
             **kwargs
         )
 

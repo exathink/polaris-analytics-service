@@ -486,7 +486,7 @@ class TestProjectSettings:
                 for phase in ['backlog', 'open', 'wip', 'complete', 'closed']:
                     assert custom_phase_mapping[phase] is None
 
-        @pytest.mark.skip
+
         class WhenSettingsIsEmpty:
 
             def it_returns_a_valid_result(self, setup):
@@ -497,11 +497,12 @@ class TestProjectSettings:
                 assert 'data' in result
                 project = result['data']['project']
                 assert project['settings']
-                releases = project['settings']['customPhaseMapping']
-                assert releases
-                assert releases['customPhaseMapping'] is None
+                custom_phase_mapping = project['settings']['customPhaseMapping']
+                assert custom_phase_mapping
+                for phase in ['backlog', 'open', 'wip', 'complete', 'closed']:
+                    assert custom_phase_mapping[phase] is None
 
-        @pytest.mark.skip
+
         class WhenSettingsIsNotEmpty:
             @pytest.fixture
             def setup(self, setup):
@@ -538,4 +539,5 @@ class TestProjectSettings:
                 custom_phase_mapping = project['settings']['customPhaseMapping']
                 assert custom_phase_mapping
 
-                assert custom_phase_mapping == fixture.settings.custom_phase_mapping
+                for phase in ['backlog', 'open', 'wip', 'complete', 'closed']:
+                    assert custom_phase_mapping[phase] == fixture.settings.custom_phase_mapping.get(phase)

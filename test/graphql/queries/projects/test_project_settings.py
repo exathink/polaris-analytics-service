@@ -341,3 +341,203 @@ class TestProjectSettings:
 
                 assert wip_inspector_settings['includeSubTasks'] \
                        == fixture.settings.wip_inspector_settings.include_sub_tasks
+    
+    class TestReleasesSettings:
+        @pytest.fixture
+        def setup(self, setup_projects):
+            project = test_projects[0]
+
+            query = """
+                    query getProjectSettings($project_key:String!) {
+                        project(key: $project_key) {
+                            settings {
+                                releasesSettings {
+                                    enableReleases
+                                }
+                            }
+                        }
+                    }
+            """
+            yield Fixture(
+                project=project,
+                query=query
+            )
+
+        class WhenSettingsIsNull:
+            @pytest.fixture
+            def setup(self, setup):
+                fixture = setup
+
+                with db.orm_session() as session:
+                    project = Project.find_by_project_key(session, fixture.project['key'])
+                    project.settings = None
+
+                yield fixture
+
+            def it_returns_a_valid_result(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                releases = project['settings']['releasesSettings']
+                assert releases
+                assert releases['enableReleases'] is False
+
+
+        class WhenSettingsIsEmpty:
+
+            def it_returns_a_valid_result(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                releases = project['settings']['releasesSettings']
+                assert releases
+                assert releases['enableReleases'] is False
+
+
+        class WhenSettingsIsNotEmpty:
+            @pytest.fixture
+            def setup(self, setup):
+                fixture = setup
+                settings_fixture = Fixture(
+                    releases_settings=Fixture(
+                        enable_releases=True
+                    )
+
+                )
+                with db.orm_session() as session:
+                    project = Project.find_by_project_key(session, fixture.project['key'])
+                    project.update_settings(
+                        settings_fixture
+                    )
+
+                yield Fixture(
+                    parent=fixture,
+                    settings=settings_fixture
+                )
+
+            def it_shows_releases_settings(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                releases_settings = project['settings']['releasesSettings']
+                assert releases_settings
+
+                assert releases_settings['enableReleases'] \
+                       == fixture.settings.releases_settings.enable_releases
+
+    class TestPhaseMappings:
+        @pytest.fixture
+        def setup(self, setup_projects):
+            project = test_projects[0]
+
+            query = """
+                    query getProjectSettingsCustomPhaseMapping($project_key:String!) {
+                        project(key: $project_key) {
+                            settings {
+                                customPhaseMapping {
+                                    backlog
+                                    open
+                                    wip
+                                    complete
+                                    closed
+                                }
+                            }
+                        }
+                    }
+            """
+            yield Fixture(
+                project=project,
+                query=query
+            )
+
+        class WhenSettingsIsNull:
+            @pytest.fixture
+            def setup(self, setup):
+                fixture = setup
+
+                with db.orm_session() as session:
+                    project = Project.find_by_project_key(session, fixture.project['key'])
+                    project.settings = None
+
+                yield fixture
+
+            def it_returns_a_valid_result(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                custom_phase_mapping = project['settings']['customPhaseMapping']
+
+                for phase in ['backlog', 'open', 'wip', 'complete', 'closed']:
+                    assert custom_phase_mapping[phase] is None
+
+
+        class WhenSettingsIsEmpty:
+
+            def it_returns_a_valid_result(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                custom_phase_mapping = project['settings']['customPhaseMapping']
+                assert custom_phase_mapping
+                for phase in ['backlog', 'open', 'wip', 'complete', 'closed']:
+                    assert custom_phase_mapping[phase] is None
+
+
+        class WhenSettingsIsNotEmpty:
+            @pytest.fixture
+            def setup(self, setup):
+                fixture = setup
+                settings_fixture = Fixture(
+                    custom_phase_mapping=Fixture(
+                        backlog="Product Management",
+                        open="Open",
+                        wip="Engineering",
+                        complete="QA/Release",
+                        closed="Closed"
+                    )
+
+                )
+                with db.orm_session() as session:
+                    project = Project.find_by_project_key(session, fixture.project['key'])
+                    project.update_settings(
+                        settings_fixture
+                    )
+
+                yield Fixture(
+                    parent=fixture,
+                    settings=settings_fixture
+                )
+
+            def it_shows_custom_phase_mapping(self, setup):
+                fixture = setup
+
+                client = Client(schema)
+                result = client.execute(fixture.query, variable_values=dict(project_key=fixture.project['key']))
+                assert 'data' in result
+                project = result['data']['project']
+                assert project['settings']
+                custom_phase_mapping = project['settings']['customPhaseMapping']
+                assert custom_phase_mapping
+
+                for phase in ['backlog', 'open', 'wip', 'complete', 'closed']:
+                    assert custom_phase_mapping[phase] == fixture.settings.custom_phase_mapping.get(phase)

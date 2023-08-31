@@ -371,6 +371,9 @@ class Project(Base):
         Settings.update_flow_metrics_settings(current, update_project_settings_input)
         Settings.update_analysis_periods(current, update_project_settings_input)
         Settings.update_wip_inspector_settings(current, update_project_settings_input)
+        Settings.update_releases_settings(current, update_project_settings_input)
+        Settings.update_custom_phase_mapping(current, update_project_settings_input)
+
         self.settings = current
 
     # Note: since we have an association object
@@ -1314,3 +1317,30 @@ class Settings:
 
             if wip_inspector_input.include_sub_tasks is not None:
                 wip_inspector_settings['include_sub_tasks'] = wip_inspector_input.include_sub_tasks
+
+    @staticmethod
+    def update_releases_settings(current, update_settings_input):
+        if getattr(update_settings_input, 'releases_settings', None) is not None:
+            releases_input = update_settings_input.releases_settings
+
+            if 'releases_settings' not in current:
+                current['releases_settings'] = dict()
+
+            releases_settings = current['releases_settings']
+
+            if releases_input.enable_releases is not None:
+                releases_settings['enable_releases'] = releases_input.enable_releases
+
+    @staticmethod
+    def update_custom_phase_mapping(current, update_settings_input):
+        if getattr(update_settings_input, 'custom_phase_mapping', None) is not None:
+            custom_phase_mapping_input = update_settings_input.custom_phase_mapping
+
+            if 'custom_phase_mapping' not in current:
+                current['custom_phase_mapping'] = dict()
+
+            custom_phase_mapping = current['custom_phase_mapping']
+
+            for phase in ['backlog', 'open', 'wip', 'complete', 'closed']:
+                if phase in custom_phase_mapping_input:
+                    custom_phase_mapping[phase] = custom_phase_mapping_input.get(phase)

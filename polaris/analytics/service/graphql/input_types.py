@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 import graphene
 
-from .interfaces import FlowMetricsSettings, AnalysisPeriods, WipInspectorSettings
+from .interfaces import FlowMetricsSettings, AnalysisPeriods, WipInspectorSettings, ReleasesSettings, CustomPhaseMapping
 
 
 class AccountProfileInput(graphene.InputObjectType):
@@ -40,4 +40,10 @@ class AnalysisPeriodsInput(AnalysisPeriods, graphene.InputObjectType):
 
 
 class WipInspectorSettingsInput(WipInspectorSettings, graphene.InputObjectType):
+    pass
+
+class ReleasesSettingsInput(ReleasesSettings, graphene.InputObjectType):
+    pass
+
+class CustomPhaseMappingInput(CustomPhaseMapping, graphene.InputObjectType):
     pass

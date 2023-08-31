@@ -53,6 +53,7 @@ class CreateTeam(graphene.Mutation):
 class UpdateTeamSettingsInput(graphene.InputObjectType):
     key = graphene.String(required=True)
     name = graphene.String(required=False)
+    work_item_selectors = graphene.List(graphene.String, required=False)
     flow_metrics_settings = graphene.Field(FlowMetricsSettingsInput, required=False)
     analysis_periods = graphene.Field(AnalysisPeriodsInput, required=False)
     wip_inspector_settings = graphene.Field(WipInspectorSettingsInput, required=False)

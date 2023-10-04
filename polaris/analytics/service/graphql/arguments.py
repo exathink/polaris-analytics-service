@@ -114,6 +114,15 @@ class WorkItemTypeSelectionParameters(graphene.InputObjectType):
         description="Limit analysis to only specs (work_items with commit_count >0). Defaults to false",
         default_value=False
     )
+    release = graphene.String(
+        required=False,
+        description="Limit analysis to only work items with the specified release",
+    )
+    tags = graphene.List(graphene.String,
+        required=False,
+        description="Limit analysis to only work items containing one or more of the specified tags"
+    )
+
 
 
 class CycleMetricsParameters(WorkItemTypeSelectionParameters, graphene.InputObjectType):

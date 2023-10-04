@@ -47,7 +47,7 @@ from ..work_item.sql_expressions import work_item_events_connection_apply_time_w
     work_item_info_columns, work_item_commit_info_columns, work_items_connection_apply_filters, \
     work_item_delivery_cycle_info_columns, work_item_delivery_cycles_connection_apply_filters, \
     work_item_info_group_expr_columns, apply_specs_only_filter, apply_defects_only_filter, CycleMetricsTrendsBase, \
-    map_work_item_type_to_flow_type, work_items_source_ref_info_columns
+    map_work_item_type_to_flow_type, work_items_source_ref_info_columns, apply_releases_filter, apply_tags_filter
 from ..utils import date_column_is_in_measurement_window, get_measurement_period, get_timeline_dates_for_trending
 from polaris.common import db
 
@@ -2156,6 +2156,10 @@ class ProjectFlowRateTrends(InterfaceResolver):
         flow_rate_trends = apply_specs_only_filter(flow_rate_trends, work_items, work_item_delivery_cycles,
                                                    **flow_rate_trends_args)
         flow_rate_trends = apply_defects_only_filter(flow_rate_trends, work_items, **flow_rate_trends_args)
+
+        flow_rate_trends = apply_releases_filter(flow_rate_trends, work_items, **flow_rate_trends_args)
+
+        flow_rate_trends = apply_tags_filter(flow_rate_trends, work_items, **flow_rate_trends_args)
 
         flow_rate_trends = flow_rate_trends.group_by(
             project_timeline_dates.c.id,

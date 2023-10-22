@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import datetime
 
 #  Copyright (c) Exathink, LLC  2016-2023.
 #  All rights reserved
@@ -46,7 +47,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
         def it_works(self, setup):
             fixture = setup
             query = """
-                    query getProjectFlowRateTrends(
+                    query getProjectWipArrivalRateTrends(
                         $project_key:String!,
                         $days: Int!,
                         $window: Int!,
@@ -55,16 +56,15 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                         project(
                             key: $project_key,
                             interfaces: [WipArrivalRateTrends],
-                            flowRateTrendsArgs: {
+                            wipArrivalRateTrendsArgs: {
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
-                                metrics: [
-                                    arrival_rate
-                                ],
                             }
                         )
                         {
+                            name
+                            key
                             wipArrivalRateTrends {
                                 measurementDate
                                 measurementWindow
@@ -79,8 +79,15 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                 project_key=fixture.project.key,
                 days=30,
                 window=30,
-                sample=15
+                sample=30
             ))
-            assert not result['errors']
+            assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['flowRateTrends']) == 0
+            assert len(project['wipArrivalRateTrends']) == 2
+
+            assert [
+                0,0
+            ] == [
+                measurement['arrivalRate']
+                for measurement in project['wipArrivalRateTrends']
+            ]

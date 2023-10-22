@@ -258,6 +258,18 @@ class FlowRateTrendsResolverMixin(KeyIdResolverMixin):
             for flow_rate_metrics in self.flow_rate_trends or []
         ]
 
+class WipArrivalRateTrendsResolverMixin(KeyIdResolverMixin):
+
+    def __init__(self, *args, **kwargs):
+        self.wip_arrival_rate_trends = []
+        super().__init__(*args, **kwargs)
+
+    def resolve_wip_arrival_rate_trends(self, info, **kwargs):
+        return [
+            FlowRateMeasurementImpl(**wip_arrival_rate_measurement)
+            for wip_arrival_rate_measurement in self.wip_arrival_rate_trends or []
+        ]
+
 
 class BacklogTrendsResolverMixin(KeyIdResolverMixin):
 

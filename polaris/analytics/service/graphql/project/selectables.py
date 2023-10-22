@@ -39,7 +39,7 @@ from ..interfaces import \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends, \
-    BacklogTrends, ValueStreamInfo, Tags,Releases
+    WipArrivalRateTrends, BacklogTrends, ValueStreamInfo, Tags,Releases
 
 from ..pull_request.sql_expressions import pull_request_info_columns, pull_requests_connection_apply_filters
 from ..work_item import sql_expressions
@@ -2187,6 +2187,110 @@ class ProjectFlowRateTrends(InterfaceResolver):
         ).group_by(
             project_timeline_dates.c.id
         )
+
+class ProjectWipArrivalRateTrends(InterfaceResolver):
+    interface = WipArrivalRateTrends
+
+    @staticmethod
+    def interface_selector(project_nodes, **kwargs):
+        wip_arrival_rate_trends_args = kwargs.get('wip_arrival_rate_trends_args')
+        if wip_arrival_rate_trends_args is None:
+            raise ProcessingException('wipArrivalRateTrendsArgs parameter must be specified to resolve WipArrivalRateTrendsInterface')
+
+        timeline_dates = get_timeline_dates_for_trending(
+            wip_arrival_rate_trends_args,
+            arg_name='wip_arrival_rate_trends',
+            interface_name='WipArrivalRateTrends'
+        )
+        project_nodes_dates = select([project_nodes, timeline_dates]).cte('project_nodes_dates')
+
+        measurement_window = wip_arrival_rate_trends_args.measurement_window
+        if measurement_window is None:
+            raise ProcessingException(
+                "'measurement_window' must be specified when calculating ProjectWipArrivalRateTrends"
+            )
+
+        current_state_map = work_items_source_state_map.alias('current_state_map')
+        previous_state_map = work_items_source_state_map.alias('previous_state_map')
+
+        select_arrivals = select([
+            project_nodes_dates.c.id.label('project_id'),
+            project_nodes_dates.c.measurement_date,
+            work_item_delivery_cycles.c.delivery_cycle_id
+        ]).select_from(
+            project_nodes_dates.join(
+                work_items_sources, work_items_sources.c.project_id == project_nodes_dates.c.id
+            ).join(
+                work_items, work_items.c.work_items_source_id == work_items_sources.c.id
+            ).join(
+                work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
+            ).join(
+                work_item_delivery_cycles,
+                and_(
+                    work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                    work_item_delivery_cycles.c.start_seq_no <= work_item_state_transitions.c.seq_no,
+                    or_(
+                        work_item_delivery_cycles.c.end_seq_no == None,
+                        work_item_state_transitions.c.seq_no <= work_item_delivery_cycles.c.end_seq_no
+                    )
+                )
+            ).join(
+                current_state_map, current_state_map.c.state == work_item_state_transitions.c.state
+            ).join(
+                previous_state_map, previous_state_map.c.state == work_item_state_transitions.c.previous_state
+            )
+        ).where(
+            and_(
+                date_column_is_in_measurement_window(
+                    work_item_state_transitions.c.created_at,
+                    measurement_date=project_nodes_dates.c.measurement_date,
+                    measurement_window=measurement_window
+                ),
+                previous_state_map.c.state_type.in_(['backlog']),
+                current_state_map.c.state_type.in_(['open','wip','complete'])
+            )
+        )
+        select_arrivals = work_item_delivery_cycles_connection_apply_filters(select_arrivals, work_items, work_item_delivery_cycles, **kwargs).alias('select_arrivals')
+
+        select_arrival_rate_trends = select([
+            project_nodes_dates.c.id,
+            project_nodes_dates.c.measurement_date,
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).label('arrival_rate')
+        ]).select_from(
+            project_nodes_dates.outerjoin(
+                select_arrivals,
+                and_(
+                    select_arrivals.c.project_id == project_nodes_dates.c.id,
+                    select_arrivals.c.measurement_date == project_nodes_dates.c.measurement_date
+                )
+            )
+        ).group_by(
+            project_nodes_dates.c.id,
+            project_nodes_dates.c.measurement_date
+        ).order_by(
+            project_nodes_dates.c.id,
+            project_nodes_dates.c.measurement_date.desc()
+        ).alias('select_arrival_rate_trends')
+
+        result = select([
+            select_arrival_rate_trends.c.id,
+            func.json_agg(
+                func.json_build_object(
+                    'measurement_date', select_arrival_rate_trends.c.measurement_date,
+                    'measurement_window', measurement_window,
+                    'arrival_rate', select_arrival_rate_trends.c.arrival_rate
+                )
+            ).label('wip_arrival_rate_trends')
+
+        ]).select_from(
+            select_arrival_rate_trends
+        ).group_by(
+            select_arrival_rate_trends.c.id
+        )
+
+        return result
+
+
 
 
 class ProjectBacklogTrends(InterfaceResolver):

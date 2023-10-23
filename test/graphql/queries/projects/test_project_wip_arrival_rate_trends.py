@@ -146,6 +146,69 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                 1,1
             ]
 
+        def it_respects_before_dates_in_the_measurement(self, setup):
+            fixture = setup
+            api_helper = fixture.api_helper
+            work_items = fixture.work_items
+            start_date = fixture.start_date
+
+            client = Client(schema)
+
+            api_helper.import_work_items(work_items)
+
+            # one arrival in the period start_date, start_date + 30 days
+            api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+
+            #another arrival in the period start_date + 30 days, start_date + 60 days
+            api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=32))])
+
+            query = """
+                    query getProjectWipArrivalRateTrends(
+                        $project_key:String!,
+                        $before: Date!,
+                        $days: Int!,
+                        $window: Int!,
+                        $sample: Int
+                    ) {
+                        project(
+                            key: $project_key,
+                            interfaces: [WipArrivalRateTrends],
+                            wipArrivalRateTrendsArgs: {
+                                before: $before,
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                            }
+                        )
+                        {
+                            name
+                            key
+                            wipArrivalRateTrends {
+                                measurementDate
+                                measurementWindow
+                                arrivalRate
+                            }
+                        }
+                    }
+                    """
+            result = client.execute(query, variable_values=dict(
+                project_key=fixture.project.key,
+                before=start_date + timedelta(days=30),
+                days=30,
+                window=30,
+                sample=30
+            ))
+            assert not result.get('errors')
+            project = result['data']['project']
+            assert len(project['wipArrivalRateTrends']) == 2
+
+            assert  [
+                measurement['arrivalRate']
+                for measurement in project['wipArrivalRateTrends']
+            ] == [
+                1,0
+            ]
+
         def it_records_all_the_transitions_from_backlog_to_open_wip_and_complete_states(self, setup):
             fixture = setup
             api_helper = fixture.api_helper

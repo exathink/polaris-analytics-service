@@ -2246,7 +2246,8 @@ class ProjectWipArrivalRateTrends(InterfaceResolver):
                     measurement_date=project_nodes_dates.c.measurement_date,
                     measurement_window=measurement_window
                 ),
-                previous_state_map.c.state_type.in_(['backlog']),
+                # we consider transitions from non-wip phases to wip phases to be arrivals.
+                previous_state_map.c.state_type.in_(['backlog', 'closed']),
                 current_state_map.c.state_type.in_(['open','wip','complete'])
             )
         )

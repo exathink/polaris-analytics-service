@@ -13,7 +13,7 @@ from datetime import datetime
 
 from .interfaces import StateTypeAggregateMeasure, StateMapping, WorkItemStateTransitionImpl, WorkItemStateDetail, \
     WorkItemDaysInState, AggregateCycleMetricsImpl, TraceabilityImpl, WorkItemsSummary, ResponseTimeConfidenceImpl, \
-    ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl, \
+    ProjectSettingsImpl, FlowMixMeasurementImpl, CapacityMeasurementImpl, AggregatePullRequestMetricsImpl, ArrivalDepartureRateMeasurementImpl, \
     ContributorAliasInfoImpl, FlowRateMeasurementImpl, BacklogMeasurementImpl, TeamNodeRefImpl, TeamSettingsImpl, ScopedRoleField
 
 
@@ -266,7 +266,7 @@ class ArrivalDepartureTrendsResolverMixin(KeyIdResolverMixin):
 
     def resolve_arrival_departure_trends(self, info, **kwargs):
         return [
-            FlowRateMeasurementImpl(**arrival_departure_measurement)
+            ArrivalDepartureRateMeasurementImpl(**arrival_departure_measurement)
             for arrival_departure_measurement in self.arrival_departure_trends or []
         ]
 

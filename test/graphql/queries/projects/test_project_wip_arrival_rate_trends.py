@@ -71,7 +71,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                             arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
-                                arrivalRate
+                                arrivals
                             }
                         }
                     }
@@ -109,7 +109,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             assert [
                 0,0
             ] == [
-                measurement['arrivalRate']
+                measurement['arrivals']
                 for measurement in project['arrivalDepartureTrends']
             ]
 
@@ -140,7 +140,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
-                measurement['arrivalRate']
+                measurement['arrivals']
                 for measurement in project['arrivalDepartureTrends']
             ] == [
                 1,1
@@ -186,7 +186,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                             arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
-                                arrivalRate
+                                arrivals
                             }
                         }
                     }
@@ -203,7 +203,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
-                measurement['arrivalRate']
+                measurement['arrivals']
                 for measurement in project['arrivalDepartureTrends']
             ] == [
                 1,0
@@ -239,7 +239,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
-                measurement['arrivalRate']
+                measurement['arrivals']
                 for measurement in project['arrivalDepartureTrends']
             ] == [
                 2,1
@@ -271,14 +271,14 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             assert len(project['arrivalDepartureTrends']) == 11
             # we expect 10 arrivals corresponding to the 10 work items
             assert  [
-                measurement['arrivalRate']
+                measurement['arrivals']
                 for measurement in project['arrivalDepartureTrends'][0:10]
             ] == [
                 1
                 for i in range(0,10)
             ]
             # and an extra 0 value to denote the arrival rate for the n+1th period.
-            assert project['arrivalDepartureTrends'][10]['arrivalRate'] == 0
+            assert project['arrivalDepartureTrends'][10]['arrivals'] == 0
 
         def it_reports_the_number_of_distinct_delivery_cycles_not_work_items(self, setup):
             fixture = setup
@@ -314,7 +314,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             # we expect to report the same work item arriving twice in period in different delivery
             # cycles as two separate arrivals.
             assert [
-                       measurement['arrivalRate']
+                       measurement['arrivals']
                        for measurement in project['arrivalDepartureTrends']
                    ] == [
                        2, 0
@@ -351,7 +351,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             # we expect to report the same work item arriving twice in period in different delivery
             # cycles as two separate arrivals.
             assert [
-                       measurement['arrivalRate']
+                       measurement['arrivals']
                        for measurement in project['arrivalDepartureTrends']
                    ] == [
                        2, 0
@@ -402,7 +402,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                             arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
-                                arrivalRate
+                                arrivals
                             }
                         }
                     }
@@ -419,7 +419,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
-                measurement['arrivalRate']
+                measurement['arrivals']
                 for measurement in project['arrivalDepartureTrends']
             ] == [
                 1,0
@@ -467,7 +467,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                             arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
-                                arrivalRate
+                                arrivals
                             }
                         }
                     }
@@ -485,7 +485,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
-                measurement['arrivalRate']
+                measurement['arrivals']
                 for measurement in project['arrivalDepartureTrends']
             ] == [
                 0,1
@@ -533,7 +533,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                             arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
-                                arrivalRate
+                                arrivals
                             }
                         }
                     }
@@ -551,7 +551,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
-                measurement['arrivalRate']
+                measurement['arrivals']
                 for measurement in project['arrivalDepartureTrends']
             ] == [
                 1,0
@@ -599,7 +599,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                             arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
-                                arrivalRate
+                                arrivals
                             }
                         }
                     }
@@ -617,7 +617,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
-                measurement['arrivalRate']
+                measurement['arrivals']
                 for measurement in project['arrivalDepartureTrends']
             ] == [
                 1,0

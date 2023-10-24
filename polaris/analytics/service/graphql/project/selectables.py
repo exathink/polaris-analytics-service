@@ -2256,7 +2256,7 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
         select_arrival_rate_trends = select([
             project_nodes_dates.c.id,
             project_nodes_dates.c.measurement_date,
-            func.count(select_arrivals.c.delivery_cycle_id.distinct()).label('arrival_rate')
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).label('arrivals')
         ]).select_from(
             project_nodes_dates.outerjoin(
                 select_arrivals,
@@ -2279,7 +2279,7 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
                 func.json_build_object(
                     'measurement_date', select_arrival_rate_trends.c.measurement_date,
                     'measurement_window', measurement_window,
-                    'arrival_rate', select_arrival_rate_trends.c.arrival_rate
+                    'arrivals', select_arrival_rate_trends.c.arrivals
                 )
             ).label('arrival_departure_trends')
 

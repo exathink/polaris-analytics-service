@@ -20,7 +20,7 @@ from test.fixtures.project_work_items import *
 from polaris.utils.collections import dict_merge
 from test.fixtures.graphql import WorkItemImportApiHelper
 
-class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
+class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
     class TestWipArrivalRate:
         @pytest.fixture()
         def setup(self, setup):
@@ -50,7 +50,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
 
 
             query = """
-                    query getProjectWipArrivalRateTrends(
+                    query getProjectArrivalDepartureTrends(
                         $project_key:String!,
                         $days: Int!,
                         $window: Int!,
@@ -58,8 +58,8 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                     ) {
                         project(
                             key: $project_key,
-                            interfaces: [WipArrivalRateTrends],
-                            wipArrivalRateTrendsArgs: {
+                            interfaces: [ArrivalDepartureTrends],
+                            arrivalDepartureTrendsArgs: {
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
@@ -68,7 +68,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                         {
                             name
                             key
-                            wipArrivalRateTrends {
+                            arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
                                 arrivalRate
@@ -104,13 +104,13 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 2
+            assert len(project['arrivalDepartureTrends']) == 2
 
             assert [
                 0,0
             ] == [
                 measurement['arrivalRate']
-                for measurement in project['wipArrivalRateTrends']
+                for measurement in project['arrivalDepartureTrends']
             ]
 
         def it_returns_the_arrivals_in_each_period(self, setup):
@@ -137,11 +137,11 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 2
+            assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
                 measurement['arrivalRate']
-                for measurement in project['wipArrivalRateTrends']
+                for measurement in project['arrivalDepartureTrends']
             ] == [
                 1,1
             ]
@@ -163,7 +163,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=32))])
 
             query = """
-                    query getProjectWipArrivalRateTrends(
+                    query getProjectArrivalDepartureTrends(
                         $project_key:String!,
                         $before: Date!,
                         $days: Int!,
@@ -172,8 +172,8 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                     ) {
                         project(
                             key: $project_key,
-                            interfaces: [WipArrivalRateTrends],
-                            wipArrivalRateTrendsArgs: {
+                            interfaces: [ArrivalDepartureTrends],
+                            arrivalDepartureTrendsArgs: {
                                 before: $before,
                                 days: $days,
                                 measurementWindow: $window,
@@ -183,7 +183,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                         {
                             name
                             key
-                            wipArrivalRateTrends {
+                            arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
                                 arrivalRate
@@ -200,11 +200,11 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 2
+            assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
                 measurement['arrivalRate']
-                for measurement in project['wipArrivalRateTrends']
+                for measurement in project['arrivalDepartureTrends']
             ] == [
                 1,0
             ]
@@ -236,11 +236,11 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 2
+            assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
                 measurement['arrivalRate']
-                for measurement in project['wipArrivalRateTrends']
+                for measurement in project['arrivalDepartureTrends']
             ] == [
                 2,1
             ]
@@ -268,17 +268,17 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 11
+            assert len(project['arrivalDepartureTrends']) == 11
             # we expect 10 arrivals corresponding to the 10 work items
             assert  [
                 measurement['arrivalRate']
-                for measurement in project['wipArrivalRateTrends'][0:10]
+                for measurement in project['arrivalDepartureTrends'][0:10]
             ] == [
                 1
                 for i in range(0,10)
             ]
             # and an extra 0 value to denote the arrival rate for the n+1th period.
-            assert project['wipArrivalRateTrends'][10]['arrivalRate'] == 0
+            assert project['arrivalDepartureTrends'][10]['arrivalRate'] == 0
 
         def it_reports_the_number_of_distinct_delivery_cycles_not_work_items(self, setup):
             fixture = setup
@@ -310,12 +310,12 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 2
+            assert len(project['arrivalDepartureTrends']) == 2
             # we expect to report the same work item arriving twice in period in different delivery
             # cycles as two separate arrivals.
             assert [
                        measurement['arrivalRate']
-                       for measurement in project['wipArrivalRateTrends']
+                       for measurement in project['arrivalDepartureTrends']
                    ] == [
                        2, 0
                    ]
@@ -347,12 +347,12 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 2
+            assert len(project['arrivalDepartureTrends']) == 2
             # we expect to report the same work item arriving twice in period in different delivery
             # cycles as two separate arrivals.
             assert [
                        measurement['arrivalRate']
-                       for measurement in project['wipArrivalRateTrends']
+                       for measurement in project['arrivalDepartureTrends']
                    ] == [
                        2, 0
                    ]
@@ -379,7 +379,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             api_helper.update_delivery_cycle(1, dict(commit_count=1))
 
             query = """
-                    query getProjectWipArrivalRateTrends(
+                    query getProjectArrivalDepartureTrends(
                         $project_key:String!,
                         $days: Int!,
                         $window: Int!,
@@ -387,8 +387,8 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                     ) {
                         project(
                             key: $project_key,
-                            interfaces: [WipArrivalRateTrends],
-                            wipArrivalRateTrendsArgs: {
+                            interfaces: [ArrivalDepartureTrends],
+                            arrivalDepartureTrendsArgs: {
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
@@ -399,7 +399,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                         {
                             name
                             key
-                            wipArrivalRateTrends {
+                            arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
                                 arrivalRate
@@ -416,11 +416,11 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 2
+            assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
                 measurement['arrivalRate']
-                for measurement in project['wipArrivalRateTrends']
+                for measurement in project['arrivalDepartureTrends']
             ] == [
                 1,0
             ]
@@ -445,7 +445,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             api_helper.update_work_item_attributes(1, dict(work_item_type='subtask'))
 
             query = """
-                    query getProjectWipArrivalRateTrends(
+                    query getProjectArrivalDepartureTrends(
                         $project_key:String!,
                         $days: Int!,
                         $window: Int!,
@@ -453,8 +453,8 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                     ) {
                         project(
                             key: $project_key,
-                            interfaces: [WipArrivalRateTrends],
-                            wipArrivalRateTrendsArgs: {
+                            interfaces: [ArrivalDepartureTrends],
+                            arrivalDepartureTrendsArgs: {
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
@@ -464,7 +464,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                         {
                             name
                             key
-                            wipArrivalRateTrends {
+                            arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
                                 arrivalRate
@@ -482,11 +482,11 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 2
+            assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
                 measurement['arrivalRate']
-                for measurement in project['wipArrivalRateTrends']
+                for measurement in project['arrivalDepartureTrends']
             ] == [
                 0,1
             ]
@@ -511,7 +511,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             api_helper.update_work_item_attributes(1, dict(tags=['feature']))
 
             query = """
-                    query getProjectWipArrivalRateTrends(
+                    query getProjectArrivalDepartureTrends(
                         $project_key:String!,
                         $days: Int!,
                         $window: Int!,
@@ -519,8 +519,8 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                     ) {
                         project(
                             key: $project_key,
-                            interfaces: [WipArrivalRateTrends],
-                            wipArrivalRateTrendsArgs: {
+                            interfaces: [ArrivalDepartureTrends],
+                            arrivalDepartureTrendsArgs: {
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
@@ -530,7 +530,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                         {
                             name
                             key
-                            wipArrivalRateTrends {
+                            arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
                                 arrivalRate
@@ -548,11 +548,11 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 2
+            assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
                 measurement['arrivalRate']
-                for measurement in project['wipArrivalRateTrends']
+                for measurement in project['arrivalDepartureTrends']
             ] == [
                 1,0
             ]
@@ -577,7 +577,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             api_helper.update_work_item_attributes(1, dict(releases=['v1.0']))
 
             query = """
-                    query getProjectWipArrivalRateTrends(
+                    query getProjectArrivalDepartureTrends(
                         $project_key:String!,
                         $days: Int!,
                         $window: Int!,
@@ -585,8 +585,8 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                     ) {
                         project(
                             key: $project_key,
-                            interfaces: [WipArrivalRateTrends],
-                            wipArrivalRateTrendsArgs: {
+                            interfaces: [ArrivalDepartureTrends],
+                            arrivalDepartureTrendsArgs: {
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
@@ -596,7 +596,7 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                         {
                             name
                             key
-                            wipArrivalRateTrends {
+                            arrivalDepartureTrends {
                                 measurementDate
                                 measurementWindow
                                 arrivalRate
@@ -614,11 +614,11 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ))
             assert not result.get('errors')
             project = result['data']['project']
-            assert len(project['wipArrivalRateTrends']) == 2
+            assert len(project['arrivalDepartureTrends']) == 2
 
             assert  [
                 measurement['arrivalRate']
-                for measurement in project['wipArrivalRateTrends']
+                for measurement in project['arrivalDepartureTrends']
             ] == [
                 1,0
             ]

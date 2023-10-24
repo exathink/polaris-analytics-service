@@ -490,3 +490,135 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
             ] == [
                 0,1
             ]
+
+        def it_respects_tags_if_specified(self, setup):
+            fixture = setup
+            api_helper = fixture.api_helper
+            work_items = fixture.work_items
+            start_date = fixture.start_date
+
+            client = Client(schema)
+
+            api_helper.import_work_items(work_items)
+
+            # one arrival in the period start_date, start_date + 30 days
+            api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+
+            #another arrival in the period start_date + 30 days, start_date + 60 days
+            api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=32))])
+
+            #add a tag to the second one
+            api_helper.update_work_item_attributes(1, dict(tags=['feature']))
+
+            query = """
+                    query getProjectWipArrivalRateTrends(
+                        $project_key:String!,
+                        $days: Int!,
+                        $window: Int!,
+                        $sample: Int
+                    ) {
+                        project(
+                            key: $project_key,
+                            interfaces: [WipArrivalRateTrends],
+                            wipArrivalRateTrendsArgs: {
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                                tags: ["feature"]
+                            }
+                        )
+                        {
+                            name
+                            key
+                            wipArrivalRateTrends {
+                                measurementDate
+                                measurementWindow
+                                arrivalRate
+                            }
+                        }
+                    }
+                    """
+
+
+            result = client.execute(query, variable_values=dict(
+                project_key=fixture.project.key,
+                days=30,
+                window=30,
+                sample=30
+            ))
+            assert not result.get('errors')
+            project = result['data']['project']
+            assert len(project['wipArrivalRateTrends']) == 2
+
+            assert  [
+                measurement['arrivalRate']
+                for measurement in project['wipArrivalRateTrends']
+            ] == [
+                1,0
+            ]
+
+        def it_respects_releases_if_specified(self, setup):
+            fixture = setup
+            api_helper = fixture.api_helper
+            work_items = fixture.work_items
+            start_date = fixture.start_date
+
+            client = Client(schema)
+
+            api_helper.import_work_items(work_items)
+
+            # one arrival in the period start_date, start_date + 30 days
+            api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+
+            #another arrival in the period start_date + 30 days, start_date + 60 days
+            api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=32))])
+
+            #add a tag to the second one
+            api_helper.update_work_item_attributes(1, dict(releases=['v1.0']))
+
+            query = """
+                    query getProjectWipArrivalRateTrends(
+                        $project_key:String!,
+                        $days: Int!,
+                        $window: Int!,
+                        $sample: Int
+                    ) {
+                        project(
+                            key: $project_key,
+                            interfaces: [WipArrivalRateTrends],
+                            wipArrivalRateTrendsArgs: {
+                                days: $days,
+                                measurementWindow: $window,
+                                samplingFrequency: $sample,
+                                release: "v1.0"
+                            }
+                        )
+                        {
+                            name
+                            key
+                            wipArrivalRateTrends {
+                                measurementDate
+                                measurementWindow
+                                arrivalRate
+                            }
+                        }
+                    }
+                    """
+
+
+            result = client.execute(query, variable_values=dict(
+                project_key=fixture.project.key,
+                days=30,
+                window=30,
+                sample=30
+            ))
+            assert not result.get('errors')
+            project = result['data']['project']
+            assert len(project['wipArrivalRateTrends']) == 2
+
+            assert  [
+                measurement['arrivalRate']
+                for measurement in project['wipArrivalRateTrends']
+            ] == [
+                1,0
+            ]

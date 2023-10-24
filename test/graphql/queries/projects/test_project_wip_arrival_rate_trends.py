@@ -392,8 +392,9 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
+                                specsOnly: true
                             },
-                            specsOnly: true
+                            
                         )
                         {
                             name
@@ -457,8 +458,8 @@ class TestProjectWipArrivalRateTrends(ProjectWorkItemsTest):
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
-                            },
-                            includeSubTasks: false
+                                includeSubTasks: false
+                            }
                         )
                         {
                             name

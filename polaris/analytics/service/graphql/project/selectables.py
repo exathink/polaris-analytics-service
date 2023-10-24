@@ -2251,7 +2251,7 @@ class ProjectWipArrivalRateTrends(InterfaceResolver):
                 current_state_map.c.state_type.in_(['open','wip','complete'])
             )
         )
-        select_arrivals = work_item_delivery_cycles_connection_apply_filters(select_arrivals, work_items, work_item_delivery_cycles, **kwargs).alias('select_arrivals')
+        select_arrivals = work_item_delivery_cycles_connection_apply_filters(select_arrivals, work_items, work_item_delivery_cycles, **wip_arrival_rate_trends_args).alias('select_arrivals')
 
         select_arrival_rate_trends = select([
             project_nodes_dates.c.id,

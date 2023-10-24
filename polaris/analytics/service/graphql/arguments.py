@@ -229,7 +229,7 @@ class FlowRateParameters(WorkItemTypeSelectionParameters, graphene.InputObjectTy
 class FlowRateTrendsParameters(AggregateMetricsTrendsParameters, FlowRateParameters, graphene.InputObjectType):
     pass
 
-class WipArrivalRateTrendsParameters(AggregateMetricsTrendsParameters, graphene.InputObjectType):
+class WipArrivalRateTrendsParameters(AggregateMetricsTrendsParameters, WorkItemTypeSelectionParameters, graphene.InputObjectType):
     pass
 
 class BacklogMeasurementEnum(Enum):

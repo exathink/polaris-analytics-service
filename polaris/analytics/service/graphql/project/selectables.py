@@ -39,7 +39,7 @@ from ..interfaces import \
     PipelineCycleMetrics, \
     TraceabilityTrends, DeliveryCycleSpan, ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, \
     PipelinePullRequestMetrics, PullRequestMetricsTrends, PullRequestInfo, PullRequestEventSpan, FlowRateTrends, \
-    WipArrivalRateTrends, BacklogTrends, ValueStreamInfo, Tags,Releases
+    ArrivalDepartureTrends, BacklogTrends, ValueStreamInfo, Tags,Releases
 
 from ..pull_request.sql_expressions import pull_request_info_columns, pull_requests_connection_apply_filters
 from ..work_item import sql_expressions
@@ -2188,23 +2188,23 @@ class ProjectFlowRateTrends(InterfaceResolver):
             project_timeline_dates.c.id
         )
 
-class ProjectWipArrivalRateTrends(InterfaceResolver):
-    interface = WipArrivalRateTrends
+class ProjectArrivalDepartureTrends(InterfaceResolver):
+    interface = ArrivalDepartureTrends
 
     @staticmethod
     def interface_selector(project_nodes, **kwargs):
-        wip_arrival_rate_trends_args = kwargs.get('wip_arrival_rate_trends_args')
-        if wip_arrival_rate_trends_args is None:
-            raise ProcessingException('wipArrivalRateTrendsArgs parameter must be specified to resolve WipArrivalRateTrendsInterface')
+        arrival_departure_trends_args = kwargs.get('arrival_departure_trends_args')
+        if arrival_departure_trends_args is None:
+            raise ProcessingException('arrivalDepartureTrendsArgs parameter must be specified to resolve ArrivalDepartureTrendsInterface')
 
         timeline_dates = get_timeline_dates_for_trending(
-            wip_arrival_rate_trends_args,
-            arg_name='wip_arrival_rate_trends',
-            interface_name='WipArrivalRateTrends'
+            arrival_departure_trends_args,
+            arg_name='arrival_departure_trends',
+            interface_name='ArrivalDepartureTrends'
         )
         project_nodes_dates = select([project_nodes, timeline_dates]).cte('project_nodes_dates')
 
-        measurement_window = wip_arrival_rate_trends_args.measurement_window
+        measurement_window = arrival_departure_trends_args.measurement_window
         if measurement_window is None:
             raise ProcessingException(
                 "'measurement_window' must be specified when calculating ProjectWipArrivalRateTrends"
@@ -2251,7 +2251,7 @@ class ProjectWipArrivalRateTrends(InterfaceResolver):
                 current_state_map.c.state_type.in_(['open','wip','complete'])
             )
         )
-        select_arrivals = work_item_delivery_cycles_connection_apply_filters(select_arrivals, work_items, work_item_delivery_cycles, **wip_arrival_rate_trends_args).alias('select_arrivals')
+        select_arrivals = work_item_delivery_cycles_connection_apply_filters(select_arrivals, work_items, work_item_delivery_cycles, **arrival_departure_trends_args).alias('select_arrivals')
 
         select_arrival_rate_trends = select([
             project_nodes_dates.c.id,
@@ -2281,7 +2281,7 @@ class ProjectWipArrivalRateTrends(InterfaceResolver):
                     'measurement_window', measurement_window,
                     'arrival_rate', select_arrival_rate_trends.c.arrival_rate
                 )
-            ).label('wip_arrival_rate_trends')
+            ).label('arrival_departure_trends')
 
         ]).select_from(
             select_arrival_rate_trends

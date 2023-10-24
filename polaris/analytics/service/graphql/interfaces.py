@@ -801,8 +801,8 @@ class FlowRateTrends(graphene.Interface):
     flow_rate_trends = graphene.List(FlowRateMeasurementImpl, required=True)
 
 
-class WipArrivalRateTrends(graphene.Interface):
-    wip_arrival_rate_trends = graphene.List(FlowRateMeasurementImpl, required=True)
+class ArrivalDepartureTrends(graphene.Interface):
+    arrival_departure_trends = graphene.List(FlowRateMeasurementImpl, required=True)
 
 
 class BacklogMeasurement(graphene.Interface):

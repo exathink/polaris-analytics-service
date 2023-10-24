@@ -17,7 +17,7 @@ from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, FunnelViewAggregateMetrics, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
-    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, WipArrivalRateTrends, \
+    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, ArrivalDepartureTrends, \
     BacklogTrends, ProjectSetupInfo, Tags, Releases
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
@@ -25,7 +25,7 @@ from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin, \
     ProjectInfoResolverMixin, FlowMixTrendsResolverMixin, CapacityTrendsResolverMixin, \
     PipelinePullRequestMetricsResolverMixin, PullRequestMetricsTrendsResolverMixin, FlowRateTrendsResolverMixin, \
-    BacklogTrendsResolverMixin, TagsResolverMixin, ReleasesResolverMixin, WipArrivalRateTrendsResolverMixin
+    BacklogTrendsResolverMixin, TagsResolverMixin, ReleasesResolverMixin, ArrivalDepartureTrendsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -49,7 +49,7 @@ from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
     FlowMixTrendsParameters, CapacityTrendsParameters, PullRequestMetricsParameters, \
     PullRequestMetricsTrendsParameters, FlowRateTrendsParameters, BacklogTrendsParameters, \
-    FunnelViewParameters, WipArrivalRateTrendsParameters
+    FunnelViewParameters, ArrivalDepartureTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -86,7 +86,7 @@ from .selectables import ProjectNode, \
     ProjectPipelinePullRequestMetrics, \
     ProjectPullRequestMetricsTrends, \
     ProjectFlowRateTrends, \
-    ProjectWipArrivalRateTrends, \
+    ProjectArrivalDepartureTrends, \
     ProjectBacklogTrends, \
     ProjectsProjectSetupInfo, \
     ProjectTags, \
@@ -110,7 +110,7 @@ class Project(
     PipelinePullRequestMetricsResolverMixin,
     PullRequestMetricsTrendsResolverMixin,
     FlowRateTrendsResolverMixin,
-    WipArrivalRateTrendsResolverMixin,
+    ArrivalDepartureTrendsResolverMixin,
     BacklogTrendsResolverMixin,
     TagsResolverMixin,
     ReleasesResolverMixin,
@@ -168,7 +168,7 @@ Implicit Interfaces: ArchivedStatus
             PipelinePullRequestMetrics,
             PullRequestMetricsTrends,
             FlowRateTrends,
-            WipArrivalRateTrends,
+            ArrivalDepartureTrends,
             BacklogTrends,
             Tags,
             Releases
@@ -194,7 +194,7 @@ Implicit Interfaces: ArchivedStatus
             'PipelinePullRequestMetrics': ProjectPipelinePullRequestMetrics,
             'PullRequestMetricsTrends': ProjectPullRequestMetricsTrends,
             'FlowRateTrends': ProjectFlowRateTrends,
-            'WipArrivalRateTrends': ProjectWipArrivalRateTrends,
+            'ArrivalDepartureTrends': ProjectArrivalDepartureTrends,
             'BacklogTrends': ProjectBacklogTrends,
             'Tags': ProjectTags,
             'Releases': ProjectReleases
@@ -315,8 +315,8 @@ Implicit Interfaces: ArchivedStatus
                 required=False,
                 description='Required when resolving FlowRateTrends interface'
             ),
-            wip_arrival_rate_trends_args=graphene.Argument(
-              WipArrivalRateTrendsParameters,
+            arrival_departure_trends_args=graphene.Argument(
+              ArrivalDepartureTrendsParameters,
               required=False,
               description='Required when resolving WipArrivalRateTrends Interface'
             ),

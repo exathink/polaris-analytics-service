@@ -63,6 +63,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
+                                metric: wip_arrivals_departures
                             }
                         )
                         {
@@ -72,6 +73,8 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                                 measurementDate
                                 measurementWindow
                                 arrivals
+                                departures
+                                flowbacks
                             }
                         }
                     }
@@ -107,9 +110,9 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
             assert len(project['arrivalDepartureTrends']) == 2
 
             assert [
-                0,0
+                (0,0,0), (0,0,0)
             ] == [
-                measurement['arrivals']
+                (measurement['arrivals'], measurement['departures'], measurement['flowbacks'])
                 for measurement in project['arrivalDepartureTrends']
             ]
 
@@ -178,6 +181,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
+                                metric: wip_arrivals_departures
                             }
                         )
                         {
@@ -392,6 +396,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
+                                metric: wip_arrivals_departures,
                                 specsOnly: true
                             },
                             
@@ -458,6 +463,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
+                                metric: wip_arrivals_departures,
                                 includeSubTasks: false
                             }
                         )
@@ -524,6 +530,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
+                                metric: wip_arrivals_departures,
                                 tags: ["feature"]
                             }
                         )
@@ -590,6 +597,7 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                                 days: $days,
                                 measurementWindow: $window,
                                 samplingFrequency: $sample,
+                                metric: wip_arrivals_departures,
                                 release: "v1.0"
                             }
                         )

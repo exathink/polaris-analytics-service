@@ -229,8 +229,11 @@ class FlowRateParameters(WorkItemTypeSelectionParameters, graphene.InputObjectTy
 class FlowRateTrendsParameters(AggregateMetricsTrendsParameters, FlowRateParameters, graphene.InputObjectType):
     pass
 
+class ArrivalDepartureMetricsEnum(Enum):
+    wip_arrivals_departures = 'wip_arrivals_departures'
+
 class ArrivalDepartureTrendsParameters(AggregateMetricsTrendsParameters, WorkItemTypeSelectionParameters, graphene.InputObjectType):
-    pass
+    metric = graphene.Field(graphene.Enum.from_enum(ArrivalDepartureMetricsEnum), required=True)
 
 class BacklogMeasurementEnum(Enum):
     backlog_size = 'backlog_size'

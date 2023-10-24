@@ -49,6 +49,8 @@ from ..work_item.sql_expressions import work_item_events_connection_apply_time_w
     work_item_info_group_expr_columns, apply_specs_only_filter, apply_defects_only_filter, CycleMetricsTrendsBase, \
     map_work_item_type_to_flow_type, work_items_source_ref_info_columns, apply_releases_filter, apply_tags_filter
 from ..utils import date_column_is_in_measurement_window, get_measurement_period, get_timeline_dates_for_trending
+from ..arguments import ArrivalDepartureMetricsEnum
+
 from polaris.common import db
 
 
@@ -2216,7 +2218,11 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
         select_arrivals = select([
             project_nodes_dates.c.id.label('project_id'),
             project_nodes_dates.c.measurement_date,
-            work_item_delivery_cycles.c.delivery_cycle_id
+            work_item_delivery_cycles.c.delivery_cycle_id,
+            work_item_state_transitions.c.previous_state,
+            previous_state_map.c.state_type.label('previous_state_type'),
+            work_item_state_transitions.c.state.label('current_state'),
+            current_state_map.c.state_type.label('current_state_type')
         ]).select_from(
             project_nodes_dates.join(
                 work_items_sources, work_items_sources.c.project_id == project_nodes_dates.c.id
@@ -2245,18 +2251,44 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
                     work_item_state_transitions.c.created_at,
                     measurement_date=project_nodes_dates.c.measurement_date,
                     measurement_window=measurement_window
-                ),
-                # we consider transitions from non-wip phases to wip phases to be arrivals.
-                previous_state_map.c.state_type.in_(['backlog', 'closed']),
-                current_state_map.c.state_type.in_(['open','wip','complete'])
+                )
             )
         )
+        # apply all the regular filters for work items and delivery cycles.
         select_arrivals = work_item_delivery_cycles_connection_apply_filters(select_arrivals, work_items, work_item_delivery_cycles, **arrival_departure_trends_args).alias('select_arrivals')
+
+        # add the where clauses to filter the transitions we are interested in
+        metric = arrival_departure_trends_args.get('metric')
+        if metric is None:
+            raise ProcessingException(
+                "Required parameter 'metric' was not provided for resolving interface ArrivalDepartureTrends")
+        arrivals_filter = None
+        departures_filter = None
+        flowbacks_filter = None
+
+        if metric == ArrivalDepartureMetricsEnum.wip_arrivals_departures.value:
+            arrivals_filter = and_(
+                # we consider transitions from non-wip phases to wip phases to be arrivals.
+                select_arrivals.c.previous_state_type.in_(['backlog', 'closed']),
+                select_arrivals.c.current_state_type.in_(['open', 'wip', 'complete'])
+            )
+            departures_filter = and_(
+                # we consider transitions from non-wip phases to wip phases to be arrivals.
+                select_arrivals.c.previous_state_type.in_(['open', 'wip', 'complete']),
+                select_arrivals.c.current_state_type.in_(['closed'])
+            )
+            flowbacks_filter = and_(
+                # we consider transitions from non-wip phases to wip phases to be arrivals.
+                select_arrivals.c.previous_state_type.in_(['open', 'wip', 'complete']),
+                select_arrivals.c.current_state_type.in_(['backlog'])
+            )
 
         select_arrival_rate_trends = select([
             project_nodes_dates.c.id,
             project_nodes_dates.c.measurement_date,
-            func.count(select_arrivals.c.delivery_cycle_id.distinct()).label('arrivals')
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(arrivals_filter).label('arrivals'),
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(departures_filter).label('departures'),
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(flowbacks_filter).label('flowbacks')
         ]).select_from(
             project_nodes_dates.outerjoin(
                 select_arrivals,
@@ -2279,7 +2311,9 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
                 func.json_build_object(
                     'measurement_date', select_arrival_rate_trends.c.measurement_date,
                     'measurement_window', measurement_window,
-                    'arrivals', select_arrival_rate_trends.c.arrivals
+                    'arrivals', select_arrival_rate_trends.c.arrivals,
+                    'departures', select_arrival_rate_trends.c.departures,
+                    'flowbacks', select_arrival_rate_trends.c.flowbacks
                 )
             ).label('arrival_departure_trends')
 

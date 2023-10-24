@@ -806,7 +806,7 @@ class ArrivalDepartureMeasurement(graphene.Interface):
     measurement_window = graphene.Int(required=True)
     arrivals = graphene.Int(required=False)
     departures = graphene.Int(required=False)
-    flow_backs = graphene.Int(required=False)
+    flowbacks = graphene.Int(required=False)
 
 
 class ArrivalDepartureRateMeasurementImpl(TrendMeasurementImpl):

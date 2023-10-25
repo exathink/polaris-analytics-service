@@ -2273,14 +2273,19 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
                 select_arrivals.c.current_state_type.in_(['open', 'wip', 'complete'])
             )
             departures_filter = and_(
-                # we consider transitions from non-wip phases to wip phases to be arrivals.
+                # we consider transitions from wip phases  to closed phases to be arrivals.
                 select_arrivals.c.previous_state_type.in_(['open', 'wip', 'complete']),
                 select_arrivals.c.current_state_type.in_(['closed'])
             )
             flowbacks_filter = and_(
-                # we consider transitions from non-wip phases to wip phases to be arrivals.
+                # we consider transitions from wip phases to define phases to be arrivals.
                 select_arrivals.c.previous_state_type.in_(['open', 'wip', 'complete']),
                 select_arrivals.c.current_state_type.in_(['backlog'])
+            )
+            passthroughs_filter = and_(
+                # we consider transitions from wip phases to define phases to be arrivals.
+                select_arrivals.c.previous_state_type.in_(['backlog']),
+                select_arrivals.c.current_state_type.in_(['closed'])
             )
 
         select_arrival_rate_trends = select([
@@ -2288,7 +2293,8 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
             project_nodes_dates.c.measurement_date,
             func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(arrivals_filter).label('arrivals'),
             func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(departures_filter).label('departures'),
-            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(flowbacks_filter).label('flowbacks')
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(flowbacks_filter).label('flowbacks'),
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(passthroughs_filter).label('passthroughs')
         ]).select_from(
             project_nodes_dates.outerjoin(
                 select_arrivals,
@@ -2313,7 +2319,8 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
                     'measurement_window', measurement_window,
                     'arrivals', select_arrival_rate_trends.c.arrivals,
                     'departures', select_arrival_rate_trends.c.departures,
-                    'flowbacks', select_arrival_rate_trends.c.flowbacks
+                    'flowbacks', select_arrival_rate_trends.c.flowbacks,
+                    'passthroughs', select_arrival_rate_trends.c.passthroughs
                 )
             ).label('arrival_departure_trends')
 

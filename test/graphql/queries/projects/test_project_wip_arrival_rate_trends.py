@@ -149,6 +149,76 @@ class TestProjectArrivalDepartureTrends(ProjectWorkItemsTest):
                 1,1
             ]
 
+        def it_returns_the_departures_in_each_period(self, setup):
+            fixture = setup
+            api_helper = fixture.api_helper
+            work_items = fixture.work_items
+            start_date = fixture.start_date
+
+            client = Client(schema)
+
+            api_helper.import_work_items(work_items)
+
+            # one arrival in the period start_date, start_date + 30 days
+            api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+            # this one departs in the same period
+            api_helper.update_work_items([(0, 'closed', start_date + timedelta(days=3))])
+
+            #another arrival in the period start_date + 30 days, start_date + 60 days
+            api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=32))])
+
+            result = client.execute(fixture.query, variable_values=dict(
+                project_key=fixture.project.key,
+                days=30,
+                window=30,
+                sample=30
+            ))
+            assert not result.get('errors')
+            project = result['data']['project']
+            assert len(project['arrivalDepartureTrends']) == 2
+
+            assert  [
+                measurement['departures']
+                for measurement in project['arrivalDepartureTrends']
+            ] == [
+                0,1
+            ]
+
+        def it_returns_the_flowbacks_in_each_period(self, setup):
+            fixture = setup
+            api_helper = fixture.api_helper
+            work_items = fixture.work_items
+            start_date = fixture.start_date
+
+            client = Client(schema)
+
+            api_helper.import_work_items(work_items)
+
+            # one arrival in the period start_date, start_date + 30 days
+            api_helper.update_work_items([(0, 'doing', start_date + timedelta(days=2))])
+            # this one flows back in the same period
+            api_helper.update_work_items([(0, 'backlog', start_date + timedelta(days=3))])
+
+            #another arrival in the period start_date + 30 days, start_date + 60 days
+            api_helper.update_work_items([(1, 'doing', start_date + timedelta(days=32))])
+
+            result = client.execute(fixture.query, variable_values=dict(
+                project_key=fixture.project.key,
+                days=30,
+                window=30,
+                sample=30
+            ))
+            assert not result.get('errors')
+            project = result['data']['project']
+            assert len(project['arrivalDepartureTrends']) == 2
+
+            assert  [
+                measurement['flowbacks']
+                for measurement in project['arrivalDepartureTrends']
+            ] == [
+                0,1
+            ]
+
         def it_respects_before_dates_in_the_measurement(self, setup):
             fixture = setup
             api_helper = fixture.api_helper

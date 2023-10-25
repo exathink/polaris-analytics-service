@@ -242,7 +242,7 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
             delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
             assert len(delivery_cycles) == 4
 
-        def it_returns_all_delivery_cycles_for_active_items_if_active_only_is_false(self, setup):
+        def it_returns_all_delivery_cycles_for_work_items_if_active_only_is_false(self, setup):
             fixture = setup
 
             fixture.api_helper.update_work_items(
@@ -252,8 +252,7 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
                 ]
             )
 
-            # now re-open it so that we have two delivery cycles for this item. when active only is specified, we should
-            # only return the second delivery cycle
+            # now re-open it so that we have two delivery cycles for this item.
 
             fixture.api_helper.update_work_items(
                 [
@@ -282,7 +281,7 @@ class TestProjectWorkItemDeliveryCycles(WorkItemApiImportTest):
             result = client.execute(query, variable_values=dict(project_key=fixture.project.key))
             assert 'data' in result
             delivery_cycles = result['data']['project']['workItemDeliveryCycles']['edges']
-            assert len(delivery_cycles) == 5
+            assert len(delivery_cycles) == 7
 
         def it_returns_cycle_metrics_for_all_delivery_cycles_closed_before_passed_date(self, setup):
             fixture = setup

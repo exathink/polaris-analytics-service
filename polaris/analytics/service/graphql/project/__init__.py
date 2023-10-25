@@ -17,14 +17,15 @@ from ..interfaces import CommitSummary, ContributorCount, RepositoryCount, \
     OrganizationRef, ArchivedStatus, WorkItemEventSpan, FunnelViewAggregateMetrics, AggregateCycleMetrics, \
     CycleMetricsTrends, TraceabilityTrends, PipelineCycleMetrics, DeliveryCycleSpan, \
     ResponseTimeConfidenceTrends, ProjectInfo, FlowMixTrends, CapacityTrends, PipelinePullRequestMetrics, \
-    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, BacklogTrends, ProjectSetupInfo, Tags, Releases
+    PullRequestMetricsTrends, PullRequestEventSpan, FlowRateTrends, ArrivalDepartureTrends, \
+    BacklogTrends, ProjectSetupInfo, Tags, Releases
 
 from ..interface_mixins import KeyIdResolverMixin, NamedNodeResolverMixin, \
     ContributorCountResolverMixin, WorkItemStateTypeSummaryResolverMixin, CycleMetricsTrendsResolverMixin, \
     TraceabilityTrendsResolverMixin, PipelineCycleMetricsResolverMixin, ResponseTimeConfidenceTrendsResolverMixin, \
     ProjectInfoResolverMixin, FlowMixTrendsResolverMixin, CapacityTrendsResolverMixin, \
     PipelinePullRequestMetricsResolverMixin, PullRequestMetricsTrendsResolverMixin, FlowRateTrendsResolverMixin, \
-    BacklogTrendsResolverMixin, TagsResolverMixin, ReleasesResolverMixin
+    BacklogTrendsResolverMixin, TagsResolverMixin, ReleasesResolverMixin, ArrivalDepartureTrendsResolverMixin
 
 from ..summaries import ActivityLevelSummary, InceptionsSummary
 from ..summary_mixins import \
@@ -48,7 +49,7 @@ from ..arguments import CycleMetricsTrendsParameters, CycleMetricsParameters, \
     TraceabilityMetricsTrendsParameters, ResponseTimeConfidenceTrendsParameters, \
     FlowMixTrendsParameters, CapacityTrendsParameters, PullRequestMetricsParameters, \
     PullRequestMetricsTrendsParameters, FlowRateTrendsParameters, BacklogTrendsParameters, \
-    FunnelViewParameters
+    FunnelViewParameters, ArrivalDepartureTrendsParameters
 
 from .selectables import ProjectNode, \
     ProjectRepositoriesNodes, \
@@ -85,6 +86,7 @@ from .selectables import ProjectNode, \
     ProjectPipelinePullRequestMetrics, \
     ProjectPullRequestMetricsTrends, \
     ProjectFlowRateTrends, \
+    ProjectArrivalDepartureTrends, \
     ProjectBacklogTrends, \
     ProjectsProjectSetupInfo, \
     ProjectTags, \
@@ -108,6 +110,7 @@ class Project(
     PipelinePullRequestMetricsResolverMixin,
     PullRequestMetricsTrendsResolverMixin,
     FlowRateTrendsResolverMixin,
+    ArrivalDepartureTrendsResolverMixin,
     BacklogTrendsResolverMixin,
     TagsResolverMixin,
     ReleasesResolverMixin,
@@ -165,6 +168,7 @@ Implicit Interfaces: ArchivedStatus
             PipelinePullRequestMetrics,
             PullRequestMetricsTrends,
             FlowRateTrends,
+            ArrivalDepartureTrends,
             BacklogTrends,
             Tags,
             Releases
@@ -190,6 +194,7 @@ Implicit Interfaces: ArchivedStatus
             'PipelinePullRequestMetrics': ProjectPipelinePullRequestMetrics,
             'PullRequestMetricsTrends': ProjectPullRequestMetricsTrends,
             'FlowRateTrends': ProjectFlowRateTrends,
+            'ArrivalDepartureTrends': ProjectArrivalDepartureTrends,
             'BacklogTrends': ProjectBacklogTrends,
             'Tags': ProjectTags,
             'Releases': ProjectReleases
@@ -253,6 +258,13 @@ Implicit Interfaces: ArchivedStatus
                 description="When evaluating cycle metrics "
                             "include only specs"
             ),
+            include_sub_tasks=graphene.Argument(
+                graphene.Boolean,
+                required=False,
+                description="When filtering work items under this node, include subtasks. The default value is True"
+                            " so set this explicitly to false if you want to exclude subtasks ",
+                default_value=True
+            ),
 
             cycle_metrics_trends_args=graphene.Argument(
                 CycleMetricsTrendsParameters,
@@ -303,7 +315,11 @@ Implicit Interfaces: ArchivedStatus
                 required=False,
                 description='Required when resolving FlowRateTrends interface'
             ),
-
+            arrival_departure_trends_args=graphene.Argument(
+              ArrivalDepartureTrendsParameters,
+              required=False,
+              description='Required when resolving WipArrivalRateTrends Interface'
+            ),
             backlog_trends_args=graphene.Argument(
                 BacklogTrendsParameters,
                 required=False,

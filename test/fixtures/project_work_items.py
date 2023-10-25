@@ -11,7 +11,7 @@
 from polaris.utils.collections import Fixture
 from polaris.analytics.db.model import Project, WorkItemsSource, WorkItem, WorkItemDeliveryCycle, \
     WorkItemStateTransition
-from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.analytics.db.enums import WorkItemsStateType, WorkItemsStateFlowType
 from test.fixtures.graphql import get_date, WorkItemImportApiHelper
 
 from test.fixtures.repo_org import *
@@ -48,8 +48,7 @@ def setup_work_items_sources(setup_projects):
         session.expire_on_commit = False
         session.add(organization)
         session.add(project)
-        project.work_items_sources.append(
-            WorkItemsSource(
+        work_items_source = WorkItemsSource(
                 organization_key=str(organization.key),
                 organization_id=organization.id,
                 key=str(uuid.uuid4()),
@@ -59,6 +58,21 @@ def setup_work_items_sources(setup_projects):
                 commit_mapping_scope='repository',
                 source_id=str(uuid.uuid4())
             )
+        work_items_source.init_state_map(
+            [
+                dict(state='backlog', state_type=WorkItemsStateType.backlog.value,
+                     flow_type=WorkItemsStateFlowType.waiting.value),
+                dict(state='upnext', state_type=WorkItemsStateType.open.value,
+                     flow_type=WorkItemsStateFlowType.waiting.value),
+                dict(state='doing', state_type=WorkItemsStateType.wip.value,
+                     flow_type=WorkItemsStateFlowType.active.value),
+                dict(state='done', state_type=WorkItemsStateType.complete.value,
+                     flow_type=WorkItemsStateFlowType.waiting.value),
+                dict(state='closed', state_type=WorkItemsStateType.closed.value),
+            ]
+        )
+        project.work_items_sources.append(
+            work_items_source
         )
     yield project
 

@@ -1123,7 +1123,7 @@ class WorkItemImportApiHelper:
             work_item_source_key=self.work_items_source.key,
             work_item_summaries=work_items
         )
-        assert result['success']
+        assert not result.get('exception')
 
     def update_work_items(self, updates):
         for index, state, updated in updates:

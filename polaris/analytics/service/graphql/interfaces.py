@@ -801,6 +801,26 @@ class FlowRateTrends(graphene.Interface):
     flow_rate_trends = graphene.List(FlowRateMeasurementImpl, required=True)
 
 
+class ArrivalDepartureMeasurement(graphene.Interface):
+    measurement_date = graphene.Date(required=True)
+    measurement_window = graphene.Int(required=True)
+    arrivals = graphene.Int(required=False)
+    departures = graphene.Int(required=False)
+    flowbacks = graphene.Int(required=False)
+    passthroughs = graphene.Int(required=False)
+
+
+class ArrivalDepartureRateMeasurementImpl(TrendMeasurementImpl):
+    class Meta:
+        interfaces = (ArrivalDepartureMeasurement,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+class ArrivalDepartureTrends(graphene.Interface):
+    arrival_departure_trends = graphene.List(ArrivalDepartureRateMeasurementImpl, required=True)
+
+
 class BacklogMeasurement(graphene.Interface):
     measurement_date = graphene.Date(required=True)
     measurement_window = graphene.Int(required=True)

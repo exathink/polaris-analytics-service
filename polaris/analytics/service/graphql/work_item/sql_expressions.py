@@ -151,23 +151,6 @@ def work_item_delivery_cycle_info_columns(work_items, work_item_delivery_cycles)
     ]
 
 
-def work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs):
-    before = get_before_date(**kwargs)
-    if 'days' in kwargs and kwargs['days'] > 0:
-        window_start = before - timedelta(days=kwargs['days'])
-        return select_stmt.where(
-            and_(
-                work_items.c.updated_at >= window_start,
-                work_items.c.updated_at < before
-            )
-        )
-    elif kwargs.get('before'):
-        return select_stmt.where(
-            work_items.c.updated_at < before
-        )
-    else:
-        return select_stmt
-
 
 def apply_active_only_filter(select_stmt, work_items, **kwargs):
     if 'active_only' in kwargs:
@@ -203,18 +186,16 @@ def apply_releases_filter(select_stmt, work_items, **kwargs):
     return select_stmt
 
 def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
-    select_stmt = work_items_connection_apply_time_window_filters(select_stmt, work_items, **kwargs)
-
     if 'state_types' in kwargs:
         select_stmt = select_stmt.where(work_items.c.state_type.in_(kwargs.get('state_types')))
 
-    if 'defects_only' in kwargs:
+    if kwargs.get('defects_only'):
         select_stmt = select_stmt.where(work_items.c.is_bug == True)
 
     if 'work_item_types' in kwargs:
         select_stmt = select_stmt.where(work_items.c.work_item_type.in_(kwargs.get('work_item_types')))
 
-    if 'active_only' in kwargs:
+    if kwargs.get('active_only'):
         select_stmt = apply_active_only_filter(select_stmt, work_items, **kwargs)
 
     if 'tags' in kwargs:
@@ -227,7 +208,7 @@ def work_items_connection_apply_filters(select_stmt, work_items, **kwargs):
         select_stmt = select_stmt.where(work_items.c.is_moved_from_current_source != True)
 
     # This is true by default, so we include subtasks unless it is explicitly excluded.
-    if kwargs.get('include_sub_tasks') == False:
+    if not kwargs.get('include_sub_tasks'):
         select_stmt = select_stmt.where(
             work_items.c.work_item_type != 'subtask'
         )

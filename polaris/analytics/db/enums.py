@@ -33,10 +33,10 @@ class WorkItemsStateReleaseStatusType(Enum):
     committed = 'committed'
     # These are release status for the code phase
     implementation = 'implementation'
-
     code_review = 'code_review'
 
-    # These are release status for Ship Phase
+    # These are release status for Ship/Code Phase
+    testing = 'testing'
     integration = 'integration'
     approval = 'approval'
     deployable = 'deployable'
@@ -46,6 +46,7 @@ class WorkItemsStateReleaseStatusType(Enum):
     released = 'released'
     validated = 'validated'
     abandoned = 'abandoned'
+    terminal = 'terminal'
 
 class FeatureFlagScope(Enum):
     account = 'account'

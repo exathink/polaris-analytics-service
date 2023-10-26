@@ -27,19 +27,24 @@ class WorkItemsStateReleaseStatusType(Enum):
     # These are release status for Define phase
     # deferred items are in the inactive backlog and ignored in the funnel and in the lead time calculations.
     deferred = 'deferred'
-    # lead time clock starts when it enters active backlog
-    active = 'active'
+    # lead time clock starts when it enters the roadmap
+    roadmap = 'roadmap'
     # days supply is calculated using the committed backlog.
     committed = 'committed'
     # These are release status for the code phase
+    implementation = 'implementation'
+
     code_review = 'code_review'
 
     # These are release status for Ship Phase
+    integration = 'integration'
+    approval = 'approval'
     deployable = 'deployable'
     releasable = 'releasable'
-    # these are release status of the Closed Phase.
+    # these are release status of the Ship/Closed Phase.
     deployed = 'deployed'
     released = 'released'
+    validated = 'validated'
     abandoned = 'abandoned'
 
 class FeatureFlagScope(Enum):

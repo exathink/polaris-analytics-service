@@ -24,10 +24,21 @@ class WorkItemsStateFlowType(Enum):
     waiting = 'waiting'
 
 class WorkItemsStateReleaseStatusType(Enum):
+    # These are release status for Define phase
+    # deferred items are in the inactive backlog and ignored in the funnel and in the lead time calculations.
     deferred = 'deferred'
+    # lead time clock starts when it enters active backlog
+    active = 'active'
+    # days supply is calculated using the committed backlog.
+    committed = 'committed'
+    # These are release status for the code phase
+    code_review = 'code_review'
+
+    # These are release status for Ship Phase
     deployable = 'deployable'
-    deployed = 'deployed'
     releasable = 'releasable'
+    # these are release status of the Closed Phase.
+    deployed = 'deployed'
     released = 'released'
     abandoned = 'abandoned'
 

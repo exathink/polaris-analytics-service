@@ -11,8 +11,9 @@
 import graphene
 
 from polaris.analytics.service.graphql.interface_mixins import NamedNodeResolverMixin, \
-    WorkItemStateDetailsResolverMixin, TeamNodeRefsResolverMixin
-from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, \
+    WorkItemStateMappingResolverMixin, WorkItemStateDetailsResolverMixin, TeamNodeRefsResolverMixin
+
+from polaris.analytics.service.graphql.interfaces import NamedNode, WorkItemInfo, WorkItemStateMapping, \
     WorkItemsSourceRef, WorkItemStateTransition, \
     WorkItemCommitInfo, CommitSummary, DeliveryCycleInfo, WorkItemsStateType, CycleMetrics, \
     WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, \
@@ -24,7 +25,7 @@ from polaris.analytics.service.graphql.work_item.selectable import \
     WorkItemsWorkItemStateDetails, WorkItemsWorkItemEventSpan, WorkItemsProjectRef, WorkItemsImplementationCost, \
     WorkItemsParentNodeRef, WorkItemsEpicNodeRef, WorkItemPullRequestNodes, WorkItemPullRequestNode, \
     WorkItemDeliveryCyclesImplementationCost, WorkItemDeliveryCyclesEpicNodeRef, WorkItemsDevelopmentProgress, \
-    WorkItemDeliveryCyclesTeamNodeRefs, WorkItemTeamNodeRefs
+    WorkItemDeliveryCyclesTeamNodeRefs, WorkItemTeamNodeRefs, WorkItemsWorkItemStateMapping \
 
 from polaris.graphql.selectable import ConnectionResolverMixin
 from polaris.graphql.selectable import CountableConnection
@@ -243,6 +244,7 @@ class WorkItemDeliveryCyclesConnectionMixin(ConnectionResolverMixin):
 class WorkItem(
     # interface resolver mixins
     NamedNodeResolverMixin,
+    WorkItemStateMappingResolverMixin,
     WorkItemStateDetailsResolverMixin,
     TeamNodeRefsResolverMixin,
 
@@ -256,13 +258,14 @@ class WorkItem(
 ):
     class Meta:
         interfaces = (
-            NamedNode, WorkItemInfo, WorkItemsSourceRef, WorkItemEventSpan, ProjectRef, CommitSummary,
+            NamedNode, WorkItemInfo, WorkItemStateMapping, WorkItemsSourceRef, WorkItemEventSpan, ProjectRef, CommitSummary,
             WorkItemStateDetails, ImplementationCost, ParentNodeRef, EpicNodeRef, DevelopmentProgress,
             TeamNodeRefs
         )
         named_node_resolver = WorkItemNode
         interface_resolvers = {
             'CommitSummary': WorkItemsCommitSummary,
+            'WorkItemStateMapping': WorkItemsWorkItemStateMapping,
             'WorkItemStateDetails': WorkItemsWorkItemStateDetails,
             'WorkItemEventSpan': WorkItemsWorkItemEventSpan,
             'ProjectRef': WorkItemsProjectRef,

@@ -112,7 +112,7 @@ class WorkItemStateDetailsResolverMixin(KeyIdResolverMixin):
                 **self.work_item_state_details['cycle_metrics']
             )
 
-
+# This resolves the state mappings (plural) associated with the node - typically a work items sources
 class WorkItemStateMappingsResolverMixin(KeyIdResolverMixin):
 
     def __init__(self, *args, **kwargs):
@@ -124,6 +124,15 @@ class WorkItemStateMappingsResolverMixin(KeyIdResolverMixin):
             StateMapping(**state_mapping)
             for state_mapping in self.work_item_state_mappings if state_mapping is not None
         ]
+
+# This resolves the state mapping (singular) for the current state of a work item.
+class WorkItemStateMappingResolverMixin(KeyIdResolverMixin):
+    def __init__(self, *args, **kwargs):
+        self.work_item_state_mapping = None
+        super().__init__(*args, **kwargs)
+
+    def resolve_work_item_state_mapping(self, info, **kwargs):
+        return self.work_item_state_mapping
 
 
 class CycleMetricsTrendsResolverMixin(KeyIdResolverMixin):

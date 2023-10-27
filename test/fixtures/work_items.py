@@ -40,7 +40,8 @@ def work_items_common():
         priority='Medium',
         releases=['a','b'],
         story_points=98,
-        sprints=['Sprint 1', 'Sprint 2']
+        sprints=['Sprint 1', 'Sprint 2'],
+        flagged=True
     )
 
 
@@ -60,7 +61,8 @@ def work_items_closed():
         priority='Medium',
         releases=[],
         story_points=None,
-        sprints=None
+        sprints=None,
+        flagged=True
     )
 
 

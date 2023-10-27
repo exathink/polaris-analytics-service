@@ -119,6 +119,7 @@ class TestImportWorkItems(WorkItemsTest):
             assert row.releases == new_work_item['releases']
             assert row.story_points == new_work_item['story_points']
             assert row.sprints == new_work_item['sprints']
+            assert row.flagged == new_work_item['flagged']
 
     def it_is_idempotent(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup

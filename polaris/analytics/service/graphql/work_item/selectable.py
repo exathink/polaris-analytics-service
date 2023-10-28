@@ -21,7 +21,7 @@ from polaris.analytics.db.model import \
     pull_requests, work_items_pull_requests, work_items_teams, teams
 
 from polaris.analytics.service.graphql.interfaces import \
-    NamedNode, WorkItemInfo, WorkItemCommitInfo, \
+    NamedNode, WorkItemInfo, WorkItemCommitInfo, WorkItemStateMapping,  \
     WorkItemsSourceRef, WorkItemStateTransition, CommitInfo, CommitSummary, DeliveryCycleInfo, CycleMetrics, \
     WorkItemStateDetails, WorkItemEventSpan, ProjectRef, ImplementationCost, ParentNodeRef, EpicNodeRef, \
     PullRequestInfo, \
@@ -250,6 +250,33 @@ class WorkItemDeliveryCycleNodes(ConnectionResolver):
     def sort_order(work_item_delivery_cycle_nodes, **kwargs):
         return [work_item_delivery_cycle_nodes.c.end_date.desc().nullsfirst()]
 
+
+class WorkItemsWorkItemStateMapping(InterfaceResolver):
+    interface = WorkItemStateMapping
+
+    @staticmethod
+    def interface_selector(work_item_nodes, **kwargs):
+        return select([
+            work_item_nodes.c.id,
+            func.json_build_object(
+                'state', work_items_source_state_map.c.state,
+                'state_type', work_items_source_state_map.c.state_type,
+                'flow_type', work_items_source_state_map.c.flow_type,
+                'release_status', work_items_source_state_map.c.release_status
+            ).label('work_item_state_mapping')
+        ]).select_from(
+            work_item_nodes.join(
+                work_items, work_items.c.id == work_item_nodes.c.id
+            ).join(
+                work_items_sources, work_items_sources.c.id == work_items.c.work_items_source_id
+            ).join(
+                work_items_source_state_map,
+                and_(
+                    work_items_source_state_map, work_items_source_state_map.c.work_items_source_id == work_items_sources.c.id,
+                    work_items_source_state_map.c.state == work_items.c.state
+                )
+            )
+        )
 
 class WorkItemsDevelopmentProgress(InterfaceResolver):
     interface = DevelopmentProgress

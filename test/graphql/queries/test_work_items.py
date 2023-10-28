@@ -97,6 +97,34 @@ class TestWorkItemInstance:
         assert work_item['workItemsSourceName']
         assert work_item['workTrackingIntegrationType']
 
+    def it_implements_work_item_state_mapping_interface(self, work_items_fixture):
+        work_item_key, _, _ = work_items_fixture
+        client = Client(schema)
+        query = """
+            query getWorkItem($key:String!) {
+                workItem(key: $key, interfaces: [WorkItemStateMapping]){
+                    workItemStateMapping {
+                        state
+                        stateType
+                        flowType
+                        releaseStatus 
+                    }  
+                }
+            } 
+        """
+        result = client.execute(query, variable_values=dict(key=work_item_key))
+        assert 'data' in result
+        work_item = result['data']['workItem']
+        current_state_mapping = work_item['workItemStateMapping']
+        assert current_state_mapping
+        assert current_state_mapping['state'] == 'open'
+        assert current_state_mapping['stateType'] == 'backlog'
+        assert current_state_mapping['flowType'] is None
+        assert current_state_mapping['releaseStatus'] is None
+
+
+
+
     def it_implements_commit_summary_info_interface(self, work_items_commit_summary_fixture):
         work_item_key, _, _ = work_items_commit_summary_fixture
         client = Client(schema)

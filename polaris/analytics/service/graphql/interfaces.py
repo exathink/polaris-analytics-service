@@ -369,6 +369,19 @@ class WorkItemInfo(graphene.Interface):
     story_points = graphene.Int(required=False)
     sprints = graphene.List(graphene.String, required=False)
 
+class StateMapping(graphene.ObjectType):
+    state = graphene.String(required=True)
+    state_type = graphene.String(required=False)
+    flow_type = graphene.String(required=False)
+    release_status = graphene.String(required=False)
+
+
+class WorkItemStateMappings(graphene.Interface):
+    work_item_state_mappings = graphene.Field(graphene.List(StateMapping))
+
+class WorkItemStateMapping(graphene.Interface):
+    work_item_state_mapping = graphene.Field(StateMapping, required=False)
+
 
 class WorkItemStateTransition(graphene.Interface):
     event_date = graphene.DateTime(required=True)
@@ -556,15 +569,7 @@ class Tags(graphene.Interface):
 class Releases(graphene.Interface):
     releases = graphene.List(graphene.String, required=False)
 
-class StateMapping(graphene.ObjectType):
-    state = graphene.String(required=True)
-    state_type = graphene.String(required=False)
-    flow_type = graphene.String(required=False)
-    release_status = graphene.String(required=False)
 
-
-class WorkItemStateMappings(graphene.Interface):
-    work_item_state_mappings = graphene.Field(graphene.List(StateMapping))
 
 
 class DevelopmentProgress(DeliveryCycleInfo):

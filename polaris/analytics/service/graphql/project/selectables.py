@@ -2219,6 +2219,8 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
             project_nodes_dates.c.id.label('project_id'),
             project_nodes_dates.c.measurement_date,
             work_item_delivery_cycles.c.delivery_cycle_id,
+            work_items.c.display_id,
+            work_item_state_transitions.c.created_at,
             work_item_state_transitions.c.previous_state,
             previous_state_map.c.state_type.label('previous_state_type'),
             work_item_state_transitions.c.state.label('current_state'),
@@ -2241,9 +2243,18 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
                     )
                 )
             ).join(
-                current_state_map, current_state_map.c.state == work_item_state_transitions.c.state
+                current_state_map,
+                and_(
+                    current_state_map.c.work_items_source_id == work_items_sources.c.id,
+                    current_state_map.c.state == work_item_state_transitions.c.state,
+
+                )
             ).join(
-                previous_state_map, previous_state_map.c.state == work_item_state_transitions.c.previous_state
+                previous_state_map,
+                and_(
+                    previous_state_map.c.work_items_source_id == work_items_sources.c.id,
+                    previous_state_map, previous_state_map.c.state == work_item_state_transitions.c.previous_state
+                )
             )
         ).where(
             and_(
@@ -2291,10 +2302,18 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
         select_arrival_rate_trends = select([
             project_nodes_dates.c.id,
             project_nodes_dates.c.measurement_date,
-            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(arrivals_filter).label('arrivals'),
-            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(departures_filter).label('departures'),
-            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(flowbacks_filter).label('flowbacks'),
-            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(passthroughs_filter).label('passthroughs')
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(
+                arrivals_filter
+            ).label('arrivals'),
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(
+                departures_filter
+            ).label('departures'),
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(
+                flowbacks_filter
+            ).label('flowbacks'),
+            func.count(select_arrivals.c.delivery_cycle_id.distinct()).filter(
+                passthroughs_filter
+            ).label('passthroughs')
         ]).select_from(
             project_nodes_dates.outerjoin(
                 select_arrivals,

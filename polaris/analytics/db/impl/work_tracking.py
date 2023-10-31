@@ -20,14 +20,14 @@ from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindpa
     union, union_all
 from sqlalchemy.dialects.postgresql import UUID, insert, array
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
-from polaris.analytics.db.enums import WorkItemsStateType, WorkItemType
+from polaris.analytics.db.enums import WorkItemsStateType, WorkItemType, WorkItemsImpedimentType
 
 from polaris.analytics.db.model import \
     work_items, commits, work_items_commits as work_items_commits_table, \
     repositories, organizations, projects, projects_repositories, WorkItemsSource, Organization, Repository, \
     Commit, WorkItem, work_item_state_transitions, Project, work_items_sources, \
     work_item_delivery_cycles, teams, work_items_teams, work_items_pull_requests, work_item_delivery_cycle_contributors, \
-    work_item_delivery_cycle_durations, work_item_source_file_changes
+    work_item_delivery_cycle_durations, work_item_source_file_changes, work_items_impediment_history
 
 from .delivery_cycle_tracking import initialize_work_item_delivery_cycles, \
     initialize_work_item_delivery_cycle_durations, \
@@ -114,6 +114,7 @@ def register_work_items_source(session, organization_key, work_items_source_summ
         work_items_source=work_items_source_summary
     )
 
+
 def map_custom_type(work_items_source, work_item_summary):
     custom_type_mappings = work_items_source.custom_type_mappings
     for mapping in custom_type_mappings:
@@ -130,11 +131,13 @@ def map_custom_type(work_items_source, work_item_summary):
     # this is the default return in case no custom mapping were found
     return work_item_summary
 
+
 def update_work_item_custom_type(work_items_source, work_item_summaries):
     return [
         map_custom_type(work_items_source, work_item_summary)
         for work_item_summary in work_item_summaries
     ]
+
 
 def partition_by_work_items_source(work_items_source_key, work_item_summaries):
     partitions = dict()
@@ -147,23 +150,24 @@ def partition_by_work_items_source(work_items_source_key, work_item_summaries):
         partition.append(work_item)
     return partitions
 
+
 def import_new_work_items(session, work_items_source_key, work_item_summaries):
     result = dict(
         insert_count=0,
         updated=0
     )
 
-    for work_items_source_key, work_item_summaries in partition_by_work_items_source(work_items_source_key, work_item_summaries).items():
-        changes = import_new_work_items_into_source(session, work_items_source_key,work_item_summaries)
+    for work_items_source_key, work_item_summaries in partition_by_work_items_source(work_items_source_key,
+                                                                                     work_item_summaries).items():
+        changes = import_new_work_items_into_source(session, work_items_source_key, work_item_summaries)
 
-
-        result['insert_count'] = result['insert_count'] +  changes['insert_count']
+        result['insert_count'] = result['insert_count'] + changes['insert_count']
         result['updated'] = result['updated'] + changes['updated']
-
 
     resolve_parent_child_relationships(session, work_items_source_key)
 
     return result
+
 
 def import_new_work_items_into_source(session, work_items_source_key, work_item_summaries):
     updated = 0
@@ -303,8 +307,6 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                 )
             ).rowcount
 
-
-
             # add the created state to the state transitions
             # for the newly inserted entries.
             session.connection().execute(
@@ -342,6 +344,26 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                         and_(
                             work_items.c.key == work_items_temp.c.key,
                             work_items_temp.c.work_item_id == None
+                        )
+                    )
+                )
+            )
+
+            # Insert flagged history record
+            session.connection().execute(
+                work_items_impediment_history.insert().from_select(
+                    ['work_item_id', 'seq_no', 'impediment_type', 'state', 'created'],
+                    select([
+                        work_items.c.id,
+                        literal('0'),
+                        literal(WorkItemsImpedimentType.flagged.value),
+                        work_items.c.state,
+                        work_items.c.created_at
+                    ]).where(
+                        and_(
+                            work_items.c.key == work_items_temp.c.key,
+                            work_items_temp.c.work_item_id == None,
+                            work_items_temp.c.flagged == True
                         )
                     )
                 )
@@ -971,20 +993,23 @@ def update_commit_work_item_summaries(session, organization_key, work_item_commi
 
     return dict()
 
+
 def update_work_items(session, work_items_source_key, work_item_summaries):
     result = dict(
         update_count=0,
         state_changes=[],
         new_work_items=[]
     )
-    for work_items_source_key, work_item_summaries in partition_by_work_items_source(work_items_source_key, work_item_summaries).items():
-        changes = update_work_items_for_source(session, work_items_source_key,work_item_summaries)
-        result['update_count'] = result['update_count'] +  changes['update_count']
+    for work_items_source_key, work_item_summaries in partition_by_work_items_source(work_items_source_key,
+                                                                                     work_item_summaries).items():
+        changes = update_work_items_for_source(session, work_items_source_key, work_item_summaries)
+        result['update_count'] = result['update_count'] + changes['update_count']
         result['state_changes'].extend(changes['state_changes'])
         result['new_work_items'].extend(changes['new_work_items'])
 
     resolve_parent_child_relationships(session, work_items_source_key)
     return result
+
 
 def update_work_items_for_source(session, work_items_source_key, work_item_summaries):
     updated = 0
@@ -1004,7 +1029,6 @@ def update_work_items_for_source(session, work_items_source_key, work_item_summa
                 ]
             )
             work_items_temp.create(session.connection(), checkfirst=True)
-
 
             work_item_summaries = update_work_item_calculated_fields(work_items_source, work_item_summaries)
 
@@ -1049,8 +1073,6 @@ def update_work_items_for_source(session, work_items_source_key, work_item_summa
                     work_items.c.key == None
                 )
             ).fetchall()
-
-
 
             state_changes = db.row_proxies_to_dict(
                 session.connection().execute(
@@ -1124,6 +1146,46 @@ def update_work_items_for_source(session, work_items_source_key, work_item_summa
                         )
                     )
                 )
+
+            # clear impediment_history for any work items which were flagged and either flag or state has changed
+
+            session.connection().execute(
+                work_items_impediment_history.update().values(
+                    cleared=work_items_temp.c.updated_at
+                ).where(work_items_impediment_history.c.work_item_id == work_items.c.id)
+                .where(work_items.c.key == work_items_temp.c.key)
+                .where(work_items.c.flagged == True)
+                .where(
+                    work_items_impediment_history.c.impediment_type == literal(WorkItemsImpedimentType.flagged.value))
+                .where(work_items_impediment_history.c.cleared == None)
+                .where(or_(work_items.c.state != work_items_temp.c.state,
+                           work_items.c.flagged != work_items_temp.c.flagged))
+            )
+
+            # Add a row in impediment history for any work items that were newly flagged or had state changed while flagged
+            session.connection().execute(
+                work_items_impediment_history.insert().from_select(
+                    ['work_item_id', 'seq_no', 'impediment_type', 'state', 'created'],
+                    select([
+                        work_items.c.id,
+                        func.coalesce(func.max(work_items_impediment_history.c.seq_no), -1) + 1,
+                        literal(WorkItemsImpedimentType.flagged.value),
+                        work_items_temp.c.state,
+                        work_items_temp.c.updated_at
+                    ]).select_from(work_items_temp.join(work_items.outerjoin(work_items_impediment_history,
+                                                                             work_items.c.id == work_items_impediment_history.c.work_item_id),
+                                                        work_items_temp.c.key == work_items.c.key))
+                    .where(work_items_temp.c.flagged == True)
+                    .where(func.coalesce(work_items_impediment_history.c.impediment_type,
+                                         literal(WorkItemsImpedimentType.flagged.value)) == literal(
+                        WorkItemsImpedimentType.flagged.value))
+                    .where(or_(work_items.c.state != work_items_temp.c.state,
+                               work_items.c.flagged != work_items_temp.c.flagged))
+                    .group_by(work_items.c.id, work_items_impediment_history.c.impediment_type, work_items_temp.c.state,
+                              work_items_temp.c.updated_at)
+
+                )
+            )
 
             # finally do the update of the changed rows.
             updated = session.connection().execute(

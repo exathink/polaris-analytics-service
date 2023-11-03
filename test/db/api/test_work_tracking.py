@@ -344,14 +344,19 @@ class TestImportWorkItems(WorkItemsTest):
                 display_id=str(i),
                 **work_items_common()
             )
-            for i in range(0, 10)
+            for i in range(0, 2)
         ]
+
+        work_items[1]['state'] = 'foo'
 
         result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
 
         assert result['success']
 
-        assert db.connection().execute('select count(work_item_id) from analytics.work_items_impediment_history').scalar() == 10
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where analytics.work_items_impediment_history.state = 'foo' and created = created_at and cleared is null").scalar() == 1
+
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where analytics.work_items_impediment_history.state = 'open' and created = created_at and cleared is null").scalar() == 1
+
 
     def it_does_not_create_entry_in_impediment_history_if_no_flag(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -828,7 +833,7 @@ class TestUpdateWorkItems(WorkItemsTest):
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history where cleared is not null").scalar() == 1
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared = updated_at").scalar() == 1
 
     def it_updates_cleared_date_when_flagged_changed_from_true_to_false(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -844,7 +849,7 @@ class TestUpdateWorkItems(WorkItemsTest):
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history where cleared is not null").scalar() == 1
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared = updated_at").scalar() == 1
 
     def it_inserts_row_into_impediment_history_when_state_changed_and_flagged_is_true(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -859,7 +864,10 @@ class TestUpdateWorkItems(WorkItemsTest):
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history").scalar() == 2
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared is null and analytics.work_items_impediment_history.state = 'foo' ").scalar() == 1
+
+
+
 
     def it_inserts_row_into_impediment_history_when_flagged_changed_to_true(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup

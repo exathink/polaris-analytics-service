@@ -368,6 +368,8 @@ class WorkItemInfo(graphene.Interface):
     releases = graphene.List(graphene.String, required=False)
     story_points = graphene.Int(required=False)
     sprints = graphene.List(graphene.String, required=False)
+    flagged = graphene.Boolean(required=False)
+
 
 class StateMapping(graphene.ObjectType):
     state = graphene.String(required=True)
@@ -381,7 +383,6 @@ class WorkItemStateMappings(graphene.Interface):
 
 class WorkItemStateMapping(graphene.Interface):
     work_item_state_mapping = graphene.Field(StateMapping, required=False)
-
 
 class WorkItemStateTransition(graphene.Interface):
     event_date = graphene.DateTime(required=True)

@@ -111,4 +111,6 @@ num_feature_types = len(WorkItemTypesToFlowTypes.feature_types)
 num_task_types = len(WorkItemTypesToFlowTypes.task_types)
 num_defect_types = len(WorkItemTypesToFlowTypes.defect_types)
 
+class WorkItemsImpedimentType(Enum):
+    flagged = 'flagged'
 

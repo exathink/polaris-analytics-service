@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 import uuid
 from polaris.analytics.db import api
-from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.analytics.db.enums import WorkItemsStateType,WorkItemsImpedimentType
 
 # work_item_sources
 rails_work_items_source_key = uuid.uuid4()
@@ -40,7 +40,8 @@ def work_items_common():
         priority='Medium',
         releases=['a','b'],
         story_points=98,
-        sprints=['Sprint 1', 'Sprint 2']
+        sprints=['Sprint 1', 'Sprint 2'],
+        flagged=True
     )
 
 
@@ -60,7 +61,8 @@ def work_items_closed():
         priority='Medium',
         releases=[],
         story_points=None,
-        sprints=None
+        sprints=None,
+        flagged=True
     )
 
 
@@ -92,8 +94,10 @@ def work_items_setup(setup_repo_org):
     db.connection().execute("delete from analytics.work_item_delivery_cycles")
     db.connection().execute("delete from analytics.work_items_source_state_map")
     db.connection().execute("delete from analytics.work_item_state_transitions")
+    db.connection().execute("delete from analytics.work_items_impediment_history")
     db.connection().execute("delete from analytics.work_items")
     db.connection().execute("delete from analytics.work_items_sources")
+
 
 
 def create_work_items_source(organization_id, work_items_source_key=rails_work_items_source_key):
@@ -142,6 +146,8 @@ def update_work_items_setup(work_items_setup):
 
     with db.orm_session() as session:
         work_items_source = WorkItemsSource.find_by_work_items_source_key(session, work_items_source_key)
+        # Setting on work item to unflagged
+        work_items_list[0]['flagged'] = False
         work_items = [model.WorkItem(**work_item) for work_item in work_items_list]
         work_items_source.work_items.extend(work_items)
         session.add_all(work_items)
@@ -166,6 +172,7 @@ def update_work_items_setup(work_items_setup):
             work_item.next_state_seq_no = 2
             work_item.state_type = work_items_source.get_state_type(work_item.state)
 
+
             # Adding delivery cycles
             work_item.delivery_cycles.extend([
                 model.WorkItemDeliveryCycle(
@@ -174,6 +181,23 @@ def update_work_items_setup(work_items_setup):
                     start_date=work_item.created_at,
                 )
             ])
+
+            #Adding flagged records into impediment history
+            if work_item.flagged:
+                work_item.impediment_history.extend([
+                    model.WorkItemsImpedimentHistory(
+                        work_item_id=work_item.id,
+                        seq_no=0,
+                        impediment_type=WorkItemsImpedimentType.flagged.value,
+                        state=work_item.state,
+                        created=work_item.created_at
+                    )
+                ]
+
+                )
+
+
+
         session.flush()
         for work_item in work_items:
             work_item.current_delivery_cycle_id = max([dc.delivery_cycle_id for dc in work_item.delivery_cycles])

@@ -60,7 +60,8 @@ class ResolveCommitsForWorkItems(graphene.Mutation):
                         priority=work_item.priority,
                         releases=work_item.releases,
                         story_points=work_item.story_points,
-                        sprints=work_item.sprints
+                        sprints=work_item.sprints,
+                        flagged=work_item.flagged
                     )
                 )
 

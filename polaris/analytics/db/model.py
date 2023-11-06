@@ -994,7 +994,7 @@ class WorkItemStateTransition(Base):
 
     work_item_id = Column(BigInteger, ForeignKey('work_items.id'), primary_key=True, index=True)
     seq_no = Column(Integer, primary_key=True, server_default='0')
-    created_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, nullable=False, index=True)
     previous_state = Column(String, nullable=True)
     state = Column(String, nullable=False)
 

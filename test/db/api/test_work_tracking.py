@@ -119,6 +119,7 @@ class TestImportWorkItems(WorkItemsTest):
             assert row.releases == new_work_item['releases']
             assert row.story_points == new_work_item['story_points']
             assert row.sprints == new_work_item['sprints']
+            assert row.flagged == new_work_item['flagged']
 
     def it_is_idempotent(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -332,6 +333,49 @@ class TestImportWorkItems(WorkItemsTest):
         # Work item should have epic id updated
         assert db.connection().execute(
             f"select count(id) from analytics.work_items where parent_id='{parent_id}'").scalar() == 1
+
+
+    def it_creates_initial_entry_in_impediment_history_if_flagged(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [
+            dict(
+                key=uuid.uuid4().hex,
+                name=str(i),
+                display_id=str(i),
+                **work_items_common()
+            )
+            for i in range(0, 2)
+        ]
+
+        work_items[1]['state'] = 'foo'
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where analytics.work_items_impediment_history.state = 'foo' and created = created_at and cleared is null").scalar() == 1
+
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where analytics.work_items_impediment_history.state = 'open' and created = created_at and cleared is null").scalar() == 1
+
+
+    def it_does_not_create_entry_in_impediment_history_if_no_flag(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+                key=uuid.uuid4().hex,
+                name='flag test',
+                display_id='flag test',
+                **work_items_common()
+            )
+            ]
+        work_items[0]['flagged'] = False
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute('select count(work_item_id) from analytics.work_items_impediment_history').scalar() == 0
+
+
 
     class TestMultipleSourceImport:
 
@@ -696,6 +740,28 @@ class TestUpdateWorkItems(WorkItemsTest):
         assert db.connection().execute(
             "select count(id) from analytics.work_items where story_points=99").scalar() == 1
 
+    def it_updates_sprints(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        new_work_item = dict(work_items[0])
+        new_work_item['sprints'] = ['Sprint X']
+        result = api.update_work_items(organization_key, work_items_source_key,
+                                       [new_work_item
+                                        ])
+        assert result['success']
+        assert db.connection().execute(
+            "select count(id) from analytics.work_items where sprints = '{Sprint X}'").scalar() == 1
+
+    def it_updates_flagged(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        new_work_item = dict(work_items[0])
+        new_work_item['flagged'] = False
+        result = api.update_work_items(organization_key, work_items_source_key,
+                                       [new_work_item
+                                        ])
+        assert result['success']
+        assert db.connection().execute(
+            "select count(id) from analytics.work_items where flagged=False").scalar() == 1
+
     def it_does_not_update_completed_at_when_state_transitions_from_closed_to_closed(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
 
@@ -754,6 +820,70 @@ class TestUpdateWorkItems(WorkItemsTest):
         ])
         assert result['success']
         assert db.connection().execute("select count(*) from analytics.work_item_state_transitions").scalar() == 6
+
+    def it_updates_cleared_date_when_state_changes(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        # Test data has one flagged and on unflagged work item
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(state='foo')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared = updated_at").scalar() == 1
+
+    def it_updates_cleared_date_when_flagged_changed_from_true_to_false(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        # Test data has one flagged and on unflagged work item
+        assert db.connection().execute(
+            "select count(*) from analytics.work_items_impediment_history where cleared is not null").scalar() == 0
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(flagged=False)
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared = updated_at").scalar() == 1
+
+    def it_inserts_row_into_impediment_history_when_state_changed_and_flagged_is_true(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        # Test data has one flagged and on unflagged work item
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history").scalar() == 1
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(state='foo')
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared is null and analytics.work_items_impediment_history.state = 'foo' ").scalar() == 1
+
+
+
+
+    def it_inserts_row_into_impediment_history_when_flagged_changed_to_true(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        # Test data has one flagged and one unflagged work item
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history").scalar() == 1
+
+        result = api.update_work_items(organization_key, work_items_source_key, [
+            dict_merge(
+                work_item,
+                dict(flagged=True)
+            )
+            for work_item in work_items
+        ])
+        assert result['success']
+        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history where analytics.work_items_impediment_history.seq_no = 0").scalar() == 2
+
 
     def it_returns_state_changes(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup

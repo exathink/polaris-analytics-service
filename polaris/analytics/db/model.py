@@ -21,7 +21,7 @@ from sqlalchemy.orm import relationship, object_session
 
 from polaris.common import db
 from polaris.common.enums import AccountRoles, OrganizationRoles, WorkTrackingIntegrationType
-from polaris.analytics.db.enums import WorkItemsStateType
+from polaris.analytics.db.enums import WorkItemsStateType, WorkItemsImpedimentType
 from polaris.utils.collections import find
 from polaris.utils.exceptions import ProcessingException
 
@@ -897,7 +897,7 @@ class WorkItem(Base):
     releases = Column(ARRAY(String), nullable=True, default=[], server_default='{}')
     story_points = Column(Integer, nullable=True)
     sprints = Column(ARRAY(String), nullable=True, default=[], server_default='{}')
-
+    flagged = Column(Boolean, nullable=True, default=False, server_default='FALSE')
     # The id of the entity in a remote system that this is mapped to.
     source_id = Column(String, nullable=True)
     created_at = Column(DateTime)
@@ -957,6 +957,9 @@ class WorkItem(Base):
 
     #work items teams relationship
     teams = relationship('Team', secondary=work_items_teams, back_populates='work_items')
+
+    # Work Items Impediment History Relationship
+    impediment_history = relationship('WorkItemsImpedimentHistory')
 
     @classmethod
     def find_by_work_item_key(cls, session, work_item_key):
@@ -1250,6 +1253,21 @@ class FeatureFlagEnablement(Base):
 
 feature_flag_enablements = FeatureFlagEnablement.__table__
 
+class WorkItemsImpedimentHistory(Base):
+    __tablename__ = 'work_items_impediment_history'
+
+    work_item_id = Column(BigInteger, ForeignKey('work_items.id'), primary_key=True)
+    impediment_type = Column(String, primary_key=True)
+    seq_no = Column(Integer, primary_key=True, server_default='0')
+    state = Column ( String, nullable=True)
+    created = Column (DateTime,nullable=True)
+    cleared = Column (DateTime,nullable=True)
+
+    # Work Items relationship
+    work_item = relationship('WorkItem', back_populates='impediment_history')
+
+work_items_impediment_history = WorkItemsImpedimentHistory.__table__
+
 
 def recreate_all(engine):
     Base.metadata.drop_all(engine)
@@ -1344,3 +1362,4 @@ class Settings:
             for phase in ['backlog', 'open', 'wip', 'complete', 'closed']:
                 if phase in custom_phase_mapping_input:
                     custom_phase_mapping[phase] = custom_phase_mapping_input.get(phase)
+

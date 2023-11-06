@@ -57,6 +57,7 @@ class TestWorkItemInstance:
                     releases
                     storyPoints
                     sprints
+                    flagged
                 }
             } 
         """
@@ -77,6 +78,7 @@ class TestWorkItemInstance:
         assert work_item['releases'] == work_items_common['releases']
         assert work_item['storyPoints'] == work_items_common['story_points']
         assert work_item['sprints'] == work_items_common['sprints']
+        assert work_item['flagged'] == work_items_common['flagged']
 
     def it_implements_work_items_source_ref_interface(self, work_items_fixture):
         work_item_key, _, _ = work_items_fixture

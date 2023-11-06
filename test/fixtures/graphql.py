@@ -412,7 +412,8 @@ work_items_common = dict(
     priority='Medium',
     releases= ["V1", "V1.1"],
     story_points=99,
-    sprints= ['Sprint 1', 'Sprint 2']
+    sprints= ['Sprint 1', 'Sprint 2'],
+    flagged=True
 
 )
 

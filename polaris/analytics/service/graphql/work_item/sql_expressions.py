@@ -62,7 +62,8 @@ def work_item_info_columns(work_items):
         work_items.c.priority,
         work_items.c.releases,
         work_items.c.story_points,
-        work_items.c.sprints
+        work_items.c.sprints,
+        work_items.c.flagged
     ]
 
 
@@ -110,7 +111,8 @@ def work_item_event_columns(work_items, work_item_state_transitions):
         work_items.c.priority,
         work_items.c.releases,
         work_items.c.story_points,
-        work_items.c.sprints
+        work_items.c.sprints,
+        work_items.c.flagged
 
     ]
 

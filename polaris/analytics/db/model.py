@@ -992,7 +992,7 @@ Index('ix_analytics_work_items_work_items_source_id_display_id',
 class WorkItemStateTransition(Base):
     __tablename__ = 'work_item_state_transitions'
 
-    work_item_id = Column(BigInteger, ForeignKey('work_items.id'), primary_key=True)
+    work_item_id = Column(BigInteger, ForeignKey('work_items.id'), primary_key=True, index=True)
     seq_no = Column(Integer, primary_key=True, server_default='0')
     created_at = Column(DateTime, nullable=False)
     previous_state = Column(String, nullable=True)

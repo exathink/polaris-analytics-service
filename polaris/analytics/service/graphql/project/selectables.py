@@ -2231,29 +2231,24 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
             ).join(
                 work_items, work_items.c.work_items_source_id == work_items_sources.c.id
             ).join(
-                work_item_state_transitions, work_item_state_transitions.c.work_item_id == work_items.c.id
+                work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id,
             ).join(
-                work_item_delivery_cycles,
+                current_state_map, current_state_map.c.work_items_source_id == work_items_sources.c.id,
+            ).join(
+                previous_state_map, previous_state_map.c.work_items_source_id == work_items_sources.c.id,
+            ).join(
+                work_item_state_transitions,
                 and_(
-                    work_item_delivery_cycles, work_item_delivery_cycles.c.work_item_id == work_items.c.id,
+                    work_item_state_transitions.c.work_item_id == work_items.c.id,
+                    # Map state type for current and previous states
+                    current_state_map.c.state == work_item_state_transitions.c.state,
+                    previous_state_map, previous_state_map.c.state == work_item_state_transitions.c.previous_state,
+                    # match up transitions to the delivery cycles in which they belong
                     work_item_delivery_cycles.c.start_seq_no <= work_item_state_transitions.c.seq_no,
                     or_(
                         work_item_delivery_cycles.c.end_seq_no == None,
                         work_item_state_transitions.c.seq_no <= work_item_delivery_cycles.c.end_seq_no
                     )
-                )
-            ).join(
-                current_state_map,
-                and_(
-                    current_state_map.c.work_items_source_id == work_items_sources.c.id,
-                    current_state_map.c.state == work_item_state_transitions.c.state,
-
-                )
-            ).join(
-                previous_state_map,
-                and_(
-                    previous_state_map.c.work_items_source_id == work_items_sources.c.id,
-                    previous_state_map, previous_state_map.c.state == work_item_state_transitions.c.previous_state
                 )
             )
         ).where(
@@ -2315,7 +2310,7 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
                 passthroughs_filter
             ).label('passthroughs')
         ]).select_from(
-            project_nodes_dates.outerjoin(
+            project_nodes_dates.join(
                 select_arrivals,
                 and_(
                     select_arrivals.c.project_id == project_nodes_dates.c.id,
@@ -2331,22 +2326,28 @@ class ProjectArrivalDepartureTrends(InterfaceResolver):
         ).alias('select_arrival_rate_trends')
 
         result = select([
-            select_arrival_rate_trends.c.id,
+            project_nodes_dates.c.id,
             func.json_agg(
                 func.json_build_object(
-                    'measurement_date', select_arrival_rate_trends.c.measurement_date,
+                    'measurement_date', project_nodes_dates.c.measurement_date,
                     'measurement_window', measurement_window,
-                    'arrivals', select_arrival_rate_trends.c.arrivals,
-                    'departures', select_arrival_rate_trends.c.departures,
-                    'flowbacks', select_arrival_rate_trends.c.flowbacks,
-                    'passthroughs', select_arrival_rate_trends.c.passthroughs
+                    'arrivals', func.coalesce(select_arrival_rate_trends.c.arrivals,0),
+                    'departures', func.coalesce(select_arrival_rate_trends.c.departures,0),
+                    'flowbacks', func.coalesce(select_arrival_rate_trends.c.flowbacks, 0),
+                    'passthroughs', func.coalesce(select_arrival_rate_trends.c.passthroughs,0)
                 )
             ).label('arrival_departure_trends')
 
         ]).select_from(
-            select_arrival_rate_trends
+            project_nodes_dates.outerjoin(
+                select_arrival_rate_trends,
+                and_(
+                    project_nodes_dates.c.id == select_arrival_rate_trends.c.id,
+                    project_nodes_dates.c.measurement_date == select_arrival_rate_trends.c.measurement_date
+                )
+            )
         ).group_by(
-            select_arrival_rate_trends.c.id
+            project_nodes_dates.c.id
         )
 
         return result

@@ -22,6 +22,7 @@ class WorkItemsStateType(Enum):
 class WorkItemsStateFlowType(Enum):
     active = 'active'
     waiting = 'waiting'
+    terminal = 'terminal'
 
 class WorkItemsStateReleaseStatusType(Enum):
     # These are release status for Define phase

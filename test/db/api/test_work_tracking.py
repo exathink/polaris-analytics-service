@@ -120,6 +120,7 @@ class TestImportWorkItems(WorkItemsTest):
             assert row.story_points == new_work_item['story_points']
             assert row.sprints == new_work_item['sprints']
             assert row.flagged == new_work_item['flagged']
+            assert row.changelog == new_work_item['changelog']
 
     def it_is_idempotent(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -761,6 +762,27 @@ class TestUpdateWorkItems(WorkItemsTest):
         assert result['success']
         assert db.connection().execute(
             "select count(id) from analytics.work_items where flagged=False").scalar() == 1
+
+    def it_updates_changelog(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        new_work_item = dict(work_items[0])
+        new_work_item['changelog'] = [{'created': '2023-11-09T16:55:00.575-0600',
+                                             'previous_state': 'In Progress',
+                                             'state': 'Done'}
+                                            ]
+        result = api.update_work_items(organization_key, work_items_source_key,
+                                       [new_work_item
+                                        ])
+        assert result['success']
+        work_item_display_id = work_items[0]['display_id']
+        assert db.connection().execute(
+            f"select changelog from analytics.work_items where display_id='{work_item_display_id}'").scalar() == [{'created': '2023-11-09T16:55:00.575-0600',
+                                             'previous_state': 'In Progress',
+                                             'state': 'Done'}
+                                            ]
+
+
+
 
     def it_does_not_update_completed_at_when_state_transitions_from_closed_to_closed(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup

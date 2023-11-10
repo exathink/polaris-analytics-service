@@ -219,7 +219,8 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                             'releases',
                             'story_points',
                             'sprints',
-                            'flagged'
+                            'flagged',
+                            'changelog'
 
                         ])
                     )
@@ -265,7 +266,8 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                         'releases',
                         'story_points',
                         'sprints',
-                        'flagged'
+                        'flagged',
+                        'changelog'
 
                     ],
                     select(
@@ -298,7 +300,8 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                             work_items_temp.c.releases,
                             work_items_temp.c.story_points,
                             work_items_temp.c.sprints,
-                            work_items_temp.c.flagged
+                            work_items_temp.c.flagged,
+                            work_items_temp.c.changelog
 
                         ]
                     ).where(
@@ -1061,7 +1064,8 @@ def update_work_items_for_source(session, work_items_source_key, work_item_summa
                             'releases',
                             'story_points',
                             'sprints',
-                            'flagged'
+                            'flagged',
+                            'changelog'
                         ]
                     )
                     for work_item in work_item_summaries
@@ -1173,7 +1177,8 @@ def update_work_items_for_source(session, work_items_source_key, work_item_summa
                     releases=work_items_temp.c.releases,
                     story_points=work_items_temp.c.story_points,
                     sprints=work_items_temp.c.sprints,
-                    flagged=work_items_temp.c.flagged
+                    flagged=work_items_temp.c.flagged,
+                    changelog=work_items_temp.c.changelog
                 ).where(
                     work_items_temp.c.key == work_items.c.key,
                 )

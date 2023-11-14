@@ -45,7 +45,7 @@ def work_items_common():
         flagged=True,
         changelog=[{'created': '2023-11-08T16:55:00.575-0600',
                     'previous_state': 'To Do',
-                    'seq_no': 1,
+                    'seq_no': 2,
                     'state': 'In Progress'}
                    ]
     )
@@ -71,7 +71,7 @@ def work_items_closed():
         flagged=True,
         changelog=[{'created': '2023-11-08T16:55:00.575-0600',
                     'previous_state': 'To Do',
-                    'seq_no': 1,
+                    'seq_no': 2,
                     'state': 'In Progress'}
                    ]
     )

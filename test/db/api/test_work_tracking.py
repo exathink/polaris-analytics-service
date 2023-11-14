@@ -377,6 +377,69 @@ class TestImportWorkItems(WorkItemsTest):
         assert db.connection().execute(
             'select count(work_item_id) from analytics.work_items_impediment_history').scalar() == 0
 
+    def it_creates_state_transitions_entry_if_changelog_is_not_None(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+        ]
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute(
+            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 3
+
+    def it_does_not_create_state_transitions_entry_if_changelog_is_empty(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+        ]
+        work_items[0]['changelog'] = None
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute(
+            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 3
+
+    def it_creates_state_transitions_entry_if_there_are_multiple_changelogs(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+        ]
+
+        work_items[0]['changelog'] = [{'created': '2023-11-08T16:55:00.575-0600',
+                                       'previous_state': 'To Do',
+                                       'seq_no': 2,
+                                       'state': 'In Progress'},
+                                      {'created': '2023-11-09T16:55:00.575-0600',
+                                       'previous_state': 'In Progress',
+                                       'seq_no': 3,
+                                       'state': 'Done'}
+
+                                      ]
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute(
+            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 4
+
     class TestMultipleSourceImport:
 
         @pytest.fixture
@@ -782,7 +845,7 @@ class TestUpdateWorkItems(WorkItemsTest):
                     'previous_state': 'In Progress',
                     'seq_no': 1,
                     'state': 'Done'}
-                   ]
+               ]
 
     def it_does_not_update_completed_at_when_state_transitions_from_closed_to_closed(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup

@@ -17,8 +17,8 @@ from polaris.utils.exceptions import ProcessingException
 from datetime import date, timedelta
 
 from sqlalchemy import Column, String, Integer, BigInteger, select, and_, bindparam, func, literal, or_, DateTime, \
-    union, union_all
-from sqlalchemy.dialects.postgresql import UUID, insert, array
+    union, union_all, cast, case
+from sqlalchemy.dialects.postgresql import UUID, insert, array, JSONB
 from polaris.analytics.db.impl.work_item_resolver import WorkItemResolver
 from polaris.analytics.db.enums import WorkItemsStateType, WorkItemType, WorkItemsImpedimentType
 
@@ -329,28 +329,57 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                 )
             )
 
+            split_change_logs = select([work_items.c.id.label('work_item_id'),
+                                        func.jsonb_array_elements(work_items.c.changelog).label(
+                                            'changelog_split'),
+                                        work_items.c.created_at.label('work_item_created_at')]).where(and_(
+                work_items.c.key == work_items_temp.c.key,
+                work_items_temp.c.work_item_id == None
+            )).alias('split_change_logs')
+
+            state_transitions = select([
+                split_change_logs.c.work_item_id,
+                split_change_logs.c.work_item_created_at,
+                cast(cast(split_change_logs.c.changelog_split, JSONB)['state'].astext, String).label('state'),
+                cast(cast(split_change_logs.c.changelog_split, JSONB)['previous_state'].astext, String).label(
+                    'previous_state'),
+                cast(cast(split_change_logs.c.changelog_split, JSONB)['seq_no'].astext, Integer).label(
+                    'seq_no'),
+                cast(cast(split_change_logs.c.changelog_split, JSONB)['created'].astext, DateTime).label(
+                    'created_at')
+
+            ]).alias('state_transitions')
+
+            # insert generated state transition from created to first previous state in changelog
             session.connection().execute(
                 work_item_state_transitions.insert().from_select(
-                    ['work_item_id', 'seq_no', 'previous_state', 'state', 'created_at'],
+                    ['work_item_id', 'state', 'previous_state', 'seq_no', 'created_at'],
                     select([
-                        work_items.c.id,
-                        literal('1').label('seq_no'),
+                        state_transitions.c.work_item_id,
+                        state_transitions.c.previous_state.label('state'),
                         literal('created').label('previous_state'),
-                        work_items.c.state,
-                        # we will record the last updated date of the work_item as the state
-                        # transition date since this is the closest best guess of when the actual
-                        # state transition was recorded. we still have the created date on the work_item and the
-                        # last updated date on the work_item might continue to get updated, so we can freeze this date
-                        # as the state transition date for the state that the item was in at the moment it was imported.
-                        work_items.c.updated_at
-                    ]).where(
-                        and_(
-                            work_items.c.key == work_items_temp.c.key,
-                            work_items_temp.c.work_item_id == None
-                        )
-                    )
+                        state_transitions.c.seq_no - 1,
+                        state_transitions.c.work_item_created_at.label('created_at')
+                    ]).where(state_transitions.c.seq_no == 2)
                 )
             )
+
+            # insert new states
+            session.connection().execute(
+                work_item_state_transitions.insert().from_select(
+                    ['work_item_id', 'state', 'previous_state', 'seq_no', 'created_at'],
+                    select([
+                        state_transitions.c.work_item_id,
+
+                        state_transitions.c.state,
+                        state_transitions.c.previous_state,
+                        state_transitions.c.seq_no,
+                        state_transitions.c.created_at
+                    ])
+                )
+            )
+
+            # Need code here to update the next_seq_no
 
             insert_impediment_history_for_flagged_work_items(session, work_items_temp)
 

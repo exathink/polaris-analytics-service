@@ -43,11 +43,12 @@ def work_items_common():
         story_points=98,
         sprints=['Sprint 1', 'Sprint 2'],
         flagged=True,
-        changelog=[{'created': '2023-11-08T16:55:00.575-0600',
+        changelog=[{'created_at': '2023-11-08T16:55:00.575',
                     'previous_state': 'To Do',
                     'seq_no': 2,
-                    'state': 'In Progress'}
+                    'state': 'open'}
                    ]
+
     )
 
 
@@ -69,7 +70,7 @@ def work_items_closed():
         story_points=None,
         sprints=None,
         flagged=True,
-        changelog=[{'created': '2023-11-08T16:55:00.575-0600',
+        changelog=[{'created_at': '2023-11-08T16:55:00.575',
                     'previous_state': 'To Do',
                     'seq_no': 2,
                     'state': 'In Progress'}

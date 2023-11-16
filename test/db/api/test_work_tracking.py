@@ -10,6 +10,7 @@
 
 
 import uuid
+
 from test.fixtures.work_items import *
 from polaris.analytics.db import api, model
 from polaris.common import db
@@ -376,69 +377,6 @@ class TestImportWorkItems(WorkItemsTest):
 
         assert db.connection().execute(
             'select count(work_item_id) from analytics.work_items_impediment_history').scalar() == 0
-
-    def it_creates_state_transitions_entry_if_changelog_is_not_None(self, work_items_setup):
-        organization_key, work_items_source_key = work_items_setup
-        work_items = [dict(
-            key=uuid.uuid4().hex,
-            name='changelog test',
-            display_id='changelog test',
-            **work_items_common()
-        )
-        ]
-
-        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
-
-        assert result['success']
-
-        assert db.connection().execute(
-            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 3
-
-    def it_does_not_create_state_transitions_entry_if_changelog_is_empty(self, work_items_setup):
-        organization_key, work_items_source_key = work_items_setup
-        work_items = [dict(
-            key=uuid.uuid4().hex,
-            name='changelog test',
-            display_id='changelog test',
-            **work_items_common()
-        )
-        ]
-        work_items[0]['changelog'] = None
-
-        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
-
-        assert result['success']
-
-        assert db.connection().execute(
-            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 3
-
-    def it_creates_state_transitions_entry_if_there_are_multiple_changelogs(self, work_items_setup):
-        organization_key, work_items_source_key = work_items_setup
-        work_items = [dict(
-            key=uuid.uuid4().hex,
-            name='changelog test',
-            display_id='changelog test',
-            **work_items_common()
-        )
-        ]
-
-        work_items[0]['changelog'] = [{'created': '2023-11-08T16:55:00.575-0600',
-                                       'previous_state': 'To Do',
-                                       'seq_no': 2,
-                                       'state': 'In Progress'},
-                                      {'created': '2023-11-09T16:55:00.575-0600',
-                                       'previous_state': 'In Progress',
-                                       'seq_no': 3,
-                                       'state': 'Done'}
-
-                                      ]
-
-        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
-
-        assert result['success']
-
-        assert db.connection().execute(
-            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 4
 
     class TestMultipleSourceImport:
 
@@ -1355,6 +1293,93 @@ class TestUpdateWorkItems(WorkItemsTest):
 
 class TestStateTransitionSequence:
 
+    def it_creates_state_transitions_entry_if_changelog_is_not_None(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+        ]
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute(
+            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 3
+
+    def it_creates_state_transitions_with_correct_values_when_changelog_is_not_None(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+        ]
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        row_1 = db.connection().execute(
+            'select * from analytics.work_item_state_transitions where seq_no = 2')
+
+        for row_proxy in row_1:
+            for key, value in row_proxy.items():
+                if key in ('seq_no', 'status', 'previous_status'):
+                    assert value == work_items[0]['changelog'][0].get(key)
+                elif key == 'created_at':
+                    assert value == datetime.fromisoformat('2023-11-08T16:55:00.575')
+
+    def it_generates_initial_state_transitions_entry_if_changelog_is_empty(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+        ]
+        work_items[0]['changelog'] = None
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute(
+            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 2
+
+    def it_creates_state_transitions_entry_if_there_are_multiple_changelogs(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+        ]
+
+        work_items[0]['changelog'] = [{'created_at': '2023-11-08T16:55:00.575-0600',
+                                       'previous_state': 'To Do',
+                                       'seq_no': 2,
+                                       'state': 'In Progress'},
+                                      {'created_at': '2023-11-09T16:55:00.575-0600',
+                                       'previous_state': 'In Progress',
+                                       'seq_no': 3,
+                                       'state': 'Done'}
+
+                                      ]
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute(
+            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 4
+
     def it_saves_an_initial_state_transition_for_new_items(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_item = dict(
@@ -1363,6 +1388,8 @@ class TestStateTransitionSequence:
             display_id='1000',
             **work_items_common()
         )
+        # Overriding the entry in work_items_common for changelog since a new item would have a changelog = none
+        work_item['changelog'] = None
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -1381,7 +1408,7 @@ class TestStateTransitionSequence:
                        seq_no=1,
                        previous_state='created',
                        state=work_item['state'],
-                       created_at=work_item['updated_at']
+                       created_at=work_item['created_at']
                    )
                ]
 
@@ -1399,7 +1426,7 @@ class TestStateTransitionSequence:
         ])
         assert result['success']
         assert db.connection().execute(
-            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
+            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 3
 
     def it_saves_the_next_state_when_there_is_an_update_with_a_state_change(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -1410,6 +1437,9 @@ class TestStateTransitionSequence:
             display_id='1000',
             **work_items_common()
         )
+
+        work_item['changelog'] = None
+
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -1437,7 +1467,7 @@ class TestStateTransitionSequence:
                        seq_no=1,
                        previous_state='created',
                        state=work_item['state'],
-                       created_at=work_item['updated_at']
+                       created_at=work_item['created_at']
                    ),
                    dict(
                        seq_no=2,
@@ -1470,7 +1500,7 @@ class TestStateTransitionSequence:
         ])
         assert result['success']
         assert db.connection().execute(
-            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 3
+            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 4
 
     def it_saves_the_next_state_correctly_after_a_subsequent_update(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -1481,6 +1511,9 @@ class TestStateTransitionSequence:
             display_id='1000',
             **work_items_common()
         )
+
+        work_item['changelog'] = None
+
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -1518,8 +1551,8 @@ class TestStateTransitionSequence:
                    dict(
                        seq_no=1,
                        previous_state='created',
-                       state='open',
-                       created_at=work_item['updated_at']
+                       state=work_item['state'],
+                       created_at=work_item['created_at']
                    ),
                    dict(
                        seq_no=2,
@@ -1544,6 +1577,9 @@ class TestStateTransitionSequence:
             display_id='1000',
             **work_items_common()
         )
+
+        work_item['changelog'] = None
+
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -1566,7 +1602,7 @@ class TestStateTransitionSequence:
                        seq_no=1,
                        previous_state='created',
                        state=work_item['state'],
-                       created_at=work_item['updated_at']
+                       created_at=work_item['created_at']
                    )
                ]
 
@@ -1589,7 +1625,7 @@ class TestStateTransitionSequence:
 
         assert result['success']
         assert db.connection().execute(
-            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
+            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 3
 
 
 class TestImportProject:
@@ -2415,6 +2451,10 @@ class TestWorkItemDeliveryCycleDurations:
             )
             for i in range(0, 10)]
         )
+
+        for i in range(0,10):
+            work_items[i]['changelog'] = None
+
         work_items[0]['state'] = 'closed'
         work_items[0]['created_at'] = datetime.utcnow() - timedelta(days=7)
         result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
@@ -2427,8 +2467,8 @@ class TestWorkItemDeliveryCycleDurations:
         ).scalar() == 1
         assert db.connection().execute(
             "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations \
-                where cumulative_time_in_state>0 and state='created'"
-        ).scalar() == 10
+               where cumulative_time_in_state>0 and state='created'"
+       ).scalar() == 0
 
     def it_updates_delivery_cycle_durations_for_updated_work_items(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_work_items_setup
@@ -2466,6 +2506,9 @@ class TestWorkItemDeliveryCycleDurations:
             )
             for i in range(0, 5)]
         )
+
+        for i in range(0,5):
+            work_items[i]['changelog'] = None
         # import all work items first
         result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
         assert result['success']
@@ -2521,6 +2564,8 @@ class TestWorkItemDeliveryCycleDurations:
             for i in range(0, 5)]
         )
         work_items[0]['updated_at'] = work_items[0]['created_at'] + timedelta(days=1)
+        for i in range(0,5):
+            work_items[i]['changelog'] = None
         # import all work items first
         result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
         assert result['success']

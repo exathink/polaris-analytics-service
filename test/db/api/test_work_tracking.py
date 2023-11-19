@@ -1312,27 +1312,40 @@ class TestStateTransitionSequence:
 
     def it_creates_state_transitions_with_correct_values_when_changelog_is_not_None(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
-        work_items = [dict(
+        work_item = dict(
             key=uuid.uuid4().hex,
             name='changelog test',
             display_id='changelog test',
             **work_items_common()
         )
-        ]
 
-        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, [work_item])
 
         assert result['success']
-
-        row_1 = db.connection().execute(
-            'select * from analytics.work_item_state_transitions where seq_no = 2')
-
-        for row_proxy in row_1:
-            for key, value in row_proxy.items():
-                if key in ('seq_no', 'status', 'previous_status'):
-                    assert value == work_items[0]['changelog'][0].get(key)
-                elif key == 'created_at':
-                    assert value == datetime.fromisoformat('2023-11-08T16:55:00.575')
+        assert db.row_proxies_to_dict(
+            db.connection().execute(
+                "select seq_no, previous_state, state, created_at from analytics.work_item_state_transitions order by seq_no").fetchall()
+        ) == [
+                   dict(
+                       seq_no=0,
+                       previous_state=None,
+                       state='created',
+                       created_at=work_item['created_at']
+                   ),
+                   dict(
+                       seq_no=1,
+                       previous_state='created',
+                       state=work_item['changelog'][0].get('previous_state'),
+                       created_at=work_item['created_at']
+                   ),
+                   dict(
+                       seq_no=2,
+                       previous_state=work_item['changelog'][0].get('previous_state'),
+                       state=work_item['changelog'][0].get('state'),
+                       created_at=datetime.fromisoformat(work_item['changelog'][0].get('created_at'))
+                   )
+               ]
 
     def it_generates_initial_state_transitions_entry_if_changelog_is_empty(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup

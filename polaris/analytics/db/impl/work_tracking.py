@@ -381,8 +381,7 @@ def create_state_transitions_records_for_new_work_items(session, work_items_temp
         cast(cast(split_change_logs.c.changelog_split, JSONB)['state'].astext, String).label('state'),
         cast(cast(split_change_logs.c.changelog_split, JSONB)['previous_state'].astext, String).label(
             'previous_state'),
-        cast(cast(split_change_logs.c.changelog_split, JSONB)['seq_no'].astext, Integer).label(
-            'seq_no'),
+        func.row_number().over(partition_by=split_change_logs.c.work_item_id).label('seq_no'),
         cast(cast(split_change_logs.c.changelog_split, JSONB)['created_at'].astext, DateTime).label(
             'created_at')
 
@@ -395,9 +394,9 @@ def create_state_transitions_records_for_new_work_items(session, work_items_temp
                 state_transitions.c.work_item_id,
                 state_transitions.c.previous_state.label('state'),
                 literal('created').label('previous_state'),
-                state_transitions.c.seq_no - 1,
+                literal('1').label('seq_no'),
                 state_transitions.c.work_item_created_at.label('created_at')
-            ]).where(state_transitions.c.seq_no == 2)
+            ]).where(state_transitions.c.seq_no == 1)
         )
     )
     # insert new states
@@ -409,7 +408,7 @@ def create_state_transitions_records_for_new_work_items(session, work_items_temp
 
                 state_transitions.c.state,
                 state_transitions.c.previous_state,
-                state_transitions.c.seq_no,
+                func.row_number().over(partition_by=state_transitions.c.work_item_id) +1,
                 state_transitions.c.created_at
             ])
         )

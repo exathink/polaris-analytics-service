@@ -43,9 +43,8 @@ def work_items_common():
         story_points=98,
         sprints=['Sprint 1', 'Sprint 2'],
         flagged=True,
-        changelog=[{'created_at': '2023-11-08T16:55:00.575',
+        changelog=[{'created_at': (datetime.utcnow() - timedelta(days=6)).isoformat(),
                     'previous_state': 'To Do',
-                    'seq_no': 2,
                     'state': 'open'}
                    ]
 

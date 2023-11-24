@@ -139,6 +139,7 @@ def update_work_item_custom_type(work_items_source, work_item_summaries):
     ]
 
 
+
 def partition_by_work_items_source(work_items_source_key, work_item_summaries):
     partitions = dict()
     for work_item in work_item_summaries:
@@ -193,6 +194,10 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
             # update the work item type of the work item using a custom type mapping if provided.
             work_item_summaries = update_work_item_custom_type(work_items_source, work_item_summaries)
 
+            # update the changelog to match state transition entries
+
+            work_item_summaries = update_changelog(work_item_summaries)
+
             session.connection().execute(
                 insert(work_items_temp).values([
                     dict(
@@ -220,7 +225,8 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                             'story_points',
                             'sprints',
                             'flagged',
-                            'changelog'
+                            'changelog',
+                            'next_state_seq_no'
 
                         ])
                     )
@@ -290,11 +296,7 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
                             work_items_temp.c.source_id,
                             work_items_temp.c.parent_id,
                             work_items_temp.c.parent_key,
-                            # We initialize the next state seq no as 2 since
-                            # the seq_no 0 and 1 will be taken up by the initial states which
-                            # we create below. Subsequent state changes will use
-                            # the current value of the next_state_seq_no to set its sequence number.
-                            literal('2').label('next_state_sequence_no'),
+                            work_items_temp.c.next_state_seq_no,
                             work_items_temp.c.commit_identifiers,
                             work_items_temp.c.priority,
                             work_items_temp.c.releases,
@@ -346,26 +348,52 @@ def import_new_work_items_into_source(session, work_items_source_key, work_item_
         updated=updated,
     )
 
+def reformat_changelog(work_item_summary):
+    # This method also initializes the next_state_seq_no
+
+    new_changelog = []
+
+    if work_item_summary.get('changelog') is None:
+        new_changelog.append(
+            {'created_at': work_item_summary['created_at'].isoformat(), 'state': 'created', 'previous_state': None, 'seq_no': 0})
+        new_changelog.append(
+            {'created_at': work_item_summary['created_at'].isoformat(),
+             'state': work_item_summary['state'],
+             'previous_state': 'created', 'seq_no': 1})
+        work_item_summary['changelog'] = new_changelog
+        work_item_summary['next_state_seq_no'] = 2
+
+    else:
+        new_changelog = [
+            {'created_at': work_item_summary['created_at'].isoformat(), 'state': 'created', 'seq_no': 0,
+             'previous_state': None},
+            {'created_at': work_item_summary['created_at'].isoformat(),
+             'state': work_item_summary['changelog'][0].get('previous_state'),
+             'previous_state': 'created',
+             'seq_no': 1
+             }
+        ]
+
+        for index, changelog in enumerate(work_item_summary['changelog']):
+            new_changelog.append(
+                {'created_at': changelog.get('created_at'), 'state': changelog.get('state'),
+                 'previous_state': changelog.get('previous_state'),
+                 'seq_no': index + 2})
+            work_item_summary['next_state_seq_no'] = index + 3
+        work_item_summary['changelog'] = new_changelog
+
+    return work_item_summary
+
+
+def update_changelog(work_item_summaries):
+    return [
+        reformat_changelog(work_item_summary)
+        for work_item_summary in work_item_summaries
+    ]
+
+
 
 def create_state_transitions_records_for_new_work_items(session, work_items_temp):
-    # add the created state to the state transitions
-    # for the newly inserted entries.
-    session.connection().execute(
-        work_item_state_transitions.insert().from_select(
-            ['work_item_id', 'seq_no', 'state', 'created_at'],
-            select([
-                work_items.c.id,
-                literal('0').label('seq_no'),
-                literal('created').label('state'),
-                work_items.c.created_at
-            ]).where(
-                and_(
-                    work_items.c.key == work_items_temp.c.key,
-                    work_items_temp.c.work_item_id == None
-                )
-            )
-        )
-    )
     split_change_logs = select([work_items.c.id.label('work_item_id'),
                                 func.jsonb_array_elements(work_items.c.changelog)
                                .label(
@@ -375,30 +403,20 @@ def create_state_transitions_records_for_new_work_items(session, work_items_temp
         work_items_temp.c.work_item_id == None,
         func.jsonb_typeof(work_items.c.changelog) == 'array'
     )).alias('split_change_logs')
+
     state_transitions = select([
         split_change_logs.c.work_item_id,
         split_change_logs.c.work_item_created_at,
         cast(cast(split_change_logs.c.changelog_split, JSONB)['state'].astext, String).label('state'),
         cast(cast(split_change_logs.c.changelog_split, JSONB)['previous_state'].astext, String).label(
             'previous_state'),
-        func.row_number().over(partition_by=split_change_logs.c.work_item_id).label('seq_no'),
+        cast(cast(split_change_logs.c.changelog_split, JSONB)['seq_no'].astext, Integer).label(
+            'seq_no'),
         cast(cast(split_change_logs.c.changelog_split, JSONB)['created_at'].astext, DateTime).label(
             'created_at')
 
     ]).alias('state_transitions')
-    # insert generated state transition from created to first previous state in changelog
-    session.connection().execute(
-        work_item_state_transitions.insert().from_select(
-            ['work_item_id', 'state', 'previous_state', 'seq_no', 'created_at'],
-            select([
-                state_transitions.c.work_item_id,
-                state_transitions.c.previous_state.label('state'),
-                literal('created').label('previous_state'),
-                literal('1').label('seq_no'),
-                state_transitions.c.work_item_created_at.label('created_at')
-            ]).where(state_transitions.c.seq_no == 1)
-        )
-    )
+
     # insert new states
     session.connection().execute(
         work_item_state_transitions.insert().from_select(
@@ -408,47 +426,11 @@ def create_state_transitions_records_for_new_work_items(session, work_items_temp
 
                 state_transitions.c.state,
                 state_transitions.c.previous_state,
-                func.row_number().over(partition_by=state_transitions.c.work_item_id) +1,
+                state_transitions.c.seq_no,
                 state_transitions.c.created_at
             ])
         )
     )
-    # insert generated state for any that has a null changelog
-    session.connection().execute(
-        work_item_state_transitions.insert().from_select(
-            ['work_item_id', 'state', 'previous_state', 'seq_no', 'created_at'],
-            select([
-                work_items.c.id,
-
-                work_items.c.state,
-                literal('created').label('previous_state'),
-                literal('1').label('seq_no'),
-                work_items.c.created_at
-            ]).where(and_(work_items.c.key == work_items_temp.c.key,
-                          work_items_temp.c.work_item_id == None,
-                          work_items.c.id == work_item_state_transitions.c.work_item_id
-
-                          )).group_by(work_items.c.id).having(func.count(work_items.c.id) == 1)
-        )
-    )
-
-
-    # Update next_state_seq_no in work_items
-    next_state_seq_no = select([work_item_state_transitions.c.work_item_id,
-                                (func.max(work_item_state_transitions.c.seq_no) + 1).label('next_seq_no')]).where(and_(
-        work_items.c.key == work_items_temp.c.key,
-        work_items_temp.c.work_item_id == None,
-        work_items.c.id == work_item_state_transitions.c.work_item_id
-    )).group_by(work_item_state_transitions.c.work_item_id).alias('next_state_seq_no')
-
-    session.connection().execute(
-        work_items.update().values(
-            next_state_seq_no=next_state_seq_no.c.next_seq_no
-        ).where(
-            work_items.c.id == next_state_seq_no.c.work_item_id
-        )
-    )
-
 
 
 

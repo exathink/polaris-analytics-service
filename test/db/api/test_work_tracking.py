@@ -10,6 +10,7 @@
 
 
 import uuid
+
 from test.fixtures.work_items import *
 from polaris.analytics.db import api, model
 from polaris.common import db
@@ -93,14 +94,14 @@ class TestImportWorkItems(WorkItemsTest):
     def it_imports_all_fields_for_new_item(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         new_work_item = dict(
-                key=uuid.uuid4().hex,
-                name='Issue 100',
-                display_id='100',
-                **work_items_common()
-            )
+            key=uuid.uuid4().hex,
+            name='Issue 100',
+            display_id='100',
+            **work_items_common()
+        )
         result = api.import_new_work_items(organization_key, work_items_source_key, [new_work_item])
         assert result['success']
-        result_set =  db.connection().execute('select * from analytics.work_items')
+        result_set = db.connection().execute('select * from analytics.work_items')
         for row in result_set:
             assert row.name == new_work_item['name']
             assert row.display_id == new_work_item['display_id']
@@ -120,6 +121,7 @@ class TestImportWorkItems(WorkItemsTest):
             assert row.story_points == new_work_item['story_points']
             assert row.sprints == new_work_item['sprints']
             assert row.flagged == new_work_item['flagged']
+            assert row.changelog is not None
 
     def it_is_idempotent(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -334,7 +336,6 @@ class TestImportWorkItems(WorkItemsTest):
         assert db.connection().execute(
             f"select count(id) from analytics.work_items where parent_id='{parent_id}'").scalar() == 1
 
-
     def it_creates_initial_entry_in_impediment_history_if_flagged(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_items = [
@@ -353,29 +354,29 @@ class TestImportWorkItems(WorkItemsTest):
 
         assert result['success']
 
-        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where analytics.work_items_impediment_history.state = 'foo' and created = created_at and cleared is null").scalar() == 1
+        assert db.connection().execute(
+            "select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where analytics.work_items_impediment_history.state = 'foo' and created = created_at and cleared is null").scalar() == 1
 
-        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where analytics.work_items_impediment_history.state = 'open' and created = created_at and cleared is null").scalar() == 1
-
+        assert db.connection().execute(
+            "select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where analytics.work_items_impediment_history.state = 'open' and created = created_at and cleared is null").scalar() == 1
 
     def it_does_not_create_entry_in_impediment_history_if_no_flag(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
         work_items = [dict(
-                key=uuid.uuid4().hex,
-                name='flag test',
-                display_id='flag test',
-                **work_items_common()
-            )
-            ]
+            key=uuid.uuid4().hex,
+            name='flag test',
+            display_id='flag test',
+            **work_items_common()
+        )
+        ]
         work_items[0]['flagged'] = False
 
         result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
 
         assert result['success']
 
-        assert db.connection().execute('select count(work_item_id) from analytics.work_items_impediment_history').scalar() == 0
-
-
+        assert db.connection().execute(
+            'select count(work_item_id) from analytics.work_items_impediment_history').scalar() == 0
 
     class TestMultipleSourceImport:
 
@@ -386,7 +387,7 @@ class TestImportWorkItems(WorkItemsTest):
                 organization = model.Organization.find_by_organization_key(session, fixture.organization_key)
                 cross_project_key = uuid.uuid4()
                 cross_project = create_work_items_source(organization.id, work_items_source_key=cross_project_key)
-                session. add(cross_project)
+                session.add(cross_project)
 
             yield Fixture(
                 parent=fixture,
@@ -412,7 +413,7 @@ class TestImportWorkItems(WorkItemsTest):
                     name="10002",
                     display_id="10002",
                     work_items_source_key=cross_project_key,
-                    ** work_items_common()
+                    **work_items_common()
                 ),
 
             ])
@@ -441,7 +442,7 @@ class TestImportWorkItems(WorkItemsTest):
                     name="10002",
                     display_id="10002",
                     # we are not providing a work item source key here. Should use primary
-                    ** work_items_common()
+                    **work_items_common()
                 ),
 
             ])
@@ -475,7 +476,7 @@ class TestImportWorkItems(WorkItemsTest):
                     display_id="10002",
                     work_items_source_key=cross_project_key,
                     parent_key=item_keys[0].hex,
-                    ** work_items_common()
+                    **work_items_common()
                 ),
 
             ])
@@ -501,7 +502,7 @@ class TestImportWorkItems(WorkItemsTest):
                     display_id="10002",
                     work_items_source_key=cross_project_key,
                     parent_key=item_keys[0].hex,
-                    ** work_items_common()
+                    **work_items_common()
                 ),
                 dict(
                     key=item_keys[0].hex,
@@ -535,7 +536,7 @@ class TestImportWorkItems(WorkItemsTest):
                     display_id="10002",
                     work_items_source_key=cross_project_key,
                     parent_key=item_keys[0].hex,
-                    ** work_items_common()
+                    **work_items_common()
                 ),
 
             ])
@@ -572,7 +573,7 @@ class TestImportWorkItems(WorkItemsTest):
                     display_id="10002",
                     work_items_source_key=cross_project_key,
                     parent_key=None,
-                    ** work_items_common()
+                    **work_items_common()
                 ),
 
             ])
@@ -711,8 +712,8 @@ class TestUpdateWorkItems(WorkItemsTest):
         new_work_item = dict(work_items[0])
         new_work_item['priority'] = 'High'
         result = api.update_work_items(organization_key, work_items_source_key,
-            [new_work_item
-        ])
+                                       [new_work_item
+                                        ])
         assert result['success']
         assert db.connection().execute(
             "select count(id) from analytics.work_items where priority='High'").scalar() == 1
@@ -722,13 +723,14 @@ class TestUpdateWorkItems(WorkItemsTest):
         new_work_item = dict(work_items[0])
         new_work_item['releases'] = ['{}']
         result = api.update_work_items(organization_key, work_items_source_key,
-            [new_work_item
-        ])
+                                       [new_work_item
+                                        ])
         assert result['success']
         with db.orm_session() as session:
             # this tests the single label case in the mapping
             work_item = model.WorkItem.find_by_work_item_key(session, new_work_item['key'])
             assert work_item.releases == ['{}']
+
     def it_updates_story_points(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
         new_work_item = dict(work_items[0])
@@ -761,6 +763,27 @@ class TestUpdateWorkItems(WorkItemsTest):
         assert result['success']
         assert db.connection().execute(
             "select count(id) from analytics.work_items where flagged=False").scalar() == 1
+
+    def it_updates_changelog(self, update_work_items_setup):
+        organization_key, work_items_source_key, work_items = update_work_items_setup
+        new_work_item = dict(work_items[0])
+        new_work_item['changelog'] = [{'created': '2023-11-09T16:55:00.575-0600',
+                                       'previous_state': 'In Progress',
+                                       'seq_no': 1,
+                                       'state': 'Done'}
+                                      ]
+        result = api.update_work_items(organization_key, work_items_source_key,
+                                       [new_work_item
+                                        ])
+        assert result['success']
+        work_item_display_id = work_items[0]['display_id']
+        assert db.connection().execute(
+            f"select changelog from analytics.work_items where display_id='{work_item_display_id}'").scalar() == [
+                   {'created': '2023-11-09T16:55:00.575-0600',
+                    'previous_state': 'In Progress',
+                    'seq_no': 1,
+                    'state': 'Done'}
+               ]
 
     def it_does_not_update_completed_at_when_state_transitions_from_closed_to_closed(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -833,7 +856,8 @@ class TestUpdateWorkItems(WorkItemsTest):
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared = updated_at").scalar() == 1
+        assert db.connection().execute(
+            "select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared = updated_at").scalar() == 1
 
     def it_updates_cleared_date_when_flagged_changed_from_true_to_false(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -849,7 +873,8 @@ class TestUpdateWorkItems(WorkItemsTest):
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared = updated_at").scalar() == 1
+        assert db.connection().execute(
+            "select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared = updated_at").scalar() == 1
 
     def it_inserts_row_into_impediment_history_when_state_changed_and_flagged_is_true(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -864,10 +889,8 @@ class TestUpdateWorkItems(WorkItemsTest):
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared is null and analytics.work_items_impediment_history.state = 'foo' ").scalar() == 1
-
-
-
+        assert db.connection().execute(
+            "select count(*) from analytics.work_items_impediment_history join analytics.work_items on analytics.work_items.id = analytics.work_items_impediment_history.work_item_id where cleared is null and analytics.work_items_impediment_history.state = 'foo' ").scalar() == 1
 
     def it_inserts_row_into_impediment_history_when_flagged_changed_to_true(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -882,8 +905,8 @@ class TestUpdateWorkItems(WorkItemsTest):
             for work_item in work_items
         ])
         assert result['success']
-        assert db.connection().execute("select count(*) from analytics.work_items_impediment_history where analytics.work_items_impediment_history.seq_no = 0").scalar() == 2
-
+        assert db.connection().execute(
+            "select count(*) from analytics.work_items_impediment_history where analytics.work_items_impediment_history.seq_no = 0").scalar() == 2
 
     def it_returns_state_changes(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items = update_work_items_setup
@@ -942,7 +965,7 @@ class TestUpdateWorkItems(WorkItemsTest):
                 organization = model.Organization.find_by_organization_key(session, fixture.organization_key)
                 cross_project_key = uuid.uuid4()
                 cross_project = create_work_items_source(organization.id, work_items_source_key=cross_project_key)
-                session. add(cross_project)
+                session.add(cross_project)
 
             yield Fixture(
                 parent=fixture,
@@ -970,12 +993,11 @@ class TestUpdateWorkItems(WorkItemsTest):
                     name="10002",
                     display_id="10002",
                     work_items_source_key=cross_project_key,
-                    ** work_items_common()
+                    **work_items_common()
                 ),
 
             ])
             assert result['success']
-
 
             result = api.update_work_items(organization_key, work_items_source_key, [
                 dict(
@@ -995,11 +1017,13 @@ class TestUpdateWorkItems(WorkItemsTest):
 
             ])
             assert result['success']
-            assert  result['update_count'] == 2
+            assert result['update_count'] == 2
             assert len(result['new_work_items']) == 0
 
-            assert db.connection().execute(f"select name from analytics.work_items where display_id='10001'").scalar() == "10001-1"
-            assert db.connection().execute(f"select name from analytics.work_items where display_id='10002'").scalar() == "10002-1"
+            assert db.connection().execute(
+                f"select name from analytics.work_items where display_id='10001'").scalar() == "10001-1"
+            assert db.connection().execute(
+                f"select name from analytics.work_items where display_id='10002'").scalar() == "10002-1"
 
         def it_updates_parents_across_work_items_sources_from_cross_to_same(self, setup):
             fixture = setup
@@ -1037,7 +1061,6 @@ class TestUpdateWorkItems(WorkItemsTest):
             ])
             assert result['success']
 
-
             result = api.update_work_items(organization_key, work_items_source_key, [
                 dict(
                     key=item_keys[0].hex,
@@ -1059,14 +1082,14 @@ class TestUpdateWorkItems(WorkItemsTest):
                     name="10003",
                     display_id="10003",
                     work_items_source_key=cross_project_key,
-                    #change this parent
+                    # change this parent
                     parent_key=item_keys[0].hex,
                     **work_items_common()
                 )
 
             ])
             assert result['success']
-            assert  result['update_count'] == 3
+            assert result['update_count'] == 3
             assert len(result['new_work_items']) == 0
 
             with db.orm_session() as session:
@@ -1110,7 +1133,6 @@ class TestUpdateWorkItems(WorkItemsTest):
             ])
             assert result['success']
 
-
             result = api.update_work_items(organization_key, work_items_source_key, [
                 dict(
                     key=item_keys[0].hex,
@@ -1132,14 +1154,14 @@ class TestUpdateWorkItems(WorkItemsTest):
                     name="10003",
                     display_id="10003",
                     work_items_source_key=cross_project_key,
-                    #change this parent
+                    # change this parent
                     parent_key=item_keys[0].hex,
                     **work_items_common()
                 )
 
             ])
             assert result['success']
-            assert  result['update_count'] == 3
+            assert result['update_count'] == 3
             assert len(result['new_work_items']) == 0
 
             with db.orm_session() as session:
@@ -1198,13 +1220,12 @@ class TestUpdateWorkItems(WorkItemsTest):
 
             ])
             assert result['success']
-            assert  result['update_count'] == 2
+            assert result['update_count'] == 2
             assert len(result['new_work_items']) == 0
 
             with db.orm_session() as session:
                 child = model.WorkItem.find_by_work_item_key(session, item_keys[1])
                 assert child.parent is None
-
 
         def it_does_not_add_new_work_items_found_during_updates(self, setup):
             fixture = setup
@@ -1233,7 +1254,6 @@ class TestUpdateWorkItems(WorkItemsTest):
             ])
             assert result['success']
 
-
             result = api.update_work_items(organization_key, work_items_source_key, [
                 dict(
                     key=item_keys[0].hex,
@@ -1255,14 +1275,14 @@ class TestUpdateWorkItems(WorkItemsTest):
                     name="10003",
                     display_id="10003",
                     work_items_source_key=cross_project_key,
-                    #change this parent from cross parent back to same work item source
+                    # change this parent from cross parent back to same work item source
                     parent_key=item_keys[1].hex,
                     **work_items_common()
                 )
 
             ])
             assert result['success']
-            assert  result['update_count'] == 2
+            assert result['update_count'] == 2
             with db.orm_session() as session:
                 # new items found during update are not added.
                 child = model.WorkItem.find_by_work_item_key(session, item_keys[2])
@@ -1271,9 +1291,107 @@ class TestUpdateWorkItems(WorkItemsTest):
             assert len(result['new_work_items']) == 1
 
 
-
-
 class TestStateTransitionSequence:
+
+    def it_creates_state_transitions_entry_if_changelog_is_not_None(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+        ]
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute(
+            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 3
+
+    def it_creates_state_transitions_with_correct_values_when_changelog_is_not_None(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_item = dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, [work_item])
+
+        assert result['success']
+        assert db.row_proxies_to_dict(
+            db.connection().execute(
+                "select seq_no, previous_state, state, created_at from analytics.work_item_state_transitions order by seq_no").fetchall()
+        ) == [
+                   dict(
+                       seq_no=0,
+                       previous_state=None,
+                       state='created',
+                       created_at=work_item['created_at']
+                   ),
+                   dict(
+                       seq_no=1,
+                       previous_state='created',
+                       state=work_item['changelog'][0].get('previous_state'),
+                       created_at=work_item['created_at']
+                   ),
+                   dict(
+                       seq_no=2,
+                       previous_state=work_item['changelog'][0].get('previous_state'),
+                       state=work_item['changelog'][0].get('state'),
+                       created_at=datetime.fromisoformat(work_item['changelog'][0].get('created_at'))
+                   )
+               ]
+
+    def it_generates_initial_state_transitions_entry_if_changelog_is_empty(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+        ]
+        work_items[0]['changelog'] = None
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute(
+            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 2
+
+    def it_creates_state_transitions_entry_if_there_are_multiple_changelogs(self, work_items_setup):
+        organization_key, work_items_source_key = work_items_setup
+        work_items = [dict(
+            key=uuid.uuid4().hex,
+            name='changelog test',
+            display_id='changelog test',
+            **work_items_common()
+        )
+        ]
+
+        work_items[0]['changelog'] = [{'created_at': '2023-11-08T16:55:00.575-0600',
+                                       'previous_state': 'To Do',
+                                       'seq_no': 2,
+                                       'state': 'In Progress'},
+                                      {'created_at': '2023-11-09T16:55:00.575-0600',
+                                       'previous_state': 'In Progress',
+                                       'seq_no': 3,
+                                       'state': 'Done'}
+
+                                      ]
+
+        result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
+
+        assert result['success']
+
+        assert db.connection().execute(
+            'select count(work_item_id) from analytics.work_item_state_transitions').scalar() == 4
 
     def it_saves_an_initial_state_transition_for_new_items(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -1283,6 +1401,8 @@ class TestStateTransitionSequence:
             display_id='1000',
             **work_items_common()
         )
+        # Overriding the entry in work_items_common for changelog since a new item would have a changelog = none
+        work_item['changelog'] = None
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -1301,7 +1421,7 @@ class TestStateTransitionSequence:
                        seq_no=1,
                        previous_state='created',
                        state=work_item['state'],
-                       created_at=work_item['updated_at']
+                       created_at=work_item['created_at']
                    )
                ]
 
@@ -1319,7 +1439,7 @@ class TestStateTransitionSequence:
         ])
         assert result['success']
         assert db.connection().execute(
-            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
+            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 3
 
     def it_saves_the_next_state_when_there_is_an_update_with_a_state_change(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -1330,6 +1450,9 @@ class TestStateTransitionSequence:
             display_id='1000',
             **work_items_common()
         )
+
+        work_item['changelog'] = None
+
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -1357,7 +1480,7 @@ class TestStateTransitionSequence:
                        seq_no=1,
                        previous_state='created',
                        state=work_item['state'],
-                       created_at=work_item['updated_at']
+                       created_at=work_item['created_at']
                    ),
                    dict(
                        seq_no=2,
@@ -1390,7 +1513,7 @@ class TestStateTransitionSequence:
         ])
         assert result['success']
         assert db.connection().execute(
-            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 3
+            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 4
 
     def it_saves_the_next_state_correctly_after_a_subsequent_update(self, work_items_setup):
         organization_key, work_items_source_key = work_items_setup
@@ -1401,6 +1524,9 @@ class TestStateTransitionSequence:
             display_id='1000',
             **work_items_common()
         )
+
+        work_item['changelog'] = None
+
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -1438,8 +1564,8 @@ class TestStateTransitionSequence:
                    dict(
                        seq_no=1,
                        previous_state='created',
-                       state='open',
-                       created_at=work_item['updated_at']
+                       state=work_item['state'],
+                       created_at=work_item['created_at']
                    ),
                    dict(
                        seq_no=2,
@@ -1464,6 +1590,9 @@ class TestStateTransitionSequence:
             display_id='1000',
             **work_items_common()
         )
+
+        work_item['changelog'] = None
+
         result = api.import_new_work_items(organization_key, work_items_source_key, [
             work_item
         ])
@@ -1486,7 +1615,7 @@ class TestStateTransitionSequence:
                        seq_no=1,
                        previous_state='created',
                        state=work_item['state'],
-                       created_at=work_item['updated_at']
+                       created_at=work_item['created_at']
                    )
                ]
 
@@ -1509,7 +1638,7 @@ class TestStateTransitionSequence:
 
         assert result['success']
         assert db.connection().execute(
-            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 2
+            f"select next_state_seq_no from analytics.work_items where key='{work_item_key}'").scalar() == 3
 
 
 class TestImportProject:
@@ -2335,6 +2464,10 @@ class TestWorkItemDeliveryCycleDurations:
             )
             for i in range(0, 10)]
         )
+
+        for i in range(0,10):
+            work_items[i]['changelog'] = None
+
         work_items[0]['state'] = 'closed'
         work_items[0]['created_at'] = datetime.utcnow() - timedelta(days=7)
         result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
@@ -2347,8 +2480,8 @@ class TestWorkItemDeliveryCycleDurations:
         ).scalar() == 1
         assert db.connection().execute(
             "select count(delivery_cycle_id) from analytics.work_item_delivery_cycle_durations \
-                where cumulative_time_in_state>0 and state='created'"
-        ).scalar() == 10
+               where cumulative_time_in_state>0 and state='created'"
+       ).scalar() == 0
 
     def it_updates_delivery_cycle_durations_for_updated_work_items(self, update_work_items_setup):
         organization_key, work_items_source_key, work_items_list = update_work_items_setup
@@ -2386,6 +2519,9 @@ class TestWorkItemDeliveryCycleDurations:
             )
             for i in range(0, 5)]
         )
+
+        for i in range(0,5):
+            work_items[i]['changelog'] = None
         # import all work items first
         result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
         assert result['success']
@@ -2441,6 +2577,8 @@ class TestWorkItemDeliveryCycleDurations:
             for i in range(0, 5)]
         )
         work_items[0]['updated_at'] = work_items[0]['created_at'] + timedelta(days=1)
+        for i in range(0,5):
+            work_items[i]['changelog'] = None
         # import all work items first
         result = api.import_new_work_items(organization_key, work_items_source_key, work_items)
         assert result['success']
@@ -2716,14 +2854,12 @@ class TestWorkTracking(WorkItemsTest):
 
             ]
 
-
             result = api.import_new_work_items(organization_key, work_items_source_key, test_work_items)
             assert result['success']
             with db.orm_session() as session:
                 # this tests the single label case in the mapping
                 work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[0]['key'])
                 assert work_item.work_item_type == WorkItemType.epic.value
-
 
                 # this tests the multiple label case in the mapping
                 work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[1]['key'])
@@ -2732,8 +2868,6 @@ class TestWorkTracking(WorkItemsTest):
                 # this tests the case where the label does not match in the mapping
                 work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[2]['key'])
                 assert work_item.work_item_type == WorkItemType.story.value
-
-
 
         def it_sets_the_is_epic_flag_when_the_custom_type_maps_to_an_epic(self, setup):
             fixture = setup
@@ -2826,8 +2960,7 @@ class TestWorkTracking(WorkItemsTest):
             with db.orm_session() as session:
                 # this tests the single label case in the mapping
                 work_item = model.WorkItem.find_by_work_item_key(session, test_work_items[0]['key'])
-                assert work_item.work_item_type ==  WorkItemType.epic.value
-
+                assert work_item.work_item_type == WorkItemType.epic.value
 
         def it_sets_the_custom_map_for_work_items_on_updates(self, setup):
             fixture = setup

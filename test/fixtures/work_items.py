@@ -9,7 +9,7 @@
 # Author: Krishna Kumar
 import uuid
 from polaris.analytics.db import api
-from polaris.analytics.db.enums import WorkItemsStateType,WorkItemsImpedimentType
+from polaris.analytics.db.enums import WorkItemsStateType, WorkItemsImpedimentType
 
 # work_item_sources
 rails_work_items_source_key = uuid.uuid4()
@@ -23,6 +23,7 @@ from polaris.common import db
 from polaris.analytics.db.model import WorkItemsSource
 from datetime import datetime, timedelta
 from polaris.utils.collections import Fixture
+
 
 def work_items_common():
     return dict(
@@ -38,10 +39,15 @@ def work_items_common():
         source_id=str(uuid.uuid4()),
         parent_id=None,
         priority='Medium',
-        releases=['a','b'],
+        releases=['a', 'b'],
         story_points=98,
         sprints=['Sprint 1', 'Sprint 2'],
-        flagged=True
+        flagged=True,
+        changelog=[{'created_at': (datetime.utcnow() - timedelta(days=6)).isoformat(),
+                    'previous_state': 'To Do',
+                    'state': 'open'}
+                   ]
+
     )
 
 
@@ -62,7 +68,8 @@ def work_items_closed():
         releases=[],
         story_points=None,
         sprints=None,
-        flagged=True
+        flagged=True,
+        changelog=None
     )
 
 
@@ -99,7 +106,6 @@ def work_items_setup(setup_repo_org):
     db.connection().execute("delete from analytics.work_items_sources")
 
 
-
 def create_work_items_source(organization_id, work_items_source_key=rails_work_items_source_key):
     work_items_source = WorkItemsSource(
         organization_id=organization_id,
@@ -129,6 +135,7 @@ class WorkItemsTest:
             work_items_source_key=work_items_source_key,
             work_items_common=work_items_common()
         )
+
 
 @pytest.fixture
 def update_work_items_setup(work_items_setup):
@@ -172,7 +179,6 @@ def update_work_items_setup(work_items_setup):
             work_item.next_state_seq_no = 2
             work_item.state_type = work_items_source.get_state_type(work_item.state)
 
-
             # Adding delivery cycles
             work_item.delivery_cycles.extend([
                 model.WorkItemDeliveryCycle(
@@ -182,7 +188,7 @@ def update_work_items_setup(work_items_setup):
                 )
             ])
 
-            #Adding flagged records into impediment history
+            # Adding flagged records into impediment history
             if work_item.flagged:
                 work_item.impediment_history.extend([
                     model.WorkItemsImpedimentHistory(
@@ -195,8 +201,6 @@ def update_work_items_setup(work_items_setup):
                 ]
 
                 )
-
-
 
         session.flush()
         for work_item in work_items:

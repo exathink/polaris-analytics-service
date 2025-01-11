@@ -1,5 +1,3 @@
-version: '3.1'
-
 services:
   package-base:
     environment:
@@ -52,8 +50,29 @@ services:
       - auth-service
       - polaris-db
 
+  polaris-grafana:
+    image: polaris-grafana
+    build:
+      dockerfile: docker/polaris-grafana/Dockerfile
+      context: .
+    ports:
+      - "3006:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+#     - ./data/grafana.ini:/etc/grafana/grafana.ini
+    environment:
+      GF_SERVER_ROOT_URL: "http://polaris-services.exathink.localdev:3006/grafana"
+      GF_USERS_DEFAULT_THEME: "light"
+      POLARIS_DB_HOST_URL: "polaris-db"
+      POLARIS_DB: "polaris"
+      POLARIS_DB_SSL: "disable"
+      POLARIS_USER: "polaris"
+      POLARIS_PASSWORD: "polaris"
 
-
+      TZ: UTC
+    restart: always
+    depends_on:
+      - polaris-db
 
   loader:
       image: ${PACKAGE_BASE_IMAGE}
@@ -140,4 +159,10 @@ services:
       - 5500:5432
 
 
-
+volumes:
+  grafana-storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: .polaris-analytics=service/data/grafana

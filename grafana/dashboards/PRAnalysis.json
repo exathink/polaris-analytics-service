@@ -1,26 +1,4 @@
 {
-  "__inputs": [],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "11.2.0"
-    },
-    {
-      "type": "datasource",
-      "id": "mysql",
-      "name": "MySQL",
-      "version": "11.2.0"
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -37,11 +15,11 @@
       }
     ]
   },
-  "description": "PR Cycle Time Metrics",
+  "description": "Pull Request Analysis",
   "editable": false,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 3,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -73,6 +51,7 @@
     },
     {
       "datasource": {
+        "default": false,
         "type": "mysql",
         "uid": "devlake-db"
       },
@@ -87,13 +66,14 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisGridShow": false,
+            "axisLabel": "Days",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
+            "fillOpacity": 100,
+            "gradientMode": "opacity",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
@@ -102,7 +82,7 @@
             "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
-            "pointSize": 12,
+            "pointSize": 8,
             "scaleDistribution": {
               "type": "linear"
             },
@@ -171,7 +151,7 @@
           "hide": false,
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "with _prs as(\n  SELECT\n    pr.id,\n    pr.merged_date as pr_merged_date,\n    -- convert null to 0 if a PR has no cycle_time to make sure cycle_time equals the sum of the four metrics below\n\t\tcoalesce(prm.pr_cycle_time/60,0) as cycle_time\n  FROM pull_requests pr\n    left join project_pr_metrics prm on pr.id = prm.id\n    join project_mapping pm on pr.base_repo_id = pm.row_id and pm.table = 'repos' \n  WHERE\n    $__timeFilter(pr.merged_date)\n    and pr.created_date >= DATE_ADD(DATE_ADD($__timeFrom(), INTERVAL -DAY($__timeFrom())+1 DAY), INTERVAL +1 MONTH)\n    and pm.project_name in (${project})\n  GROUP BY 1,2,3\n)\n\nSELECT \n  DATE_ADD(date(pr_merged_date), INTERVAL - $interval(date(pr_merged_date))+1 DAY) as time,\n  avg(cycle_time) as 'PR Cycle Time(h)'\nFROM _prs\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "with _prs as(\n  SELECT\n    pr.id,\n    pr.merged_date as pr_merged_date,\n    -- convert null to 0 if a PR has no cycle_time to make sure cycle_time equals the sum of the four metrics below\n\t\tcoalesce(prm.pr_cycle_time/3600,0) as cycle_time\n  FROM pull_requests pr\n    left join project_pr_metrics prm on pr.id = prm.id\n    join project_mapping pm on pr.base_repo_id = pm.row_id and pm.table = 'repos' \n  WHERE\n    $__timeFilter(pr.merged_date)\n    and pr.created_date >= DATE_ADD(DATE_ADD($__timeFrom(), INTERVAL -DAY($__timeFrom())+1 DAY), INTERVAL +1 MONTH)\n    and pm.project_name in (${project})\n  GROUP BY 1,2,3\n)\n\nSELECT \n  DATE_ADD(date(pr_merged_date), INTERVAL - $interval(date(pr_merged_date))+1 DAY) as time,\n  avg(cycle_time) as 'PR Cycle Time(d)'\nFROM _prs\nGROUP BY 1\nORDER BY 1",
           "refId": "A",
           "select": [
             [
@@ -217,6 +197,7 @@
     },
     {
       "datasource": {
+        "default": false,
         "type": "mysql",
         "uid": "devlake-db"
       },
@@ -224,20 +205,21 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
+            "fixedColor": "green",
             "mode": "fixed"
           },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisGridShow": false,
+            "axisLabel": "Days",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
+            "fillOpacity": 100,
+            "gradientMode": "opacity",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
@@ -315,7 +297,7 @@
           "hide": false,
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "with _prs as(\n  SELECT\n    pr.id,\n    pr.merged_date as pr_merged_date,\n    -- convert null to 0 if a PR has no coding_time to make sure cycle_time equals the sum of the four sub-metrics\n\t\tcoalesce(prm.pr_coding_time/60,0) as coding_time\n  FROM pull_requests pr\n    left join project_pr_metrics prm on pr.id = prm.id\n    join project_mapping pm on pr.base_repo_id = pm.row_id and pm.table = 'repos' \n  WHERE\n    $__timeFilter(pr.merged_date)\n    and pr.merged_date >= DATE_ADD(DATE_ADD($__timeFrom(), INTERVAL -DAY($__timeFrom())+1 DAY), INTERVAL +1 MONTH)\n    and pm.project_name in (${project})\n  GROUP BY 1,2,3\n)\n\nSELECT \n  DATE_ADD(date(pr_merged_date), INTERVAL -$interval(date(pr_merged_date))+1 DAY) as time,\n  avg(coding_time) as 'Coding Time(h)'\nFROM _prs\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "with _prs as(\n  SELECT\n    pr.id,\n    pr.merged_date as pr_merged_date,\n    -- convert null to 0 if a PR has no coding_time to make sure cycle_time equals the sum of the four sub-metrics\n\t\tcoalesce(prm.pr_coding_time/1440,0) as coding_time\n  FROM pull_requests pr\n    left join project_pr_metrics prm on pr.id = prm.id\n    join project_mapping pm on pr.base_repo_id = pm.row_id and pm.table = 'repos' \n  WHERE\n    $__timeFilter(pr.merged_date)\n    and pr.merged_date >= DATE_ADD(DATE_ADD($__timeFrom(), INTERVAL -DAY($__timeFrom())+1 DAY), INTERVAL +1 MONTH)\n    and pm.project_name in (${project})\n  GROUP BY 1,2,3\n)\n\nSELECT \n  DATE_ADD(date(pr_merged_date), INTERVAL -$interval(date(pr_merged_date))+1 DAY) as time,\n  avg(coding_time) as 'Coding Time(days)'\nFROM _prs\nGROUP BY 1\nORDER BY 1",
           "refId": "A",
           "select": [
             [
@@ -361,6 +343,7 @@
     },
     {
       "datasource": {
+        "default": false,
         "type": "mysql",
         "uid": "devlake-db"
       },
@@ -368,20 +351,21 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
+            "fixedColor": "light-yellow",
             "mode": "fixed"
           },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisGridShow": false,
+            "axisLabel": "Days",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
+            "fillOpacity": 100,
+            "gradientMode": "opacity",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
@@ -490,7 +474,7 @@
           "hide": false,
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "with _prs as(\n  SELECT\n    pr.id,\n    pr.merged_date as pr_merged_date,\n    -- convert null to 0 if a PR has no pickup_time to make sure cycle_time equals the sum of the four sub-metrics\n\t\tcoalesce(prm.pr_pickup_time/60,0) as pickup_time\n  FROM pull_requests pr\n    left join project_pr_metrics prm on pr.id = prm.id\n    join project_mapping pm on pr.base_repo_id = pm.row_id and pm.table = 'repos' \n  WHERE\n    $__timeFilter(pr.merged_date)\n    and pr.merged_date >= DATE_ADD(DATE_ADD($__timeFrom(), INTERVAL -DAY($__timeFrom())+1 DAY), INTERVAL +1 MONTH)\n    and pm.project_name in (${project})\n  GROUP BY 1,2,3\n)\n\nSELECT \n  DATE_ADD(date(pr_merged_date), INTERVAL -$interval(date(pr_merged_date))+1 DAY) as time,\n  avg(pickup_time) as 'Pickup Time(h)'\nFROM _prs\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "with _prs as(\n  SELECT\n    pr.id,\n    pr.merged_date as pr_merged_date,\n    -- convert null to 0 if a PR has no pickup_time to make sure cycle_time equals the sum of the four sub-metrics\n\t\tcoalesce(prm.pr_pickup_time/1440,0) as pickup_time\n  FROM pull_requests pr\n    left join project_pr_metrics prm on pr.id = prm.id\n    join project_mapping pm on pr.base_repo_id = pm.row_id and pm.table = 'repos' \n  WHERE\n    $__timeFilter(pr.merged_date)\n    and pr.merged_date >= DATE_ADD(DATE_ADD($__timeFrom(), INTERVAL -DAY($__timeFrom())+1 DAY), INTERVAL +1 MONTH)\n    and pm.project_name in (${project})\n  GROUP BY 1,2,3\n)\n\nSELECT \n  DATE_ADD(date(pr_merged_date), INTERVAL -$interval(date(pr_merged_date))+1 DAY) as time,\n  avg(pickup_time) as 'Pickup Time(days)'\nFROM _prs\nGROUP BY 1\nORDER BY 1",
           "refId": "A",
           "select": [
             [
@@ -536,6 +520,7 @@
     },
     {
       "datasource": {
+        "default": false,
         "type": "mysql",
         "uid": "devlake-db"
       },
@@ -543,20 +528,21 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
+            "fixedColor": "#409eb7",
             "mode": "fixed"
           },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisGridShow": false,
+            "axisLabel": "Days",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
+            "fillOpacity": 100,
+            "gradientMode": "opacity",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
@@ -590,38 +576,7 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "PR: Opened"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "PR: Merged"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "super-light-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 7,
@@ -665,7 +620,7 @@
           "hide": false,
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "with _prs as(\n  SELECT\n    pr.id,\n    pr.merged_date as pr_merged_date,\n    -- convert null to 0 if a PR has no review_time to make sure cycle_time equals the sum of the four sub-metrics\n\t\tcoalesce(prm.pr_review_time/60,0) as review_time\n  FROM pull_requests pr\n    left join project_pr_metrics prm on pr.id = prm.id\n    join project_mapping pm on pr.base_repo_id = pm.row_id and pm.table = 'repos' \n  WHERE\n    $__timeFilter(pr.created_date)\n    and pr.merged_date >= DATE_ADD(DATE_ADD($__timeFrom(), INTERVAL -DAY($__timeFrom())+1 DAY), INTERVAL +1 MONTH)\n    and pm.project_name in (${project})\n  GROUP BY 1,2,3\n)\n\nSELECT \n  DATE_ADD(date(pr_merged_date), INTERVAL -$interval(date(pr_merged_date))+1 DAY) as time,\n  avg(review_time) as 'Review Time(h)'\nFROM _prs\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "with _prs as(\n  SELECT\n    pr.id,\n    pr.merged_date as pr_merged_date,\n    -- convert null to 0 if a PR has no review_time to make sure cycle_time equals the sum of the four sub-metrics\n\t\tcoalesce(prm.pr_review_time/1440,0) as review_time\n  FROM pull_requests pr\n    left join project_pr_metrics prm on pr.id = prm.id\n    join project_mapping pm on pr.base_repo_id = pm.row_id and pm.table = 'repos' \n  WHERE\n    $__timeFilter(pr.created_date)\n    and pr.merged_date >= DATE_ADD(DATE_ADD($__timeFrom(), INTERVAL -DAY($__timeFrom())+1 DAY), INTERVAL +1 MONTH)\n    and pm.project_name in (${project})\n  GROUP BY 1,2,3\n)\n\nSELECT \n  DATE_ADD(date(pr_merged_date), INTERVAL -$interval(date(pr_merged_date))+1 DAY) as time,\n  avg(review_time) as 'Review Time(days)'\nFROM _prs\nGROUP BY 1\nORDER BY 1",
           "refId": "A",
           "select": [
             [
@@ -711,6 +666,7 @@
     },
     {
       "datasource": {
+        "default": false,
         "type": "mysql",
         "uid": "devlake-db"
       },
@@ -718,19 +674,20 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
+            "fixedColor": "light-orange",
             "mode": "fixed"
           },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisGridShow": false,
+            "axisLabel": "Days",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 0,
+            "fillOpacity": 100,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -840,7 +797,7 @@
           "hide": false,
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "with _prs as(\n  SELECT\n    pr.id,\n    pr.merged_date as pr_merged_date,\n    -- convert null to 0 if a PR has no deploy_time to make sure cycle_time equals the sum of the four sub-metrics\n\t\tcoalesce(prm.pr_deploy_time/60,0) as deploy_time\n  FROM pull_requests pr\n    left join project_pr_metrics prm on pr.id = prm.id\n    join project_mapping pm on pr.base_repo_id = pm.row_id and pm.table = 'repos' \n  WHERE\n    $__timeFilter(pr.merged_date)\n    and pr.merged_date >= DATE_ADD(DATE_ADD($__timeFrom(), INTERVAL -DAY($__timeFrom())+1 DAY), INTERVAL +1 MONTH)\n    and pm.project_name in (${project})\n  GROUP BY 1,2,3\n)\n\nSELECT \n  DATE_ADD(date(pr_merged_date), INTERVAL -$interval(date(pr_merged_date))+1 DAY) as time,\n  avg(deploy_time) as 'PR Deploy Time(h)'\nFROM _prs\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "with _prs as(\n  SELECT\n    pr.id,\n    pr.merged_date as pr_merged_date,\n    -- convert null to 0 if a PR has no deploy_time to make sure cycle_time equals the sum of the four sub-metrics\n\t\tcoalesce(prm.pr_deploy_time/1440,0) as deploy_time\n  FROM pull_requests pr\n    left join project_pr_metrics prm on pr.id = prm.id\n    join project_mapping pm on pr.base_repo_id = pm.row_id and pm.table = 'repos' \n  WHERE\n    $__timeFilter(pr.merged_date)\n    and pr.merged_date >= DATE_ADD(DATE_ADD($__timeFrom(), INTERVAL -DAY($__timeFrom())+1 DAY), INTERVAL +1 MONTH)\n    and pm.project_name in (${project})\n  GROUP BY 1,2,3\n)\n\nSELECT \n  DATE_ADD(date(pr_merged_date), INTERVAL -$interval(date(pr_merged_date))+1 DAY) as time,\n  avg(deploy_time) as 'PR Deploy Time(days)'\nFROM _prs\nGROUP BY 1\nORDER BY 1",
           "refId": "A",
           "select": [
             [
@@ -928,10 +885,10 @@
             "axisColorMode": "text",
             "axisLabel": "Pull Request Count",
             "axisPlacement": "auto",
-            "barAlignment": 1,
+            "barAlignment": 0,
             "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 71,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -1088,10 +1045,10 @@
             "axisColorMode": "text",
             "axisLabel": "PR Merged Size",
             "axisPlacement": "auto",
-            "barAlignment": 1,
+            "barAlignment": 0,
             "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 100,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -1235,10 +1192,10 @@
             "axisColorMode": "text",
             "axisLabel": "PR Review Depth",
             "axisPlacement": "auto",
-            "barAlignment": 1,
+            "barAlignment": 0,
             "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 100,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -1270,7 +1227,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           }
@@ -1365,8 +1323,8 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 98,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -1395,7 +1353,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           }
@@ -1480,7 +1439,15 @@
   "templating": {
     "list": [
       {
-        "current": {},
+        "current": {
+          "selected": true,
+          "text": [
+            "Polaris"
+          ],
+          "value": [
+            "Polaris"
+          ]
+        },
         "datasource": {
           "type": "mysql",
           "uid": "devlake-db"
@@ -1501,7 +1468,11 @@
       },
       {
         "allValue": "",
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "mysql",
           "uid": "devlake-db"
@@ -1552,13 +1523,13 @@
     ]
   },
   "time": {
-    "from": "now-6M",
-    "to": "now"
+    "from": "now-36M",
+    "to": "now-24M"
   },
   "timepicker": {},
   "timezone": "utc",
-  "title": "PR Cycle Time",
-  "uid": "be96p04k45f5sf",
-  "version": 5,
+  "title": "PR Cycle Time with Summary",
+  "uid": "be9vwx873s0e8b",
+  "version": 2,
   "weekStart": ""
 }
